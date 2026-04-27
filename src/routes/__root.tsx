@@ -55,11 +55,11 @@ export const Route = createRootRoute({
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="da">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="bg-background text-foreground">
         {children}
         <Scripts />
       </body>
@@ -68,5 +68,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  return <Outlet />;
+  const location = useLocation();
+  const isWelcome = location.pathname === "/";
+  return (
+    <div className="min-h-screen bg-background">
+      {!isWelcome && <TopBar />}
+      <AnimatePresence mode="wait">
+        <Outlet key={location.pathname} />
+      </AnimatePresence>
+    </div>
+  );
 }
