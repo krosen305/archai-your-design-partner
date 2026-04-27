@@ -10,33 +10,89 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProjektComplianceRouteImport } from './routes/projekt.compliance'
+import { Route as ProjektBriefRouteImport } from './routes/projekt.brief'
+import { Route as ProjektBeskrivelseRouteImport } from './routes/projekt.beskrivelse'
+import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjektComplianceRoute = ProjektComplianceRouteImport.update({
+  id: '/projekt/compliance',
+  path: '/projekt/compliance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjektBriefRoute = ProjektBriefRouteImport.update({
+  id: '/projekt/brief',
+  path: '/projekt/brief',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjektBeskrivelseRoute = ProjektBeskrivelseRouteImport.update({
+  id: '/projekt/beskrivelse',
+  path: '/projekt/beskrivelse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
+  id: '/projekt/adresse',
+  path: '/projekt/adresse',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/projekt/adresse': typeof ProjektAdresseRoute
+  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
+  '/projekt/brief': typeof ProjektBriefRoute
+  '/projekt/compliance': typeof ProjektComplianceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/projekt/adresse': typeof ProjektAdresseRoute
+  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
+  '/projekt/brief': typeof ProjektBriefRoute
+  '/projekt/compliance': typeof ProjektComplianceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/projekt/adresse': typeof ProjektAdresseRoute
+  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
+  '/projekt/brief': typeof ProjektBriefRoute
+  '/projekt/compliance': typeof ProjektComplianceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/projekt/adresse'
+    | '/projekt/beskrivelse'
+    | '/projekt/brief'
+    | '/projekt/compliance'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/projekt/adresse'
+    | '/projekt/beskrivelse'
+    | '/projekt/brief'
+    | '/projekt/compliance'
+  id:
+    | '__root__'
+    | '/'
+    | '/projekt/adresse'
+    | '/projekt/beskrivelse'
+    | '/projekt/brief'
+    | '/projekt/compliance'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ProjektAdresseRoute: typeof ProjektAdresseRoute
+  ProjektBeskrivelseRoute: typeof ProjektBeskrivelseRoute
+  ProjektBriefRoute: typeof ProjektBriefRoute
+  ProjektComplianceRoute: typeof ProjektComplianceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +104,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projekt/compliance': {
+      id: '/projekt/compliance'
+      path: '/projekt/compliance'
+      fullPath: '/projekt/compliance'
+      preLoaderRoute: typeof ProjektComplianceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projekt/brief': {
+      id: '/projekt/brief'
+      path: '/projekt/brief'
+      fullPath: '/projekt/brief'
+      preLoaderRoute: typeof ProjektBriefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projekt/beskrivelse': {
+      id: '/projekt/beskrivelse'
+      path: '/projekt/beskrivelse'
+      fullPath: '/projekt/beskrivelse'
+      preLoaderRoute: typeof ProjektBeskrivelseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projekt/adresse': {
+      id: '/projekt/adresse'
+      path: '/projekt/adresse'
+      fullPath: '/projekt/adresse'
+      preLoaderRoute: typeof ProjektAdresseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ProjektAdresseRoute: ProjektAdresseRoute,
+  ProjektBeskrivelseRoute: ProjektBeskrivelseRoute,
+  ProjektBriefRoute: ProjektBriefRoute,
+  ProjektComplianceRoute: ProjektComplianceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
