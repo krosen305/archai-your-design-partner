@@ -22,8 +22,8 @@ function AddressStep() {
   const [error, setError] = useState<string | null>(null);
   const lastRequestedQueryRef = useRef<string>("");
 
-  const showDropdown = query.length > 0;
   const queryTrimmed = useMemo(() => query.trim(), [query]);
+  const showDropdown = open && queryTrimmed.length > 0 && !selected;
 
   useEffect(() => {
     if (!open || selected) return;
