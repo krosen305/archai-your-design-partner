@@ -1,10 +1,12 @@
 import { create } from "zustand";
 
 export type Address = {
-  full: string;
+  adresse: string;
+  postnr: string;
   kommune: string;
-  matrikel: string;
-  bbr: string;
+  matrikel: string | null;
+  bbrId: string | null;
+  byggeaar?: string;
 };
 
 export type ProjectData = {

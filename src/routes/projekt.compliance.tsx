@@ -36,7 +36,14 @@ function ComplianceStep() {
           <BackLink to="/projekt/adresse" />
         </div>
 
-        {!done ? <Loading /> : <Result onContinue={() => navigate({ to: "/projekt/beskrivelse" })} address={address?.full ?? ""} />}
+        {!done ? (
+          <Loading />
+        ) : (
+          <Result
+            onContinue={() => navigate({ to: "/projekt/beskrivelse" })}
+            address={address?.adresse ?? ""}
+          />
+        )}
       </div>
     </PageTransition>
   );

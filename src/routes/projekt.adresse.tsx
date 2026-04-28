@@ -4,11 +4,7 @@ import { Search, Check } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
-import {
-  dawaGetAdresseById,
-  dawaSuggestAdresser,
-  type DawaAdresseSuggestion,
-} from "@/integrations/dawa/dawa-client";
+import { DawaService, type DawaSuggestion } from "@/integrations/dawa/client";
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
@@ -17,15 +13,15 @@ export const Route = createFileRoute("/projekt/adresse")({
 function AddressStep() {
   const navigate = useNavigate();
   const { address, setAddress } = useProject();
-  const [query, setQuery] = useState(address?.full ?? "");
+  const [query, setQuery] = useState(address?.adresse ?? "");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(address);
-  const [suggestions, setSuggestions] = useState<DawaAdresseSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<DawaSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastRequestedQueryRef = useRef<string>("");
 
-  const showDropdown = open && query.length > 0 && !selected;
+  const showDropdown = query.length > 0;
   const queryTrimmed = useMemo(() => query.trim(), [query]);
 
   useEffect(() => {
@@ -45,10 +41,8 @@ function AddressStep() {
 
     const t = setTimeout(async () => {
       try {
-        const res = await dawaSuggestAdresser(q, {
-          maxAntal: 10,
-          signal: controller.signal,
-        });
+        // Note: DawaService does not currently accept AbortSignal; debounce reduces load.
+        const res = await DawaService.getSuggestions(q);
 
         // Only apply if this is still the latest query (avoid races)
         if (lastRequestedQueryRef.current !== q) return;
@@ -87,6 +81,7 @@ function AddressStep() {
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <input
+              data-testid="address-input"
               value={query}
               onChange={(e: any) => {
                 setQuery(e.target.value);
@@ -99,108 +94,97 @@ function AddressStep() {
               className="w-full rounded-sm border border-[#333333] bg-[#111111] pl-10 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
             />
 
-            {showDropdown && (
-              <div className="absolute z-20 mt-2 w-full rounded-md border border-border bg-[#1A1A1A] shadow-xl overflow-hidden">
-                {loading && (
-                  <div className="px-4 py-3 text-xs text-muted-foreground">
-                    Søger...
-                  </div>
-                )}
+            <div
+              data-testid="address-suggestions"
+              className={`absolute z-20 mt-2 w-full rounded-md border border-border bg-[#1A1A1A] shadow-xl overflow-hidden ${
+                showDropdown ? "" : "hidden"
+              }`}
+            >
+              {loading && (
+                <div className="px-4 py-3 text-xs text-muted-foreground">
+                  Søger...
+                </div>
+              )}
 
-                {!loading && error && (
-                  <div className="px-4 py-3 text-xs text-muted-foreground">
-                    {error}
-                  </div>
-                )}
+              {!loading && error && (
+                <div className="px-4 py-3 text-xs text-muted-foreground">
+                  {error}
+                </div>
+              )}
 
-                {!loading && !error && suggestions.length === 0 && (
-                  <div className="px-4 py-3 text-xs text-muted-foreground">
-                    Ingen forslag.
-                  </div>
-                )}
+              {!loading && !error && suggestions.length === 0 && (
+                <div className="px-4 py-3 text-xs text-muted-foreground">
+                  Ingen forslag.
+                </div>
+              )}
 
-                {!loading &&
-                  !error &&
-                  suggestions.map((s: DawaAdresseSuggestion) => (
-                    <button
-                      key={s.adresseid ?? s.adgangsadresseid ?? s.tekst}
-                      onMouseDown={async (e: any) => {
-                        e.preventDefault();
+              {!loading &&
+                !error &&
+                suggestions.map((s: DawaSuggestion) => (
+                  <button
+                    data-testid="address-suggestion"
+                    key={s.id}
+                    onMouseDown={async (e: any) => {
+                      e.preventDefault();
 
-                        const fallbackFull = s.forslagstekst ?? s.tekst;
+                      const fallbackFull = s.forslagstekst ?? s.tekst;
 
-                        try {
-                          if (s.adresseid) {
-                            const addr = await dawaGetAdresseById(s.adresseid);
-                            const full =
-                              addr.adressebetegnelse ||
-                              fallbackFull;
+                      try {
+                        const details = await DawaService.getAddressDetails(s.id);
+                        const selectedAddr = {
+                          adresse: details.adresse || fallbackFull,
+                          postnr: details.postnr,
+                          kommune: details.kommune,
+                          matrikel: details.matrikel,
+                          bbrId: details.bbrId,
+                          byggeaar: "Ikke hentet endnu",
+                        };
 
-                            const kommune =
-                              addr.postnrnavn ||
-                              addr.kommunekode ||
-                              "Ukendt";
-
-                            const selectedAddr = {
-                              full,
-                              kommune,
-                              matrikel: "Ikke hentet endnu",
-                              bbr: "Ikke hentet endnu",
-                            };
-
-                            setSelected(selectedAddr);
-                            setAddress(selectedAddr);
-                            setQuery(full);
-                            setOpen(false);
-                            return;
-                          }
-
-                          const selectedAddr = {
-                            full: fallbackFull,
-                            kommune: "Ukendt",
-                            matrikel: "Ikke hentet endnu",
-                            bbr: "Ikke hentet endnu",
-                          };
-
-                          setSelected(selectedAddr);
-                          setAddress(selectedAddr);
-                          setQuery(fallbackFull);
-                          setOpen(false);
-                        } catch {
-                          // If lookup fails, keep the suggestion text as selected so flow can continue.
-                          const selectedAddr = {
-                            full: fallbackFull,
-                            kommune: "Ukendt",
-                            matrikel: "Ikke hentet endnu",
-                            bbr: "Ikke hentet endnu",
-                          };
-                          setSelected(selectedAddr);
-                          setAddress(selectedAddr);
-                          setQuery(fallbackFull);
-                          setOpen(false);
-                        }
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-[#222222] transition-colors border-b border-border last:border-b-0"
-                    >
-                      <div className="text-sm text-foreground font-medium">
-                        {s.forslagstekst ?? s.tekst}
+                        setSelected(selectedAddr);
+                        setAddress(selectedAddr);
+                        setQuery(selectedAddr.adresse);
+                        setOpen(false);
+                      } catch {
+                        // If lookup fails, keep the suggestion text as selected so flow can continue.
+                        const selectedAddr = {
+                          adresse: fallbackFull,
+                          postnr: "",
+                          kommune: "Ukendt",
+                          matrikel: null,
+                          bbrId: null,
+                          byggeaar: "Ikke hentet endnu",
+                        };
+                        setSelected(selectedAddr);
+                        setAddress(selectedAddr);
+                        setQuery(fallbackFull);
+                        setOpen(false);
+                      }
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-[#222222] transition-colors border-b border-border last:border-b-0"
+                  >
+                    <div className="text-sm text-foreground font-medium">
+                      {s.forslagstekst ?? s.tekst}
+                    </div>
+                    {s.tekst !== (s.forslagstekst ?? s.tekst) && (
+                      <div className="text-xs text-muted-foreground italic mt-0.5">
+                        {s.tekst}
                       </div>
-                      {s.tekst !== (s.forslagstekst ?? s.tekst) && (
-                        <div className="text-xs text-muted-foreground italic mt-0.5">
-                          {s.tekst}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-              </div>
-            )}
+                    )}
+                  </button>
+                ))}
+            </div>
           </div>
 
           {selected && (
             <div className="mt-5 flex flex-wrap gap-2">
-              <DataChip label="Matrikel" value={selected.matrikel} />
+              <DataChip label="Matrikel" value={selected.matrikel ?? "—"} testId="chip-matrikel" />
+              <DataChip label="Byggeår" value={selected.byggeaar ?? "—"} testId="chip-byggeaar" />
+              <DataChip label="Postnr" value={selected.postnr || "—"} />
               <DataChip label="Kommune" value={selected.kommune} />
-              <DataChip label="BBR" value="Fundet" icon />
+              <DataChip
+                label="BBR-id"
+                value={selected.bbrId ?? "—"}
+              />
             </div>
           )}
 
@@ -221,13 +205,18 @@ function DataChip({
   label,
   value,
   icon,
+  testId,
 }: {
   label: string;
   value: string;
   icon?: boolean;
+  testId?: string;
 }) {
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/5 px-2.5 py-1.5 font-mono text-[12px] text-foreground">
+    <div
+      data-testid={testId}
+      className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/5 px-2.5 py-1.5 font-mono text-[12px] text-foreground"
+    >
       <span className="text-muted-foreground">{label}:</span>
       <span>{value}</span>
       {icon && <Check size={12} className="text-success" />}
