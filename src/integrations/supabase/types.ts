@@ -14,7 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          address_bbr: string | null
+          address_full: string | null
+          address_kommune: string | null
+          address_matrikel: string | null
+          area: string | null
+          brief_data: Json | null
+          brief_done: boolean
+          budget: string | null
+          compliance_data: Json | null
+          compliance_done: boolean
+          created_at: string
+          current_step: string
+          description: string | null
+          floors: string | null
+          id: string
+          inspirations: Json | null
+          name: string | null
+          timeline: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_bbr?: string | null
+          address_full?: string | null
+          address_kommune?: string | null
+          address_matrikel?: string | null
+          area?: string | null
+          brief_data?: Json | null
+          brief_done?: boolean
+          budget?: string | null
+          compliance_data?: Json | null
+          compliance_done?: boolean
+          created_at?: string
+          current_step?: string
+          description?: string | null
+          floors?: string | null
+          id?: string
+          inspirations?: Json | null
+          name?: string | null
+          timeline?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_bbr?: string | null
+          address_full?: string | null
+          address_kommune?: string | null
+          address_matrikel?: string | null
+          area?: string | null
+          brief_data?: Json | null
+          brief_done?: boolean
+          budget?: string | null
+          compliance_data?: Json | null
+          compliance_done?: boolean
+          created_at?: string
+          current_step?: string
+          description?: string | null
+          floors?: string | null
+          id?: string
+          inspirations?: Json | null
+          name?: string | null
+          timeline?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
