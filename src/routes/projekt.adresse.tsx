@@ -1,20 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Check } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
+import {
+  dawaGetAdresseById,
+  dawaSuggestAdresser,
+  type DawaAdresseSuggestion,
+} from "@/integrations/dawa/dawa-client";
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
 });
-
-const SUGGESTIONS = [
-  { full: "Hasselvej 48, 2800 Kongens Lyngby", kommune: "Lyngby-Taarbæk" },
-  { full: "Hasselvej 48B, 2800 Kongens Lyngby", kommune: "Lyngby-Taarbæk" },
-  { full: "Hasselvej 49, 2800 Kongens Lyngby", kommune: "Lyngby-Taarbæk" },
-  { full: "Hasselvej 50, 2800 Kongens Lyngby", kommune: "Lyngby-Taarbæk" },
-];
 
 function AddressStep() {
   const navigate = useNavigate();
@@ -22,8 +20,53 @@ function AddressStep() {
   const [query, setQuery] = useState(address?.full ?? "");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(address);
+  const [suggestions, setSuggestions] = useState<DawaAdresseSuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const lastRequestedQueryRef = useRef<string>("");
 
   const showDropdown = open && query.length > 0 && !selected;
+  const queryTrimmed = useMemo(() => query.trim(), [query]);
+
+  useEffect(() => {
+    if (!open || selected) return;
+    if (queryTrimmed.length < 2) {
+      setSuggestions([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const q = queryTrimmed;
+    lastRequestedQueryRef.current = q;
+    setLoading(true);
+    setError(null);
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await dawaSuggestAdresser(q, {
+          maxAntal: 10,
+          signal: controller.signal,
+        });
+
+        // Only apply if this is still the latest query (avoid races)
+        if (lastRequestedQueryRef.current !== q) return;
+        setSuggestions(res);
+      } catch (e) {
+        if ((e as any)?.name === "AbortError") return;
+        setSuggestions([]);
+        setError("Kunne ikke hente adresser lige nu.");
+      } finally {
+        if (lastRequestedQueryRef.current === q) setLoading(false);
+      }
+    }, 150);
+
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [open, queryTrimmed, selected]);
 
   return (
     <PageTransition>
@@ -45,7 +88,7 @@ function AddressStep() {
             />
             <input
               value={query}
-              onChange={(e) => {
+              onChange={(e: any) => {
                 setQuery(e.target.value);
                 setSelected(null);
                 setOpen(true);
@@ -58,32 +101,97 @@ function AddressStep() {
 
             {showDropdown && (
               <div className="absolute z-20 mt-2 w-full rounded-md border border-border bg-[#1A1A1A] shadow-xl overflow-hidden">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s.full}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      const addr = {
-                        full: s.full,
-                        kommune: s.kommune,
-                        matrikel: "14a Lyngby",
-                        bbr: "Fundet",
-                      };
-                      setSelected(addr);
-                      setAddress(addr);
-                      setQuery(s.full);
-                      setOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-[#222222] transition-colors border-b border-border last:border-b-0"
-                  >
-                    <div className="text-sm text-foreground font-medium">
-                      {s.full}
-                    </div>
-                    <div className="text-xs text-muted-foreground italic mt-0.5">
-                      {s.kommune}
-                    </div>
-                  </button>
-                ))}
+                {loading && (
+                  <div className="px-4 py-3 text-xs text-muted-foreground">
+                    Søger...
+                  </div>
+                )}
+
+                {!loading && error && (
+                  <div className="px-4 py-3 text-xs text-muted-foreground">
+                    {error}
+                  </div>
+                )}
+
+                {!loading && !error && suggestions.length === 0 && (
+                  <div className="px-4 py-3 text-xs text-muted-foreground">
+                    Ingen forslag.
+                  </div>
+                )}
+
+                {!loading &&
+                  !error &&
+                  suggestions.map((s: DawaAdresseSuggestion) => (
+                    <button
+                      key={s.adresseid ?? s.adgangsadresseid ?? s.tekst}
+                      onMouseDown={async (e: any) => {
+                        e.preventDefault();
+
+                        const fallbackFull = s.forslagstekst ?? s.tekst;
+
+                        try {
+                          if (s.adresseid) {
+                            const addr = await dawaGetAdresseById(s.adresseid);
+                            const full =
+                              addr.adressebetegnelse ||
+                              fallbackFull;
+
+                            const kommune =
+                              addr.postnrnavn ||
+                              addr.kommunekode ||
+                              "Ukendt";
+
+                            const selectedAddr = {
+                              full,
+                              kommune,
+                              matrikel: "Ikke hentet endnu",
+                              bbr: "Ikke hentet endnu",
+                            };
+
+                            setSelected(selectedAddr);
+                            setAddress(selectedAddr);
+                            setQuery(full);
+                            setOpen(false);
+                            return;
+                          }
+
+                          const selectedAddr = {
+                            full: fallbackFull,
+                            kommune: "Ukendt",
+                            matrikel: "Ikke hentet endnu",
+                            bbr: "Ikke hentet endnu",
+                          };
+
+                          setSelected(selectedAddr);
+                          setAddress(selectedAddr);
+                          setQuery(fallbackFull);
+                          setOpen(false);
+                        } catch {
+                          // If lookup fails, keep the suggestion text as selected so flow can continue.
+                          const selectedAddr = {
+                            full: fallbackFull,
+                            kommune: "Ukendt",
+                            matrikel: "Ikke hentet endnu",
+                            bbr: "Ikke hentet endnu",
+                          };
+                          setSelected(selectedAddr);
+                          setAddress(selectedAddr);
+                          setQuery(fallbackFull);
+                          setOpen(false);
+                        }
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-[#222222] transition-colors border-b border-border last:border-b-0"
+                    >
+                      <div className="text-sm text-foreground font-medium">
+                        {s.forslagstekst ?? s.tekst}
+                      </div>
+                      {s.tekst !== (s.forslagstekst ?? s.tekst) && (
+                        <div className="text-xs text-muted-foreground italic mt-0.5">
+                          {s.tekst}
+                        </div>
+                      )}
+                    </button>
+                  ))}
               </div>
             )}
           </div>
