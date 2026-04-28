@@ -55,8 +55,9 @@ playwright.config.ts
 ### 1C. BBR data på skærmen (det brugeren skal se)
 - [~] UI viser “Matrikel” og “Byggeår” chips  
   - Nu: værdier er placeholders
-- [ ] Implementér rigtigt BBR-opslag (kræver beslutning om kilde)
-  - Option A: Datafordeler/BBR API (kræver konto/token)
+- [~] Implementér rigtigt BBR-opslag (Option A valgt: Datafordeler/BBR REST)
+  - Kræver Datafordeler credentials (username/password eller cert/OAuth)
+  - Bemærk: Datafordeler REST udfases ultimo 2026 → plan for GraphQL senere
   - Option B: Edge/server function der cacher + normaliserer
 - [ ] Når BBR-data er hentet: vis matrikel + byggeår som rigtige værdier
 

@@ -5,6 +5,7 @@ import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { DawaService, type DawaSuggestion } from "@/integrations/dawa/client";
+import { BbrService } from "@/integrations/bbr/client";
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
@@ -139,6 +140,17 @@ function AddressStep() {
                           bbrId: details.bbrId,
                           byggeaar: "Ikke hentet endnu",
                         };
+
+                        // If we already have a BBR building id (kvhx), try fetching byggeår.
+                        // NOTE: Datafordeler credentials should be server-side; this may fail in client-only env.
+                        if (details.bbrId) {
+                          try {
+                            const bbr = await BbrService.getBygningById(details.bbrId);
+                            if (bbr.byggeaar) selectedAddr.byggeaar = bbr.byggeaar;
+                          } catch {
+                            // Keep placeholder if BBR lookup fails.
+                          }
+                        }
 
                         setSelected(selectedAddr);
                         setAddress(selectedAddr);
