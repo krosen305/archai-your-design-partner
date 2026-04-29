@@ -11,6 +11,7 @@ export type Address = {
   adgangsadresseid: string; // påkrævet til BBR-opslag
   koordinater: { lat: number; lng: number };
   bbrId: string | null;
+  grundareal: number | null; // jordstykke.registreretAreal fra DAWA – til bebyggelsesprocent
 };
 
 export type ProjectData = {

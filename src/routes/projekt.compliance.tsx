@@ -1,23 +1,35 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, ScrollText, Cpu, Check, AlertTriangle, Info } from "lucide-react";
+import { FileText, ScrollText, Cpu, Check, AlertTriangle, Info, ExternalLink, Map } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { Lokalplan } from "@/integrations/plandata/client";
 
 // ---------------------------------------------------------------------------
-// Server function – kører kun på serveren (Cloudflare Workers).
-// Credentials forlader aldrig browseren.
+// Server functions – kører kun på serveren (Cloudflare Workers).
 // ---------------------------------------------------------------------------
 
 const fetchBbrData = createServerFn({ method: "POST" }).handler(
   async (ctx): Promise<BbrKompliantData> => {
-    const { adgangsadresseid } = ctx.data as { adgangsadresseid: string };
+    const { adgangsadresseid, grundareal } = ctx.data as {
+      adgangsadresseid: string;
+      grundareal: number | null;
+    };
     const { BbrService } = await import("@/integrations/bbr/client");
-    return BbrService.getKompliantData(adgangsadresseid);
+    return BbrService.getKompliantData(adgangsadresseid, grundareal);
+  }
+);
+
+const fetchPlandataLokalplaner = createServerFn({ method: "POST" }).handler(
+  async (ctx): Promise<{ lokalplaner: Lokalplan[]; fejl: string | null }> => {
+    const { lng, lat } = ctx.data as { lng: number; lat: number };
+    const { PlandataService } = await import("@/integrations/plandata/client");
+    const result = await PlandataService.getLokalplanerForKoordinat(lng, lat, true);
+    return { lokalplaner: result.lokalplaner, fejl: result.fejl };
   }
 );
 
@@ -32,7 +44,8 @@ export const Route = createFileRoute("/projekt/compliance")({
 const ROWS = [
   { icon: FileText, label: "Henter BBR-data", durationMs: 800 },
   { icon: ScrollText, label: "Læser bygningsregister", durationMs: 1600 },
-  { icon: Cpu, label: "Beregner compliance", durationMs: 2400 },
+  { icon: Map, label: "Henter lokalplandata", durationMs: 2000 },
+  { icon: Cpu, label: "Beregner compliance", durationMs: 2600 },
 ];
 
 type Status = "loading" | "done" | "error";
@@ -43,6 +56,7 @@ function ComplianceStep() {
 
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [lokalplaner, setLokalplaner] = useState<Lokalplan[]>([]);
 
   useEffect(() => {
     if (bbrData) {
@@ -56,12 +70,27 @@ function ComplianceStep() {
       return;
     }
 
-    const MIN_LOADING_MS = 2600;
+    const MIN_LOADING_MS = 2800;
     const startTime = Date.now();
 
-    fetchBbrData({ data: { adgangsadresseid: address.adgangsadresseid } })
-      .then((result) => {
-        setBbrData(result);
+    // Kør BBR og Plandata parallelt
+    const bbrPromise = fetchBbrData({
+      data: { adgangsadresseid: address.adgangsadresseid, grundareal: address.grundareal ?? null },
+    });
+
+    const plandataPromise = address.koordinater?.lng && address.koordinater?.lat
+      ? fetchPlandataLokalplaner({
+          data: { lng: address.koordinater.lng, lat: address.koordinater.lat },
+        }).catch((e) => {
+          console.warn("[Compliance] Plandata fejlede (ikke kritisk):", e);
+          return { lokalplaner: [], fejl: null };
+        })
+      : Promise.resolve({ lokalplaner: [], fejl: null });
+
+    Promise.all([bbrPromise, plandataPromise])
+      .then(([bbrResult, plandataResult]) => {
+        setBbrData(bbrResult);
+        setLokalplaner(plandataResult.lokalplaner);
         setComplianceDone(true);
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
@@ -98,6 +127,7 @@ function ComplianceStep() {
           <ResultView
             adresse={address?.adresse ?? ""}
             data={bbrData}
+            lokalplaner={lokalplaner}
             onContinue={() => navigate({ to: "/projekt/beskrivelse" })}
           />
         )}
@@ -170,10 +200,12 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
 function ResultView({
   adresse,
   data,
+  lokalplaner,
   onContinue,
 }: {
   adresse: string;
   data: BbrKompliantData;
+  lokalplaner: Lokalplan[];
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -183,6 +215,14 @@ function ResultView({
   const harErhverv = data.anvendelseskode
     ? ["321","322"].includes(data.anvendelseskode)
     : false;
+
+  // Adskil vedtagne lokalplaner fra forslag
+  const vedtagne = lokalplaner.filter(p =>
+    !p.status || p.status.toLowerCase().includes("vedtaget") || !p.status.toLowerCase().includes("forslag")
+  );
+  const forslag = lokalplaner.filter(p =>
+    p.status?.toLowerCase().includes("forslag")
+  );
 
   return (
     <motion.div
@@ -233,13 +273,67 @@ function ResultView({
         </p>
       </Card>
 
-      <div className="flex gap-3 rounded-md border border-[#333]/60 bg-[#1A1A1A] p-4 mb-4">
-        <Info size={18} className="text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-sm text-muted-foreground">
-          Lokalplandata (max bebyggelsesprocent, højdegrænseplaner) integreres i
-          næste version. Kontakt din kommune for præcise byggeretlige grænser.
-        </p>
-      </div>
+      {/* Lokalplan-sektion */}
+      {lokalplaner.length > 0 ? (
+        <Card className="mb-4">
+          <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+            LOKALPLANER
+          </div>
+          <div className="space-y-3">
+            {vedtagne.map((lp) => (
+              <div key={lp.planid} className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm text-foreground font-medium truncate">
+                    {lp.plannummer ? `${lp.plannummer} – ` : ""}{lp.plannavn || "Ukendt lokalplan"}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {lp.datoVedtaget ? `Vedtaget ${lp.datoVedtaget.slice(0, 10)}` : "Vedtaget"}
+                    {lp.kommunenavn ? ` · ${lp.kommunenavn}` : ""}
+                  </div>
+                </div>
+                {lp.plandokumentLink && (
+                  <a
+                    href={lp.plandokumentLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-1 rounded border border-accent/40 bg-accent/5 px-2 py-1 font-mono text-[11px] text-accent hover:bg-accent/10 transition-colors"
+                  >
+                    PDF <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+            ))}
+            {forslag.map((lp) => (
+              <div key={lp.planid} className="flex items-start justify-between gap-3 opacity-70">
+                <div className="min-w-0">
+                  <div className="text-sm text-foreground truncate">
+                    {lp.plannummer ? `${lp.plannummer} – ` : ""}{lp.plannavn || "Lokalplanforslag"}
+                    <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">FORSLAG</span>
+                  </div>
+                </div>
+                {lp.plandokumentLink && (
+                  <a
+                    href={lp.plandokumentLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-1 rounded border border-border px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    PDF <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <div className="flex gap-3 rounded-md border border-[#333]/60 bg-[#1A1A1A] p-4 mb-4">
+          <Info size={18} className="text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
+            Ingen lokalplan fundet for adressen – ejendommen er reguleret af kommuneplanen.
+            Kontakt din kommune for præcise byggeretlige grænser.
+          </p>
+        </div>
+      )}
 
       {data.fejl && (
         <div className="flex gap-3 rounded-md border border-warning/40 bg-warning/10 p-4 mb-6">
