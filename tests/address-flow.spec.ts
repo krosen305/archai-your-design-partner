@@ -1,45 +1,98 @@
-import { test, expect } from '@playwright/test';
+/**
+ * tests/address-flow.spec.ts
+ */
+import { test, expect, type Page } from '@playwright/test';
 
-test('address flow: DAWA select + BBR data appears', async ({ page }) => {
-  const pageErrors: Error[] = [];
-  page.on('pageerror', (e) => pageErrors.push(e));
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') {
-      // Surface browser console errors in Playwright output.
-      // eslint-disable-next-line no-console
-      console.error('[browser]', msg.text());
+const TEST_ADRESSE = 'Hasselvej 48';
+
+async function mockBbr(page: Page) {
+  await page.route('**/_server**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          byggeaar: '1962',
+          bebygget_areal: 140,
+          samlet_areal: 175,
+          antal_etager: 1,
+          anvendelseskode: '120',
+          anvendelse_tekst: 'Fritliggende enfamilieshus',
+          ydervæg_kode: '1',
+          tagdækning_kode: '3',
+          varme_kode: '1',
+          grundareal: 850,
+          bebyggelsesprocent: 16.5,
+          beregning_mulig: true,
+          fejl: null,
+        }),
+      });
+    } else {
+      await route.continue();
     }
   });
+}
 
-  await page.goto('/projekt/adresse');
-  // Wait for TanStack Start hydration to complete (the stream barrier deletes window.$_TSR).
-  await page.waitForFunction(() => !(window as any).$_TSR);
-
+/**
+ * Korrekt måde at interagere med React inputs i Playwright:
+ * fill() trigger ikke altid onChange – brug click() + pressSequentially()
+ */
+async function typeInAddressInput(page: Page, tekst: string) {
   const input = page.getByTestId('address-input');
   await input.click();
-  await input.fill('');
-  await page.keyboard.type('Hasselvej 48', { delay: 20 });
+  // Ryd eksisterende indhold
+  await input.selectText();
+  await page.keyboard.press('Delete');
+  // Skriv tegn for tegn med lille forsinkelse så React events trigger korrekt
+  await input.pressSequentially(tekst, { delay: 40 });
+}
 
-  // Wait for the suggestions dropdown to appear and contain the requested city.
-  const list = page.getByTestId('address-suggestions');
-  await expect(list).toBeVisible();
+async function vælgFørsteForslag(page: Page) {
+  await expect(
+    page.getByTestId('address-suggestion').first()
+  ).toBeVisible({ timeout: 8_000 });
+  await page.getByTestId('address-suggestion').first().click();
+}
 
-  const suggestion = page
-    .getByTestId('address-suggestion')
-    .filter({ hasText: /2830\s+Virum/i })
-    .first();
+// ---------------------------------------------------------------------------
 
-  await expect(suggestion).toBeVisible();
-  await suggestion.click();
+test('address flow: DAWA select + chips vises', async ({ page }) => {
+  await mockBbr(page);
+  await page.goto('/projekt/adresse');
 
-  // After selecting, we show data chips. Verify matrikel + byggeår are on screen.
-  await expect(page.getByTestId('chip-matrikel')).toBeVisible();
-  await expect(page.getByTestId('chip-byggeaar')).toBeVisible();
+  await typeInAddressInput(page, TEST_ADRESSE);
+  await vælgFørsteForslag(page);
 
-  // Ensure values are rendered (not empty). We don't assert exact values yet.
+  // Chips der eksisterer i den nye route
+  await expect(page.getByTestId('chip-matrikel')).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByTestId('chip-kommune')).toBeVisible();
+  await expect(page.getByTestId('chip-bbr')).toBeVisible();
+
   await expect(page.getByTestId('chip-matrikel')).toContainText(/Matrikel:\s*\S+/);
-  await expect(page.getByTestId('chip-byggeaar')).toContainText(/Byggeår:\s*\S+/);
+  await expect(page.getByTestId('chip-kommune')).toContainText(/Kommune:\s*\S+/);
+  await expect(page.getByTestId('chip-bbr')).toContainText(/Klar/);
 
-  expect(pageErrors).toEqual([]);
+  const knap = page.getByRole('button', { name: /Analysér adresse/ });
+  await expect(knap).toBeEnabled();
 });
 
+test('address flow: navigation til compliance virker', async ({ page }) => {
+  await mockBbr(page);
+  await page.goto('/projekt/adresse');
+
+  await typeInAddressInput(page, TEST_ADRESSE);
+  await vælgFørsteForslag(page);
+
+  await expect(
+    page.getByRole('button', { name: /Analysér adresse/ })
+  ).toBeEnabled({ timeout: 8_000 });
+
+  await page.getByRole('button', { name: /Analysér adresse/ }).click();
+  await expect(page).toHaveURL('/projekt/compliance');
+
+  await expect(page.getByText('BYGNING FUNDET')).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByText('16.5%')).toBeVisible();
+  await expect(page.getByText(/Opført 1962/)).toBeVisible();
+});

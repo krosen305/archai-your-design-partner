@@ -1,41 +1,57 @@
 /**
  * DAWA – Danmarks Adressers Web API
- * Docs: https://dawadocs.dataforsyningen.dk
  *
- * Denne fil er den eneste DAWA-klient i projektet.
- * SLET: src/integrations/dawa/dawa-client.ts
+ * KRITISK OPDAGELSE: /adresser/autocomplete returnerer IDs nested under
+ * `r.adresse.id` og `r.adresse.adgangsadresseid`, IKKE på top-niveau.
+ *
+ * Reelt autocomplete-svar:
+ * {
+ *   "tekst": "Hasselvej 48, 2830 Virum",
+ *   "adresse": {
+ *     "id": "0a3f50a6-...",           ← adresseid
+ *     "adgangsadresseid": "0a3f507d-...",
+ *     "kommunekode": "0173",
+ *     "postnr": "2830",
+ *     "postnrnavn": "Virum",
+ *     "x": 12.48,
+ *     "y": 55.79
+ *   }
+ * }
  */
+
+// API-base – brug api.dataforsyningen.dk (matchers href i DAWA-svaret)
+const BASE_URL = 'https://api.dataforsyningen.dk';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export type DawaSuggestion = {
-  id: string;          // adresseid – brug til getAddressDetails()
-  tekst: string;       // "Hasselvej 48, 2800 Kongens Lyngby"
-  forslagstekst: string;
+  adresseid: string;
+  adgangsadresseid: string;
+  tekst: string;
+  // Data tilgængeligt direkte fra autocomplete (ingen ekstra kald nødvendigt)
+  postnr: string;
+  postnrnavn: string;
+  kommunekode: string;
+  koordinater: { lat: number; lng: number };
 };
 
 export type DawaAddressDetails = {
-  adresse: string;             // "Hasselvej 48, 2800 Kongens Lyngby"
-  postnr: string;              // "2800"
-  postnrnavn: string;          // "Kongens Lyngby"
-  kommunekode: string;         // "0173"
-  kommunenavn: string;         // "Lyngby-Taarbæk"
-  matrikel: string | null;     // "14a Lyngby" eller null
-  adgangsadresseid: string;    // VIGTIGT – bruges til BBR-opslag
-  koordinater: {
-    lat: number;               // WGS84 breddegrad
-    lng: number;               // WGS84 længdegrad
-  };
-  bbrId: string | null;        // kvhx hvis tilgængeligt
+  adresse: string;
+  postnr: string;
+  postnrnavn: string;
+  kommunekode: string;
+  kommunenavn: string;
+  matrikel: string | null;
+  adgangsadresseid: string;
+  koordinater: { lat: number; lng: number };
+  bbrId: string | null;
 };
 
 // ---------------------------------------------------------------------------
-// Intern hjælpefunktion
+// Intern hjælp
 // ---------------------------------------------------------------------------
-
-const BASE_URL = 'https://dawa.aws.dk';
 
 async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   let res: Response;
@@ -50,10 +66,7 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      `DAWA fejl (${res.status} ${res.statusText})${text ? `: ${text}` : ''}`
-    );
+    throw new Error(`DAWA ${res.status} for ${url}`);
   }
 
   try {
@@ -69,8 +82,7 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 export class DawaService {
   /**
-   * Returnerer adresseforslag baseret på fritekst.
-   * Bruges til autocomplete-søgefeltet.
+   * Returnerer adresseforslag (max 5) med korrekt nested parsing.
    */
   static async getSuggestions(
     query: string,
@@ -79,34 +91,51 @@ export class DawaService {
     const q = query.trim();
     if (!q || q.length < 2) return [];
 
-    const url = `${BASE_URL}/adresser/autocomplete?q=${encodeURIComponent(q)}&per_side=8`;
+    const url = `${BASE_URL}/adresser/autocomplete?q=${encodeURIComponent(q)}&per_side=5`;
     const raw = await fetchJson<
       {
         tekst: string;
-        forslagstekst: string;
-        adgangsadresseid: string;
-        adresseid: string;
+        // IDs er nested under "adresse" – IKKE på top-niveau!
+        adresse: {
+          id: string;
+          adgangsadresseid: string;
+          postnr: string;
+          postnrnavn: string;
+          kommunekode: string;
+          x: number; // WGS84 længdegrad
+          y: number; // WGS84 breddegrad
+        };
       }[]
     >(url, signal);
 
-    return raw.map((r) => ({
-      id: r.adresseid || r.adgangsadresseid,
-      tekst: r.tekst,
-      forslagstekst: r.forslagstekst,
-    }));
+    return raw
+      .filter((r) => r.adresse?.id && r.adresse?.adgangsadresseid)
+      .map((r) => ({
+        adresseid: r.adresse.id,
+        adgangsadresseid: r.adresse.adgangsadresseid,
+        tekst: r.tekst,
+        postnr: r.adresse.postnr ?? '',
+        postnrnavn: r.adresse.postnrnavn ?? '',
+        kommunekode: r.adresse.kommunekode ?? '',
+        koordinater: {
+          lat: r.adresse.y,
+          lng: r.adresse.x,
+        },
+      }));
   }
 
   /**
-   * Returnerer fulde adressedetaljer inkl. koordinater og adgangsadresseid.
-   * Kald denne når brugeren vælger en adresse fra forslagslisten.
+   * Henter fulde adressedetaljer: kommunenavn + matrikel.
+   * Alt andet (postnr, koordinater, adgangsadresseid) kommer fra suggestion.
    */
   static async getAddressDetails(
-    adresseId: string,
+    adresseid: string,
     signal?: AbortSignal
   ): Promise<DawaAddressDetails> {
-    const id = adresseId.trim();
-    if (!id) throw new Error('DAWA: adresseId er påkrævet');
+    const id = adresseid.trim();
+    if (!id) throw new Error('DAWA: adresseid er påkrævet');
 
+    // Kalder det præcise endpoint som DAWA selv angiver i href-feltet
     const url = `${BASE_URL}/adresser/${encodeURIComponent(id)}`;
     const raw = await fetchJson<{
       id: string;
@@ -115,17 +144,20 @@ export class DawaService {
       postnr: string;
       postnrnavn: string;
       kommune: { kode: string; navn: string };
-      x: number; // WGS84 længdegrad
-      y: number; // WGS84 breddegrad
+      x: number;
+      y: number;
+      // Matrikel kan sidde direkte eller nested
       matrikel?: { ejerlavnavn: string; matrikelnr: string };
-      bbr?: { kvhx?: string | null; kvhxid?: string | null };
+      adgangsadresse?: {
+        matrikel?: { ejerlavnavn: string; matrikelnr: string };
+      };
     }>(url, signal);
 
-    const matrikel = raw.matrikel
-      ? `${raw.matrikel.matrikelnr} ${raw.matrikel.ejerlavnavn}`.trim()
+    // Matrikel kan sidde direkte eller under adgangsadresse
+    const matrikelData = raw.matrikel ?? raw.adgangsadresse?.matrikel;
+    const matrikel = matrikelData
+      ? `${matrikelData.matrikelnr} ${matrikelData.ejerlavnavn}`.trim()
       : null;
-
-    const bbrId = raw.bbr?.kvhx ?? raw.bbr?.kvhxid ?? null;
 
     return {
       adresse: raw.adressebetegnelse,
@@ -135,11 +167,8 @@ export class DawaService {
       kommunenavn: (raw.kommune?.navn ?? 'Ukendt').trim(),
       matrikel,
       adgangsadresseid: raw.adgangsadresseid,
-      koordinater: {
-        lat: raw.y,
-        lng: raw.x,
-      },
-      bbrId,
+      koordinater: { lat: raw.y, lng: raw.x },
+      bbrId: null,
     };
   }
 }

@@ -1,11 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Check } from "lucide-react";
+import { Search } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { DawaService, type DawaSuggestion } from "@/integrations/dawa/client";
-import { BbrService } from "@/integrations/bbr/client";
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
@@ -13,14 +12,15 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const { address, setAddress } = useProject();
+  const { address, setAddress, setBbrData } = useProject();
+
   const [query, setQuery] = useState(address?.adresse ?? "");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(address);
   const [suggestions, setSuggestions] = useState<DawaSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const lastRequestedQueryRef = useRef<string>("");
+  const lastQueryRef = useRef<string>("");
 
   const queryTrimmed = useMemo(() => query.trim(), [query]);
   const showDropdown = open && queryTrimmed.length > 0 && !selected;
@@ -34,34 +34,74 @@ function AddressStep() {
       return;
     }
 
-    const controller = new AbortController();
     const q = queryTrimmed;
-    lastRequestedQueryRef.current = q;
+    lastQueryRef.current = q;
     setLoading(true);
     setError(null);
 
-    const t = setTimeout(async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
       try {
-        // Note: DawaService does not currently accept AbortSignal; debounce reduces load.
-        const res = await DawaService.getSuggestions(q);
-
-        // Only apply if this is still the latest query (avoid races)
-        if (lastRequestedQueryRef.current !== q) return;
+        const res = await DawaService.getSuggestions(q, controller.signal);
+        if (lastQueryRef.current !== q) return;
         setSuggestions(res);
       } catch (e) {
-        if ((e as any)?.name === "AbortError") return;
+        if ((e as Error)?.name === "AbortError") return;
         setSuggestions([]);
-        setError("Kunne ikke hente adresser lige nu.");
+        setError("Kunne ikke hente adresser. Prøv igen.");
       } finally {
-        if (lastRequestedQueryRef.current === q) setLoading(false);
+        if (lastQueryRef.current === q) setLoading(false);
       }
     }, 150);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       controller.abort();
     };
   }, [open, queryTrimmed, selected]);
+
+  async function handleSelectSuggestion(s: DawaSuggestion) {
+    // TRIN 1: Sæt straks adresse fra autocomplete-data (ingen ventetid)
+    // adgangsadresseid, koordinater, postnr er alle tilgængeligt nu.
+    const immediateAddress = {
+      adresse: s.tekst,
+      postnr: s.postnr,
+      postnrnavn: s.postnrnavn,
+      kommune: s.kommunekode, // midlertidigt – erstattes med navn nedenfor
+      kommunekode: s.kommunekode,
+      matrikel: null,
+      adgangsadresseid: s.adgangsadresseid,
+      koordinater: s.koordinater,
+      bbrId: null,
+    };
+
+    setBbrData(null);
+    setSelected(immediateAddress);
+    setAddress(immediateAddress);
+    setQuery(s.tekst);
+    setOpen(false);
+
+    // TRIN 2: Hent kommunenavn + matrikel i baggrunden (blokerer ikke flowet)
+    try {
+      const details = await DawaService.getAddressDetails(s.adresseid);
+      const fullAddress = {
+        ...immediateAddress,
+        adresse: details.adresse || s.tekst,
+        postnr: details.postnr || s.postnr,
+        postnrnavn: details.postnrnavn || s.postnrnavn,
+        kommune: details.kommunenavn,
+        kommunekode: details.kommunekode || s.kommunekode,
+        matrikel: details.matrikel,
+        adgangsadresseid: details.adgangsadresseid || s.adgangsadresseid,
+        koordinater: details.koordinater || s.koordinater,
+      };
+      setSelected(fullAddress);
+      setAddress(fullAddress);
+    } catch (err) {
+      console.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
+      // Behold immediateAddress – vi har stadig adgangsadresseid til BBR
+    }
+  }
 
   return (
     <PageTransition>
@@ -90,11 +130,12 @@ function AddressStep() {
                 setOpen(true);
               }}
               onFocus={() => setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 150)}
-              placeholder="Søg adresse, f.eks. Hasselvej 48, Lyngby..."
+              onBlur={() => setTimeout(() => setOpen(false), 200)}
+              placeholder="Søg adresse, f.eks. Hasselvej 48, 2830 Virum..."
               className="w-full rounded-sm border border-[#333333] bg-[#111111] pl-10 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
             />
 
+            {/* Dropdown – max 5 forslag */}
             <div
               data-testid="address-suggestions"
               className={`absolute z-20 mt-2 w-full rounded-md border border-border bg-[#1A1A1A] shadow-xl overflow-hidden ${
@@ -106,80 +147,34 @@ function AddressStep() {
                   Søger...
                 </div>
               )}
-
               {!loading && error && (
                 <div className="px-4 py-3 text-xs text-muted-foreground">
                   {error}
                 </div>
               )}
-
               {!loading && !error && suggestions.length === 0 && (
                 <div className="px-4 py-3 text-xs text-muted-foreground">
-                  Ingen forslag.
+                  Ingen forslag – prøv at tilføje postnummer.
                 </div>
               )}
-
               {!loading &&
                 !error &&
-                suggestions.map((s: DawaSuggestion) => (
+                suggestions.map((s, i) => (
                   <button
                     data-testid="address-suggestion"
-                    key={s.id}
-                    onMouseDown={async (e: any) => {
+                    key={s.adgangsadresseid || i}
+                    onMouseDown={(e: any) => {
                       e.preventDefault();
-
-                      const fallbackFull = s.forslagstekst ?? s.tekst;
-
-                      try {
-                        const details = await DawaService.getAddressDetails(s.id);
-                        const selectedAddr = {
-                          adresse: details.adresse || fallbackFull,
-                          postnr: details.postnr,
-                          kommune: details.kommune,
-                          matrikel: details.matrikel,
-                          bbrId: details.bbrId,
-                          byggeaar: "Ikke hentet endnu",
-                        };
-
-                        // If we already have a BBR building id (kvhx), try fetching byggeår.
-                        // NOTE: Datafordeler credentials should be server-side; this may fail in client-only env.
-                        if (details.bbrId) {
-                          try {
-                            const bbr = await BbrService.getBygningById(details.bbrId);
-                            if (bbr.byggeaar) selectedAddr.byggeaar = bbr.byggeaar;
-                          } catch {
-                            // Keep placeholder if BBR lookup fails.
-                          }
-                        }
-
-                        setSelected(selectedAddr);
-                        setAddress(selectedAddr);
-                        setQuery(selectedAddr.adresse);
-                        setOpen(false);
-                      } catch {
-                        // If lookup fails, keep the suggestion text as selected so flow can continue.
-                        const selectedAddr = {
-                          adresse: fallbackFull,
-                          postnr: "",
-                          kommune: "Ukendt",
-                          matrikel: null,
-                          bbrId: null,
-                          byggeaar: "Ikke hentet endnu",
-                        };
-                        setSelected(selectedAddr);
-                        setAddress(selectedAddr);
-                        setQuery(fallbackFull);
-                        setOpen(false);
-                      }
+                      handleSelectSuggestion(s);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-[#222222] transition-colors border-b border-border last:border-b-0"
                   >
                     <div className="text-sm text-foreground font-medium">
-                      {s.forslagstekst ?? s.tekst}
+                      {s.tekst}
                     </div>
-                    {s.tekst !== (s.forslagstekst ?? s.tekst) && (
+                    {s.postnrnavn && (
                       <div className="text-xs text-muted-foreground italic mt-0.5">
-                        {s.tekst}
+                        {s.postnrnavn} · {s.kommunekode}
                       </div>
                     )}
                   </button>
@@ -187,15 +182,28 @@ function AddressStep() {
             </div>
           </div>
 
+          {/* Chips efter valg */}
           {selected && (
             <div className="mt-5 flex flex-wrap gap-2">
-              <DataChip label="Matrikel" value={selected.matrikel ?? "—"} testId="chip-matrikel" />
-              <DataChip label="Byggeår" value={selected.byggeaar ?? "—"} testId="chip-byggeaar" />
-              <DataChip label="Postnr" value={selected.postnr || "—"} />
-              <DataChip label="Kommune" value={selected.kommune} />
               <DataChip
-                label="BBR-id"
-                value={selected.bbrId ?? "—"}
+                label="Matrikel"
+                value={selected.matrikel ?? "—"}
+                testId="chip-matrikel"
+              />
+              <DataChip
+                label="Kommune"
+                value={selected.kommune || selected.kommunekode || "—"}
+                testId="chip-kommune"
+              />
+              <DataChip
+                label="Postnr"
+                value={selected.postnr || "—"}
+                testId="chip-postnr"
+              />
+              <DataChip
+                label="BBR"
+                value={selected.adgangsadresseid ? "Klar ✓" : "Ikke fundet"}
+                testId="chip-bbr"
               />
             </div>
           )}
@@ -216,12 +224,10 @@ function AddressStep() {
 function DataChip({
   label,
   value,
-  icon,
   testId,
 }: {
   label: string;
   value: string;
-  icon?: boolean;
   testId?: string;
 }) {
   return (
@@ -231,7 +237,6 @@ function DataChip({
     >
       <span className="text-muted-foreground">{label}:</span>
       <span>{value}</span>
-      {icon && <Check size={12} className="text-success" />}
     </div>
   );
 }
