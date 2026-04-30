@@ -13,13 +13,16 @@ import type { Lokalplan } from "@/integrations/plandata/client";
 // Server functions – kører kun på serveren (Cloudflare Workers).
 // ---------------------------------------------------------------------------
 
-const fetchBbrData = createServerFn({ method: "POST" }).handler(
-  async (ctx): Promise<BbrKompliantData> => {
-    const { adgangsadresseid, ejerlavskode, matrikelnummer } = ctx.data as {
+const fetchBbrData = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
       adgangsadresseid: string;
       ejerlavskode: number | null;
       matrikelnummer: string | null;
-    };
+    }) => data
+  )
+  .handler(async ({ data }): Promise<BbrKompliantData> => {
+    const { adgangsadresseid, ejerlavskode, matrikelnummer } = data;
 
     let grundareal: number | null = null;
     if (ejerlavskode && matrikelnummer) {
@@ -34,17 +37,18 @@ const fetchBbrData = createServerFn({ method: "POST" }).handler(
 
     const { BbrService } = await import("@/integrations/bbr/client");
     return BbrService.getKompliantData(adgangsadresseid, grundareal);
-  }
-);
+  });
 
-const fetchPlandataLokalplaner = createServerFn({ method: "POST" }).handler(
-  async (ctx): Promise<{ lokalplaner: Lokalplan[]; fejl: string | null }> => {
-    const { lng, lat } = ctx.data as { lng: number; lat: number };
-    const { PlandataService } = await import("@/integrations/plandata/client");
-    const result = await PlandataService.getLokalplanerForKoordinat(lng, lat, true);
-    return { lokalplaner: result.lokalplaner, fejl: result.fejl };
-  }
-);
+const fetchPlandataLokalplaner = createServerFn({ method: "POST" })
+  .inputValidator((data: { lng: number; lat: number }) => data)
+  .handler(
+    async ({ data }): Promise<{ lokalplaner: Lokalplan[]; fejl: string | null }> => {
+      const { lng, lat } = data;
+      const { PlandataService } = await import("@/integrations/plandata/client");
+      const result = await PlandataService.getLokalplanerForKoordinat(lng, lat, true);
+      return { lokalplaner: result.lokalplaner, fejl: result.fejl };
+    }
+  );
 
 // ---------------------------------------------------------------------------
 // Route
