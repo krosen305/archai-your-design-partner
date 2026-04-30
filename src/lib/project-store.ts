@@ -42,16 +42,17 @@ export type PhaseName = "hus-dna" | "match" | "finans" | "engineering" | "udbud"
 export type PhaseStatus = "locked" | "active" | "complete" | "error";
 
 // ---------------------------------------------------------------------------
-// Hus-DNA (Phase 1)
+// Hus-DNA (Phase 1) — Lovable UI bruger disse felter
 // ---------------------------------------------------------------------------
 
 export type HusDna = {
-  stil: string[];
-  materialer: string[];
-  taghældning: string | null;
-  særligeKendetegn: string[];
-  confidence: number;
-  kilde: "mock" | "anthropic";
+  stil: string;
+  bruttoareal: string;
+  etager: string;
+  tagform: string;
+  energiklasse: string;
+  saerligeKrav: string[];
+  confidence: number; // 0-100
 };
 
 // ---------------------------------------------------------------------------
@@ -196,7 +197,7 @@ export function deriveComplianceFlags(
     });
   }
 
-  // Lokalplan-zone (altid tilføjet som info hvis kommuneplanramme eksisterer)
+  // Lokalplan-zone
   if (ramme?.anvendelseGenerel) {
     flags.push({
       id: "anvendelse",
