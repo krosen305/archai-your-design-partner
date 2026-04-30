@@ -73,7 +73,8 @@ function AddressStep() {
       adgangsadresseid: s.adgangsadresseid,
       koordinater: s.koordinater,
       bbrId: null,
-      grundareal: null, // hentes fra DAWA-detaljer nedenfor
+      ejerlavskode: null,
+      matrikelnummer: null,
     };
 
     setBbrData(null);
@@ -95,7 +96,8 @@ function AddressStep() {
         matrikel: details.matrikel,
         adgangsadresseid: details.adgangsadresseid || s.adgangsadresseid,
         koordinater: details.koordinater || s.koordinater,
-        grundareal: details.grundareal, // jordstykke.registreretAreal fra DAWA
+        ejerlavskode: details.ejerlavskode,
+        matrikelnummer: details.matrikelnummer,
       };
       setSelected(fullAddress);
       setAddress(fullAddress);

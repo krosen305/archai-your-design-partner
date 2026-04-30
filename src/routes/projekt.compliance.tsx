@@ -15,10 +15,23 @@ import type { Lokalplan } from "@/integrations/plandata/client";
 
 const fetchBbrData = createServerFn({ method: "POST" }).handler(
   async (ctx): Promise<BbrKompliantData> => {
-    const { adgangsadresseid, grundareal } = ctx.data as {
+    const { adgangsadresseid, ejerlavskode, matrikelnummer } = ctx.data as {
       adgangsadresseid: string;
-      grundareal: number | null;
+      ejerlavskode: number | null;
+      matrikelnummer: string | null;
     };
+
+    let grundareal: number | null = null;
+    if (ejerlavskode && matrikelnummer) {
+      try {
+        const { MatService } = await import("@/integrations/mat/client");
+        const mat = await MatService.getGrundareal(ejerlavskode, matrikelnummer);
+        grundareal = mat.registreretAreal;
+      } catch (e) {
+        console.warn("[BBR] MAT grundareal-kald fejlede:", (e as Error).message);
+      }
+    }
+
     const { BbrService } = await import("@/integrations/bbr/client");
     return BbrService.getKompliantData(adgangsadresseid, grundareal);
   }
@@ -75,7 +88,11 @@ function ComplianceStep() {
 
     // Kør BBR og Plandata parallelt
     const bbrPromise = fetchBbrData({
-      data: { adgangsadresseid: address.adgangsadresseid, grundareal: address.grundareal ?? null },
+      data: {
+        adgangsadresseid: address.adgangsadresseid,
+        ejerlavskode: address.ejerlavskode ?? null,
+        matrikelnummer: address.matrikelnummer ?? null,
+      },
     });
 
     const plandataPromise = address.koordinater?.lng && address.koordinater?.lat

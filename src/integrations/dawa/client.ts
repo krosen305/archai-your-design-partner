@@ -6,7 +6,7 @@
  * Migreringsstatus:
  *   getSuggestions()     → FASE 3: erstattes af Adressevælger-widget eller DAR-søgning
  *   getAddressDetails()  → FASE 2: erstattes af dar/client.ts (DAR GraphQL)
- *                          grundareal-kald (kald C+D) → FASE 1: erstattes af mat/client.ts
+ *                          grundareal-kald → FASE 1: ✅ MIGRERET til mat/client.ts
  *
  * KRITISK OPDAGELSE: /adresser/autocomplete returnerer IDs nested under
  * `r.adresse.id` og `r.adresse.adgangsadresseid`, IKKE på top-niveau.
@@ -54,10 +54,7 @@ export type DawaAddressDetails = {
   adgangsadresseid: string;
   koordinater: { lat: number; lng: number };
   bbrId: string | null;
-  // Jordstykkets registrerede areal i m² – bruges til bebyggelsesprocent i BBR-klienten
-  grundareal: number | null;
-  // Til MAT-opslag (fase 1): ejerlav-kode og matrikelnummer separat
-  // Fase 1: disse sendes til MatService.getGrundareal() i stedet for at følge jordstykke.href
+  // Fase 1 ✅: sendes til MatService.getGrundareal() server-side
   ejerlavskode: number | null;
   matrikelnummer: string | null;
 };
@@ -138,10 +135,10 @@ export class DawaService {
   }
 
   /**
-   * Henter fulde adressedetaljer: kommunenavn + matrikel + grundareal.
+   * Henter fulde adressedetaljer: kommunenavn + matrikel + ejerlavskode/matrikelnummer.
    *
-   * ⚠️  FASE 1: grundareal hentes stadig via DAWA jordstykke-href.
-   *     Migrér til MatService.getGrundareal() når mat/client.ts er testet.
+   * ✅  FASE 1: grundareal hentes ikke længere her – sendes som ejerlavskode/matrikelnummer
+   *     til MatService.getGrundareal() server-side i projekt.compliance.tsx.
    * ⚠️  FASE 2: Hele denne metode erstattes af DarService.getAddressDetails().
    */
   static async getAddressDetails(
@@ -181,7 +178,6 @@ export class DawaService {
     const adgangsadresseid = raw.adgangsadresseid || raw.adgangsadresse?.id || '';
 
     // Sekundært kald: adgangsadresse-endpoint har ejerlav.kode, matrikelnr, og jordstykke.href
-    let grundareal: number | null = null;
     let ejerlavskode: number | null = null;
     let matrikelnummer: string | null = null;
 
@@ -193,21 +189,9 @@ export class DawaService {
         jordstykke?: { href?: string };
       }>(adgangsurl, signal);
 
-      // Udpak ejerlav-kode og matrikelnummer til brug i MAT-opslag (fase 1)
+      // Fase 1 ✅: udpak ejerlav-kode og matrikelnummer til MAT-opslag server-side
       ejerlavskode = adgang.ejerlav?.kode ?? null;
       matrikelnummer = adgang.matrikelnr ?? null;
-
-      // DAWA returnerer jordstykke som en reference med href – registreretAreal
-      // kræver et ekstra kald til jordstykke-endpointet.
-      // TODO (fase 1): erstat dette med MatService.getGrundareal(ejerlavskode, matrikelnummer)
-      const jordstykkeHref = adgang.jordstykke?.href;
-      if (jordstykkeHref) {
-        const jordstykke = await fetchJson<{ registreretAreal?: number }>(
-          jordstykkeHref,
-          signal
-        );
-        grundareal = jordstykke.registreretAreal ?? null;
-      }
     } catch (e) {
       console.warn('[DAWA] adgangsadresse-kald fejlede:', (e as Error).message);
     }
@@ -222,7 +206,6 @@ export class DawaService {
       adgangsadresseid,
       koordinater: { lat: raw.y, lng: raw.x },
       bbrId: null,
-      grundareal,
       ejerlavskode,
       matrikelnummer,
     };
