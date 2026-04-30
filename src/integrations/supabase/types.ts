@@ -14,54 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      address_analysis: {
-        Row: {
-          id: string
-          address_id: string
-          lokalplan_extracted: Json | null
-          lokalplan_extracted_at: string | null
-          lokalplan_pdf_url: string | null
-          servitut_extracted: Json | null
-          servitut_extracted_at: string | null
-          compliance_result: Json | null
-          compliance_result_at: string | null
-          report_text: string | null
-          report_generated_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          address_id: string
-          lokalplan_extracted?: Json | null
-          lokalplan_extracted_at?: string | null
-          lokalplan_pdf_url?: string | null
-          servitut_extracted?: Json | null
-          servitut_extracted_at?: string | null
-          compliance_result?: Json | null
-          compliance_result_at?: string | null
-          report_text?: string | null
-          report_generated_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          address_id?: string
-          lokalplan_extracted?: Json | null
-          lokalplan_extracted_at?: string | null
-          lokalplan_pdf_url?: string | null
-          servitut_extracted?: Json | null
-          servitut_extracted_at?: string | null
-          compliance_result?: Json | null
-          compliance_result_at?: string | null
-          report_text?: string | null
-          report_generated_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
