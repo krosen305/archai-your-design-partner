@@ -301,7 +301,7 @@ function ResultView({
               <div key={lp.planid} className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-sm text-foreground font-medium truncate">
-                    {lp.plannummer ? `${lp.plannummer} – ` : ""}{lp.plannavn || "Ukendt lokalplan"}
+                    {lp.plannr ? `${lp.plannr} – ` : ""}{lp.plannavn || "Ukendt lokalplan"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {lp.datoVedtaget ? `Vedtaget ${lp.datoVedtaget.slice(0, 10)}` : "Vedtaget"}
@@ -324,7 +324,7 @@ function ResultView({
               <div key={lp.planid} className="flex items-start justify-between gap-3 opacity-70">
                 <div className="min-w-0">
                   <div className="text-sm text-foreground truncate">
-                    {lp.plannummer ? `${lp.plannummer} – ` : ""}{lp.plannavn || "Lokalplanforslag"}
+                    {lp.plannr ? `${lp.plannr} – ` : ""}{lp.plannavn || "Lokalplanforslag"}
                     <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">FORSLAG</span>
                   </div>
                 </div>
