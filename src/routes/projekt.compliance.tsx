@@ -79,11 +79,11 @@ type Status = "loading" | "done" | "error";
 
 function ComplianceStep() {
   const navigate = useNavigate();
-  const { address, bbrData, setBbrData, setComplianceDone, setComplianceFlags, setPhase } = useProject();
+  const { address, bbrData, setBbrData, setComplianceDone, setComplianceFlags, setLokalplaner, setPhase } = useProject();
 
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [lokalplaner, setLokalplaner] = useState<Lokalplan[]>([]);
+  const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>([]);
   const [kommuneplanramme, setKommuneplanramme] = useState<Kommuneplanramme | null>(null);
 
   useEffect(() => {
@@ -126,7 +126,8 @@ function ComplianceStep() {
     Promise.all([bbrPromise, plandataPromise, rammePromise])
       .then(([bbrResult, plandataResult, rammeResult]) => {
         setBbrData(bbrResult);
-        setLokalplaner(plandataResult.lokalplaner);
+        setLokalplanerLocal(plandataResult.lokalplaner);
+        setLokalplaner(plandataResult.lokalplaner);  // persist to store for match route
         setKommuneplanramme(rammeResult.ramme);
         const flags = deriveComplianceFlags(bbrResult, rammeResult.ramme);
         setComplianceFlags(flags);
@@ -168,7 +169,7 @@ function ComplianceStep() {
           <ResultView
             adresse={address?.adresse ?? ""}
             data={bbrData}
-            lokalplaner={lokalplaner}
+            lokalplaner={lokalplanerLocal}
             onContinue={() => navigate({ to: "/projekt/match" })}
           />
         )}

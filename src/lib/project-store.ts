@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
+import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 
 // ---------------------------------------------------------------------------
 // Adresse
@@ -85,6 +85,7 @@ type State = {
   phases: Record<PhaseName, PhaseStatus>;
   husDna: HusDna | null;
   complianceFlags: ComplianceFlag[];
+  lokalplaner: Lokalplan[];
 
   // Setters — eksisterende
   setAddress: (a: Address) => void;
@@ -97,6 +98,7 @@ type State = {
   setPhase: (phase: PhaseName, status: PhaseStatus) => void;
   setHusDna: (dna: HusDna | null) => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
+  setLokalplaner: (lp: Lokalplan[]) => void;
 
   reset: () => void;
 };
@@ -118,6 +120,7 @@ export const useProject = create<State>((set) => ({
   phases: { ...DEFAULT_PHASES },
   husDna: null,
   complianceFlags: [],
+  lokalplaner: [],
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -128,6 +131,7 @@ export const useProject = create<State>((set) => ({
     set((s) => ({ phases: { ...s.phases, [phase]: status } })),
   setHusDna: (husDna) => set({ husDna }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
+  setLokalplaner: (lokalplaner) => set({ lokalplaner }),
 
   reset: () =>
     set({
@@ -139,6 +143,7 @@ export const useProject = create<State>((set) => ({
       phases: { ...DEFAULT_PHASES },
       husDna: null,
       complianceFlags: [],
+      lokalplaner: [],
     }),
 }));
 
