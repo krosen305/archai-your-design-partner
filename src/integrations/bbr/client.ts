@@ -71,6 +71,7 @@ export type BbrKompliantData = {
   bebygget_areal: number | null;
   samlet_areal: number | null;
   antal_etager: number | null;
+  anvendelseskode: string | null;
   anvendelse_tekst: string | null;
   grundareal: number | null;
   bebyggelsesprocent: number | null;
