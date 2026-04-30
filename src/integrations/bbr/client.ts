@@ -199,6 +199,7 @@ export class BbrService {
         bebygget_areal,
         samlet_areal,
         antal_etager: primærBygning.byg054AntalEtager ?? null,
+        anvendelseskode: anv_kode,
         anvendelse_tekst: anv_kode
           ? ANVENDELSE_KODER[anv_kode] ?? `Kode ${anv_kode}`
           : null,
@@ -219,6 +220,7 @@ export class BbrService {
       bebygget_areal: null,
       samlet_areal: null,
       antal_etager: null,
+      anvendelseskode: null,
       anvendelse_tekst: null,
       grundareal: null,
       bebyggelsesprocent: null,
