@@ -5,6 +5,7 @@ import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { DawaService, type DawaSuggestion } from "@/integrations/dawa/client";
+import { DarService } from "@/integrations/dar/client";
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
@@ -85,7 +86,7 @@ function AddressStep() {
 
     // TRIN 2: Hent kommunenavn + matrikel i baggrunden (blokerer ikke flowet)
     try {
-      const details = await DawaService.getAddressDetails(s.adresseid);
+      const details = await DarService.getAddressDetails(s.adresseid);
       const fullAddress = {
         ...immediateAddress,
         adresse: details.adresse || s.tekst,
