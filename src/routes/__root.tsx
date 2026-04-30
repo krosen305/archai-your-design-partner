@@ -1,6 +1,7 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation } from "@tanstack/react-router";
 import { AnimatePresence } from "framer-motion";
 import { TopBar } from "@/components/wizard-chrome";
+import { PhaseSidebar } from "@/components/phase-sidebar";
 
 import appCss from "../styles.css?url";
 
@@ -73,9 +74,20 @@ function RootComponent() {
   return (
     <div className="min-h-screen bg-background">
       {!isWelcome && <TopBar />}
-      <AnimatePresence mode="wait">
-        <Outlet key={location.pathname} />
-      </AnimatePresence>
+      {isWelcome ? (
+        <AnimatePresence mode="wait">
+          <Outlet key={location.pathname} />
+        </AnimatePresence>
+      ) : (
+        <div className="flex">
+          <PhaseSidebar />
+          <main className="flex-1 min-w-0">
+            <AnimatePresence mode="wait">
+              <Outlet key={location.pathname} />
+            </AnimatePresence>
+          </main>
+        </div>
+      )}
     </div>
   );
 }

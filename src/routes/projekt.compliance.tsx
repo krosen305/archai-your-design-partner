@@ -149,7 +149,7 @@ function ComplianceStep() {
             adresse={address?.adresse ?? ""}
             data={bbrData}
             lokalplaner={lokalplaner}
-            onContinue={() => navigate({ to: "/projekt/beskrivelse" })}
+            onContinue={() => navigate({ to: "/projekt/match" })}
           />
         )}
       </div>
@@ -367,7 +367,7 @@ function ResultView({
         onClick={onContinue}
         className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >
-        Beskriv dit projekt →
+        Fortsæt til Match →
       </button>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
