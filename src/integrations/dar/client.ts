@@ -1,24 +1,26 @@
 // SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 // DAR (Danmarks Adresseregister) GraphQL v1 via Datafordeler.
 //
-// ⚠️  SKELETON – kræver DAR-schema bekræftelse (fase 2 i DAWA_MIGRATION.md).
+// Schema verificeret mod https://graphql.datafordeler.dk/DAR/v1/schema (ARCH-21, 2026-04-30).
 //
-// Erstatter: DAWA's /adresser/{id} og /adgangsadresser/{id}
+// Relevant type-kæde for en adresse:
+//   DAR_Adresse        – adressebetegnelse, husnummer (FK → DAR_Husnummer.id_lokalId)
+//   DAR_Husnummer      – adgangsadressebetegnelse, adgangspunkt (FK → DAR_Adressepunkt),
+//                        postnummer (FK → DAR_Postnummer), navngivenVej (FK → DAR_NavngivenVej),
+//                        kommuneinddeling (FK → kommuneregister udenfor DAR), jordstykke (FK)
+//   DAR_Postnummer     – postnr (4-cifret kode), navn (bynavn)
+//   DAR_Adressepunkt   – position (SpatialPointEpsg25832Type) → wkt i EPSG:25832
 //
-// Download DAR-schema (kør én gang):
-//   $s = Invoke-RestMethod 'https://graphql.datafordeler.dk/DAR/v1/schema'
-//   $s | Out-File dar-schema.txt -Encoding utf8
-//
-// Forventede typer baseret på Datafordeler-konventioner:
-//   DAR_Adresse       – id_lokalId, adressebetegnelse, kommunekode, husnummerId
-//   DAR_Husnummer     – id_lokalId, adgangspunkt (koordinater), vejkode, kommunekode
-//                       ejerlavskode (?), matrikelnr (?) – SKAL BEKRÆFTES i schema
-//   DAR_NavngivenVej  – vejnavn, kommunekode
-//
-// Datafordeler GraphQL-begrænsninger (samme som BBR/MAT):
+// Datafordeler GraphQL-begrænsninger (bekræftet):
 //   - Kun ét root-felt pr. query (DAF-GQL-0010)
 //   - virkningstid PÅKRÆVET (DAF-GQL-0009)
 //   - Ingen aliases (DAF-GQL-0008)
+//   - filterRequirement: id_lokalId eller datafordelerRowId PÅKRÆVET i where
+//
+// Begrænsninger i DAR v1 schema:
+//   - ejerlavskode/matrikelnummer: IKKE i DAR – kun jordstykke (FK-string til Matrikelregistret)
+//   - kommunenavn: IKKE i DAR direkte – kommuneinddeling er FK udenfor DAR
+//   - Koordinater: EPSG:25832 WKT på DAR_Adressepunkt.position.wkt – kræver UTM→WGS84 konvertering
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -51,30 +53,32 @@ function getConfig(explicit?: DarClientConfig) {
 }
 
 // ---------------------------------------------------------------------------
-// Output type – matcher DawaAddressDetails for drop-in erstatning
+// Output type – kompatibel med DawaAddressDetails for drop-in i DAWA Phase 2
+//
+// Begrænsninger vs. DAWA:
+//   ejerlavskode/matrikelnummer = null (ikke i DAR – hentes fra jordstykke-FK via MAT)
+//   kommunenavn = null (kræver kommuneregister udenfor DAR)
 // ---------------------------------------------------------------------------
 
 export type DarAddressDetails = {
   adresse: string;
   postnr: string;
   postnrnavn: string;
-  kommunekode: string;
-  kommunenavn: string;
+  kommunekode: string;   // tom string – kommuneinddeling FK er ikke en kode
+  kommunenavn: string;   // tom string – kræver register udenfor DAR
   matrikel: string | null;
   adgangsadresseid: string;
   koordinater: { lat: number; lng: number };
   bbrId: string | null;
-  grundareal: number | null;     // hentes via mat/client.ts
-  ejerlavskode: number | null;   // til MAT-opslag
-  matrikelnummer: string | null; // til MAT-opslag
+  ejerlavskode: number | null;   // null – ikke tilgængeligt i DAR v1
+  matrikelnummer: string | null; // null – ikke tilgængeligt i DAR v1
 };
 
 // ---------------------------------------------------------------------------
-// GraphQL queries (feltnavne er UBEKRÆFTEDE – opdatér efter schema-download)
+// GraphQL queries (feltnavne verificeret mod live DAR v1 schema)
 // ---------------------------------------------------------------------------
 
-// TODO: Bekræft feltnavne mod DAR v1 schema
-// Forventede filterfelt: id_lokalId eller husnummeridentificerer (DAR-ID)
+// Kald 1: DAR_Adresse – henter adressebetegnelse og husnummer-FK
 const ADRESSE_QUERY = `
 query GetDarAdresse($id: String!, $virkningstid: DafDateTime!) {
   DAR_Adresse(
@@ -85,16 +89,15 @@ query GetDarAdresse($id: String!, $virkningstid: DafDateTime!) {
     nodes {
       id_lokalId
       adressebetegnelse
-      postnummer
-      postnummernavn
-      kommunekode
-      husnummerId
+      husnummer
+      etagebetegnelse
+      doerbetegnelse
+      status
     }
   }
 }`;
 
-// TODO: Bekræft om DAR_Husnummer har ejerlavskode + matrikelnr direkte,
-// eller om disse skal slås op via separat Matrikel-reference
+// Kald 2: DAR_Husnummer – henter FK-referencer til adressepunkt, postnummer mv.
 const HUSNUMMER_QUERY = `
 query GetDarHusnummer($id: String!, $virkningstid: DafDateTime!) {
   DAR_Husnummer(
@@ -104,16 +107,115 @@ query GetDarHusnummer($id: String!, $virkningstid: DafDateTime!) {
   ) {
     nodes {
       id_lokalId
+      adgangsadressebetegnelse
+      husnummertekst
       adgangspunkt
-      ejerlavskode
-      matrikelnummer
-      kommunekode
+      postnummer
+      kommuneinddeling
+      navngivenVej
+      jordstykke
+      status
+    }
+  }
+}`;
+
+// Kald 3a: DAR_Postnummer – henter postnr (4-cifret kode) og bynavn
+const POSTNUMMER_QUERY = `
+query GetDarPostnummer($id: String!, $virkningstid: DafDateTime!) {
+  DAR_Postnummer(
+    where: { id_lokalId: { eq: $id } }
+    virkningstid: $virkningstid
+    first: 1
+  ) {
+    nodes {
+      postnr
+      navn
+    }
+  }
+}`;
+
+// Kald 3b: DAR_Adressepunkt – henter koordinat som WKT i EPSG:25832
+const ADRESSEPUNKT_QUERY = `
+query GetDarAdressepunkt($id: String!, $virkningstid: DafDateTime!) {
+  DAR_Adressepunkt(
+    where: { id_lokalId: { eq: $id } }
+    virkningstid: $virkningstid
+    first: 1
+  ) {
+    nodes {
+      position { wkt }
     }
   }
 }`;
 
 // ---------------------------------------------------------------------------
-// Hjælpefunktion
+// Koordinatkonvertering: EPSG:25832 (UTM 32N) → WGS84
+//
+// DAR_Adressepunkt.position.wkt returnerer f.eks. "POINT(725000.12 6174000.34)"
+// i EPSG:25832. Ingen ekstern afhængighed – standard Transverse Mercator invers.
+// ---------------------------------------------------------------------------
+
+function parseWktPoint(wkt: string | null | undefined): { x: number; y: number } | null {
+  if (!wkt) return null;
+  const m = wkt.match(/POINT\s*\(\s*([\d.+-]+)\s+([\d.+-]+)\s*\)/i);
+  if (!m) return null;
+  return { x: parseFloat(m[1]), y: parseFloat(m[2]) };
+}
+
+function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: number } {
+  const k0 = 0.9996;
+  const a = 6378137.0;
+  const e2 = 0.00669437999014;
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const lon0 = 9 * (Math.PI / 180); // central meridian zone 32
+
+  const x = easting - 500000;
+  const y = northing;
+
+  const M = y / k0;
+  const mu = M / (a * (1 - e2 / 4 - (3 * e2 * e2) / 64 - (5 * e2 * e2 * e2) / 256));
+
+  const phi1 =
+    mu +
+    ((3 * e1) / 2 - (27 * e1 * e1 * e1) / 32) * Math.sin(2 * mu) +
+    ((21 * e1 * e1) / 16 - (55 * e1 * e1 * e1 * e1) / 32) * Math.sin(4 * mu) +
+    ((151 * e1 * e1 * e1) / 96) * Math.sin(6 * mu) +
+    ((1097 * e1 * e1 * e1 * e1) / 512) * Math.sin(8 * mu);
+
+  const sinPhi1 = Math.sin(phi1);
+  const cosPhi1 = Math.cos(phi1);
+  const tanPhi1 = Math.tan(phi1);
+
+  const N1 = a / Math.sqrt(1 - e2 * sinPhi1 * sinPhi1);
+  const T1 = tanPhi1 * tanPhi1;
+  const C1 = (e2 * cosPhi1 * cosPhi1) / (1 - e2);
+  const R1 = (a * (1 - e2)) / Math.pow(1 - e2 * sinPhi1 * sinPhi1, 1.5);
+  const D = x / (N1 * k0);
+
+  const lat =
+    phi1 -
+    ((N1 * tanPhi1) / R1) *
+      (
+        (D * D) / 2 -
+        ((5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * e2) * D * D * D * D) / 24 +
+        ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * e2 - 3 * C1 * C1) * D * D * D * D * D * D) / 720
+      );
+
+  const lon =
+    lon0 +
+    (D -
+      ((1 + 2 * T1 + C1) * D * D * D) / 6 +
+      ((5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * e2 + 24 * T1 * T1) * D * D * D * D * D) / 120) /
+      cosPhi1;
+
+  return {
+    lat: lat * (180 / Math.PI),
+    lng: lon * (180 / Math.PI),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hjælpefunktion: GraphQL-kald mod Datafordeler
 // ---------------------------------------------------------------------------
 
 async function gqlFetch(
@@ -148,13 +250,16 @@ async function gqlFetch(
 
 export class DarService {
   /**
-   * ⚠️  IKKE KLAR TIL PRODUKTION – kræver DAR-schema bekræftelse.
-   *
    * Henter adressedetaljer fra DAR GraphQL.
-   * Tiltænkt som drop-in erstatning for DawaService.getAddressDetails().
+   * Drop-in erstatning for DawaService.getAddressDetails() (DAWA Phase 2).
    *
-   * @param darAdresseLokalId  DAR's id_lokalId for adressen
-   *                           (svarer til DAWA's adresseid)
+   * Kæde: DAR_Adresse → DAR_Husnummer → DAR_Postnummer + DAR_Adressepunkt (parallelt)
+   *
+   * @param darAdresseLokalId  DAR's id_lokalId for adressen (= DAWA's adresseid)
+   *
+   * Kendte begrænsninger vs. DAWA:
+   *   - ejerlavskode/matrikelnummer returneres som null (ikke i DAR schema)
+   *   - kommunenavn returneres som '' (kræver kommuneregister udenfor DAR)
    */
   static async getAddressDetails(
     darAdresseLokalId: string,
@@ -166,58 +271,62 @@ export class DarService {
     const { apiKey, endpoint } = getConfig(config);
     const url = new URL(endpoint);
     url.searchParams.set('apiKey', apiKey);
-
     const virkningstid = new Date().toISOString();
 
-    // Kald 1: DAR_Adresse
+    // ── Kald 1: DAR_Adresse ─────────────────────────────────────────────────
     const adresseData = await gqlFetch(url, ADRESSE_QUERY, { id, virkningstid });
     const adresseNodes: any[] = adresseData?.DAR_Adresse?.nodes ?? [];
     if (!adresseNodes.length) {
-      throw new Error(`DAR_Adresse ikke fundet for id ${id}`);
+      throw new Error(`DAR_Adresse ikke fundet for id_lokalId: ${id}`);
     }
     const adresse = adresseNodes[0];
-    const husnummerId: string = adresse.husnummerId;
+    const husnummerFK: string = adresse.husnummer ?? '';
 
-    // Kald 2: DAR_Husnummer (koordinater + matrikeldata)
-    let koordinater = { lat: 0, lng: 0 };
-    let ejerlavskode: number | null = null;
-    let matrikelnummer: string | null = null;
-
-    try {
+    // ── Kald 2: DAR_Husnummer ───────────────────────────────────────────────
+    let husnummer: any = null;
+    if (husnummerFK) {
       const husnummerData = await gqlFetch(url, HUSNUMMER_QUERY, {
-        id: husnummerId,
+        id: husnummerFK,
         virkningstid,
       });
-      const husnummerNodes: any[] = husnummerData?.DAR_Husnummer?.nodes ?? [];
-      if (husnummerNodes.length) {
-        const h = husnummerNodes[0];
-        // TODO: Bekræft koordinat-format fra DAR schema (WGS84 lat/lng eller EPSG:25832 x/y)
-        koordinater = {
-          lat: h.adgangspunkt?.y ?? h.adgangspunkt?.bredde ?? 0,
-          lng: h.adgangspunkt?.x ?? h.adgangspunkt?.laengde ?? 0,
-        };
-        ejerlavskode = h.ejerlavskode ?? null;
-        matrikelnummer = h.matrikelnummer ?? null;
-      }
-    } catch (e) {
-      console.warn('[DAR] husnummer-kald fejlede:', (e as Error).message);
+      husnummer = husnummerData?.DAR_Husnummer?.nodes?.[0] ?? null;
     }
 
-    // Grundareal hentes separat via MatService.getGrundareal()
-    // (kaldt fra server-funktionen i projekt.compliance.tsx)
+    const adgangspunktFK: string = husnummer?.adgangspunkt ?? '';
+    const postnummerFK: string = husnummer?.postnummer ?? '';
+
+    // ── Kald 3a + 3b: postnummer og adressepunkt (parallelt) ────────────────
+    const [postnummerData, adressepunktData] = await Promise.all([
+      postnummerFK
+        ? gqlFetch(url, POSTNUMMER_QUERY, { id: postnummerFK, virkningstid })
+        : Promise.resolve(null),
+      adgangspunktFK
+        ? gqlFetch(url, ADRESSEPUNKT_QUERY, { id: adgangspunktFK, virkningstid })
+        : Promise.resolve(null),
+    ]);
+
+    const postnummerNode = postnummerData?.DAR_Postnummer?.nodes?.[0] ?? null;
+    const adressepunktNode = adressepunktData?.DAR_Adressepunkt?.nodes?.[0] ?? null;
+
+    // ── Koordinatkonvertering: EPSG:25832 WKT → WGS84 ───────────────────────
+    let koordinater = { lat: 0, lng: 0 };
+    const wktPoint = parseWktPoint(adressepunktNode?.position?.wkt);
+    if (wktPoint) {
+      koordinater = utm32NToWgs84(wktPoint.x, wktPoint.y);
+    }
+
     return {
       adresse: adresse.adressebetegnelse ?? '',
-      postnr: adresse.postnummer ?? '',
-      postnrnavn: adresse.postnummernavn ?? '',
-      kommunekode: adresse.kommunekode ?? '',
-      kommunenavn: '',         // TODO: opslag i DAR_NavngivenVej eller kommuneregister
-      matrikel: matrikelnummer ? `${matrikelnummer}` : null,
-      adgangsadresseid: husnummerId,
+      postnr: postnummerNode?.postnr ?? '',
+      postnrnavn: postnummerNode?.navn ?? '',
+      kommunekode: '',  // kommuneinddeling FK er ikke en kode – kræver register udenfor DAR
+      kommunenavn: '',  // kræver register udenfor DAR
+      matrikel: null,   // jordstykke FK kræver separat MAT-opslag for matrikelnr
+      adgangsadresseid: husnummerFK,
       koordinater,
       bbrId: null,
-      grundareal: null,        // hentes via MatService
-      ejerlavskode,
-      matrikelnummer,
+      ejerlavskode: null,   // ikke i DAR v1 schema
+      matrikelnummer: null, // ikke i DAR v1 schema
     };
   }
 }
