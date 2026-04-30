@@ -1,13 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { Search, GitMerge, Wallet, Hammer, FileSignature } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Welcome,
 });
 
+const PHASES = [
+  { icon: Search, label: "Discovery", desc: "Hus-DNA & lokalplan" },
+  { icon: GitMerge, label: "Match", desc: "Tjek lokalplan" },
+  { icon: Wallet, label: "Finans", desc: "Bank & forsikring" },
+  { icon: Hammer, label: "Engineering", desc: "BR18 & statik" },
+  { icon: FileSignature, label: "Udbud", desc: "Udbud & kontrakt" },
+];
+
 function Welcome() {
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center px-6 overflow-hidden">
+    <main className="relative flex min-h-screen flex-col items-center justify-center px-6 py-16 overflow-hidden">
       {/* Radial glow */}
       <div
         aria-hidden
@@ -19,7 +28,7 @@ function Welcome() {
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center text-center max-w-md w-full">
+      <div className="relative z-10 flex flex-col items-center text-center max-w-3xl w-full">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -35,9 +44,7 @@ function Welcome() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-8 space-y-2"
         >
-          <p className="text-foreground text-lg">
-            Fra tom grund til byggetilladelse.
-          </p>
+          <p className="text-foreground text-lg">Fra tom grund til byggetilladelse.</p>
           <p className="text-sm text-muted-foreground">
             AI-drevet byggerådgivning for private bygherrer.
           </p>
@@ -59,6 +66,29 @@ function Welcome() {
             Gratis at prøve. Ingen kreditkort.
           </p>
         </motion.div>
+
+        {/* Fase-oversigt */}
+        <div className="mt-16 w-full">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {PHASES.map((p, i) => (
+              <motion.div
+                key={p.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.6 + i * 0.1 }}
+                className="rounded-md border border-border bg-[#1A1A1A] p-4 text-left"
+              >
+                <p.icon size={16} className="text-accent mb-2" />
+                <div className="font-mono text-[10px] tracking-[0.15em] text-foreground uppercase">
+                  {p.label}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground leading-tight">
+                  {p.desc}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );
