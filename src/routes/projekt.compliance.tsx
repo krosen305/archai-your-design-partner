@@ -3,11 +3,11 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FileText, ScrollText, Cpu, Check, AlertTriangle, Info, ExternalLink, Map } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
-import { useProject } from "@/lib/project-store";
+import { useProject, deriveComplianceFlags } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan } from "@/integrations/plandata/client";
+import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 
 // ---------------------------------------------------------------------------
 // Server functions – kører kun på serveren (Cloudflare Workers).
@@ -50,6 +50,16 @@ const fetchPlandataLokalplaner = createServerFn({ method: "POST" })
     }
   );
 
+const fetchKommuneplanramme = createServerFn({ method: "POST" })
+  .inputValidator((data: { lng: number; lat: number }) => data)
+  .handler(
+    async ({ data }): Promise<{ ramme: Kommuneplanramme | null; fejl: string | null }> => {
+      const { lng, lat } = data;
+      const { PlandataService } = await import("@/integrations/plandata/client");
+      return PlandataService.getKommuneplanrammeForKoordinat(lng, lat);
+    }
+  );
+
 // ---------------------------------------------------------------------------
 // Route
 // ---------------------------------------------------------------------------
@@ -69,11 +79,12 @@ type Status = "loading" | "done" | "error";
 
 function ComplianceStep() {
   const navigate = useNavigate();
-  const { address, bbrData, setBbrData, setComplianceDone } = useProject();
+  const { address, bbrData, setBbrData, setComplianceDone, setComplianceFlags, setPhase } = useProject();
 
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lokalplaner, setLokalplaner] = useState<Lokalplan[]>([]);
+  const [kommuneplanramme, setKommuneplanramme] = useState<Kommuneplanramme | null>(null);
 
   useEffect(() => {
     if (bbrData) {
@@ -99,20 +110,29 @@ function ComplianceStep() {
       },
     });
 
-    const plandataPromise = address.koordinater?.lng && address.koordinater?.lat
-      ? fetchPlandataLokalplaner({
-          data: { lng: address.koordinater.lng, lat: address.koordinater.lat },
-        }).catch((e) => {
-          console.warn("[Compliance] Plandata fejlede (ikke kritisk):", e);
-          return { lokalplaner: [], fejl: null };
-        })
+    const hasCoords = !!(address.koordinater?.lng && address.koordinater?.lat);
+    const coords = hasCoords
+      ? { lng: address.koordinater.lng, lat: address.koordinater.lat }
+      : null;
+
+    const plandataPromise = coords
+      ? fetchPlandataLokalplaner({ data: coords }).catch(() => ({ lokalplaner: [], fejl: null }))
       : Promise.resolve({ lokalplaner: [], fejl: null });
 
-    Promise.all([bbrPromise, plandataPromise])
-      .then(([bbrResult, plandataResult]) => {
+    const rammePromise = coords
+      ? fetchKommuneplanramme({ data: coords }).catch(() => ({ ramme: null, fejl: null }))
+      : Promise.resolve({ ramme: null, fejl: null });
+
+    Promise.all([bbrPromise, plandataPromise, rammePromise])
+      .then(([bbrResult, plandataResult, rammeResult]) => {
         setBbrData(bbrResult);
         setLokalplaner(plandataResult.lokalplaner);
+        setKommuneplanramme(rammeResult.ramme);
+        const flags = deriveComplianceFlags(bbrResult, rammeResult.ramme);
+        setComplianceFlags(flags);
         setComplianceDone(true);
+        setPhase("hus-dna", "complete");
+        setPhase("match", "active");
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
       })
