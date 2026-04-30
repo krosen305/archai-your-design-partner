@@ -8,8 +8,8 @@
 //
 // Current layer status:
 //   compliance_result  ✅  BBR + MAT + Plandata pipeline (live)
-//   lokalplan_extracted ⏳  ARCH-25 (lokalplan PDF parser not yet built)
-//   servitut_extracted  ⏳  ARCH-26 (Tinglysning parser not yet built)
+//   lokalplan_extracted ⏳  IS_MOCK=true — ARCH-25 (live Anthropic-kald ikke implementeret)
+//   servitut_extracted  ⏳  IS_MOCK=true — ARCH-26 (live Tinglysning API ikke implementeret)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
 import type { BbrKompliantData } from '@/integrations/bbr/client';
@@ -17,6 +17,10 @@ import type { Lokalplan, Kommuneplanramme } from '@/integrations/plandata/client
 import {
   getCachedCompliance,
   setCachedCompliance,
+  getCachedLokalplan,
+  setCachedLokalplan,
+  getCachedServitut,
+  setCachedServitut,
 } from '@/integrations/cache/client';
 
 // ---------------------------------------------------------------------------
@@ -68,13 +72,30 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
 
   await setCachedCompliance(addressId, result);
 
-  // ── Layer 2: lokalplan_extracted ────────────────────────────────────────
-  // ARCH-25 pending: PDF parser not yet built.
-  // When implemented, call getCachedLokalplan / lokalplanPdfParser here
-  // and pass currentPdfUrl for URL-based cache invalidation.
+  // ── Layer 2: lokalplan_extracted (IS_MOCK=true) ─────────────────────────
+  const primaryPdfUrl = result.lokalplaner[0]?.plandokumentLink ?? null;
+  const cachedLokalplan = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
+  if (!cachedLokalplan && primaryPdfUrl) {
+    try {
+      const { PdfExtractorService } = await import('@/integrations/ai/pdf-extractor');
+      const extract = await PdfExtractorService.extractLokalplan(primaryPdfUrl);
+      await setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as import('@/integrations/supabase/types').Json);
+    } catch (e) {
+      console.warn('[Orchestrator] lokalplan PDF-udtræk fejlede:', (e as Error).message);
+    }
+  }
 
-  // ── Layer 3: servitut_extracted ─────────────────────────────────────────
-  // ARCH-26 pending: Tinglysning parser not yet built.
+  // ── Layer 3: servitut_extracted (IS_MOCK=true) ──────────────────────────
+  const cachedServitut = await getCachedServitut(addressId);
+  if (!cachedServitut) {
+    try {
+      const { TinglysningService } = await import('@/integrations/tinglysning/client');
+      const servitutter = await TinglysningService.getServitutter(addressId);
+      await setCachedServitut(addressId, servitutter as unknown as import('@/integrations/supabase/types').Json);
+    } catch (e) {
+      console.warn('[Orchestrator] servitut-udtræk fejlede:', (e as Error).message);
+    }
+  }
 
   return result;
 }

@@ -1,0 +1,155 @@
+// SERVER-SIDE ONLY – Anthropic API-nøgle må aldrig nå browseren.
+// PdfExtractorService — udtræk strukturerede regler fra lokalplan-PDFer via Claude.
+//
+// ⚠️  SKELETON med IS_MOCK guard — kræver ANTHROPIC_API_KEY i env.
+//     Se ARCH-25 for fuld implementation spec.
+//
+// Når live Anthropic-kald er klar:
+//   - Sæt IS_MOCK = false
+//   - Sæt ANTHROPIC_API_KEY i .dev.vars og Wrangler secrets
+//   - Opdater prompt efter test på rigtige lokalplan-PDFer
+
+// ---------------------------------------------------------------------------
+// Mock flag — sæt til false når Anthropic-kald er implementeret
+// ---------------------------------------------------------------------------
+
+const IS_MOCK = true;
+
+// ---------------------------------------------------------------------------
+// Output type
+// ---------------------------------------------------------------------------
+
+export type LokalplanExtract = {
+  maxEtager: number | null;
+  maxBebyggelsespct: number | null;
+  tagform: string | null;
+  materialer: string[];
+  byggelinjer: string | null;       // afstandskrav til skel/vej
+  specialBestemmelser: string[];    // fritekst-bestemmelser der ikke passer andre felter
+  kilde: 'mock' | 'anthropic';
+};
+
+// ---------------------------------------------------------------------------
+// Mock data — deterministisk testdata baseret på typisk dansk lokalplan
+// ---------------------------------------------------------------------------
+
+const MOCK_EXTRACT: LokalplanExtract = {
+  maxEtager: 2,
+  maxBebyggelsespct: 30,
+  tagform: 'Sadeltag med hældning 25-45°',
+  materialer: ['tegl', 'fiber cement', 'zink'],
+  byggelinjer: '2,5 m fra vejskel, 2 m fra naboskel',
+  specialBestemmelser: [
+    'Ingen udestuer eller winterhaver mod vejside',
+    'Carporte og garager max 50 m² uden byggetilladelse',
+  ],
+  kilde: 'mock',
+};
+
+// ---------------------------------------------------------------------------
+// Anthropic prompt
+// ---------------------------------------------------------------------------
+
+const EXTRACTION_PROMPT = `
+Du er en dansk byggesagsbehandler. Læs følgende lokalplan-tekst og udtræk disse oplysninger som JSON:
+
+{
+  "maxEtager": <antal etager som heltal eller null>,
+  "maxBebyggelsespct": <bebyggelsesprocent som heltal eller null>,
+  "tagform": <beskrivelse af krav til tagform som string eller null>,
+  "materialer": <array af tilladte facadematerialer>,
+  "byggelinjer": <afstandskrav til skel/vej som string eller null>,
+  "specialBestemmelser": <array af øvrige vigtige bestemmelser>
+}
+
+Svar KUN med JSON — ingen forklaring eller ekstra tekst.
+
+LOKALPLAN-TEKST:
+`.trim();
+
+// ---------------------------------------------------------------------------
+// PdfExtractorService
+// ---------------------------------------------------------------------------
+
+export class PdfExtractorService {
+  /**
+   * Udtrækker strukturerede regler fra en lokalplan-PDF via Anthropic Claude.
+   *
+   * @param pdfUrl  URL til lokalplan-PDF (typisk fra Plandata: dokument.plandata.dk/...)
+   *
+   * IS_MOCK = true: returnerer deterministiske mock-data uden API-kald.
+   * IS_MOCK = false: henter PDF server-side og sender til Claude API.
+   */
+  static async extractLokalplan(pdfUrl: string): Promise<LokalplanExtract> {
+    if (!pdfUrl) {
+      return { ...MOCK_EXTRACT, kilde: 'mock' };
+    }
+
+    if (IS_MOCK) {
+      return MOCK_EXTRACT;
+    }
+
+    // Live Anthropic-kald (ARCH-25)
+    const apiKey = (process as any)?.env?.ANTHROPIC_API_KEY ?? '';
+    if (!apiKey) {
+      throw new Error('PdfExtractorService: ANTHROPIC_API_KEY mangler');
+    }
+
+    // Hent PDF server-side
+    const pdfRes = await fetch(pdfUrl);
+    if (!pdfRes.ok) {
+      throw new Error(`PdfExtractorService: kunne ikke hente PDF (${pdfRes.status}): ${pdfUrl}`);
+    }
+    const pdfBuffer = await pdfRes.arrayBuffer();
+    const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+
+    // Send til Claude med PDF som dokument
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
+              },
+              { type: 'text', text: EXTRACTION_PROMPT },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!anthropicRes.ok) {
+      const body = await anthropicRes.text();
+      throw new Error(`PdfExtractorService: Anthropic API fejl (${anthropicRes.status}): ${body.slice(0, 200)}`);
+    }
+
+    const json = await anthropicRes.json() as any;
+    const text: string = json?.content?.[0]?.text ?? '{}';
+
+    try {
+      const parsed = JSON.parse(text);
+      return {
+        maxEtager: parsed.maxEtager ?? null,
+        maxBebyggelsespct: parsed.maxBebyggelsespct ?? null,
+        tagform: parsed.tagform ?? null,
+        materialer: Array.isArray(parsed.materialer) ? parsed.materialer : [],
+        byggelinjer: parsed.byggelinjer ?? null,
+        specialBestemmelser: Array.isArray(parsed.specialBestemmelser) ? parsed.specialBestemmelser : [],
+        kilde: 'anthropic',
+      };
+    } catch {
+      throw new Error(`PdfExtractorService: kunne ikke parse Anthropic-svar som JSON: ${text.slice(0, 200)}`);
+    }
+  }
+}

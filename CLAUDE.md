@@ -53,6 +53,8 @@ Each integration is a standalone service class. Server-side services must **neve
 | `MatService` | `mat/client.ts` | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2 |
 | `DarService` | `dar/client.ts` | Server only | Address register via Datafordeler GraphQL v1. **Skeleton — not production-ready** |
 | `PlandataService` | `plandata/client.ts` | Server only | Local plans via public WFS. No API key needed |
+| `TinglysningService` | `tinglysning/client.ts` | Server only | Servitutter. **IS_MOCK=true** — live API pending (ARCH-26) |
+| `PdfExtractorService` | `ai/pdf-extractor.ts` | Server only | Lokalplan PDF → structured rules via Claude API. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-25) |
 | Supabase | `supabase/` | Both | Auth middleware and typed client |
 
 **Datafordeler GraphQL constraints** (applies to BBR, MAT, DAR):
