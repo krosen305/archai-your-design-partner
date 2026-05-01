@@ -32,7 +32,7 @@ function flagToValueString(flag: ComplianceFlag): string {
 
 function MatchStep() {
   const navigate = useNavigate();
-  const { address, bbrData, complianceFlags, lokalplaner } = useProject();
+  const { address, bbrData, complianceFlags, lokalplaner, lokalplanExtract } = useProject();
 
   if (!bbrData || complianceFlags.length === 0) {
     return (
@@ -137,6 +137,56 @@ function MatchStep() {
             })}
           </ul>
         </Card>
+
+        {lokalplanExtract && lokalplanExtract.kilde === 'anthropic' && (
+          <Card className="mb-6">
+            <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+              LOKALPLAN REGLER (AI-UDTRÆK)
+            </div>
+            <dl className="space-y-2 text-sm">
+              {lokalplanExtract.maxEtager !== null && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Max etager</dt>
+                  <dd className="font-mono text-foreground">{lokalplanExtract.maxEtager}</dd>
+                </div>
+              )}
+              {lokalplanExtract.maxBebyggelsespct !== null && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Max bebyggelsesprocent</dt>
+                  <dd className="font-mono text-foreground">{lokalplanExtract.maxBebyggelsespct}%</dd>
+                </div>
+              )}
+              {lokalplanExtract.tagform && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Tagform</dt>
+                  <dd className="font-mono text-foreground text-right">{lokalplanExtract.tagform}</dd>
+                </div>
+              )}
+              {lokalplanExtract.byggelinjer && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Byggelinjer</dt>
+                  <dd className="font-mono text-foreground text-right">{lokalplanExtract.byggelinjer}</dd>
+                </div>
+              )}
+              {lokalplanExtract.materialer.length > 0 && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Materialer</dt>
+                  <dd className="font-mono text-foreground text-right">{lokalplanExtract.materialer.join(', ')}</dd>
+                </div>
+              )}
+              {lokalplanExtract.specialBestemmelser.length > 0 && (
+                <div className="pt-1 border-t border-[#222]">
+                  <dt className="text-muted-foreground mb-1">Særlige bestemmelser</dt>
+                  <ul className="space-y-1">
+                    {lokalplanExtract.specialBestemmelser.map((b, i) => (
+                      <li key={i} className="text-foreground text-xs leading-relaxed">· {b}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </dl>
+          </Card>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2 mb-6">
           <Card>

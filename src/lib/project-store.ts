@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
+import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 
 // ---------------------------------------------------------------------------
 // Adresse
@@ -87,6 +88,7 @@ type State = {
   husDna: HusDna | null;
   complianceFlags: ComplianceFlag[];
   lokalplaner: Lokalplan[];
+  lokalplanExtract: LokalplanExtract | null;
 
   // Setters — eksisterende
   setAddress: (a: Address) => void;
@@ -100,6 +102,7 @@ type State = {
   setHusDna: (dna: HusDna | null) => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setLokalplaner: (lp: Lokalplan[]) => void;
+  setLokalplanExtract: (extract: LokalplanExtract | null) => void;
 
   reset: () => void;
 };
@@ -122,6 +125,7 @@ export const useProject = create<State>((set) => ({
   husDna: null,
   complianceFlags: [],
   lokalplaner: [],
+  lokalplanExtract: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -133,6 +137,7 @@ export const useProject = create<State>((set) => ({
   setHusDna: (husDna) => set({ husDna }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
+  setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
 
   reset: () =>
     set({
@@ -145,6 +150,7 @@ export const useProject = create<State>((set) => ({
       husDna: null,
       complianceFlags: [],
       lokalplaner: [],
+      lokalplanExtract: null,
     }),
 }));
 

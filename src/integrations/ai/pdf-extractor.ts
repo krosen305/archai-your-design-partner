@@ -1,19 +1,14 @@
 // SERVER-SIDE ONLY – Anthropic API-nøgle må aldrig nå browseren.
 // PdfExtractorService — udtræk strukturerede regler fra lokalplan-PDFer via Claude.
-//
-// ⚠️  SKELETON med IS_MOCK guard — kræver ANTHROPIC_API_KEY i env.
-//     Se ARCH-25 for fuld implementation spec.
-//
-// Når live Anthropic-kald er klar:
-//   - Sæt IS_MOCK = false
-//   - Sæt ANTHROPIC_API_KEY i .dev.vars og Wrangler secrets
-//   - Opdater prompt efter test på rigtige lokalplan-PDFer
+// IS_MOCK = false: live Anthropic-kald aktivt (ARCH-53).
+// Fallback til mock-data hvis ANTHROPIC_API_KEY mangler eller PDF ikke kan hentes.
+// Kræver ANTHROPIC_API_KEY i .dev.vars (lokalt) og Wrangler secrets (prod).
 
 // ---------------------------------------------------------------------------
-// Mock flag — sæt til false når Anthropic-kald er implementeret
+// Mock flag
 // ---------------------------------------------------------------------------
 
-const IS_MOCK = true;
+const IS_MOCK = false;
 
 // ---------------------------------------------------------------------------
 // Output type
@@ -89,10 +84,10 @@ export class PdfExtractorService {
       return MOCK_EXTRACT;
     }
 
-    // Live Anthropic-kald (ARCH-25)
     const apiKey = (process as any)?.env?.ANTHROPIC_API_KEY ?? '';
     if (!apiKey) {
-      throw new Error('PdfExtractorService: ANTHROPIC_API_KEY mangler');
+      console.warn('[PdfExtractor] ANTHROPIC_API_KEY mangler — returnerer mock');
+      return MOCK_EXTRACT;
     }
 
     // Hent PDF server-side

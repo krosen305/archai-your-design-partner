@@ -7,13 +7,15 @@
 // A returning user for a previously-analysed address pays $0.00 in AI costs.
 //
 // Current layer status:
-//   compliance_result  ✅  BBR + MAT + Plandata pipeline (live)
-//   lokalplan_extracted ⏳  IS_MOCK=true — ARCH-25 (live Anthropic-kald ikke implementeret)
+//   compliance_result   ✅  BBR + MAT + Plandata pipeline (live)
+//   lokalplan_extracted ✅  live Anthropic PDF-parsing (ARCH-53)
 //   servitut_extracted  ⏳  IS_MOCK=true — ARCH-26 (live Tinglysning API ikke implementeret)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
 import type { BbrKompliantData } from '@/integrations/bbr/client';
 import type { Lokalplan, Kommuneplanramme } from '@/integrations/plandata/client';
+import type { LokalplanExtract } from '@/integrations/ai/pdf-extractor';
+import type { Json } from '@/integrations/supabase/types';
 import {
   getCachedCompliance,
   setCachedCompliance,
@@ -32,6 +34,7 @@ export type ComplianceResult = {
   lokalplaner: Lokalplan[];
   kommuneplanramme: Kommuneplanramme | null;
   analysedAt: string;
+  lokalplanExtract: LokalplanExtract | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -54,69 +57,63 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   const { addressId, adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = input;
 
   // ── Layer 1: compliance_result (BBR + MAT + Plandata) ──────────────────
-  let cached: ComplianceResult | null = null;
+  type ComplianceBase = Omit<ComplianceResult, 'lokalplanExtract'>;
+  let complianceBase: ComplianceBase | null = null;
   try {
-    cached = await getCachedCompliance(addressId);
+    const cached = await getCachedCompliance(addressId);
+    if (cached) complianceBase = cached;
   } catch (e) {
     console.warn('[Orchestrator] cache-læsning fejlede (behandles som cache-miss):', (e as Error).message);
   }
-  if (cached) return cached;
 
-  // Cache miss — run the full pipeline
-  const [bbrResult, plandataResult] = await Promise.all([
-    fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer),
-    fetchPlandata(koordinater),
-  ]);
-
-  const result: ComplianceResult = {
-    bbr: bbrResult,
-    lokalplaner: plandataResult.lokalplaner,
-    kommuneplanramme: plandataResult.kommuneplanramme,
-    analysedAt: new Date().toISOString(),
-  };
-
-  try {
-    await setCachedCompliance(addressId, result);
-  } catch (e) {
-    console.warn('[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):', (e as Error).message);
-  }
-
-  // ── Layer 2: lokalplan_extracted (IS_MOCK=true) ─────────────────────────
-  const primaryPdfUrl = result.lokalplaner[0]?.plandokumentLink ?? null;
-  let cachedLokalplan: import('@/integrations/supabase/types').Json | null = null;
-  try {
-    cachedLokalplan = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
-  } catch (e) {
-    console.warn('[Orchestrator] lokalplan-cache-læsning fejlede:', (e as Error).message);
-  }
-  if (!cachedLokalplan && primaryPdfUrl) {
+  if (!complianceBase) {
+    const [bbrResult, plandataResult] = await Promise.all([
+      fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer),
+      fetchPlandata(koordinater),
+    ]);
+    complianceBase = {
+      bbr: bbrResult,
+      lokalplaner: plandataResult.lokalplaner,
+      kommuneplanramme: plandataResult.kommuneplanramme,
+      analysedAt: new Date().toISOString(),
+    };
     try {
+      await setCachedCompliance(addressId, { ...complianceBase, lokalplanExtract: null });
+    } catch (e) {
+      console.warn('[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):', (e as Error).message);
+    }
+  }
+
+  // ── Layer 2: lokalplan_extracted ────────────────────────────────────────
+  const primaryPdfUrl = complianceBase.lokalplaner[0]?.plandokumentLink ?? null;
+  let lokalplanExtract: LokalplanExtract | null = null;
+  try {
+    const cached = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
+    if (cached) {
+      lokalplanExtract = cached as unknown as LokalplanExtract;
+    } else if (primaryPdfUrl) {
       const { PdfExtractorService } = await import('@/integrations/ai/pdf-extractor');
       const extract = await PdfExtractorService.extractLokalplan(primaryPdfUrl);
-      await setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as import('@/integrations/supabase/types').Json);
-    } catch (e) {
-      console.warn('[Orchestrator] lokalplan PDF-udtræk fejlede:', (e as Error).message);
+      await setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as Json);
+      lokalplanExtract = extract;
     }
+  } catch (e) {
+    console.warn('[Orchestrator] lokalplan PDF-udtræk fejlede:', (e as Error).message);
   }
 
   // ── Layer 3: servitut_extracted (IS_MOCK=true) ──────────────────────────
-  let cachedServitut: import('@/integrations/supabase/types').Json | null = null;
   try {
-    cachedServitut = await getCachedServitut(addressId);
-  } catch (e) {
-    console.warn('[Orchestrator] servitut-cache-læsning fejlede:', (e as Error).message);
-  }
-  if (!cachedServitut) {
-    try {
+    const cachedServitut = await getCachedServitut(addressId);
+    if (!cachedServitut) {
       const { TinglysningService } = await import('@/integrations/tinglysning/client');
       const servitutter = await TinglysningService.getServitutter(addressId);
-      await setCachedServitut(addressId, servitutter as unknown as import('@/integrations/supabase/types').Json);
-    } catch (e) {
-      console.warn('[Orchestrator] servitut-udtræk fejlede:', (e as Error).message);
+      await setCachedServitut(addressId, servitutter as unknown as Json);
     }
+  } catch (e) {
+    console.warn('[Orchestrator] servitut-udtræk fejlede:', (e as Error).message);
   }
 
-  return result;
+  return { ...complianceBase, lokalplanExtract };
 }
 
 // ---------------------------------------------------------------------------
