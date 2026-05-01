@@ -74,7 +74,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const location = useLocation();
   const isWelcome = location.pathname === "/";
-  const { address, setAddress, setBbrData, setComplianceFlags, setLokalplaner, setComplianceDone, setHusDna } = useProject();
+  const { address, setAddress, setBbrData, setComplianceFlags, setLokalplaner, setComplianceDone, setHusDna, setKommuneplanramme } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
   useEffect(() => {
@@ -105,6 +105,7 @@ function RootComponent() {
         if (cd?.bbr) setBbrData(cd.bbr);
         if (Array.isArray(cd?.flags)) setComplianceFlags(cd.flags);
         if (Array.isArray(cd?.lokalplaner)) setLokalplaner(cd.lokalplaner);
+        if (cd?.kommuneplanramme) setKommuneplanramme(cd.kommuneplanramme);
         if (project.compliance_done) setComplianceDone(true);
       }
     });

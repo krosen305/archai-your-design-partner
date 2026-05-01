@@ -42,7 +42,7 @@ type Status = "loading" | "done" | "error";
 
 function ComplianceStep() {
   const navigate = useNavigate();
-  const { address, bbrData, setBbrData, setComplianceDone, setComplianceFlags, setLokalplaner, setLokalplanExtract, setPhase } = useProject();
+  const { address, bbrData, setBbrData, setComplianceDone, setComplianceFlags, setLokalplaner, setLokalplanExtract, setPhase, setKommuneplanramme } = useProject();
 
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -77,6 +77,7 @@ function ComplianceStep() {
         setLokalplanerLocal(result.lokalplaner);
         setLokalplaner(result.lokalplaner);
         setLokalplanExtract(result.lokalplanExtract);
+        setKommuneplanramme(result.kommuneplanramme);
         const flags = deriveComplianceFlags(result.bbr, result.kommuneplanramme);
         setComplianceFlags(flags);
         setComplianceDone(true);
@@ -86,6 +87,7 @@ function ComplianceStep() {
           bbrData: result.bbr,
           complianceFlags: flags,
           lokalplaner: result.lokalplaner,
+          kommuneplanramme: result.kommuneplanramme,
           complianceDone: true,
           currentStep: 'match',
         });

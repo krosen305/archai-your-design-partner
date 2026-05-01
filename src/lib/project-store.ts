@@ -89,6 +89,7 @@ type State = {
   complianceFlags: ComplianceFlag[];
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
+  kommuneplanramme: Kommuneplanramme | null;
 
   // Setters — eksisterende
   setAddress: (a: Address) => void;
@@ -103,6 +104,7 @@ type State = {
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setLokalplaner: (lp: Lokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
+  setKommuneplanramme: (ramme: Kommuneplanramme | null) => void;
 
   reset: () => void;
 };
@@ -126,6 +128,7 @@ export const useProject = create<State>((set) => ({
   complianceFlags: [],
   lokalplaner: [],
   lokalplanExtract: null,
+  kommuneplanramme: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -138,6 +141,7 @@ export const useProject = create<State>((set) => ({
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
+  setKommuneplanramme: (kommuneplanramme) => set({ kommuneplanramme }),
 
   reset: () =>
     set({
@@ -151,6 +155,7 @@ export const useProject = create<State>((set) => ({
       complianceFlags: [],
       lokalplaner: [],
       lokalplanExtract: null,
+      kommuneplanramme: null,
     }),
 }));
 

@@ -121,11 +121,12 @@ export async function saveProject(
     update.brief_data = patch.husDna;
   }
 
-  if (patch.bbrData !== undefined || patch.complianceFlags !== undefined || patch.lokalplaner !== undefined) {
+  if (patch.bbrData !== undefined || patch.complianceFlags !== undefined || patch.lokalplaner !== undefined || patch.kommuneplanramme !== undefined) {
     update.compliance_data = {
-      bbr: patch.bbrData ?? null,
-      flags: patch.complianceFlags ?? [],
-      lokalplaner: patch.lokalplaner ?? [],
+      bbr:              patch.bbrData ?? null,
+      flags:            patch.complianceFlags ?? [],
+      lokalplaner:      patch.lokalplaner ?? [],
+      kommuneplanramme: patch.kommuneplanramme ?? null,
     };
   }
 
