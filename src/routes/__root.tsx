@@ -83,18 +83,18 @@ function RootComponent() {
       if (!project) return;
       if (project.address_full && project.address_bbr) {
         setAddress({
-          adresseid: project.address_bbr, // bedste tilnærmelse uden det originale adresseid
-          adresse: project.address_full,
-          postnr: '',
-          postnrnavn: '',
-          kommune: project.address_kommune ?? '',
-          kommunekode: '',
-          matrikel: project.address_matrikel,
+          adresseid:        project.address_adresseid ?? project.address_bbr,
+          adresse:          project.address_full,
+          postnr:           project.address_postnr ?? '',
+          postnrnavn:       project.address_postnrnavn ?? '',
+          kommune:          project.address_kommune ?? '',
+          kommunekode:      '',
+          matrikel:         project.address_matrikel,
           adgangsadresseid: project.address_bbr,
-          koordinater: { lat: 0, lng: 0 },
-          bbrId: null,
-          ejerlavskode: null,
-          matrikelnummer: null,
+          koordinater:      (project.address_koordinater as { lat: number; lng: number } | null) ?? { lat: 0, lng: 0 },
+          bbrId:            null,
+          ejerlavskode:     project.address_ejerlavskode ?? null,
+          matrikelnummer:   project.address_matrikelnummer ?? null,
         });
       }
       if (project.brief_data) {

@@ -33,6 +33,12 @@ export type PersistedProject = {
   address_kommune: string | null;
   address_matrikel: string | null;
   address_bbr: string | null;
+  address_adresseid: string | null;
+  address_postnr: string | null;
+  address_postnrnavn: string | null;
+  address_koordinater: Json | null;
+  address_ejerlavskode: number | null;
+  address_matrikelnummer: string | null;
   compliance_data: Json | null;
   brief_data: Json | null;
   compliance_done: boolean;
@@ -99,10 +105,16 @@ export async function saveProject(
   const update: ProjectUpdate = {};
 
   if (patch.address !== undefined) {
-    update.address_full = patch.address.adresse;
-    update.address_kommune = patch.address.kommune;
-    update.address_matrikel = patch.address.matrikel;
-    update.address_bbr = patch.address.adgangsadresseid;
+    update.address_full          = patch.address.adresse;
+    update.address_kommune       = patch.address.kommune;
+    update.address_matrikel      = patch.address.matrikel;
+    update.address_bbr           = patch.address.adgangsadresseid;
+    update.address_adresseid     = patch.address.adresseid;
+    update.address_postnr        = patch.address.postnr;
+    update.address_postnrnavn    = patch.address.postnrnavn;
+    update.address_koordinater   = patch.address.koordinater as unknown as Json;
+    update.address_ejerlavskode  = patch.address.ejerlavskode;
+    update.address_matrikelnummer = patch.address.matrikelnummer;
   }
 
   if (patch.husDna !== undefined) {
@@ -149,7 +161,7 @@ export async function loadProject(
 
   const { data, error } = await supabaseAdmin
     .from('projects')
-    .select('id, address_full, address_kommune, address_matrikel, address_bbr, compliance_data, brief_data, compliance_done, current_step')
+    .select('id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
     .limit(1)

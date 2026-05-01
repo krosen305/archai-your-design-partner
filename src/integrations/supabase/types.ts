@@ -88,10 +88,16 @@ export type Database = {
       }
       projects: {
         Row: {
+          address_adresseid: string | null
           address_bbr: string | null
+          address_ejerlavskode: number | null
           address_full: string | null
           address_kommune: string | null
+          address_koordinater: Json | null
           address_matrikel: string | null
+          address_matrikelnummer: string | null
+          address_postnr: string | null
+          address_postnrnavn: string | null
           area: string | null
           brief_data: Json | null
           brief_done: boolean
@@ -110,10 +116,16 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address_adresseid?: string | null
           address_bbr?: string | null
+          address_ejerlavskode?: number | null
           address_full?: string | null
           address_kommune?: string | null
+          address_koordinater?: Json | null
           address_matrikel?: string | null
+          address_matrikelnummer?: string | null
+          address_postnr?: string | null
+          address_postnrnavn?: string | null
           area?: string | null
           brief_data?: Json | null
           brief_done?: boolean
@@ -132,10 +144,16 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address_adresseid?: string | null
           address_bbr?: string | null
+          address_ejerlavskode?: number | null
           address_full?: string | null
           address_kommune?: string | null
+          address_koordinater?: Json | null
           address_matrikel?: string | null
+          address_matrikelnummer?: string | null
+          address_postnr?: string | null
+          address_postnrnavn?: string | null
           area?: string | null
           brief_data?: Json | null
           brief_done?: boolean
