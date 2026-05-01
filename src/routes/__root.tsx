@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { TopBar } from "@/components/wizard-chrome";
 import { PhaseSidebar } from "@/components/phase-sidebar";
-import { useProject } from "@/lib/project-store";
+import { useProject, isHusDna, parseComplianceData } from "@/lib/project-store";
 import { restoreProject } from "@/lib/project-sync";
 
 import appCss from "../styles.css?url";
@@ -97,15 +97,18 @@ function RootComponent() {
           matrikelnummer:   project.address_matrikelnummer ?? null,
         });
       }
-      if (project.brief_data) {
-        setHusDna(project.brief_data as any);
+      if (isHusDna(project.brief_data)) {
+        setHusDna({
+          ...project.brief_data,
+          kilde: (project.brief_data as { kilde?: 'mock' | 'anthropic' }).kilde ?? 'mock',
+        });
       }
-      if (project.compliance_data) {
-        const cd = project.compliance_data as any;
-        if (cd?.bbr) setBbrData(cd.bbr);
-        if (Array.isArray(cd?.flags)) setComplianceFlags(cd.flags);
-        if (Array.isArray(cd?.lokalplaner)) setLokalplaner(cd.lokalplaner);
-        if (cd?.kommuneplanramme) setKommuneplanramme(cd.kommuneplanramme);
+      const cd = parseComplianceData(project.compliance_data);
+      if (cd) {
+        if (cd.bbr) setBbrData(cd.bbr);
+        setComplianceFlags(cd.flags);
+        setLokalplaner(cd.lokalplaner);
+        if (cd.kommuneplanramme) setKommuneplanramme(cd.kommuneplanramme);
         if (project.compliance_done) setComplianceDone(true);
       }
     });

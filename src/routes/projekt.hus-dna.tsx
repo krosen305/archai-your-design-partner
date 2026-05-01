@@ -40,10 +40,8 @@ function HusDnaStep() {
       const result = await generateHusDna({
         data: { fritekst: text, billedUrls: images },
       });
-      // HusDnaResult inkluderer `kilde` som ikke er i HusDna store-typen — strip den
-      const { kilde: _kilde, ...dna } = result;
-      setHusDna(dna);
-      syncPatch({ husDna: dna, currentStep: 'compliance' });
+      setHusDna(result);
+      syncPatch({ husDna: result, currentStep: 'compliance' });
     } catch (e) {
       setGenerateError("Generering fejlede – prøv igen.");
       console.error("[HusDna] generering fejlede:", e);

@@ -55,6 +55,7 @@ export type HusDna = {
   energiklasse: string;
   saerligeKrav: string[];
   confidence: number; // 0-100
+  kilde: 'mock' | 'anthropic';
 };
 
 // ---------------------------------------------------------------------------
@@ -158,6 +159,37 @@ export const useProject = create<State>((set) => ({
       kommuneplanramme: null,
     }),
 }));
+
+// ---------------------------------------------------------------------------
+// Type guards — bruges i __root.tsx til sikker restore fra Supabase JSONB
+// ---------------------------------------------------------------------------
+
+export function isHusDna(v: unknown): v is HusDna {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as Record<string, unknown>).stil === 'string' &&
+    typeof (v as Record<string, unknown>).confidence === 'number'
+  );
+}
+
+type ParsedComplianceData = {
+  bbr: BbrKompliantData | null;
+  flags: ComplianceFlag[];
+  lokalplaner: Lokalplan[];
+  kommuneplanramme: Kommuneplanramme | null;
+};
+
+export function parseComplianceData(v: unknown): ParsedComplianceData | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const o = v as Record<string, unknown>;
+  return {
+    bbr:              (typeof o.bbr === 'object' ? o.bbr : null) as BbrKompliantData | null,
+    flags:            Array.isArray(o.flags) ? (o.flags as ComplianceFlag[]) : [],
+    lokalplaner:      Array.isArray(o.lokalplaner) ? (o.lokalplaner as Lokalplan[]) : [],
+    kommuneplanramme: (typeof o.kommuneplanramme === 'object' ? o.kommuneplanramme : null) as Kommuneplanramme | null,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Hjælpefunktion: udled ComplianceFlags fra BBR + Kommuneplanramme

@@ -16,21 +16,15 @@ const IS_MOCK = false;
 // Input / Output typer
 // ---------------------------------------------------------------------------
 
+import type { HusDna } from '@/lib/project-store';
+
 export type HusDnaInput = {
   fritekst: string;
   billedUrls: string[];
 };
 
-export type HusDnaResult = {
-  stil: string;
-  bruttoareal: string;
-  etager: string;
-  tagform: string;
-  energiklasse: string;
-  saerligeKrav: string[];
-  confidence: number;
-  kilde: 'mock' | 'anthropic';
-};
+// HusDna er den kanoniske type — HusDnaResult er et alias for bagudkompatibilitet.
+export type HusDnaResult = HusDna;
 
 // ---------------------------------------------------------------------------
 // Mock data — deterministisk fallback til development uden API-nøgle
