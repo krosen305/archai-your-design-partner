@@ -1,0 +1,14 @@
+# Tving LF line endings i git-indexet på alle platforme.
+# Windows-udviklere: sæt `git config core.autocrlf false` lokalt
+# så working tree også bruger LF og ESLint ikke klager over CRLF.
+* text=auto eol=lf
+
+# Binære filer — aldrig konverter
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.eot  binary
