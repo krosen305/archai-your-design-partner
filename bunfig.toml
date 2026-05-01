@@ -1,2 +1,7 @@
 [install]
 saveTextLockfile = true
+
+[test]
+# tests/ indeholder Playwright E2E-specs — kør dem med: npx playwright test
+# bun test køres kun på unit tests i src/
+root = "src"
