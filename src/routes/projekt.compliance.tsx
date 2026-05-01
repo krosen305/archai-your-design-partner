@@ -1,7 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, ScrollText, Cpu, Check, AlertTriangle, Info, ExternalLink, Map } from "lucide-react";
+import {
+  FileText,
+  ScrollText,
+  Cpu,
+  Check,
+  AlertTriangle,
+  Info,
+  ExternalLink,
+  Map,
+} from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { useProject, deriveComplianceFlags } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
@@ -42,7 +51,17 @@ type Status = "loading" | "done" | "error";
 
 function ComplianceStep() {
   const navigate = useNavigate();
-  const { address, bbrData, setBbrData, setComplianceDone, setComplianceFlags, setLokalplaner, setLokalplanExtract, setPhase, setKommuneplanramme } = useProject();
+  const {
+    address,
+    bbrData,
+    setBbrData,
+    setComplianceDone,
+    setComplianceFlags,
+    setLokalplaner,
+    setLokalplanExtract,
+    setPhase,
+    setKommuneplanramme,
+  } = useProject();
 
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -89,7 +108,7 @@ function ComplianceStep() {
           lokalplaner: result.lokalplaner,
           kommuneplanramme: result.kommuneplanramme,
           complianceDone: true,
-          currentStep: 'match',
+          currentStep: "match",
         });
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
@@ -177,11 +196,7 @@ function ProgressRow({
 
 function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <div className="flex gap-3 rounded-md border border-danger/40 bg-danger/10 p-4">
         <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
         <p className="text-sm text-foreground">{message}</p>
@@ -209,19 +224,18 @@ function ResultView({
 }) {
   const harData = data.beregning_mulig;
   const erBolig = data.anvendelseskode
-    ? ["110","120","121","122","130","131","140","190"].includes(data.anvendelseskode)
+    ? ["110", "120", "121", "122", "130", "131", "140", "190"].includes(data.anvendelseskode)
     : false;
-  const harErhverv = data.anvendelseskode
-    ? ["321","322"].includes(data.anvendelseskode)
-    : false;
+  const harErhverv = data.anvendelseskode ? ["321", "322"].includes(data.anvendelseskode) : false;
 
   // Adskil vedtagne lokalplaner fra forslag
-  const vedtagne = lokalplaner.filter(p =>
-    !p.status || p.status.toLowerCase().includes("vedtaget") || !p.status.toLowerCase().includes("forslag")
+  const vedtagne = lokalplaner.filter(
+    (p) =>
+      !p.status ||
+      p.status.toLowerCase().includes("vedtaget") ||
+      !p.status.toLowerCase().includes("forslag"),
   );
-  const forslag = lokalplaner.filter(p =>
-    p.status?.toLowerCase().includes("forslag")
-  );
+  const forslag = lokalplaner.filter((p) => p.status?.toLowerCase().includes("forslag"));
 
   return (
     <motion.div
@@ -247,7 +261,11 @@ function ResultView({
         <MetricCard
           title="Bebyggelsesprocent"
           value={data.bebyggelsesprocent !== null ? `${data.bebyggelsesprocent}%` : "—"}
-          sub={data.bebygget_areal !== null ? `${data.bebygget_areal} m² bebygget` : "Ikke tilgængeligt"}
+          sub={
+            data.bebygget_areal !== null
+              ? `${data.bebygget_areal} m² bebygget`
+              : "Ikke tilgængeligt"
+          }
           bar={data.bebyggelsesprocent !== null ? data.bebyggelsesprocent / 30 : undefined}
         />
         <MetricCard
@@ -267,9 +285,7 @@ function ResultView({
         <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
           AI VURDERING
         </div>
-        <p className="text-sm leading-relaxed text-foreground">
-          {genererVurdering(data, adresse)}
-        </p>
+        <p className="text-sm leading-relaxed text-foreground">{genererVurdering(data, adresse)}</p>
       </Card>
 
       {/* Lokalplan-sektion */}
@@ -283,7 +299,8 @@ function ResultView({
               <div key={lp.planid} className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-sm text-foreground font-medium truncate">
-                    {lp.plannr ? `${lp.plannr} – ` : ""}{lp.plannavn || "Ukendt lokalplan"}
+                    {lp.plannr ? `${lp.plannr} – ` : ""}
+                    {lp.plannavn || "Ukendt lokalplan"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {lp.datoVedtaget ? `Vedtaget ${lp.datoVedtaget.slice(0, 10)}` : "Vedtaget"}
@@ -306,8 +323,11 @@ function ResultView({
               <div key={lp.planid} className="flex items-start justify-between gap-3 opacity-70">
                 <div className="min-w-0">
                   <div className="text-sm text-foreground truncate">
-                    {lp.plannr ? `${lp.plannr} – ` : ""}{lp.plannavn || "Lokalplanforslag"}
-                    <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">FORSLAG</span>
+                    {lp.plannr ? `${lp.plannr} – ` : ""}
+                    {lp.plannavn || "Lokalplanforslag"}
+                    <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">
+                      FORSLAG
+                    </span>
                   </div>
                 </div>
                 {lp.plandokumentLink && (
@@ -328,8 +348,8 @@ function ResultView({
         <div className="flex gap-3 rounded-md border border-[#333]/60 bg-[#1A1A1A] p-4 mb-4">
           <Info size={18} className="text-muted-foreground shrink-0 mt-0.5" />
           <p className="text-sm text-muted-foreground">
-            Ingen lokalplan fundet for adressen – ejendommen er reguleret af kommuneplanen.
-            Kontakt din kommune for præcise byggeretlige grænser.
+            Ingen lokalplan fundet for adressen – ejendommen er reguleret af kommuneplanen. Kontakt
+            din kommune for præcise byggeretlige grænser.
           </p>
         </div>
       )}
@@ -355,9 +375,17 @@ function ResultView({
 }
 
 function MetricCard({
-  title, value, sub, subClass = "text-muted-foreground", bar,
+  title,
+  value,
+  sub,
+  subClass = "text-muted-foreground",
+  bar,
 }: {
-  title: string; value: string; sub: string; subClass?: string; bar?: number;
+  title: string;
+  value: string;
+  sub: string;
+  subClass?: string;
+  bar?: number;
 }) {
   return (
     <Card>
@@ -385,16 +413,24 @@ function genererVurdering(data: BbrKompliantData, adresse: string): string {
 
   const parts: string[] = [];
   if (data.bebyggelsesprocent !== null && data.grundareal !== null) {
-    parts.push(`Nuværende bebyggelsesprocent er ${data.bebyggelsesprocent}% på en grund af ${data.grundareal} m².`);
+    parts.push(
+      `Nuværende bebyggelsesprocent er ${data.bebyggelsesprocent}% på en grund af ${data.grundareal} m².`,
+    );
   }
   if (data.bebygget_areal !== null) {
     parts.push(`Det bebyggede areal udgør ${data.bebygget_areal} m².`);
   }
   if (data.antal_etager !== null) {
-    parts.push(data.antal_etager <= 1 ? "Eksisterende bebyggelse er i ét plan." : `Bygningen har ${data.antal_etager} etager.`);
+    parts.push(
+      data.antal_etager <= 1
+        ? "Eksisterende bebyggelse er i ét plan."
+        : `Bygningen har ${data.antal_etager} etager.`,
+    );
   }
-  if (data.anvendelseskode && ["321","322"].includes(data.anvendelseskode)) {
-    parts.push("Ejendommen er registreret til liberalt erhverv, hvilket muliggør en kombineret bolig/klinik-løsning.");
+  if (data.anvendelseskode && ["321", "322"].includes(data.anvendelseskode)) {
+    parts.push(
+      "Ejendommen er registreret til liberalt erhverv, hvilket muliggør en kombineret bolig/klinik-løsning.",
+    );
   }
 
   return parts.length > 0

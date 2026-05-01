@@ -62,9 +62,7 @@ function Welcome() {
           >
             Start dit projekt →
           </Link>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Gratis at prøve. Ingen kreditkort.
-          </p>
+          <p className="mt-4 text-xs text-muted-foreground">Gratis at prøve. Ingen kreditkort.</p>
         </motion.div>
 
         {/* Fase-oversigt */}
@@ -82,9 +80,7 @@ function Welcome() {
                 <div className="font-mono text-[10px] tracking-[0.15em] text-foreground uppercase">
                   {p.label}
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground leading-tight">
-                  {p.desc}
-                </div>
+                <div className="mt-1 text-xs text-muted-foreground leading-tight">{p.desc}</div>
               </motion.div>
             ))}
           </div>

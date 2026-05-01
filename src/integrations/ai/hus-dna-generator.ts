@@ -16,7 +16,7 @@ const IS_MOCK = false;
 // Input / Output typer
 // ---------------------------------------------------------------------------
 
-import type { HusDna } from '@/lib/project-store';
+import type { HusDna } from "@/lib/project-store";
 
 export type HusDnaInput = {
   fritekst: string;
@@ -38,7 +38,7 @@ const MOCK_RESULT: HusDnaResult = {
   energiklasse: "A2020",
   saerligeKrav: ["hjemmekontor", "sydvendt terrasse", "dobbelthøjt rum"],
   confidence: 87,
-  kilde: 'mock',
+  kilde: "mock",
 };
 
 // ---------------------------------------------------------------------------
@@ -46,8 +46,8 @@ const MOCK_RESULT: HusDnaResult = {
 // ---------------------------------------------------------------------------
 
 const SYSTEM_PROMPT =
-  'Du er en dansk arkitekt der analyserer byggeønsker og returnerer struktureret JSON. ' +
-  'Svar KUN med raw JSON — ingen markdown, ingen forklaring, ingen kodeblokke.';
+  "Du er en dansk arkitekt der analyserer byggeønsker og returnerer struktureret JSON. " +
+  "Svar KUN med raw JSON — ingen markdown, ingen forklaring, ingen kodeblokke.";
 
 const USER_PROMPT = `
 Analyser de vedlagte inspirationsbilleder og/eller beskrivelsen og returnér dette JSON-objekt:
@@ -79,16 +79,16 @@ export class HusDnaGeneratorService {
       return { ...MOCK_RESULT };
     }
 
-    const apiKey = (process as any)?.env?.ANTHROPIC_API_KEY ?? '';
+    const apiKey = (process as any)?.env?.ANTHROPIC_API_KEY ?? "";
     if (!apiKey) {
-      console.warn('[HusDna] ANTHROPIC_API_KEY mangler — returnerer mock');
+      console.warn("[HusDna] ANTHROPIC_API_KEY mangler — returnerer mock");
       return { ...MOCK_RESULT };
     }
 
     try {
       return await callAnthropic(apiKey, input);
     } catch (e) {
-      console.warn('[HusDna] Anthropic-kald fejlede — returnerer mock:', (e as Error).message);
+      console.warn("[HusDna] Anthropic-kald fejlede — returnerer mock:", (e as Error).message);
       return { ...MOCK_RESULT };
     }
   }
@@ -107,9 +107,9 @@ async function callAnthropic(apiKey: string, input: HusDnaInput): Promise<HusDna
       const imgRes = await fetch(url);
       if (!imgRes.ok) continue;
       const buf = await imgRes.arrayBuffer();
-      const b64 = Buffer.from(buf).toString('base64');
-      const ct = imgRes.headers.get('content-type') ?? 'image/jpeg';
-      content.push({ type: 'image', source: { type: 'base64', media_type: ct, data: b64 } });
+      const b64 = Buffer.from(buf).toString("base64");
+      const ct = imgRes.headers.get("content-type") ?? "image/jpeg";
+      content.push({ type: "image", source: { type: "base64", media_type: ct, data: b64 } });
     } catch {
       // Spring over — et enkelt billede der fejler stopper ikke generering
     }
@@ -118,20 +118,20 @@ async function callAnthropic(apiKey: string, input: HusDnaInput): Promise<HusDna
   const userText = input.fritekst
     ? `Brugerens beskrivelse: ${input.fritekst}\n\n${USER_PROMPT}`
     : USER_PROMPT;
-  content.push({ type: 'text', text: userText });
+  content.push({ type: "text", text: userText });
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: "claude-sonnet-4-6",
       max_tokens: 512,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content }],
+      messages: [{ role: "user", content }],
     }),
   });
 
@@ -140,21 +140,25 @@ async function callAnthropic(apiKey: string, input: HusDnaInput): Promise<HusDna
     throw new Error(`Anthropic API ${res.status}: ${body.slice(0, 200)}`);
   }
 
-  const json = await res.json() as any;
-  const raw: string = json?.content?.[0]?.text ?? '{}';
+  const json = (await res.json()) as any;
+  const raw: string = json?.content?.[0]?.text ?? "{}";
 
   // Strip evt. markdown code fence (```json ... ```)
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
 
   const parsed = JSON.parse(cleaned);
   return {
-    stil: parsed.stil ?? 'Ukendt stil',
-    bruttoareal: parsed.bruttoareal ?? '—',
-    etager: parsed.etager ?? '—',
-    tagform: parsed.tagform ?? '—',
-    energiklasse: parsed.energiklasse ?? 'A2020',
+    stil: parsed.stil ?? "Ukendt stil",
+    bruttoareal: parsed.bruttoareal ?? "—",
+    etager: parsed.etager ?? "—",
+    tagform: parsed.tagform ?? "—",
+    energiklasse: parsed.energiklasse ?? "A2020",
     saerligeKrav: Array.isArray(parsed.saerligeKrav) ? parsed.saerligeKrav : [],
-    confidence: typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, parsed.confidence)) : 70,
-    kilde: 'anthropic',
+    confidence:
+      typeof parsed.confidence === "number" ? Math.min(100, Math.max(0, parsed.confidence)) : 70,
+    kilde: "anthropic",
   };
 }

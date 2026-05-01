@@ -10,17 +10,17 @@
 //   report               → 30 days  (matches compliance_result lifetime)
 //   Special: if lokalplan_pdf_url changes, lokalplan cache is busted regardless of age
 
-import { supabaseAdmin } from '@/integrations/supabase/client.server';
-import type { Json } from '@/integrations/supabase/types';
-import type { ComplianceResult } from '@/lib/analysis-orchestrator';
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
+import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 
 const DAYS_MS = (n: number) => n * 24 * 60 * 60 * 1000;
 
 const TTL = {
-  lokalplan:  DAYS_MS(30),
-  servitut:   DAYS_MS(7),
+  lokalplan: DAYS_MS(30),
+  servitut: DAYS_MS(7),
   compliance: DAYS_MS(30),
-  report:     DAYS_MS(30),
+  report: DAYS_MS(30),
 };
 
 function isFresh(timestamp: string | null, ttlMs: number): boolean {
@@ -34,19 +34,16 @@ function isFresh(timestamp: string | null, ttlMs: number): boolean {
 
 async function upsert(addressId: string, patch: Record<string, unknown>): Promise<void> {
   const { error } = await supabaseAdmin
-    .from('address_analysis')
-    .upsert(
-      { address_id: addressId, ...patch },
-      { onConflict: 'address_id' }
-    );
+    .from("address_analysis")
+    .upsert({ address_id: addressId, ...patch }, { onConflict: "address_id" });
   if (error) throw new Error(`[Cache] upsert fejlede for ${addressId}: ${error.message}`);
 }
 
 async function getRow(addressId: string) {
   const { data, error } = await supabaseAdmin
-    .from('address_analysis')
-    .select('*')
-    .eq('address_id', addressId)
+    .from("address_analysis")
+    .select("*")
+    .eq("address_id", addressId)
     .maybeSingle();
   if (error) throw new Error(`[Cache] select fejlede for ${addressId}: ${error.message}`);
   return data ?? null;
@@ -58,7 +55,7 @@ async function getRow(addressId: string) {
 
 export async function getCachedLokalplan(
   addressId: string,
-  currentPdfUrl?: string
+  currentPdfUrl?: string,
 ): Promise<Json | null> {
   const row = await getRow(addressId);
   if (!row) return null;
@@ -71,7 +68,7 @@ export async function getCachedLokalplan(
 export async function setCachedLokalplan(
   addressId: string,
   pdfUrl: string,
-  result: Json
+  result: Json,
 ): Promise<void> {
   await upsert(addressId, {
     lokalplan_extracted: result,
@@ -111,7 +108,7 @@ export async function getCachedCompliance(addressId: string): Promise<Compliance
 
 export async function setCachedCompliance(
   addressId: string,
-  result: ComplianceResult
+  result: ComplianceResult,
 ): Promise<void> {
   await upsert(addressId, {
     compliance_result: result as unknown as Json,

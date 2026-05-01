@@ -62,14 +62,24 @@ function DescriptionStep() {
                 </div>
               </Field>
               <Field label="Antal etager">
-                <select value={floors} onChange={(e) => setFloors(e.target.value)} className={inputCls}>
+                <select
+                  value={floors}
+                  onChange={(e) => setFloors(e.target.value)}
+                  className={inputCls}
+                >
                   {["1", "1.5", "2", "2.5", "3"].map((v) => (
-                    <option key={v} value={v}>{v}</option>
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
                   ))}
                 </select>
               </Field>
               <Field label="Budget">
-                <select value={budget} onChange={(e) => setBudget(e.target.value)} className={inputCls}>
+                <select
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className={inputCls}
+                >
                   <option value="<3M">Under 3M</option>
                   <option value="3-5M">3-5M kr.</option>
                   <option value="5-8M">5-8M kr.</option>
@@ -77,7 +87,11 @@ function DescriptionStep() {
                 </select>
               </Field>
               <Field label="Tidshorisont">
-                <select value={timeline} onChange={(e) => setTimeline(e.target.value)} className={inputCls}>
+                <select
+                  value={timeline}
+                  onChange={(e) => setTimeline(e.target.value)}
+                  className={inputCls}
+                >
                   <option value="<1">Under 1 år</option>
                   <option value="1-2">1-2 år</option>
                   <option value="flex">Fleksibel</option>
@@ -124,7 +138,10 @@ function DescriptionStep() {
             {images.length > 0 && (
               <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {images.map((src, i) => (
-                  <div key={i} className="relative group aspect-[3/2] rounded-md overflow-hidden border border-border">
+                  <div
+                    key={i}
+                    className="relative group aspect-[3/2] rounded-md overflow-hidden border border-border"
+                  >
                     <img src={src} alt="" className="h-full w-full object-cover" />
                     <button
                       onClick={() => setImages(images.filter((_, j) => j !== i))}

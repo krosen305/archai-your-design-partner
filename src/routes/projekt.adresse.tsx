@@ -105,11 +105,11 @@ function AddressStep() {
       };
       setSelected(fullAddress);
       setAddress(fullAddress);
-      syncPatch({ address: fullAddress, currentStep: 'hus-dna' });
+      syncPatch({ address: fullAddress, currentStep: "hus-dna" });
     } catch (err) {
       console.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
       // Behold immediateAddress – vi har stadig adgangsadresseid til BBR
-      syncPatch({ address: immediateAddress, currentStep: 'hus-dna' });
+      syncPatch({ address: immediateAddress, currentStep: "hus-dna" });
     }
   }
 
@@ -152,15 +152,9 @@ function AddressStep() {
                 showDropdown ? "" : "hidden"
               }`}
             >
-              {loading && (
-                <div className="px-4 py-3 text-xs text-muted-foreground">
-                  Søger...
-                </div>
-              )}
+              {loading && <div className="px-4 py-3 text-xs text-muted-foreground">Søger...</div>}
               {!loading && error && (
-                <div className="px-4 py-3 text-xs text-muted-foreground">
-                  {error}
-                </div>
+                <div className="px-4 py-3 text-xs text-muted-foreground">{error}</div>
               )}
               {!loading && !error && suggestions.length === 0 && (
                 <div className="px-4 py-3 text-xs text-muted-foreground">
@@ -179,9 +173,7 @@ function AddressStep() {
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-[#222222] transition-colors border-b border-border last:border-b-0"
                   >
-                    <div className="text-sm text-foreground font-medium">
-                      {s.tekst}
-                    </div>
+                    <div className="text-sm text-foreground font-medium">{s.tekst}</div>
                     {s.postnrnavn && (
                       <div className="text-xs text-muted-foreground italic mt-0.5">
                         {s.postnrnavn} · {s.kommunekode}
@@ -195,21 +187,13 @@ function AddressStep() {
           {/* Chips efter valg */}
           {selected && (
             <div className="mt-5 flex flex-wrap gap-2">
-              <DataChip
-                label="Matrikel"
-                value={selected.matrikel ?? "—"}
-                testId="chip-matrikel"
-              />
+              <DataChip label="Matrikel" value={selected.matrikel ?? "—"} testId="chip-matrikel" />
               <DataChip
                 label="Kommune"
                 value={selected.kommune || selected.kommunekode || "—"}
                 testId="chip-kommune"
               />
-              <DataChip
-                label="Postnr"
-                value={selected.postnr || "—"}
-                testId="chip-postnr"
-              />
+              <DataChip label="Postnr" value={selected.postnr || "—"} testId="chip-postnr" />
               <DataChip
                 label="BBR"
                 value={selected.adgangsadresseid ? "Klar ✓" : "Ikke fundet"}
@@ -231,15 +215,7 @@ function AddressStep() {
   );
 }
 
-function DataChip({
-  label,
-  value,
-  testId,
-}: {
-  label: string;
-  value: string;
-  testId?: string;
-}) {
+function DataChip({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
     <div
       data-testid={testId}

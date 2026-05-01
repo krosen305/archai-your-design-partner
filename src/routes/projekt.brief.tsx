@@ -45,9 +45,7 @@ function BriefStep() {
 
         {!done ? (
           <div>
-            <h1 className="font-mono text-[28px] mb-6">
-              AI genererer dit design brief...
-            </h1>
+            <h1 className="font-mono text-[28px] mb-6">AI genererer dit design brief...</h1>
             <Card>
               <div className="font-mono text-sm text-muted-foreground typing-caret leading-relaxed">
                 {typed}
@@ -94,7 +92,11 @@ function Result({ onRestart }: { onRestart: () => void }) {
             ))}
           </div>
         </BriefCard>
-        <BriefCard title="LYSINDFALD" value="Syd/vest prioritet" sub="Stue og køkken mod syd. Soveværelser øst." />
+        <BriefCard
+          title="LYSINDFALD"
+          value="Syd/vest prioritet"
+          sub="Stue og køkken mod syd. Soveværelser øst."
+        />
         <BriefCard
           title="KONSTRUKTION"
           value="2-etagers betonramme"
@@ -107,16 +109,15 @@ function Result({ onRestart }: { onRestart: () => void }) {
           AI ANALYSE
         </div>
         <p className="text-sm leading-relaxed text-foreground">
-          Baseret på din beskrivelse og inspirationsbilleder anbefaler vi en
-          nordisk brutalistisk tilgang med klare geometriske former og en stærk
-          forbindelse til haven. De store glaspartier du efterspørger
-          kombineres bedst med en massiv betonkerne der sikrer termisk masse og
-          lydkomfort.
+          Baseret på din beskrivelse og inspirationsbilleder anbefaler vi en nordisk brutalistisk
+          tilgang med klare geometriske former og en stærk forbindelse til haven. De store
+          glaspartier du efterspørger kombineres bedst med en massiv betonkerne der sikrer termisk
+          masse og lydkomfort.
         </p>
         <p className="text-sm leading-relaxed text-foreground mt-3">
-          Til en fodklinik-funktion anbefales en separat indgang mod nord med
-          direkte adgang fra indkørslen. Dette løser også zonering-kravene i
-          lokalplanen uden at kompromittere boligens private karakter.
+          Til en fodklinik-funktion anbefales en separat indgang mod nord med direkte adgang fra
+          indkørslen. Dette løser også zonering-kravene i lokalplanen uden at kompromittere boligens
+          private karakter.
         </p>
       </Card>
 

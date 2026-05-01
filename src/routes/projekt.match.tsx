@@ -115,8 +115,8 @@ function MatchStep() {
                     rowStatus === "ok"
                       ? "border-l-success"
                       : rowStatus === "warn"
-                      ? "border-l-warning"
-                      : "border-l-danger"
+                        ? "border-l-warning"
+                        : "border-l-danger"
                   }`}
                 >
                   <StatusIcon status={rowStatus} />
@@ -138,7 +138,7 @@ function MatchStep() {
           </ul>
         </Card>
 
-        {lokalplanExtract && lokalplanExtract.kilde === 'anthropic' && (
+        {lokalplanExtract && lokalplanExtract.kilde === "anthropic" && (
           <Card className="mb-6">
             <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
               LOKALPLAN REGLER (AI-UDTRÆK)
@@ -153,25 +153,33 @@ function MatchStep() {
               {lokalplanExtract.maxBebyggelsespct !== null && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Max bebyggelsesprocent</dt>
-                  <dd className="font-mono text-foreground">{lokalplanExtract.maxBebyggelsespct}%</dd>
+                  <dd className="font-mono text-foreground">
+                    {lokalplanExtract.maxBebyggelsespct}%
+                  </dd>
                 </div>
               )}
               {lokalplanExtract.tagform && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Tagform</dt>
-                  <dd className="font-mono text-foreground text-right">{lokalplanExtract.tagform}</dd>
+                  <dd className="font-mono text-foreground text-right">
+                    {lokalplanExtract.tagform}
+                  </dd>
                 </div>
               )}
               {lokalplanExtract.byggelinjer && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Byggelinjer</dt>
-                  <dd className="font-mono text-foreground text-right">{lokalplanExtract.byggelinjer}</dd>
+                  <dd className="font-mono text-foreground text-right">
+                    {lokalplanExtract.byggelinjer}
+                  </dd>
                 </div>
               )}
               {lokalplanExtract.materialer.length > 0 && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Materialer</dt>
-                  <dd className="font-mono text-foreground text-right">{lokalplanExtract.materialer.join(', ')}</dd>
+                  <dd className="font-mono text-foreground text-right">
+                    {lokalplanExtract.materialer.join(", ")}
+                  </dd>
                 </div>
               )}
               {lokalplanExtract.specialBestemmelser.length > 0 && (
@@ -179,7 +187,9 @@ function MatchStep() {
                   <dt className="text-muted-foreground mb-1">Særlige bestemmelser</dt>
                   <ul className="space-y-1">
                     {lokalplanExtract.specialBestemmelser.map((b, i) => (
-                      <li key={i} className="text-foreground text-xs leading-relaxed">· {b}</li>
+                      <li key={i} className="text-foreground text-xs leading-relaxed">
+                        · {b}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -197,8 +207,8 @@ function MatchStep() {
               {blockers > 0
                 ? "Projektet har kritiske konflikter med gældende plangrundlag. Vi anbefaler dialog med kommunen inden videre projektering."
                 : warnings > 0
-                ? "Projektet er tæt på plangrænser. Overvej justeringer inden detailprojektering — særligt de markerede punkter."
-                : "Adressen har god luft til de gældende planrammer. Ingen umiddelbare konflikter registreret."}
+                  ? "Projektet er tæt på plangrænser. Overvej justeringer inden detailprojektering — særligt de markerede punkter."
+                  : "Adressen har god luft til de gældende planrammer. Ingen umiddelbare konflikter registreret."}
             </p>
             <p className="mt-3 text-[10px] text-muted-foreground">
               AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
@@ -269,10 +279,12 @@ function Badge({ status, text }: { status: RowStatus; text: string }) {
     status === "ok"
       ? "border-success/40 text-success bg-success/5"
       : status === "warn"
-      ? "border-warning/40 text-warning bg-warning/5"
-      : "border-danger/40 text-danger bg-danger/5";
+        ? "border-warning/40 text-warning bg-warning/5"
+        : "border-danger/40 text-danger bg-danger/5";
   return (
-    <span className={`shrink-0 font-mono text-[10px] tracking-wider rounded border px-1.5 py-0.5 ${cls}`}>
+    <span
+      className={`shrink-0 font-mono text-[10px] tracking-wider rounded border px-1.5 py-0.5 ${cls}`}
+    >
       {text}
     </span>
   );

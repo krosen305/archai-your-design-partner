@@ -30,23 +30,13 @@ export function StepHeader({
       <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
         TRIN {step} AF {total}
       </div>
-      <h1 className="text-[28px] leading-tight font-mono text-foreground">
-        {title}
-      </h1>
-      {subtitle && (
-        <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
-      )}
+      <h1 className="text-[28px] leading-tight font-mono text-foreground">{title}</h1>
+      {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }
 
-export function Card({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={[

@@ -21,9 +21,7 @@ export function PhaseBar() {
               }
             }}
           />
-          {i < PHASES.length - 1 && (
-            <span className="text-[10px] text-[#444]">→</span>
-          )}
+          {i < PHASES.length - 1 && <span className="text-[10px] text-[#444]">→</span>}
         </div>
       ))}
     </div>
@@ -75,7 +73,9 @@ function PhaseChip({
       className={`${base} ${cls}`}
     >
       {icon}
-      <span>FASE {id}: {label}</span>
+      <span>
+        FASE {id}: {label}
+      </span>
     </button>
   );
 }
@@ -104,10 +104,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-6 gap-4">
-        <Link
-          to="/"
-          className="font-mono text-sm tracking-[0.2em] text-accent shrink-0"
-        >
+        <Link to="/" className="font-mono text-sm tracking-[0.2em] text-accent shrink-0">
           ARCHAI
         </Link>
         <div className="flex-1 flex justify-center min-w-0">

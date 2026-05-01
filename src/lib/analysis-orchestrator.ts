@@ -12,13 +12,13 @@
 //   servitut_extracted  ⏳  IS_MOCK=true — ARCH-26 (live Tinglysning API ikke implementeret)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
-import { validateEnv } from '@/lib/env';
+import { validateEnv } from "@/lib/env";
 validateEnv();
 
-import type { BbrKompliantData } from '@/integrations/bbr/client';
-import type { Lokalplan, Kommuneplanramme } from '@/integrations/plandata/client';
-import type { LokalplanExtract } from '@/integrations/ai/pdf-extractor';
-import type { Json } from '@/integrations/supabase/types';
+import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
+import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
+import type { Json } from "@/integrations/supabase/types";
 import {
   getCachedCompliance,
   setCachedCompliance,
@@ -26,7 +26,7 @@ import {
   setCachedLokalplan,
   getCachedServitut,
   setCachedServitut,
-} from '@/integrations/cache/client';
+} from "@/integrations/cache/client";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -45,9 +45,9 @@ export type ComplianceResult = {
 // ---------------------------------------------------------------------------
 
 export type AnalysisInput = {
-  addressId: string;             // DAWA adresseid — used as cache key
-  adgangsadresseid: string;      // for BBR lookup
-  ejerlavskode: number | null;   // for MAT (grundareal)
+  addressId: string; // DAWA adresseid — used as cache key
+  adgangsadresseid: string; // for BBR lookup
+  ejerlavskode: number | null; // for MAT (grundareal)
   matrikelnummer: string | null; // for MAT (grundareal)
   koordinater: { lat: number; lng: number } | null; // for Plandata
 };
@@ -60,13 +60,16 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   const { addressId, adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = input;
 
   // ── Layer 1: compliance_result (BBR + MAT + Plandata) ──────────────────
-  type ComplianceBase = Omit<ComplianceResult, 'lokalplanExtract'>;
+  type ComplianceBase = Omit<ComplianceResult, "lokalplanExtract">;
   let complianceBase: ComplianceBase | null = null;
   try {
     const cached = await getCachedCompliance(addressId);
     if (cached) complianceBase = cached;
   } catch (e) {
-    console.warn('[Orchestrator] cache-læsning fejlede (behandles som cache-miss):', (e as Error).message);
+    console.warn(
+      "[Orchestrator] cache-læsning fejlede (behandles som cache-miss):",
+      (e as Error).message,
+    );
   }
 
   if (!complianceBase) {
@@ -83,7 +86,10 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     try {
       await setCachedCompliance(addressId, { ...complianceBase, lokalplanExtract: null });
     } catch (e) {
-      console.warn('[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):', (e as Error).message);
+      console.warn(
+        "[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):",
+        (e as Error).message,
+      );
     }
   }
 
@@ -95,25 +101,25 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     if (cached) {
       lokalplanExtract = cached as unknown as LokalplanExtract;
     } else if (primaryPdfUrl) {
-      const { PdfExtractorService } = await import('@/integrations/ai/pdf-extractor');
+      const { PdfExtractorService } = await import("@/integrations/ai/pdf-extractor");
       const extract = await PdfExtractorService.extractLokalplan(primaryPdfUrl);
       await setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as Json);
       lokalplanExtract = extract;
     }
   } catch (e) {
-    console.warn('[Orchestrator] lokalplan PDF-udtræk fejlede:', (e as Error).message);
+    console.warn("[Orchestrator] lokalplan PDF-udtræk fejlede:", (e as Error).message);
   }
 
   // ── Layer 3: servitut_extracted (IS_MOCK=true) ──────────────────────────
   try {
     const cachedServitut = await getCachedServitut(addressId);
     if (!cachedServitut) {
-      const { TinglysningService } = await import('@/integrations/tinglysning/client');
+      const { TinglysningService } = await import("@/integrations/tinglysning/client");
       const servitutter = await TinglysningService.getServitutter(addressId);
       await setCachedServitut(addressId, servitutter as unknown as Json);
     }
   } catch (e) {
-    console.warn('[Orchestrator] servitut-udtræk fejlede:', (e as Error).message);
+    console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
   }
 
   return { ...complianceBase, lokalplanExtract };
@@ -126,40 +132,38 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
 async function fetchBbr(
   adgangsadresseid: string,
   ejerlavskode: number | null,
-  matrikelnummer: string | null
+  matrikelnummer: string | null,
 ): Promise<BbrKompliantData | null> {
   try {
     let grundareal: number | null = null;
     if (ejerlavskode && matrikelnummer) {
-      const { MatService } = await import('@/integrations/mat/client');
+      const { MatService } = await import("@/integrations/mat/client");
       const mat = await MatService.getGrundareal(ejerlavskode, matrikelnummer);
       grundareal = mat.registreretAreal;
     }
-    const { BbrService } = await import('@/integrations/bbr/client');
+    const { BbrService } = await import("@/integrations/bbr/client");
     return BbrService.getKompliantData(adgangsadresseid, grundareal);
   } catch (e) {
-    console.error('[Orchestrator] BBR fejlede:', (e as Error).message);
+    console.error("[Orchestrator] BBR fejlede:", (e as Error).message);
     return null;
   }
 }
 
 async function fetchPlandata(
-  koordinater: { lat: number; lng: number } | null
+  koordinater: { lat: number; lng: number } | null,
 ): Promise<{ lokalplaner: Lokalplan[]; kommuneplanramme: Kommuneplanramme | null }> {
   if (!koordinater) return { lokalplaner: [], kommuneplanramme: null };
 
-  const { PlandataService } = await import('@/integrations/plandata/client');
+  const { PlandataService } = await import("@/integrations/plandata/client");
 
   const [lokalplanerResult, kommuneplanrammeResult] = await Promise.all([
-    PlandataService.getLokalplanerForKoordinat(
-      koordinater.lng,
-      koordinater.lat,
-      true
-    ).catch(() => ({ lokalplaner: [], fejl: null, rawCount: 0 })),
-    PlandataService.getKommuneplanrammeForKoordinat(
-      koordinater.lng,
-      koordinater.lat
-    ).catch(() => ({ ramme: null, fejl: null })),
+    PlandataService.getLokalplanerForKoordinat(koordinater.lng, koordinater.lat, true).catch(
+      () => ({ lokalplaner: [], fejl: null, rawCount: 0 }),
+    ),
+    PlandataService.getKommuneplanrammeForKoordinat(koordinater.lng, koordinater.lat).catch(() => ({
+      ramme: null,
+      fejl: null,
+    })),
   ]);
 
   return {

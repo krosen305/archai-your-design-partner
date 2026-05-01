@@ -32,20 +32,17 @@ type DarClientConfig = {
 };
 
 function getConfig(explicit?: DarClientConfig) {
-  const apiKey =
-    explicit?.apiKey ??
-    (process as any)?.env?.DATAFORDELER_API_KEY ??
-    '';
+  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
 
   const endpoint =
     explicit?.endpoint ??
     (process as any)?.env?.DATAFORDELER_DAR_ENDPOINT ??
-    'https://graphql.datafordeler.dk/DAR/v1';
+    "https://graphql.datafordeler.dk/DAR/v1";
 
   if (!apiKey) {
     throw new Error(
-      'DAR GraphQL: Manglende DATAFORDELER_API_KEY. ' +
-      'Sæt denne som environment variable (uden VITE_ prefix).'
+      "DAR GraphQL: Manglende DATAFORDELER_API_KEY. " +
+        "Sæt denne som environment variable (uden VITE_ prefix).",
     );
   }
 
@@ -63,8 +60,8 @@ export type DarAddressDetails = {
   adresse: string;
   postnr: string;
   postnrnavn: string;
-  kommunekode: string;   // tom string – kommuneinddeling FK er ikke en kode
-  kommunenavn: string;   // tom string – kræver register udenfor DAR
+  kommunekode: string; // tom string – kommuneinddeling FK er ikke en kode
+  kommunenavn: string; // tom string – kræver register udenfor DAR
   matrikel: string | null;
   adgangsadresseid: string;
   koordinater: { lat: number; lng: number };
@@ -226,11 +223,16 @@ function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: n
   const lat =
     phi1 -
     ((N1 * tanPhi1) / R1) *
-      (
-        (D * D) / 2 -
+      ((D * D) / 2 -
         ((5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * e2) * D * D * D * D) / 24 +
-        ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * e2 - 3 * C1 * C1) * D * D * D * D * D * D) / 720
-      );
+        ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * e2 - 3 * C1 * C1) *
+          D *
+          D *
+          D *
+          D *
+          D *
+          D) /
+          720);
 
   const lon =
     lon0 +
@@ -249,14 +251,10 @@ function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: n
 // Hjælpefunktion: GraphQL-kald mod Datafordeler
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(
-  url: URL,
-  query: string,
-  variables: Record<string, unknown>
-): Promise<any> {
+async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
   const response = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
   });
 
@@ -268,7 +266,7 @@ async function gqlFetch(
 
   const parsed = JSON.parse(bodyText);
   if (parsed.errors?.length) {
-    console.error('[DAR] GraphQL-fejl:', parsed.errors);
+    console.error("[DAR] GraphQL-fejl:", parsed.errors);
     throw new Error(parsed.errors[0].message);
   }
 
@@ -281,10 +279,9 @@ async function gqlFetch(
 
 function getMatUrl(apiKey: string): URL {
   const matEndpoint =
-    (process as any)?.env?.DATAFORDELER_MAT_ENDPOINT ??
-    'https://graphql.datafordeler.dk/MAT/v2';
+    (process as any)?.env?.DATAFORDELER_MAT_ENDPOINT ?? "https://graphql.datafordeler.dk/MAT/v2";
   const url = new URL(matEndpoint);
-  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set("apiKey", apiKey);
   return url;
 }
 
@@ -306,14 +303,14 @@ export class DarService {
    */
   static async getAddressDetails(
     darAdresseLokalId: string,
-    config?: DarClientConfig
+    config?: DarClientConfig,
   ): Promise<DarAddressDetails> {
     const id = darAdresseLokalId.trim();
-    if (!id) throw new Error('DAR: darAdresseLokalId er påkrævet');
+    if (!id) throw new Error("DAR: darAdresseLokalId er påkrævet");
 
     const { apiKey, endpoint } = getConfig(config);
     const url = new URL(endpoint);
-    url.searchParams.set('apiKey', apiKey);
+    url.searchParams.set("apiKey", apiKey);
     const virkningstid = new Date().toISOString();
 
     // ── Kald 1: DAR_Adresse ─────────────────────────────────────────────────
@@ -323,7 +320,7 @@ export class DarService {
       throw new Error(`DAR_Adresse ikke fundet for id_lokalId: ${id}`);
     }
     const adresse = adresseNodes[0];
-    const husnummerFK: string = adresse.husnummer ?? '';
+    const husnummerFK: string = adresse.husnummer ?? "";
 
     // ── Kald 2: DAR_Husnummer ───────────────────────────────────────────────
     let husnummer: any = null;
@@ -335,9 +332,9 @@ export class DarService {
       husnummer = husnummerData?.DAR_Husnummer?.nodes?.[0] ?? null;
     }
 
-    const adgangspunktFK: string = husnummer?.adgangspunkt ?? '';
-    const postnummerFK: string = husnummer?.postnummer ?? '';
-    const jordstykkeFK: string = husnummer?.jordstykke ?? '';
+    const adgangspunktFK: string = husnummer?.adgangspunkt ?? "";
+    const postnummerFK: string = husnummer?.postnummer ?? "";
+    const jordstykkeFK: string = husnummer?.jordstykke ?? "";
     const matUrl = getMatUrl(apiKey);
 
     // ── Kald 3a + 3b + 3c: postnummer, adressepunkt og MAT_Jordstykke (parallelt) ─
@@ -349,18 +346,19 @@ export class DarService {
         ? gqlFetch(url, ADRESSEPUNKT_QUERY, { id: adgangspunktFK, virkningstid })
         : Promise.resolve(null),
       jordstykkeFK
-        ? gqlFetch(matUrl, MAT_JORDSTYKKE_QUERY, { id: jordstykkeFK, virkningstid })
-            .catch((e: Error) => {
-              console.warn('[DAR] MAT_Jordstykke opslag fejlede:', e.message);
+        ? gqlFetch(matUrl, MAT_JORDSTYKKE_QUERY, { id: jordstykkeFK, virkningstid }).catch(
+            (e: Error) => {
+              console.warn("[DAR] MAT_Jordstykke opslag fejlede:", e.message);
               return null;
-            })
+            },
+          )
         : Promise.resolve(null),
     ]);
 
     const postnummerNode = postnummerData?.DAR_Postnummer?.nodes?.[0] ?? null;
     const adressepunktNode = adressepunktData?.DAR_Adressepunkt?.nodes?.[0] ?? null;
     const jordstykkeNode = jordstykkeData?.MAT_Jordstykke?.nodes?.[0] ?? null;
-    const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? '';
+    const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
 
     // ── Kald 4: MAT_Ejerlav (afhænger af ejerlavLokalId fra kald 3c) ────────
@@ -373,7 +371,10 @@ export class DarService {
         });
         ejerlavskode = ejerlavData?.MAT_Ejerlav?.nodes?.[0]?.ejerlavskode ?? null;
       } catch (e) {
-        console.warn('[DAR] MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null:', (e as Error).message);
+        console.warn(
+          "[DAR] MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null:",
+          (e as Error).message,
+        );
       }
     }
 
@@ -385,11 +386,11 @@ export class DarService {
     }
 
     return {
-      adresse: adresse.adressebetegnelse ?? '',
-      postnr: postnummerNode?.postnr ?? '',
-      postnrnavn: postnummerNode?.navn ?? '',
-      kommunekode: '',
-      kommunenavn: '',
+      adresse: adresse.adressebetegnelse ?? "",
+      postnr: postnummerNode?.postnr ?? "",
+      postnrnavn: postnummerNode?.navn ?? "",
+      kommunekode: "",
+      kommunenavn: "",
       matrikel: matrikelnummer,
       adgangsadresseid: husnummerFK,
       koordinater,

@@ -8,7 +8,7 @@ import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 // ---------------------------------------------------------------------------
 
 export type Address = {
-  adresseid: string;           // DAR/DAWA UUID — cache key for address_analysis
+  adresseid: string; // DAR/DAWA UUID — cache key for address_analysis
   adresse: string;
   postnr: string;
   postnrnavn: string;
@@ -55,7 +55,7 @@ export type HusDna = {
   energiklasse: string;
   saerligeKrav: string[];
   confidence: number; // 0-100
-  kilde: 'mock' | 'anthropic';
+  kilde: "mock" | "anthropic";
 };
 
 // ---------------------------------------------------------------------------
@@ -112,10 +112,10 @@ type State = {
 
 const DEFAULT_PHASES: Record<PhaseName, PhaseStatus> = {
   "hus-dna": "active",
-  "match": "locked",
-  "finans": "locked",
-  "engineering": "locked",
-  "udbud": "locked",
+  match: "locked",
+  finans: "locked",
+  engineering: "locked",
+  udbud: "locked",
 };
 
 export const useProject = create<State>((set) => ({
@@ -136,8 +136,7 @@ export const useProject = create<State>((set) => ({
   setComplianceDone: (v) => set({ complianceDone: v }),
   setProject: (p) => set((s) => ({ project: { ...s.project, ...p } })),
   setBriefDone: (v) => set({ briefDone: v }),
-  setPhase: (phase, status) =>
-    set((s) => ({ phases: { ...s.phases, [phase]: status } })),
+  setPhase: (phase, status) => set((s) => ({ phases: { ...s.phases, [phase]: status } })),
   setHusDna: (husDna) => set({ husDna }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
@@ -166,10 +165,10 @@ export const useProject = create<State>((set) => ({
 
 export function isHusDna(v: unknown): v is HusDna {
   return (
-    typeof v === 'object' &&
+    typeof v === "object" &&
     v !== null &&
-    typeof (v as Record<string, unknown>).stil === 'string' &&
-    typeof (v as Record<string, unknown>).confidence === 'number'
+    typeof (v as Record<string, unknown>).stil === "string" &&
+    typeof (v as Record<string, unknown>).confidence === "number"
   );
 }
 
@@ -181,13 +180,15 @@ type ParsedComplianceData = {
 };
 
 export function parseComplianceData(v: unknown): ParsedComplianceData | null {
-  if (typeof v !== 'object' || v === null) return null;
+  if (typeof v !== "object" || v === null) return null;
   const o = v as Record<string, unknown>;
   return {
-    bbr:              (typeof o.bbr === 'object' ? o.bbr : null) as BbrKompliantData | null,
-    flags:            Array.isArray(o.flags) ? (o.flags as ComplianceFlag[]) : [],
-    lokalplaner:      Array.isArray(o.lokalplaner) ? (o.lokalplaner as Lokalplan[]) : [],
-    kommuneplanramme: (typeof o.kommuneplanramme === 'object' ? o.kommuneplanramme : null) as Kommuneplanramme | null,
+    bbr: (typeof o.bbr === "object" ? o.bbr : null) as BbrKompliantData | null,
+    flags: Array.isArray(o.flags) ? (o.flags as ComplianceFlag[]) : [],
+    lokalplaner: Array.isArray(o.lokalplaner) ? (o.lokalplaner as Lokalplan[]) : [],
+    kommuneplanramme: (typeof o.kommuneplanramme === "object"
+      ? o.kommuneplanramme
+      : null) as Kommuneplanramme | null,
   };
 }
 
@@ -197,7 +198,7 @@ export function parseComplianceData(v: unknown): ParsedComplianceData | null {
 
 export function deriveComplianceFlags(
   bbr: BbrKompliantData | null,
-  ramme: Kommuneplanramme | null
+  ramme: Kommuneplanramme | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
@@ -210,7 +211,8 @@ export function deriveComplianceFlags(
     flags.push({
       id: "bebyggelsesprocent",
       label: "Bebyggelsesprocent",
-      status: max === null ? "advarsel" : pct > max ? "blocker" : pct > max * 0.9 ? "advarsel" : "ok",
+      status:
+        max === null ? "advarsel" : pct > max ? "blocker" : pct > max * 0.9 ? "advarsel" : "ok",
       detalje: max === null ? "Ingen kommuneplanramme fundet" : null,
       aktuelVærdi: `${pct}%`,
       tilladt: max !== null ? `${max}%` : null,

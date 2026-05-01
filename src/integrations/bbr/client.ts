@@ -25,20 +25,17 @@ type BbrClientConfig = {
 };
 
 function getConfig(explicit?: BbrClientConfig) {
-  const apiKey =
-    explicit?.apiKey ??
-    (process as any)?.env?.DATAFORDELER_API_KEY ??
-    '';
+  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
 
   const endpoint =
     explicit?.endpoint ??
     (process as any)?.env?.DATAFORDELER_BBR_ENDPOINT ??
-    'https://graphql.datafordeler.dk/BBR/v2';
+    "https://graphql.datafordeler.dk/BBR/v2";
 
   if (!apiKey) {
     throw new Error(
-      'BBR GraphQL: Manglende DATAFORDELER_API_KEY. ' +
-      'Sæt denne som environment variable (uden VITE_ prefix).'
+      "BBR GraphQL: Manglende DATAFORDELER_API_KEY. " +
+        "Sæt denne som environment variable (uden VITE_ prefix).",
     );
   }
 
@@ -50,16 +47,16 @@ function getConfig(explicit?: BbrClientConfig) {
 // ---------------------------------------------------------------------------
 
 const ANVENDELSE_KODER: Record<string, string> = {
-  '110': 'Stuehus til landbrugsejendom',
-  '120': 'Fritliggende enfamilieshus',
-  '121': 'Sammenbygget enfamilieshus',
-  '122': 'Dobbelthus',
-  '130': 'Række-, kæde- eller dobbelthus',
-  '140': 'Etagebolig',
-  '510': 'Sommerhus',
-  '910': 'Garage',
-  '920': 'Carport',
-  '930': 'Udhus',
+  "110": "Stuehus til landbrugsejendom",
+  "120": "Fritliggende enfamilieshus",
+  "121": "Sammenbygget enfamilieshus",
+  "122": "Dobbelthus",
+  "130": "Række-, kæde- eller dobbelthus",
+  "140": "Etagebolig",
+  "510": "Sommerhus",
+  "910": "Garage",
+  "920": "Carport",
+  "930": "Udhus",
 };
 
 // ---------------------------------------------------------------------------
@@ -106,26 +103,22 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!) {
 // Hjælpefunktion: GraphQL-kald mod Datafordeler
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(
-  url: URL,
-  query: string,
-  variables: Record<string, unknown>
-): Promise<any> {
+async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
   const response = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
   });
 
   const bodyText = await response.text();
 
   if (!response.ok) {
-    const keyHint = url.searchParams.get('apiKey')?.slice(0, 4) ?? '?';
-    console.error('[BBR] HTTP-fejl:', {
+    const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
+    console.error("[BBR] HTTP-fejl:", {
       status: response.status,
       keyHint: `${keyHint}…`,
       body: bodyText.slice(0, 500),
-      wwwAuth: response.headers.get('www-authenticate') ?? '',
+      wwwAuth: response.headers.get("www-authenticate") ?? "",
     });
     throw new Error(`Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
   }
@@ -133,7 +126,7 @@ async function gqlFetch(
   const parsed = JSON.parse(bodyText);
 
   if (parsed.errors?.length) {
-    console.error('[BBR] GraphQL-fejl:', parsed.errors);
+    console.error("[BBR] GraphQL-fejl:", parsed.errors);
     throw new Error(parsed.errors[0].message);
   }
 
@@ -155,16 +148,16 @@ export class BbrService {
   static async getKompliantData(
     adgangsadresseid: string,
     grundareal: number | null = null,
-    config?: BbrClientConfig
+    config?: BbrClientConfig,
   ): Promise<BbrKompliantData> {
     const id = adgangsadresseid.trim();
     if (!id) {
-      return this.getEmptyData('adgangsadresseid er påkrævet');
+      return this.getEmptyData("adgangsadresseid er påkrævet");
     }
 
     const { apiKey, endpoint } = getConfig(config);
     const url = new URL(endpoint);
-    url.searchParams.set('apiKey', apiKey);
+    url.searchParams.set("apiKey", apiKey);
 
     try {
       const virkningstid = new Date().toISOString();
@@ -174,12 +167,11 @@ export class BbrService {
       const bygninger: any[] = data?.BBR_Bygning?.nodes ?? [];
       const primærBygning =
         bygninger.find(
-          (b: any) =>
-            !['910', '920', '930', '940'].includes(b.byg021BygningensAnvendelse)
+          (b: any) => !["910", "920", "930", "940"].includes(b.byg021BygningensAnvendelse),
         ) ?? bygninger[0];
 
       if (!primærBygning) {
-        return this.getEmptyData('Ingen bygning fundet på adressen');
+        return this.getEmptyData("Ingen bygning fundet på adressen");
       }
 
       // 2. Arealer
@@ -200,16 +192,16 @@ export class BbrService {
         samlet_areal,
         antal_etager: primærBygning.byg054AntalEtager ?? null,
         anvendelseskode: anv_kode,
-        anvendelse_tekst: anv_kode
-          ? ANVENDELSE_KODER[anv_kode] ?? `Kode ${anv_kode}`
-          : null,
+        anvendelse_tekst: anv_kode ? (ANVENDELSE_KODER[anv_kode] ?? `Kode ${anv_kode}`) : null,
         grundareal,
         bebyggelsesprocent,
         beregning_mulig: bebyggelsesprocent !== null,
-        fejl: grundareal ? null : 'Grundareal ikke tilgængeligt – bebyggelsesprocent kan ikke beregnes',
+        fejl: grundareal
+          ? null
+          : "Grundareal ikke tilgængeligt – bebyggelsesprocent kan ikke beregnes",
       };
     } catch (e) {
-      console.error('[BBR] Service fejl:', e);
+      console.error("[BBR] Service fejl:", e);
       return this.getEmptyData((e as Error).message);
     }
   }

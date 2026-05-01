@@ -29,20 +29,20 @@ Call log:
 
 ```yaml
 - generic [ref=e2]:
-  - banner [ref=e3]:
-    - generic [ref=e4]:
-      - link "ARCHAI" [ref=e5] [cursor=pointer]:
-        - /url: /
-      - generic [ref=e6]:
-        - button "Trin 1" [ref=e7] [cursor=pointer]
-        - button "Trin 2" [ref=e8] [cursor=pointer]
-        - button "Trin 3" [ref=e9]
-        - button "Trin 4" [disabled] [ref=e10]
-        - button "Trin 5" [disabled] [ref=e11]
-  - link "Tilbage" [ref=e15] [cursor=pointer]:
-    - /url: /projekt/adresse
-    - img [ref=e16]
-    - text: Tilbage
+    - banner [ref=e3]:
+        - generic [ref=e4]:
+            - link "ARCHAI" [ref=e5] [cursor=pointer]:
+                - /url: /
+            - generic [ref=e6]:
+                - button "Trin 1" [ref=e7] [cursor=pointer]
+                - button "Trin 2" [ref=e8] [cursor=pointer]
+                - button "Trin 3" [ref=e9]
+                - button "Trin 4" [disabled] [ref=e10]
+                - button "Trin 5" [disabled] [ref=e11]
+    - link "Tilbage" [ref=e15] [cursor=pointer]:
+        - /url: /projekt/adresse
+        - img [ref=e16]
+        - text: Tilbage
 ```
 
 # Test source
@@ -52,9 +52,9 @@ Call log:
   2  |  * tests/address-flow.spec.ts
   3  |  */
   4  | import { test, expect, type Page } from '@playwright/test';
-  5  | 
+  5  |
   6  | const TEST_ADRESSE = 'Hasselvej 48';
-  7  | 
+  7  |
   8  | async function mockBbr(page: Page) {
   9  |   await page.route('**/_server**', async (route) => {
   10 |     if (route.request().method() === 'POST') {
@@ -82,7 +82,7 @@ Call log:
   32 |     }
   33 |   });
   34 | }
-  35 | 
+  35 |
   36 | /**
   37 |  * Korrekt måde at interagere med React inputs i Playwright:
   38 |  * fill() trigger ikke altid onChange – brug click() + pressSequentially()
@@ -96,50 +96,50 @@ Call log:
   46 |   // Skriv tegn for tegn med lille forsinkelse så React events trigger korrekt
   47 |   await input.pressSequentially(tekst, { delay: 40 });
   48 | }
-  49 | 
+  49 |
   50 | async function vælgFørsteForslag(page: Page) {
   51 |   await expect(
   52 |     page.getByTestId('address-suggestion').first()
   53 |   ).toBeVisible({ timeout: 8_000 });
   54 |   await page.getByTestId('address-suggestion').first().click();
   55 | }
-  56 | 
+  56 |
   57 | // ---------------------------------------------------------------------------
-  58 | 
+  58 |
   59 | test('address flow: DAWA select + chips vises', async ({ page }) => {
   60 |   await mockBbr(page);
   61 |   await page.goto('/projekt/adresse');
-  62 | 
+  62 |
   63 |   await typeInAddressInput(page, TEST_ADRESSE);
   64 |   await vælgFørsteForslag(page);
-  65 | 
+  65 |
   66 |   // Chips der eksisterer i den nye route
   67 |   await expect(page.getByTestId('chip-matrikel')).toBeVisible({ timeout: 8_000 });
   68 |   await expect(page.getByTestId('chip-kommune')).toBeVisible();
   69 |   await expect(page.getByTestId('chip-bbr')).toBeVisible();
-  70 | 
+  70 |
   71 |   await expect(page.getByTestId('chip-matrikel')).toContainText(/Matrikel:\s*\S+/);
   72 |   await expect(page.getByTestId('chip-kommune')).toContainText(/Kommune:\s*\S+/);
   73 |   await expect(page.getByTestId('chip-bbr')).toContainText(/Klar/);
-  74 | 
+  74 |
   75 |   const knap = page.getByRole('button', { name: /Analysér adresse/ });
   76 |   await expect(knap).toBeEnabled();
   77 | });
-  78 | 
+  78 |
   79 | test('address flow: navigation til compliance virker', async ({ page }) => {
   80 |   await mockBbr(page);
   81 |   await page.goto('/projekt/adresse');
-  82 | 
+  82 |
   83 |   await typeInAddressInput(page, TEST_ADRESSE);
   84 |   await vælgFørsteForslag(page);
-  85 | 
+  85 |
   86 |   await expect(
   87 |     page.getByRole('button', { name: /Analysér adresse/ })
   88 |   ).toBeEnabled({ timeout: 8_000 });
-  89 | 
+  89 |
   90 |   await page.getByRole('button', { name: /Analysér adresse/ }).click();
   91 |   await expect(page).toHaveURL('/projekt/compliance');
-  92 | 
+  92 |
 > 93 |   await expect(page.getByText('BYGNING FUNDET')).toBeVisible({
      |                                                  ^ Error: expect(locator).toBeVisible() failed
   94 |     timeout: 10_000,

@@ -37,13 +37,13 @@ export type Lokalplan = {
   plannr: string | null;
   kommunenavn: string | null;
   komnr: number | null;
-  datoVedtaget: string | null;       // datovedt fra API (YYYYMMDD som tal)
-  datoIkraft: string | null;         // datoikraft fra API
-  plandokumentLink: string | null;   // doklink fra API
-  plantype: string | null;           // f.eks. "20.1"
-  status: string | null;             // "V" = vedtaget
-  anvgen: number | null;             // numerisk anvendelseskode
-  anvendelseGenerel: string | null;  // tekstbeskrivelse af anvendelse
+  datoVedtaget: string | null; // datovedt fra API (YYYYMMDD som tal)
+  datoIkraft: string | null; // datoikraft fra API
+  plandokumentLink: string | null; // doklink fra API
+  plantype: string | null; // f.eks. "20.1"
+  status: string | null; // "V" = vedtaget
+  anvgen: number | null; // numerisk anvendelseskode
+  anvendelseGenerel: string | null; // tekstbeskrivelse af anvendelse
 };
 
 export type Kommuneplanramme = {
@@ -52,14 +52,14 @@ export type Kommuneplanramme = {
   plannr: string | null;
   kommunenavn: string | null;
   komnr: number | null;
-  bebygpct: number | null;           // max bebyggelsesprocent
-  maxetager: number | null;          // max antal etager
-  maxbygnhjd: number | null;         // max bygningshøjde i meter
-  anvgen: number | null;             // numerisk anvendelseskode
-  anvendelseGenerel: string | null;  // tekstbeskrivelse af anvendelse
+  bebygpct: number | null; // max bebyggelsesprocent
+  maxetager: number | null; // max antal etager
+  maxbygnhjd: number | null; // max bygningshøjde i meter
+  anvgen: number | null; // numerisk anvendelseskode
+  anvendelseGenerel: string | null; // tekstbeskrivelse af anvendelse
   fremtidigzonestatus: string | null;
-  sforhold: string | null;           // særlige forhold / planbestemmelser (fritekst)
-  planstatus: string | null;         // "V" = vedtaget
+  sforhold: string | null; // særlige forhold / planbestemmelser (fritekst)
+  planstatus: string | null; // "V" = vedtaget
   datoIkraft: string | null;
   plandokumentLink: string | null;
 };
@@ -74,11 +74,11 @@ export type PlandataResult = {
 // Konstanter
 // ---------------------------------------------------------------------------
 
-const WFS_BASE = 'https://geoserver.plandata.dk/geoserver/wfs';
+const WFS_BASE = "https://geoserver.plandata.dk/geoserver/wfs";
 
-const LOKALPLAN_TYPE = 'pdk:theme_pdk_lokalplan_vedtaget';
-const LOKALPLAN_FORSLAG_TYPE = 'pdk:theme_pdk_lokalplan_forslag';
-const KOMMUNEPLANRAMME_TYPE = 'pdk:theme_pdk_kommuneplanramme_alle_vedtaget_v';
+const LOKALPLAN_TYPE = "pdk:theme_pdk_lokalplan_vedtaget";
+const LOKALPLAN_FORSLAG_TYPE = "pdk:theme_pdk_lokalplan_forslag";
+const KOMMUNEPLANRAMME_TYPE = "pdk:theme_pdk_kommuneplanramme_alle_vedtaget_v";
 
 // ---------------------------------------------------------------------------
 // Hjælpefunktion: byg WFS GetFeature URL
@@ -88,15 +88,15 @@ function buildWfsUrl(
   typeName: string,
   lngWgs84: number,
   latWgs84: number,
-  maxFeatures = 10
+  maxFeatures = 10,
 ): string {
   const params = new URLSearchParams({
-    servicename: 'wfs',
-    service: 'WFS',
-    version: '1.1.0',
-    request: 'GetFeature',
+    servicename: "wfs",
+    service: "WFS",
+    version: "1.1.0",
+    request: "GetFeature",
     typeName,
-    outputFormat: 'application/json',
+    outputFormat: "application/json",
     maxFeatures: String(maxFeatures),
     CQL_FILTER: `INTERSECTS(geometri,SRID=4326;POINT(${lngWgs84} ${latWgs84}))`,
   });
@@ -112,8 +112,8 @@ function mapLokalplan(feature: any): Lokalplan {
   const p = feature.properties ?? {};
 
   return {
-    planid: p.planid?.toString() ?? feature.id ?? '',
-    plannavn: p.plannavn ?? '',
+    planid: p.planid?.toString() ?? feature.id ?? "",
+    plannavn: p.plannavn ?? "",
     plannr: p.plannr ?? null,
     kommunenavn: p.kommunenavn ?? null,
     komnr: p.komnr ?? null,
@@ -135,8 +135,8 @@ function mapKommuneplanramme(feature: any): Kommuneplanramme {
   const p = feature.properties ?? {};
 
   return {
-    planid: p.planid?.toString() ?? feature.id ?? '',
-    plannavn: p.plannavn ?? '',
+    planid: p.planid?.toString() ?? feature.id ?? "",
+    plannavn: p.plannavn ?? "",
     plannr: p.plannr ?? null,
     kommunenavn: p.kommunenavn ?? null,
     komnr: p.komnr ?? null,
@@ -168,35 +168,33 @@ export class PlandataService {
   static async getLokalplanerForKoordinat(
     lngWgs84: number,
     latWgs84: number,
-    includeForslag = false
+    includeForslag = false,
   ): Promise<PlandataResult> {
     if (!lngWgs84 || !latWgs84) {
-      return { lokalplaner: [], fejl: 'Koordinater mangler', rawCount: 0 };
+      return { lokalplaner: [], fejl: "Koordinater mangler", rawCount: 0 };
     }
 
     try {
-      const vedtagetRes = await fetch(
-        buildWfsUrl(LOKALPLAN_TYPE, lngWgs84, latWgs84),
-        { headers: { Accept: 'application/json' } }
-      );
+      const vedtagetRes = await fetch(buildWfsUrl(LOKALPLAN_TYPE, lngWgs84, latWgs84), {
+        headers: { Accept: "application/json" },
+      });
 
       if (!vedtagetRes.ok) {
         const body = await vedtagetRes.text();
         throw new Error(`Plandata WFS HTTP ${vedtagetRes.status}: ${body.slice(0, 300)}`);
       }
 
-      const vedtagetJson = await vedtagetRes.json() as any;
+      const vedtagetJson = (await vedtagetRes.json()) as any;
       const vedtagetFeatures: any[] = vedtagetJson?.features ?? [];
 
       let forslagFeatures: any[] = [];
       if (includeForslag) {
         try {
-          const forslagRes = await fetch(
-            buildWfsUrl(LOKALPLAN_FORSLAG_TYPE, lngWgs84, latWgs84),
-            { headers: { Accept: 'application/json' } }
-          );
+          const forslagRes = await fetch(buildWfsUrl(LOKALPLAN_FORSLAG_TYPE, lngWgs84, latWgs84), {
+            headers: { Accept: "application/json" },
+          });
           if (forslagRes.ok) {
-            const forslagJson = await forslagRes.json() as any;
+            const forslagJson = (await forslagRes.json()) as any;
             forslagFeatures = forslagJson?.features ?? [];
           }
         } catch {
@@ -209,11 +207,11 @@ export class PlandataService {
 
       return {
         lokalplaner,
-        fejl: lokalplaner.length === 0 ? 'Ingen lokalplan fundet for denne adresse' : null,
+        fejl: lokalplaner.length === 0 ? "Ingen lokalplan fundet for denne adresse" : null,
         rawCount: allFeatures.length,
       };
     } catch (e) {
-      console.error('[Plandata] WFS-kald fejlede:', e);
+      console.error("[Plandata] WFS-kald fejlede:", e);
       return {
         lokalplaner: [],
         fejl: (e as Error).message,
@@ -228,32 +226,31 @@ export class PlandataService {
    */
   static async getKommuneplanrammeForKoordinat(
     lngWgs84: number,
-    latWgs84: number
+    latWgs84: number,
   ): Promise<{ ramme: Kommuneplanramme | null; fejl: string | null }> {
     if (!lngWgs84 || !latWgs84) {
-      return { ramme: null, fejl: 'Koordinater mangler' };
+      return { ramme: null, fejl: "Koordinater mangler" };
     }
 
     try {
-      const res = await fetch(
-        buildWfsUrl(KOMMUNEPLANRAMME_TYPE, lngWgs84, latWgs84, 1),
-        { headers: { Accept: 'application/json' } }
-      );
+      const res = await fetch(buildWfsUrl(KOMMUNEPLANRAMME_TYPE, lngWgs84, latWgs84, 1), {
+        headers: { Accept: "application/json" },
+      });
 
       if (!res.ok) {
         throw new Error(`Plandata WFS HTTP ${res.status}`);
       }
 
-      const json = await res.json() as any;
+      const json = (await res.json()) as any;
       const features: any[] = json?.features ?? [];
 
       if (!features.length) {
-        return { ramme: null, fejl: 'Ingen kommuneplanramme fundet' };
+        return { ramme: null, fejl: "Ingen kommuneplanramme fundet" };
       }
 
       return { ramme: mapKommuneplanramme(features[0]), fejl: null };
     } catch (e) {
-      console.error('[Plandata] Kommuneplanramme-kald fejlede:', e);
+      console.error("[Plandata] Kommuneplanramme-kald fejlede:", e);
       return { ramme: null, fejl: (e as Error).message };
     }
   }

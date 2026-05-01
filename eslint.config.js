@@ -22,6 +22,9 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Kodebasen bruger any legitimt mod Datafordeler GraphQL (ingen typed schemas).
+      // Adresseres separat — blokerer ikke CI.
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   eslintPluginPrettier,

@@ -8,12 +8,12 @@
 
 ## 1. Status: Hvad bruger vi fra DAWA i dag?
 
-| # | DAWA-kald | Formål | Fil |
-|---|-----------|--------|-----|
-| A | `GET /adresser/autocomplete?q=...` | Adresseforslag til brugeren | `dawa/client.ts → getSuggestions()` |
-| B | `GET /adresser/{id}` | Kommunenavn, matrikeldata, adgangsadresseid | `dawa/client.ts → getAddressDetails()` |
-| C | `GET /adgangsadresser/{adgangsadresseid}` | Jordstykke-reference (href) | `dawa/client.ts → getAddressDetails()` |
-| D | `GET {jordstykke.href}` | `registreretAreal` (grundareal i m²) | `dawa/client.ts → getAddressDetails()` |
+| #   | DAWA-kald                                 | Formål                                      | Fil                                    |
+| --- | ----------------------------------------- | ------------------------------------------- | -------------------------------------- |
+| A   | `GET /adresser/autocomplete?q=...`        | Adresseforslag til brugeren                 | `dawa/client.ts → getSuggestions()`    |
+| B   | `GET /adresser/{id}`                      | Kommunenavn, matrikeldata, adgangsadresseid | `dawa/client.ts → getAddressDetails()` |
+| C   | `GET /adgangsadresser/{adgangsadresseid}` | Jordstykke-reference (href)                 | `dawa/client.ts → getAddressDetails()` |
+| D   | `GET {jordstykke.href}`                   | `registreretAreal` (grundareal i m²)        | `dawa/client.ts → getAddressDetails()` |
 
 **BBR-klienten** (`src/integrations/bbr/client.ts`) er allerede migreret til Datafordeler GraphQL v2 og er DAWA-fri. ✓
 
@@ -23,12 +23,12 @@
 
 ### Kald A – Autocomplete
 
-**Problem:** Datafordeler har *ikke* et dedikeret autocomplete-endpoint tilsvarende DAWA's.
+**Problem:** Datafordeler har _ikke_ et dedikeret autocomplete-endpoint tilsvarende DAWA's.
 
 **Løsning (prioriteret rækkefølge):**
 
-1. **Kortsigtet (nu → aug 2026):** Behold DAWA's autocomplete. Det er det eneste kald der ikke har en klar 1:1-erstatning endnu.  
-2. **Mellemlangt sigt:** SDFI forbereder et officielt Adressevælger-widget. Følg https://dataforsyningen.dk/news for udgivelsesdato.  
+1. **Kortsigtet (nu → aug 2026):** Behold DAWA's autocomplete. Det er det eneste kald der ikke har en klar 1:1-erstatning endnu.
+2. **Mellemlangt sigt:** SDFI forbereder et officielt Adressevælger-widget. Følg https://dataforsyningen.dk/news for udgivelsesdato.
 3. **Alternativ:** Brug Datafordeler REST-søgning via `DAR_Adresse`-filteret på `adressebetegnelse` (fri tekst) kombineret med `first: 5`. Kræver GraphQL-kald per tastetryk — test latency.
 
 > **Konklusion:** Migrer autocomplete sidst. Det berører kun UX, ikke dataintegritet. DAWA's autocomplete-endpoint er lavrisiko at beholde kortsigtet.
@@ -42,6 +42,7 @@
 DAR indeholder `DAR_Adresse` (fuld adressebetegnelse, kommunekode) og `DAR_Husnummer` (koordinater, matrikelreference). Én GraphQL-query pr. type (én root field per kald = to separate HTTP-kald).
 
 **Nødvendigt at bekræfte via DAR-schema:**
+
 - Felt til kommunenavn: sandsynligvis `DAR_NavngivenVej.vejnavn` + kommuneref, eller `DAR_Adresse` med joined data
 - Feltnavne for matrikelnummer og ejerlav (nødvendigt til Kald D)
 - Om `DAR_Husnummer` eksponerer `ejerlavskode` (Long) direkte
@@ -59,6 +60,7 @@ $schema | Out-File -FilePath dar-schema.txt -Encoding utf8
 **Erstatning:** MAT GraphQL v2 på `https://graphql.datafordeler.dk/MAT/v2`
 
 **Bekræftede schema-facts:**
+
 - `MAT_Jordstykke.registreretAreal: Long!` ✓ (det vi har brug for)
 - `MAT_Jordstykke`-filter: `ejerlavLokalId: DafStringOperationFilterInput` + `matrikelnummer: DafStringOperationFilterInput`
 - `MAT_Ejerlav.ejerlavskode: Long!` (matches DAWA's `ejerlav.kode`)
@@ -68,16 +70,17 @@ $schema | Out-File -FilePath dar-schema.txt -Encoding utf8
 **2-trins opslag:**
 
 ```
-Trin 1: MAT_Ejerlav  
+Trin 1: MAT_Ejerlav
   Input:  ejerlavskode (Long fra DAWA/DAR)
   Output: id_lokalId (String → bruges som ejerlavLokalId i trin 2)
 
-Trin 2: MAT_Jordstykke  
+Trin 2: MAT_Jordstykke
   Input:  ejerlavLokalId (fra trin 1) + matrikelnummer (String fra DAWA/DAR)
   Output: registreretAreal (Long = grundareal i m²)
 ```
 
 **Datakilder til ejerlavskode + matrikelnummer:**
+
 - Kortsigtet: hentes fra DAWA (som nu, bare kald C/D erstattes af MAT)
 - Langsigtet: hentes fra DAR_Husnummer (kræver DAR-schema bekræftelse)
 
@@ -88,6 +91,7 @@ Se implementering i `src/integrations/mat/client.ts`.
 ## 3. Implementeringsfaser
 
 ### Fase 1 – Grundareal via MAT GraphQL (kan startes NU)
+
 **Estimat:** 1-2 dage · **Risiko:** Lav
 
 - [x] Bekræft `MAT_Jordstykke.registreretAreal` i schema ✓
@@ -101,6 +105,7 @@ Se implementering i `src/integrations/mat/client.ts`.
 ---
 
 ### Fase 2 – Adressedetaljer via DAR GraphQL (start senest juni 2026)
+
 **Estimat:** 3-5 dage · **Risiko:** Middel (kræver DAR-schema)
 
 - [ ] Download og analysér DAR GraphQL-schema
@@ -114,6 +119,7 @@ Se implementering i `src/integrations/mat/client.ts`.
 ---
 
 ### Fase 3 – Autocomplete-erstatning (senest august 2026)
+
 **Estimat:** 2-5 dage afhængig af løsning · **Risiko:** Høj (ingen klar erstatning)
 
 - [ ] Evaluér officiel Adressevælger-widget fra SDFI
@@ -125,19 +131,22 @@ Se implementering i `src/integrations/mat/client.ts`.
 
 ## 4. Risici og håndtering
 
-| Risiko | Sandsynlighed | Konsekvens | Håndtering |
-|--------|--------------|------------|------------|
-| `MAT_Ejerlav`-filter virker ikke med `ejerlavskode` | Lav | Blocker for fase 1 | Brug Datafordeler REST som fallback (se nedenfor) |
-| DAR-schema mangler direkte matrikeldata | Middel | Fase 2 forsinkes | Behold DAWA kald B/C frem til deadline |
-| Adressevælger ikke klar til aug 2026 | Middel | Autocomplete failer | Implementér DAR-tekstsøgning selv |
-| `registreretAreal` afviger fra DAWA-værdi | Lav | Forkert bebyggelsesprocent | Sammenlign mod kendte adresser under test |
+| Risiko                                              | Sandsynlighed | Konsekvens                 | Håndtering                                        |
+| --------------------------------------------------- | ------------- | -------------------------- | ------------------------------------------------- |
+| `MAT_Ejerlav`-filter virker ikke med `ejerlavskode` | Lav           | Blocker for fase 1         | Brug Datafordeler REST som fallback (se nedenfor) |
+| DAR-schema mangler direkte matrikeldata             | Middel        | Fase 2 forsinkes           | Behold DAWA kald B/C frem til deadline            |
+| Adressevælger ikke klar til aug 2026                | Middel        | Autocomplete failer        | Implementér DAR-tekstsøgning selv                 |
+| `registreretAreal` afviger fra DAWA-værdi           | Lav           | Forkert bebyggelsesprocent | Sammenlign mod kendte adresser under test         |
 
 ### Fallback: Datafordeler REST for grundareal
+
 Hvis MAT GraphQL ikke kan filtrere på `ejerlavskode`, brug:
+
 ```
 GET https://services.datafordeler.dk/MATRIKELREGISTER/Matrikel/1/REST/Jordstykke
   ?Ejerlavskode={kode}&Matrikelnummer={nr}&username=...&password=...
 ```
+
 Kræver adgangskode-autentificering (forskellig fra API-nøgle i GraphQL).
 
 ---
@@ -160,9 +169,9 @@ DATAFORDELER_MAT_ENDPOINT=https://graphql.datafordeler.dk/MAT/v2
 
 Test med disse kendte adresser og sammenlign grundareal mod BBR-offentlige data:
 
-| Adresse | Forventet grundareal (ca.) |
-|---------|--------------------------|
-| Hasselvej 48, 2830 Virum | ~800-1200 m² |
-| Vimmelskaftet 42, 1161 København | Etageejendom – stor grund |
+| Adresse                          | Forventet grundareal (ca.) |
+| -------------------------------- | -------------------------- |
+| Hasselvej 48, 2830 Virum         | ~800-1200 m²               |
+| Vimmelskaftet 42, 1161 København | Etageejendom – stor grund  |
 
 Kør i browser-devtools og sammenlign `grundareal` fra MAT mod det der tidligere kom fra DAWA.

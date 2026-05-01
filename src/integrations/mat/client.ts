@@ -30,20 +30,17 @@ type MatClientConfig = {
 };
 
 function getConfig(explicit?: MatClientConfig) {
-  const apiKey =
-    explicit?.apiKey ??
-    (process as any)?.env?.DATAFORDELER_API_KEY ??
-    '';
+  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
 
   const endpoint =
     explicit?.endpoint ??
     (process as any)?.env?.DATAFORDELER_MAT_ENDPOINT ??
-    'https://graphql.datafordeler.dk/MAT/v2';
+    "https://graphql.datafordeler.dk/MAT/v2";
 
   if (!apiKey) {
     throw new Error(
-      'MAT GraphQL: Manglende DATAFORDELER_API_KEY. ' +
-      'Sæt denne som environment variable (uden VITE_ prefix).'
+      "MAT GraphQL: Manglende DATAFORDELER_API_KEY. " +
+        "Sæt denne som environment variable (uden VITE_ prefix).",
     );
   }
 
@@ -93,22 +90,18 @@ query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virknin
 // Hjælpefunktion: GraphQL-kald
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(
-  url: URL,
-  query: string,
-  variables: Record<string, unknown>
-): Promise<any> {
+async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
   const response = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
   });
 
   const bodyText = await response.text();
 
   if (!response.ok) {
-    const keyHint = url.searchParams.get('apiKey')?.slice(0, 4) ?? '?';
-    console.error('[MAT] HTTP-fejl:', {
+    const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
+    console.error("[MAT] HTTP-fejl:", {
       status: response.status,
       keyHint: `${keyHint}…`,
       body: bodyText.slice(0, 500),
@@ -119,7 +112,7 @@ async function gqlFetch(
   const parsed = JSON.parse(bodyText);
 
   if (parsed.errors?.length) {
-    console.error('[MAT] GraphQL-fejl:', parsed.errors);
+    console.error("[MAT] GraphQL-fejl:", parsed.errors);
     throw new Error(parsed.errors[0].message);
   }
 
@@ -151,7 +144,7 @@ export class MatService {
   static async getGrundareal(
     ejerlavskode: number,
     matrikelnummer: string,
-    config?: MatClientConfig
+    config?: MatClientConfig,
   ): Promise<MatGrundarealResult> {
     const matr = matrikelnummer.trim();
     if (!ejerlavskode || !matr) {
@@ -159,13 +152,13 @@ export class MatService {
         registreretAreal: null,
         ejerlavLokalId: null,
         ejerlavsnavn: null,
-        fejl: 'ejerlavskode og matrikelnummer er påkrævet',
+        fejl: "ejerlavskode og matrikelnummer er påkrævet",
       };
     }
 
     const { apiKey, endpoint } = getConfig(config);
     const url = new URL(endpoint);
-    url.searchParams.set('apiKey', apiKey);
+    url.searchParams.set("apiKey", apiKey);
 
     const virkningstid = new Date().toISOString();
 
@@ -215,7 +208,7 @@ export class MatService {
         fejl: null,
       };
     } catch (e) {
-      console.error('[MAT] Service fejl:', e);
+      console.error("[MAT] Service fejl:", e);
       return {
         registreretAreal: null,
         ejerlavLokalId: null,

@@ -27,27 +27,23 @@ export function PhaseSidebar() {
                     status === "active"
                       ? "text-foreground"
                       : status === "complete"
-                      ? "text-foreground"
-                      : "text-[#555]"
+                        ? "text-foreground"
+                        : "text-[#555]"
                   }`}
                 >
                   FASE {p.id} · {p.label}
                 </span>
               </button>
-              {(status === "complete" || status === "active") &&
-                subKeys[p.id].length > 0 && (
-                  <ul className="mt-2 ml-[14px] space-y-1 border-l border-[#222] pl-3">
-                    {subKeys[p.id].map((k) => (
-                      <li
-                        key={k.label}
-                        className="text-[11px] text-muted-foreground leading-tight"
-                      >
-                        <span className="text-[#555]">└ </span>
-                        {k.label}: <span className="text-foreground/80">{k.value}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              {(status === "complete" || status === "active") && subKeys[p.id].length > 0 && (
+                <ul className="mt-2 ml-[14px] space-y-1 border-l border-[#222] pl-3">
+                  {subKeys[p.id].map((k) => (
+                    <li key={k.label} className="text-[11px] text-muted-foreground leading-tight">
+                      <span className="text-[#555]">└ </span>
+                      {k.label}: <span className="text-foreground/80">{k.value}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           );
         })}

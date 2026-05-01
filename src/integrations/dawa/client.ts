@@ -27,7 +27,7 @@
  */
 
 // API-base – brug api.dataforsyningen.dk (matchers href i DAWA-svaret)
-const BASE_URL = 'https://api.dataforsyningen.dk';
+const BASE_URL = "https://api.dataforsyningen.dk";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,8 +67,8 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   let res: Response;
   try {
     res = await fetch(url, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
+      method: "GET",
+      headers: { Accept: "application/json" },
       signal,
     });
   } catch (e) {
@@ -82,7 +82,7 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   try {
     return (await res.json()) as T;
   } catch {
-    throw new Error('DAWA returnerede ugyldig JSON');
+    throw new Error("DAWA returnerede ugyldig JSON");
   }
 }
 
@@ -94,10 +94,7 @@ export class DawaService {
   /**
    * Returnerer adresseforslag (max 5) med korrekt nested parsing.
    */
-  static async getSuggestions(
-    query: string,
-    signal?: AbortSignal
-  ): Promise<DawaSuggestion[]> {
+  static async getSuggestions(query: string, signal?: AbortSignal): Promise<DawaSuggestion[]> {
     const q = query.trim();
     if (!q || q.length < 2) return [];
 
@@ -124,9 +121,9 @@ export class DawaService {
         adresseid: r.adresse.id,
         adgangsadresseid: r.adresse.adgangsadresseid,
         tekst: r.tekst,
-        postnr: r.adresse.postnr ?? '',
-        postnrnavn: r.adresse.postnrnavn ?? '',
-        kommunekode: r.adresse.kommunekode ?? '',
+        postnr: r.adresse.postnr ?? "",
+        postnrnavn: r.adresse.postnrnavn ?? "",
+        kommunekode: r.adresse.kommunekode ?? "",
         koordinater: {
           lat: r.adresse.y,
           lng: r.adresse.x,
@@ -143,10 +140,10 @@ export class DawaService {
    */
   static async getAddressDetails(
     adresseid: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<DawaAddressDetails> {
     const id = adresseid.trim();
-    if (!id) throw new Error('DAWA: adresseid er påkrævet');
+    if (!id) throw new Error("DAWA: adresseid er påkrævet");
 
     // Primært kald: adresse-detaljer (kommunenavn, matrikel, adgangsadresseid)
     const url = `${BASE_URL}/adresser/${encodeURIComponent(id)}`;
@@ -175,7 +172,7 @@ export class DawaService {
       : null;
 
     // I DAWA's nestet format sidder adgangsadresseid under adgangsadresse.id, ikke på top-niveau
-    const adgangsadresseid = raw.adgangsadresseid || raw.adgangsadresse?.id || '';
+    const adgangsadresseid = raw.adgangsadresseid || raw.adgangsadresse?.id || "";
 
     // Sekundært kald: adgangsadresse-endpoint har ejerlav.kode, matrikelnr, og jordstykke.href
     let ejerlavskode: number | null = null;
@@ -193,15 +190,15 @@ export class DawaService {
       ejerlavskode = adgang.ejerlav?.kode ?? null;
       matrikelnummer = adgang.matrikelnr ?? null;
     } catch (e) {
-      console.warn('[DAWA] adgangsadresse-kald fejlede:', (e as Error).message);
+      console.warn("[DAWA] adgangsadresse-kald fejlede:", (e as Error).message);
     }
 
     return {
       adresse: raw.adressebetegnelse,
       postnr: raw.postnr,
       postnrnavn: raw.postnrnavn,
-      kommunekode: raw.kommune?.kode ?? '',
-      kommunenavn: (raw.kommune?.navn ?? 'Ukendt').trim(),
+      kommunekode: raw.kommune?.kode ?? "",
+      kommunenavn: (raw.kommune?.navn ?? "Ukendt").trim(),
       matrikel,
       adgangsadresseid,
       koordinater: { lat: raw.y, lng: raw.x },

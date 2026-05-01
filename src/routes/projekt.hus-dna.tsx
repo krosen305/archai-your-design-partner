@@ -41,7 +41,7 @@ function HusDnaStep() {
         data: { fritekst: text, billedUrls: images },
       });
       setHusDna(result);
-      syncPatch({ husDna: result, currentStep: 'compliance' });
+      syncPatch({ husDna: result, currentStep: "compliance" });
     } catch (e) {
       setGenerateError("Generering fejlede – prøv igen.");
       console.error("[HusDna] generering fejlede:", e);
@@ -81,12 +81,8 @@ function HusDnaStep() {
                 className="w-full rounded-md border border-dashed border-accent/40 bg-[#111] py-10 text-center hover:border-accent/70 hover:bg-[#161616] transition-colors"
               >
                 <Upload size={28} className="mx-auto text-accent" />
-                <div className="mt-3 text-sm text-foreground">
-                  Træk billeder hertil eller klik
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  PNG/JPG · max 8 billeder
-                </div>
+                <div className="mt-3 text-sm text-foreground">Træk billeder hertil eller klik</div>
+                <div className="mt-1 text-xs text-muted-foreground">PNG/JPG · max 8 billeder</div>
               </button>
               {images.length > 0 && (
                 <div className="mt-4 grid grid-cols-4 gap-2">
@@ -122,9 +118,7 @@ function HusDnaStep() {
               />
             </Card>
 
-            {generateError && (
-              <p className="text-xs text-danger font-mono mb-2">{generateError}</p>
-            )}
+            {generateError && <p className="text-xs text-danger font-mono mb-2">{generateError}</p>}
             <button
               onClick={generate}
               disabled={generating}
@@ -159,9 +153,7 @@ function EmptyOutput() {
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#333] mb-3">
           <Sparkles size={20} className="text-[#555]" />
         </div>
-        <div className="text-sm text-muted-foreground">
-          Dit Hus-DNA vises her efter generering.
-        </div>
+        <div className="text-sm text-muted-foreground">Dit Hus-DNA vises her efter generering.</div>
       </div>
     </Card>
   );
@@ -171,9 +163,7 @@ function GeneratingOutput() {
   return (
     <Card className="min-h-[360px]">
       <div className="flex items-center justify-between mb-4">
-        <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
-          HUS-DNA
-        </div>
+        <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">HUS-DNA</div>
         <span className="font-mono text-[10px] tracking-[0.1em] border border-accent/40 text-accent rounded px-1.5 py-0.5">
           AI
         </span>

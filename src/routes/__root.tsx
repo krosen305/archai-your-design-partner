@@ -1,4 +1,11 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+  useLocation,
+} from "@tanstack/react-router";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { TopBar } from "@/components/wizard-chrome";
@@ -74,7 +81,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const location = useLocation();
   const isWelcome = location.pathname === "/";
-  const { address, setAddress, setBbrData, setComplianceFlags, setLokalplaner, setComplianceDone, setHusDna, setKommuneplanramme } = useProject();
+  const {
+    address,
+    setAddress,
+    setBbrData,
+    setComplianceFlags,
+    setLokalplaner,
+    setComplianceDone,
+    setHusDna,
+    setKommuneplanramme,
+  } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
   useEffect(() => {
@@ -83,24 +99,27 @@ function RootComponent() {
       if (!project) return;
       if (project.address_full && project.address_bbr) {
         setAddress({
-          adresseid:        project.address_adresseid ?? project.address_bbr,
-          adresse:          project.address_full,
-          postnr:           project.address_postnr ?? '',
-          postnrnavn:       project.address_postnrnavn ?? '',
-          kommune:          project.address_kommune ?? '',
-          kommunekode:      '',
-          matrikel:         project.address_matrikel,
+          adresseid: project.address_adresseid ?? project.address_bbr,
+          adresse: project.address_full,
+          postnr: project.address_postnr ?? "",
+          postnrnavn: project.address_postnrnavn ?? "",
+          kommune: project.address_kommune ?? "",
+          kommunekode: "",
+          matrikel: project.address_matrikel,
           adgangsadresseid: project.address_bbr,
-          koordinater:      (project.address_koordinater as { lat: number; lng: number } | null) ?? { lat: 0, lng: 0 },
-          bbrId:            null,
-          ejerlavskode:     project.address_ejerlavskode ?? null,
-          matrikelnummer:   project.address_matrikelnummer ?? null,
+          koordinater: (project.address_koordinater as { lat: number; lng: number } | null) ?? {
+            lat: 0,
+            lng: 0,
+          },
+          bbrId: null,
+          ejerlavskode: project.address_ejerlavskode ?? null,
+          matrikelnummer: project.address_matrikelnummer ?? null,
         });
       }
       if (isHusDna(project.brief_data)) {
         setHusDna({
           ...project.brief_data,
-          kilde: (project.brief_data as { kilde?: 'mock' | 'anthropic' }).kilde ?? 'mock',
+          kilde: (project.brief_data as { kilde?: "mock" | "anthropic" }).kilde ?? "mock",
         });
       }
       const cd = parseComplianceData(project.compliance_data);

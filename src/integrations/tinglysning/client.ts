@@ -20,9 +20,9 @@ const IS_MOCK = true;
 // ---------------------------------------------------------------------------
 
 export type ServitutResult = {
-  tekster: string[];        // alle servitut-tekster for adressen
-  kritiske: string[];       // servitutter der direkte påvirker byggeri
-  kilde: 'mock' | 'live';
+  tekster: string[]; // alle servitut-tekster for adressen
+  kritiske: string[]; // servitutter der direkte påvirker byggeri
+  kilde: "mock" | "live";
 };
 
 // ---------------------------------------------------------------------------
@@ -31,14 +31,12 @@ export type ServitutResult = {
 
 const MOCK_SERVITUTTER: ServitutResult = {
   tekster: [
-    'Deklaration om fælles vej og parkering, lyst 15.04.1987',
-    'Byggeservitut: Ingen bebyggelse inden for 3m fra skel mod nabo, lyst 22.09.1994',
-    'Kloakservitut: Fælles kloakledning over ejendommen, lyst 01.03.2001',
+    "Deklaration om fælles vej og parkering, lyst 15.04.1987",
+    "Byggeservitut: Ingen bebyggelse inden for 3m fra skel mod nabo, lyst 22.09.1994",
+    "Kloakservitut: Fælles kloakledning over ejendommen, lyst 01.03.2001",
   ],
-  kritiske: [
-    'Byggeservitut: Ingen bebyggelse inden for 3m fra skel mod nabo, lyst 22.09.1994',
-  ],
-  kilde: 'mock',
+  kritiske: ["Byggeservitut: Ingen bebyggelse inden for 3m fra skel mod nabo, lyst 22.09.1994"],
+  kilde: "mock",
 };
 
 // ---------------------------------------------------------------------------
@@ -56,7 +54,7 @@ export class TinglysningService {
    */
   static async getServitutter(addressId: string): Promise<ServitutResult> {
     if (!addressId) {
-      return { tekster: [], kritiske: [], kilde: 'mock' };
+      return { tekster: [], kritiske: [], kilde: "mock" };
     }
 
     if (IS_MOCK) {
@@ -65,6 +63,6 @@ export class TinglysningService {
 
     // TODO (ARCH-26): Implementér live Tinglysning API-kald
     // Options: https://api.tinglysning.dk / partneradgang / controlled scraping
-    throw new Error('TinglysningService: live API ikke implementeret endnu (IS_MOCK = false)');
+    throw new Error("TinglysningService: live API ikke implementeret endnu (IS_MOCK = false)");
   }
 }

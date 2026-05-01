@@ -13,6 +13,7 @@ bunx prettier --write .   # Format code
 ```
 
 To run a single test file:
+
 ```bash
 bun test src/integrations/bbr/bbr.test.ts
 ```
@@ -39,6 +40,7 @@ The app follows a 5-phase architecture. Steps map directly to file-based routes 
 **Navigation flow:** adresse → hus-dna → compliance (auto-runs BBR+Plandata) → match → finans → …
 
 **Legacy routes** (from earlier wizard design — not in primary flow):
+
 - `projekt.beskrivelse.tsx` — project description form
 - `projekt.brief.tsx` — AI-generated design brief
 
@@ -57,19 +59,20 @@ The route tree (`src/routeTree.gen.ts`) is **auto-generated** by TanStack Router
 
 Each integration is a standalone service class. Server-side services must **never** be called directly from the browser — use TanStack Start's `createServerFn` as the boundary (see `projekt.compliance.tsx`).
 
-| Service | File | Side | Notes |
-|---|---|---|---|
-| `DawaService` | `dawa/client.ts` | Client | Address autocomplete + details. **Deprecated Aug 17 2026** — see migration phases in file comments |
-| `BbrService` | `bbr/client.ts` | Server only | Building register via Datafordeler GraphQL v2. Requires `DATAFORDELER_API_KEY` |
-| `MatService` | `mat/client.ts` | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2 |
-| `DarService` | `dar/client.ts` | Server only | Address register via Datafordeler GraphQL v1. **Skeleton — not production-ready** |
-| `PlandataService` | `plandata/client.ts` | Server only | Local plans via public WFS. No API key needed |
-| `TinglysningService` | `tinglysning/client.ts` | Server only | Servitutter. **IS_MOCK=true** — live API pending (ARCH-26) |
-| `PdfExtractorService` | `ai/pdf-extractor.ts` | Server only | Lokalplan PDF → structured rules via Claude API. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-25) |
+| Service                  | File                      | Side        | Notes                                                                                                                  |
+| ------------------------ | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DawaService`            | `dawa/client.ts`          | Client      | Address autocomplete + details. **Deprecated Aug 17 2026** — see migration phases in file comments                     |
+| `BbrService`             | `bbr/client.ts`           | Server only | Building register via Datafordeler GraphQL v2. Requires `DATAFORDELER_API_KEY`                                         |
+| `MatService`             | `mat/client.ts`           | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2                                                             |
+| `DarService`             | `dar/client.ts`           | Server only | Address register via Datafordeler GraphQL v1. **Skeleton — not production-ready**                                      |
+| `PlandataService`        | `plandata/client.ts`      | Server only | Local plans via public WFS. No API key needed                                                                          |
+| `TinglysningService`     | `tinglysning/client.ts`   | Server only | Servitutter. **IS_MOCK=true** — live API pending (ARCH-26)                                                             |
+| `PdfExtractorService`    | `ai/pdf-extractor.ts`     | Server only | Lokalplan PDF → structured rules via Claude API. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-25)             |
 | `HusDnaGeneratorService` | `ai/hus-dna-generator.ts` | Server only | Inspirationsbilleder + fritekst → Hus-DNA via Claude vision. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-47) |
-| Supabase | `supabase/` | Both | Auth middleware and typed client |
+| Supabase                 | `supabase/`               | Both        | Auth middleware and typed client                                                                                       |
 
 **Datafordeler GraphQL constraints** (applies to BBR, MAT, DAR):
+
 - Only one root field per query (`DAF-GQL-0010`)
 - `virkningstid` parameter is required on all queries (`DAF-GQL-0009`)
 - No aliases (`DAF-GQL-0008`)
@@ -126,14 +129,15 @@ A task is done when all of the following are true:
 
 GitHub Actions kører automatisk via `.github/workflows/`:
 
-| Workflow | Trigger | Steps |
-|---|---|---|
-| `ci.yml` | PR til main + push til main | tsc · eslint · bun test · bun build |
-| `deploy.yml` | Push til main | bun build · wrangler deploy (production) |
+| Workflow     | Trigger                     | Steps                                    |
+| ------------ | --------------------------- | ---------------------------------------- |
+| `ci.yml`     | PR til main + push til main | tsc · eslint · bun test · bun build      |
+| `deploy.yml` | Push til main               | bun build · wrangler deploy (production) |
 
 **Preview deploys** på PR: `wrangler deploy --name archai-preview-pr-<N>` — kræver at Cloudflare Workers plan tillader flere workers.
 
 **GitHub Secrets der skal sættes** (Settings → Secrets → Actions):
+
 ```
 CLOUDFLARE_API_TOKEN         # Cloudflare API token med Workers:Edit permission
 DATAFORDELER_API_KEY
@@ -148,6 +152,7 @@ ANTHROPIC_API_KEY
 ## DAWA migration (deadline: Aug 17 2026)
 
 DAWA (`api.dataforsyningen.dk`) is being replaced by Datafordeler services in three phases documented in `src/integrations/dawa/client.ts`:
+
 - **Phase 1**: Replace `grundareal` fetch with `MatService.getGrundareal(ejerlavskode, matrikelnummer)`
 - **Phase 2**: Replace `DawaService.getAddressDetails()` with `DarService.getAddressDetails()` (after DAR schema confirmation)
 - **Phase 3**: Replace `DawaService.getSuggestions()` with an Adressevælger widget or DAR search

@@ -6,24 +6,24 @@
 //   await syncAddress(address);   // efter setAddress()
 //   await syncCompliance(patch);  // efter compliance pipeline
 
-import { createServerFn } from '@tanstack/react-start';
-import type { ProjectPatch, PersistedProject } from '@/integrations/supabase/project-persistence';
+import { createServerFn } from "@tanstack/react-start";
+import type { ProjectPatch, PersistedProject } from "@/integrations/supabase/project-persistence";
 
 // ---------------------------------------------------------------------------
 // Server functions
 // ---------------------------------------------------------------------------
 
-export const serverSaveProject = createServerFn({ method: 'POST' })
+export const serverSaveProject = createServerFn({ method: "POST" })
   .inputValidator((data: { accessToken: string; patch: ProjectPatch }) => data)
   .handler(async ({ data }): Promise<void> => {
-    const { saveProject } = await import('@/integrations/supabase/project-persistence');
+    const { saveProject } = await import("@/integrations/supabase/project-persistence");
     await saveProject(data.accessToken, data.patch);
   });
 
-export const serverLoadProject = createServerFn({ method: 'POST' })
+export const serverLoadProject = createServerFn({ method: "POST" })
   .inputValidator((data: { accessToken: string }) => data)
   .handler(async ({ data }): Promise<PersistedProject | null> => {
-    const { loadProject } = await import('@/integrations/supabase/project-persistence');
+    const { loadProject } = await import("@/integrations/supabase/project-persistence");
     return loadProject(data.accessToken);
   });
 
@@ -33,7 +33,7 @@ export const serverLoadProject = createServerFn({ method: 'POST' })
 
 async function getAccessToken(): Promise<string | null> {
   try {
-    const { supabase } = await import('@/integrations/supabase/client');
+    const { supabase } = await import("@/integrations/supabase/client");
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? null;
   } catch {
@@ -47,7 +47,7 @@ export async function syncPatch(patch: ProjectPatch): Promise<void> {
   try {
     await serverSaveProject({ data: { accessToken, patch } });
   } catch (e) {
-    console.warn('[ProjectSync] gem fejlede (ikke kritisk):', (e as Error).message);
+    console.warn("[ProjectSync] gem fejlede (ikke kritisk):", (e as Error).message);
   }
 }
 
@@ -57,7 +57,7 @@ export async function restoreProject(): Promise<PersistedProject | null> {
   try {
     return await serverLoadProject({ data: { accessToken } });
   } catch (e) {
-    console.warn('[ProjectSync] gendan fejlede:', (e as Error).message);
+    console.warn("[ProjectSync] gendan fejlede:", (e as Error).message);
     return null;
   }
 }
