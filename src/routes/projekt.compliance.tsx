@@ -151,7 +151,7 @@ function ComplianceStep() {
     <PageTransition>
       <div className="mx-auto max-w-[720px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/projekt/adresse" />
+          <BackLink to="/projekt/hus-dna" />
         </div>
         {status === "loading" && <LoadingView />}
         {status === "error" && (

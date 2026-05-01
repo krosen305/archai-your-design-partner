@@ -244,7 +244,7 @@ function ResultOutput({ dna, onContinue }: { dna: HusDna; onContinue: () => void
         onClick={onContinue}
         className="mt-4 w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >
-        Fortsæt til Match →
+        Analysér adresse →
       </button>
     </motion.div>
   );

@@ -215,10 +215,10 @@ function AddressStep() {
 
           <button
             disabled={!selected}
-            onClick={() => navigate({ to: "/projekt/compliance" })}
+            onClick={() => navigate({ to: "/projekt/hus-dna" })}
             className="mt-6 w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Analysér adresse →
+            Fortsæt →
           </button>
         </Card>
       </div>
