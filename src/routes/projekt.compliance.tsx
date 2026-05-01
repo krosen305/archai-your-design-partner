@@ -9,6 +9,7 @@ import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
 import type { AnalysisInput, ComplianceResult } from "@/lib/analysis-orchestrator";
+import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
@@ -80,6 +81,13 @@ function ComplianceStep() {
         setComplianceDone(true);
         setPhase("hus-dna", "complete");
         setPhase("match", "active");
+        syncPatch({
+          bbrData: result.bbr,
+          complianceFlags: flags,
+          lokalplaner: result.lokalplaner,
+          complianceDone: true,
+          currentStep: 'match',
+        });
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
       })

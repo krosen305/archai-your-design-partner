@@ -6,6 +6,7 @@ import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { DawaService, type DawaSuggestion } from "@/integrations/dawa/client";
 import { DarService } from "@/integrations/dar/client";
+import { syncPatch } from "@/lib/project-sync";
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
@@ -104,9 +105,11 @@ function AddressStep() {
       };
       setSelected(fullAddress);
       setAddress(fullAddress);
+      syncPatch({ address: fullAddress, currentStep: 'hus-dna' });
     } catch (err) {
       console.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
       // Behold immediateAddress – vi har stadig adgangsadresseid til BBR
+      syncPatch({ address: immediateAddress, currentStep: 'hus-dna' });
     }
   }
 

@@ -1,7 +1,10 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation } from "@tanstack/react-router";
 import { AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 import { TopBar } from "@/components/wizard-chrome";
 import { PhaseSidebar } from "@/components/phase-sidebar";
+import { useProject } from "@/lib/project-store";
+import { restoreProject } from "@/lib/project-sync";
 
 import appCss from "../styles.css?url";
 
@@ -71,6 +74,41 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const location = useLocation();
   const isWelcome = location.pathname === "/";
+  const { address, setAddress, setBbrData, setComplianceFlags, setLokalplaner, setComplianceDone, setHusDna } = useProject();
+
+  // Gendan projekt-state for indloggede brugere ved første sideopload
+  useEffect(() => {
+    if (address) return; // State allerede sat — spring over
+    restoreProject().then((project) => {
+      if (!project) return;
+      if (project.address_full && project.address_bbr) {
+        setAddress({
+          adresseid: project.address_bbr, // bedste tilnærmelse uden det originale adresseid
+          adresse: project.address_full,
+          postnr: '',
+          postnrnavn: '',
+          kommune: project.address_kommune ?? '',
+          kommunekode: '',
+          matrikel: project.address_matrikel,
+          adgangsadresseid: project.address_bbr,
+          koordinater: { lat: 0, lng: 0 },
+          bbrId: null,
+          ejerlavskode: null,
+          matrikelnummer: null,
+        });
+      }
+      if (project.brief_data) {
+        setHusDna(project.brief_data as any);
+      }
+      if (project.compliance_data) {
+        const cd = project.compliance_data as any;
+        if (cd?.bbr) setBbrData(cd.bbr);
+        if (Array.isArray(cd?.flags)) setComplianceFlags(cd.flags);
+        if (Array.isArray(cd?.lokalplaner)) setLokalplaner(cd.lokalplaner);
+        if (project.compliance_done) setComplianceDone(true);
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="min-h-screen bg-background">
       {!isWelcome && <TopBar />}

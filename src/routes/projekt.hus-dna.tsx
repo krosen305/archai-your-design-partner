@@ -7,6 +7,7 @@ import { useProject, type HusDna } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { HusDnaInput, HusDnaResult } from "@/integrations/ai/hus-dna-generator";
+import { syncPatch } from "@/lib/project-sync";
 
 export const Route = createFileRoute("/projekt/hus-dna")({
   component: HusDnaStep,
@@ -42,6 +43,7 @@ function HusDnaStep() {
       // HusDnaResult inkluderer `kilde` som ikke er i HusDna store-typen — strip den
       const { kilde: _kilde, ...dna } = result;
       setHusDna(dna);
+      syncPatch({ husDna: dna, currentStep: 'compliance' });
     } catch (e) {
       setGenerateError("Generering fejlede – prøv igen.");
       console.error("[HusDna] generering fejlede:", e);
