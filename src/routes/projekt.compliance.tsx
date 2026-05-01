@@ -113,11 +113,16 @@ function ComplianceStep() {
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
       })
-      .catch((e) => {
-        console.error("[Compliance] pipeline fejlede:", e);
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[Compliance] pipeline fejlede:", msg);
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => {
-          setFetchError("BBR-data kunne ikke hentes. Prøv igen.");
+          setFetchError(
+            msg.startsWith("ArchAI: manglende")
+              ? msg // vis validateEnv()-fejl direkte så det er tydeligt hvad der mangler
+              : "BBR-data kunne ikke hentes. Prøv igen.",
+          );
           setStatus("error");
         }, remaining);
       });
