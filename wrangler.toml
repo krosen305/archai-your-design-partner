@@ -1,0 +1,21 @@
+# Cloudflare Workers deployment config.
+# TODO: Sæt account_id til din Cloudflare-konto (find den på dash.cloudflare.com)
+#
+# Environment variables sættes som Wrangler secrets (IKKE her):
+#   bunx wrangler secret put DATAFORDELER_API_KEY
+#   bunx wrangler secret put SUPABASE_URL
+#   bunx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   bunx wrangler secret put SUPABASE_PUBLISHABLE_KEY
+#   bunx wrangler secret put ANTHROPIC_API_KEY
+#
+# For GitHub Actions sættes de som GitHub repository secrets.
+
+name = "archai-your-design-partner"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# account_id = "TODO: din Cloudflare account ID"
+
+[vars]
+# Offentlige vars (ikke secrets) kan sættes her
+# SUPABASE_URL = "https://xxx.supabase.co"  # Brug hellere secrets for URLs der afslører projekt-ID

@@ -122,6 +122,29 @@ A task is done when all of the following are true:
 - [ ] Environment variables documented in CLAUDE.md if new ones were added
 - [ ] Linear issue moved to **Done**
 
+## CI/CD
+
+GitHub Actions kører automatisk via `.github/workflows/`:
+
+| Workflow | Trigger | Steps |
+|---|---|---|
+| `ci.yml` | PR til main + push til main | tsc · eslint · bun test · bun build |
+| `deploy.yml` | Push til main | bun build · wrangler deploy (production) |
+
+**Preview deploys** på PR: `wrangler deploy --name archai-preview-pr-<N>` — kræver at Cloudflare Workers plan tillader flere workers.
+
+**GitHub Secrets der skal sættes** (Settings → Secrets → Actions):
+```
+CLOUDFLARE_API_TOKEN         # Cloudflare API token med Workers:Edit permission
+DATAFORDELER_API_KEY
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_PUBLISHABLE_KEY
+ANTHROPIC_API_KEY
+```
+
+**wrangler.toml** er i rod-mappen. Sæt `account_id` til din Cloudflare-konto-ID inden første deploy.
+
 ## DAWA migration (deadline: Aug 17 2026)
 
 DAWA (`api.dataforsyningen.dk`) is being replaced by Datafordeler services in three phases documented in `src/integrations/dawa/client.ts`:
