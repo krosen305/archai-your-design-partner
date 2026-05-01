@@ -55,9 +55,8 @@ function getConfig(explicit?: DarClientConfig) {
 // ---------------------------------------------------------------------------
 // Output type – kompatibel med DawaAddressDetails for drop-in i DAWA Phase 2
 //
-// Begrænsninger vs. DAWA:
-//   ejerlavskode/matrikelnummer = null (ikke i DAR – hentes fra jordstykke-FK via MAT)
-//   kommunenavn = null (kræver kommuneregister udenfor DAR)
+// ejerlavskode + matrikelnummer hentes via DAR_Husnummer.jordstykke → MAT_Jordstykke → MAT_Ejerlav.
+// kommunenavn forbliver tom string (kræver kommuneregister udenfor DAR).
 // ---------------------------------------------------------------------------
 
 export type DarAddressDetails = {
@@ -70,8 +69,8 @@ export type DarAddressDetails = {
   adgangsadresseid: string;
   koordinater: { lat: number; lng: number };
   bbrId: string | null;
-  ejerlavskode: number | null;   // null – ikke tilgængeligt i DAR v1
-  matrikelnummer: string | null; // null – ikke tilgængeligt i DAR v1
+  ejerlavskode: number | null;
+  matrikelnummer: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -144,6 +143,38 @@ query GetDarAdressepunkt($id: String!, $virkningstid: DafDateTime!) {
   ) {
     nodes {
       position { wkt }
+    }
+  }
+}`;
+
+// Kald 3c: MAT_Jordstykke – henter matrikelnummer + ejerlavLokalId via jordstykke-FK fra DAR_Husnummer.
+// OBS: Kald går til MAT endpoint (v2), ikke DAR.
+const MAT_JORDSTYKKE_QUERY = `
+query GetMatJordstykke($id: String!, $virkningstid: DafDateTime!) {
+  MAT_Jordstykke(
+    where: { id_lokalId: { eq: $id } }
+    virkningstid: $virkningstid
+    first: 1
+  ) {
+    nodes {
+      matrikelnummer
+      ejerlavLokalId
+      registreretAreal
+    }
+  }
+}`;
+
+// Kald 4: MAT_Ejerlav – henter numerisk ejerlavskode via ejerlavLokalId fra MAT_Jordstykke.
+const MAT_EJERLAV_QUERY = `
+query GetMatEjerlav($id: String!, $virkningstid: DafDateTime!) {
+  MAT_Ejerlav(
+    where: { id_lokalId: { eq: $id } }
+    virkningstid: $virkningstid
+    first: 1
+  ) {
+    nodes {
+      ejerlavskode
+      ejerlavsnavn
     }
   }
 }`;
@@ -245,6 +276,19 @@ async function gqlFetch(
 }
 
 // ---------------------------------------------------------------------------
+// MAT URL builder — MAT endpoint er forskellig fra DAR, men bruger samme API-nøgle
+// ---------------------------------------------------------------------------
+
+function getMatUrl(apiKey: string): URL {
+  const matEndpoint =
+    (process as any)?.env?.DATAFORDELER_MAT_ENDPOINT ??
+    'https://graphql.datafordeler.dk/MAT/v2';
+  const url = new URL(matEndpoint);
+  url.searchParams.set('apiKey', apiKey);
+  return url;
+}
+
+// ---------------------------------------------------------------------------
 // DarService
 // ---------------------------------------------------------------------------
 
@@ -253,12 +297,11 @@ export class DarService {
    * Henter adressedetaljer fra DAR GraphQL.
    * Drop-in erstatning for DawaService.getAddressDetails() (DAWA Phase 2).
    *
-   * Kæde: DAR_Adresse → DAR_Husnummer → DAR_Postnummer + DAR_Adressepunkt (parallelt)
+   * Kæde: DAR_Adresse → DAR_Husnummer → [DAR_Postnummer + DAR_Adressepunkt + MAT_Jordstykke] → MAT_Ejerlav
    *
    * @param darAdresseLokalId  DAR's id_lokalId for adressen (= DAWA's adresseid)
    *
    * Kendte begrænsninger vs. DAWA:
-   *   - ejerlavskode/matrikelnummer returneres som null (ikke i DAR schema)
    *   - kommunenavn returneres som '' (kræver kommuneregister udenfor DAR)
    */
   static async getAddressDetails(
@@ -294,19 +337,45 @@ export class DarService {
 
     const adgangspunktFK: string = husnummer?.adgangspunkt ?? '';
     const postnummerFK: string = husnummer?.postnummer ?? '';
+    const jordstykkeFK: string = husnummer?.jordstykke ?? '';
+    const matUrl = getMatUrl(apiKey);
 
-    // ── Kald 3a + 3b: postnummer og adressepunkt (parallelt) ────────────────
-    const [postnummerData, adressepunktData] = await Promise.all([
+    // ── Kald 3a + 3b + 3c: postnummer, adressepunkt og MAT_Jordstykke (parallelt) ─
+    const [postnummerData, adressepunktData, jordstykkeData] = await Promise.all([
       postnummerFK
         ? gqlFetch(url, POSTNUMMER_QUERY, { id: postnummerFK, virkningstid })
         : Promise.resolve(null),
       adgangspunktFK
         ? gqlFetch(url, ADRESSEPUNKT_QUERY, { id: adgangspunktFK, virkningstid })
         : Promise.resolve(null),
+      jordstykkeFK
+        ? gqlFetch(matUrl, MAT_JORDSTYKKE_QUERY, { id: jordstykkeFK, virkningstid })
+            .catch((e: Error) => {
+              console.warn('[DAR] MAT_Jordstykke opslag fejlede:', e.message);
+              return null;
+            })
+        : Promise.resolve(null),
     ]);
 
     const postnummerNode = postnummerData?.DAR_Postnummer?.nodes?.[0] ?? null;
     const adressepunktNode = adressepunktData?.DAR_Adressepunkt?.nodes?.[0] ?? null;
+    const jordstykkeNode = jordstykkeData?.MAT_Jordstykke?.nodes?.[0] ?? null;
+    const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? '';
+    const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
+
+    // ── Kald 4: MAT_Ejerlav (afhænger af ejerlavLokalId fra kald 3c) ────────
+    let ejerlavskode: number | null = null;
+    if (matEjerlavLokalId) {
+      try {
+        const ejerlavData = await gqlFetch(matUrl, MAT_EJERLAV_QUERY, {
+          id: matEjerlavLokalId,
+          virkningstid,
+        });
+        ejerlavskode = ejerlavData?.MAT_Ejerlav?.nodes?.[0]?.ejerlavskode ?? null;
+      } catch (e) {
+        console.warn('[DAR] MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null:', (e as Error).message);
+      }
+    }
 
     // ── Koordinatkonvertering: EPSG:25832 WKT → WGS84 ───────────────────────
     let koordinater = { lat: 0, lng: 0 };
@@ -319,14 +388,14 @@ export class DarService {
       adresse: adresse.adressebetegnelse ?? '',
       postnr: postnummerNode?.postnr ?? '',
       postnrnavn: postnummerNode?.navn ?? '',
-      kommunekode: '',  // kommuneinddeling FK er ikke en kode – kræver register udenfor DAR
-      kommunenavn: '',  // kræver register udenfor DAR
-      matrikel: null,   // jordstykke FK kræver separat MAT-opslag for matrikelnr
+      kommunekode: '',
+      kommunenavn: '',
+      matrikel: matrikelnummer,
       adgangsadresseid: husnummerFK,
       koordinater,
       bbrId: null,
-      ejerlavskode: null,   // ikke i DAR v1 schema
-      matrikelnummer: null, // ikke i DAR v1 schema
+      ejerlavskode,
+      matrikelnummer,
     };
   }
 }
