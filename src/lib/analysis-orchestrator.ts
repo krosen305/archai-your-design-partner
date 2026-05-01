@@ -54,7 +54,12 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   const { addressId, adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = input;
 
   // ── Layer 1: compliance_result (BBR + MAT + Plandata) ──────────────────
-  const cached = await getCachedCompliance(addressId);
+  let cached: ComplianceResult | null = null;
+  try {
+    cached = await getCachedCompliance(addressId);
+  } catch (e) {
+    console.warn('[Orchestrator] cache-læsning fejlede (behandles som cache-miss):', (e as Error).message);
+  }
   if (cached) return cached;
 
   // Cache miss — run the full pipeline
@@ -70,11 +75,20 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     analysedAt: new Date().toISOString(),
   };
 
-  await setCachedCompliance(addressId, result);
+  try {
+    await setCachedCompliance(addressId, result);
+  } catch (e) {
+    console.warn('[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):', (e as Error).message);
+  }
 
   // ── Layer 2: lokalplan_extracted (IS_MOCK=true) ─────────────────────────
   const primaryPdfUrl = result.lokalplaner[0]?.plandokumentLink ?? null;
-  const cachedLokalplan = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
+  let cachedLokalplan: import('@/integrations/supabase/types').Json | null = null;
+  try {
+    cachedLokalplan = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
+  } catch (e) {
+    console.warn('[Orchestrator] lokalplan-cache-læsning fejlede:', (e as Error).message);
+  }
   if (!cachedLokalplan && primaryPdfUrl) {
     try {
       const { PdfExtractorService } = await import('@/integrations/ai/pdf-extractor');
@@ -86,7 +100,12 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   }
 
   // ── Layer 3: servitut_extracted (IS_MOCK=true) ──────────────────────────
-  const cachedServitut = await getCachedServitut(addressId);
+  let cachedServitut: import('@/integrations/supabase/types').Json | null = null;
+  try {
+    cachedServitut = await getCachedServitut(addressId);
+  } catch (e) {
+    console.warn('[Orchestrator] servitut-cache-læsning fejlede:', (e as Error).message);
+  }
   if (!cachedServitut) {
     try {
       const { TinglysningService } = await import('@/integrations/tinglysning/client');

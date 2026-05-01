@@ -7,6 +7,7 @@ import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client
 // ---------------------------------------------------------------------------
 
 export type Address = {
+  adresseid: string;           // DAR/DAWA UUID — cache key for address_analysis
   adresse: string;
   postnr: string;
   postnrnavn: string;

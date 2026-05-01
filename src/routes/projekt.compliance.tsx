@@ -7,58 +7,20 @@ import { useProject, deriveComplianceFlags } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
+import type { Lokalplan } from "@/integrations/plandata/client";
+import type { AnalysisInput, ComplianceResult } from "@/lib/analysis-orchestrator";
 
 // ---------------------------------------------------------------------------
-// Server functions – kører kun på serveren (Cloudflare Workers).
+// Server function – cache-first orchestration (ARCH-46).
+// Kalder analyseAddress() som håndterer BBR + MAT + Plandata + Supabase-cache.
 // ---------------------------------------------------------------------------
 
-const fetchBbrData = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      adgangsadresseid: string;
-      ejerlavskode: number | null;
-      matrikelnummer: string | null;
-    }) => data
-  )
-  .handler(async ({ data }): Promise<BbrKompliantData> => {
-    const { adgangsadresseid, ejerlavskode, matrikelnummer } = data;
-
-    let grundareal: number | null = null;
-    if (ejerlavskode && matrikelnummer) {
-      try {
-        const { MatService } = await import("@/integrations/mat/client");
-        const mat = await MatService.getGrundareal(ejerlavskode, matrikelnummer);
-        grundareal = mat.registreretAreal;
-      } catch (e) {
-        console.warn("[BBR] MAT grundareal-kald fejlede:", (e as Error).message);
-      }
-    }
-
-    const { BbrService } = await import("@/integrations/bbr/client");
-    return BbrService.getKompliantData(adgangsadresseid, grundareal);
+const fetchCompliance = createServerFn({ method: "POST" })
+  .inputValidator((data: AnalysisInput) => data)
+  .handler(async ({ data }): Promise<ComplianceResult> => {
+    const { analyseAddress } = await import("@/lib/analysis-orchestrator");
+    return analyseAddress(data);
   });
-
-const fetchPlandataLokalplaner = createServerFn({ method: "POST" })
-  .inputValidator((data: { lng: number; lat: number }) => data)
-  .handler(
-    async ({ data }): Promise<{ lokalplaner: Lokalplan[]; fejl: string | null }> => {
-      const { lng, lat } = data;
-      const { PlandataService } = await import("@/integrations/plandata/client");
-      const result = await PlandataService.getLokalplanerForKoordinat(lng, lat, true);
-      return { lokalplaner: result.lokalplaner, fejl: result.fejl };
-    }
-  );
-
-const fetchKommuneplanramme = createServerFn({ method: "POST" })
-  .inputValidator((data: { lng: number; lat: number }) => data)
-  .handler(
-    async ({ data }): Promise<{ ramme: Kommuneplanramme | null; fejl: string | null }> => {
-      const { lng, lat } = data;
-      const { PlandataService } = await import("@/integrations/plandata/client");
-      return PlandataService.getKommuneplanrammeForKoordinat(lng, lat);
-    }
-  );
 
 // ---------------------------------------------------------------------------
 // Route
@@ -84,7 +46,6 @@ function ComplianceStep() {
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>([]);
-  const [kommuneplanramme, setKommuneplanramme] = useState<Kommuneplanramme | null>(null);
 
   useEffect(() => {
     if (bbrData) {
@@ -101,35 +62,20 @@ function ComplianceStep() {
     const MIN_LOADING_MS = 2800;
     const startTime = Date.now();
 
-    // Kør BBR og Plandata parallelt
-    const bbrPromise = fetchBbrData({
+    fetchCompliance({
       data: {
+        addressId: address.adresseid,
         adgangsadresseid: address.adgangsadresseid,
         ejerlavskode: address.ejerlavskode ?? null,
         matrikelnummer: address.matrikelnummer ?? null,
+        koordinater: address.koordinater ?? null,
       },
-    });
-
-    const hasCoords = !!(address.koordinater?.lng && address.koordinater?.lat);
-    const coords = hasCoords
-      ? { lng: address.koordinater.lng, lat: address.koordinater.lat }
-      : null;
-
-    const plandataPromise = coords
-      ? fetchPlandataLokalplaner({ data: coords }).catch(() => ({ lokalplaner: [], fejl: null }))
-      : Promise.resolve({ lokalplaner: [], fejl: null });
-
-    const rammePromise = coords
-      ? fetchKommuneplanramme({ data: coords }).catch(() => ({ ramme: null, fejl: null }))
-      : Promise.resolve({ ramme: null, fejl: null });
-
-    Promise.all([bbrPromise, plandataPromise, rammePromise])
-      .then(([bbrResult, plandataResult, rammeResult]) => {
-        setBbrData(bbrResult);
-        setLokalplanerLocal(plandataResult.lokalplaner);
-        setLokalplaner(plandataResult.lokalplaner);  // persist to store for match route
-        setKommuneplanramme(rammeResult.ramme);
-        const flags = deriveComplianceFlags(bbrResult, rammeResult.ramme);
+    })
+      .then((result) => {
+        setBbrData(result.bbr);
+        setLokalplanerLocal(result.lokalplaner);
+        setLokalplaner(result.lokalplaner);
+        const flags = deriveComplianceFlags(result.bbr, result.kommuneplanramme);
         setComplianceFlags(flags);
         setComplianceDone(true);
         setPhase("hus-dna", "complete");
@@ -138,7 +84,7 @@ function ComplianceStep() {
         setTimeout(() => setStatus("done"), remaining);
       })
       .catch((e) => {
-        console.error("[Compliance] BBR fejlede:", e);
+        console.error("[Compliance] pipeline fejlede:", e);
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => {
           setFetchError("BBR-data kunne ikke hentes. Prøv igen.");

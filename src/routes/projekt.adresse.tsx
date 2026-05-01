@@ -65,6 +65,7 @@ function AddressStep() {
     // TRIN 1: Sæt straks adresse fra autocomplete-data (ingen ventetid)
     // adgangsadresseid, koordinater, postnr er alle tilgængeligt nu.
     const immediateAddress = {
+      adresseid: s.adresseid,
       adresse: s.tekst,
       postnr: s.postnr,
       postnrnavn: s.postnrnavn,
@@ -99,6 +100,7 @@ function AddressStep() {
         koordinater: details.koordinater || s.koordinater,
         ejerlavskode: details.ejerlavskode,
         matrikelnummer: details.matrikelnummer,
+        // adresseid stays as s.adresseid from immediateAddress (DAR ID = DAWA ID)
       };
       setSelected(fullAddress);
       setAddress(fullAddress);

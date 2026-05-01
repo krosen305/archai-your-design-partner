@@ -39,7 +39,7 @@ async function upsert(addressId: string, patch: Record<string, unknown>): Promis
       { address_id: addressId, ...patch },
       { onConflict: 'address_id' }
     );
-  if (error) console.error('[Cache] upsert fejlede:', error.message);
+  if (error) throw new Error(`[Cache] upsert fejlede for ${addressId}: ${error.message}`);
 }
 
 async function getRow(addressId: string) {
@@ -48,7 +48,7 @@ async function getRow(addressId: string) {
     .select('*')
     .eq('address_id', addressId)
     .maybeSingle();
-  if (error) console.error('[Cache] select fejlede:', error.message);
+  if (error) throw new Error(`[Cache] select fejlede for ${addressId}: ${error.message}`);
   return data ?? null;
 }
 
