@@ -12,6 +12,9 @@
 //   servitut_extracted  ⏳  IS_MOCK=true — ARCH-26 (live Tinglysning API ikke implementeret)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
+import { validateEnv } from '@/lib/env';
+validateEnv();
+
 import type { BbrKompliantData } from '@/integrations/bbr/client';
 import type { Lokalplan, Kommuneplanramme } from '@/integrations/plandata/client';
 import type { LokalplanExtract } from '@/integrations/ai/pdf-extractor';
