@@ -2,23 +2,26 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Upload, X, Sparkles, Pencil } from "lucide-react";
+import { createServerFn } from "@tanstack/react-start";
 import { useProject, type HusDna } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
+import type { HusDnaInput, HusDnaResult } from "@/integrations/ai/hus-dna-generator";
 
 export const Route = createFileRoute("/projekt/hus-dna")({
   component: HusDnaStep,
 });
 
-const MOCK_DNA: HusDna = {
-  stil: "Nordisk Brutalisme",
-  bruttoareal: "210 m²",
-  etager: "2",
-  tagform: "Fladt",
-  energiklasse: "A2020",
-  saerligeKrav: ["hjemmekontor", "sydvendt terrasse", "dobbelthøjt rum"],
-  confidence: 87,
-};
+// ---------------------------------------------------------------------------
+// Server function — IS_MOCK=true i HusDnaGeneratorService (ARCH-47)
+// ---------------------------------------------------------------------------
+
+const generateHusDna = createServerFn({ method: "POST" })
+  .inputValidator((data: HusDnaInput) => data)
+  .handler(async ({ data }): Promise<HusDnaResult> => {
+    const { HusDnaGeneratorService } = await import("@/integrations/ai/hus-dna-generator");
+    return HusDnaGeneratorService.generate(data);
+  });
 
 function HusDnaStep() {
   const navigate = useNavigate();
@@ -26,14 +29,25 @@ function HusDnaStep() {
   const [images, setImages] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
-  const generate = () => {
+  const generate = async () => {
     setGenerating(true);
+    setGenerateError(null);
     setHusDna(null);
-    setTimeout(() => {
-      setHusDna(MOCK_DNA);
+    try {
+      const result = await generateHusDna({
+        data: { fritekst: text, billedUrls: images },
+      });
+      // HusDnaResult inkluderer `kilde` som ikke er i HusDna store-typen — strip den
+      const { kilde: _kilde, ...dna } = result;
+      setHusDna(dna);
+    } catch (e) {
+      setGenerateError("Generering fejlede – prøv igen.");
+      console.error("[HusDna] generering fejlede:", e);
+    } finally {
       setGenerating(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -108,6 +122,9 @@ function HusDnaStep() {
               />
             </Card>
 
+            {generateError && (
+              <p className="text-xs text-danger font-mono mb-2">{generateError}</p>
+            )}
             <button
               onClick={generate}
               disabled={generating}

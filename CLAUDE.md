@@ -23,17 +23,28 @@ bun test src/integrations/bbr/bbr.test.ts
 
 ### Wizard flow
 
-The app is a 4-step wizard. Steps map directly to file-based routes in `src/routes/`:
+The app follows a 5-phase architecture. Steps map directly to file-based routes in `src/routes/`:
 
 ```
-/                       → index.tsx           (landing / welcome)
-/projekt/adresse        → projekt.adresse.tsx (address autocomplete via DAWA)
-/projekt/compliance     → projekt.compliance.tsx (BBR + Plandata analysis)
-/projekt/beskrivelse    → projekt.beskrivelse.tsx (project description form)
-/projekt/brief          → projekt.brief.tsx   (AI-generated design brief)
+/                         → index.tsx              (landing / welcome)
+/projekt/adresse          → projekt.adresse.tsx    (address autocomplete via DAWA/DAR)
+/projekt/hus-dna          → projekt.hus-dna.tsx    (Phase 1: AI Hus-DNA — dream house input)
+/projekt/compliance       → projekt.compliance.tsx  (cache-first BBR + Plandata pipeline)
+/projekt/match            → projekt.match.tsx       (Phase 2: compliance matrix vs. plangrundlag)
+/projekt/finans           → projekt.finans.tsx      (Phase 3: finansiering — placeholder)
+/projekt/engineering      → projekt.engineering.tsx (Phase 4: ingeniør — placeholder)
+/projekt/udbud            → projekt.udbud.tsx       (Phase 5: udbud — placeholder)
 ```
 
-Global wizard state (selected address, BBR data, project form data) is managed by a single Zustand store: `src/lib/project-store.ts`. The store holds `address`, `bbrData`, `complianceDone`, `project`, and `briefDone`.
+**Navigation flow:** adresse → hus-dna → compliance (auto-runs BBR+Plandata) → match → finans → …
+
+**Legacy routes** (from earlier wizard design — not in primary flow):
+- `projekt.beskrivelse.tsx` — project description form
+- `projekt.brief.tsx` — AI-generated design brief
+
+**Compliance pipeline** runs as a single `createServerFn` that calls `analyseAddress()` from `src/lib/analysis-orchestrator.ts`. Results are cached in Supabase `address_analysis` table (cache key: `address.adresseid`).
+
+Global wizard state is managed by a single Zustand store: `src/lib/project-store.ts`. Key fields: `address` (incl. `adresseid` for cache key), `bbrData`, `complianceDone`, `complianceFlags`, `lokalplaner`, `husDna`, `phases`.
 
 ### Shared UI primitives
 
@@ -55,6 +66,7 @@ Each integration is a standalone service class. Server-side services must **neve
 | `PlandataService` | `plandata/client.ts` | Server only | Local plans via public WFS. No API key needed |
 | `TinglysningService` | `tinglysning/client.ts` | Server only | Servitutter. **IS_MOCK=true** — live API pending (ARCH-26) |
 | `PdfExtractorService` | `ai/pdf-extractor.ts` | Server only | Lokalplan PDF → structured rules via Claude API. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-25) |
+| `HusDnaGeneratorService` | `ai/hus-dna-generator.ts` | Server only | Inspirationsbilleder + fritekst → Hus-DNA via Claude vision. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-47) |
 | Supabase | `supabase/` | Both | Auth middleware and typed client |
 
 **Datafordeler GraphQL constraints** (applies to BBR, MAT, DAR):
@@ -73,6 +85,7 @@ DATAFORDELER_API_KEY         # Required for BBR, MAT, DAR
 DATAFORDELER_BBR_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/BBR/v2
 DATAFORDELER_MAT_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/MAT/v2
 DATAFORDELER_DAR_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/DAR/v1
+ANTHROPIC_API_KEY            # Required for PdfExtractorService + HusDnaGeneratorService (IS_MOCK=true skips this)
 ```
 
 ### Styling
