@@ -151,7 +151,7 @@ function ComplianceStep() {
             adresse={address?.adresse ?? ""}
             data={bbrData}
             lokalplaner={lokalplanerLocal}
-            onContinue={() => navigate({ to: "/projekt/match" })}
+            onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
       </div>
