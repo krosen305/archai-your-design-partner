@@ -136,7 +136,7 @@ function HusDnaStep() {
             {husDna && !generating && (
               <ResultOutput
                 dna={husDna}
-                onContinue={() => navigate({ to: "/projekt/compliance" })}
+                onContinue={() => navigate({ to: "/projekt/byggeanalyse" })}
               />
             )}
           </div>
