@@ -1,12 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
-import { DawaService, type DawaSuggestion } from "@/integrations/dawa/client";
+import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import { DarService } from "@/integrations/dar/client";
 import { syncPatch } from "@/lib/project-sync";
+
+// ---------------------------------------------------------------------------
+// Server function — GSearch kræver DATAFORSYNINGEN_TOKEN, holdes server-side.
+// ---------------------------------------------------------------------------
+
+const searchAddresses = createServerFn({ method: "POST" })
+  .inputValidator((data: { q: string }) => data)
+  .handler(async ({ data }) => {
+    const { GsearchService } = await import("@/integrations/gsearch/client");
+    return GsearchService.getSuggestions(data.q);
+  });
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
@@ -19,7 +31,7 @@ function AddressStep() {
   const [query, setQuery] = useState(address?.adresse ?? "");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(address);
-  const [suggestions, setSuggestions] = useState<DawaSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<GsearchSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastQueryRef = useRef<string>("");
@@ -41,14 +53,13 @@ function AddressStep() {
     setLoading(true);
     setError(null);
 
-    const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const res = await DawaService.getSuggestions(q, controller.signal);
+        const res = await searchAddresses({ data: { q } });
         if (lastQueryRef.current !== q) return;
         setSuggestions(res);
-      } catch (e) {
-        if ((e as Error)?.name === "AbortError") return;
+      } catch {
+        if (lastQueryRef.current !== q) return;
         setSuggestions([]);
         setError("Kunne ikke hente adresser. Prøv igen.");
       } finally {
@@ -58,11 +69,10 @@ function AddressStep() {
 
     return () => {
       clearTimeout(timer);
-      controller.abort();
     };
   }, [open, queryTrimmed, selected]);
 
-  async function handleSelectSuggestion(s: DawaSuggestion) {
+  async function handleSelectSuggestion(s: GsearchSuggestion) {
     // TRIN 1: Sæt straks adresse fra autocomplete-data (ingen ventetid)
     // adgangsadresseid, koordinater, postnr er alle tilgængeligt nu.
     const immediateAddress = {

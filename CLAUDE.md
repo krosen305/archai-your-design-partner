@@ -61,8 +61,7 @@ Each integration is a standalone service class. Server-side services must **neve
 
 | Service                  | File                      | Side        | Notes                                                                                                                  |
 | ------------------------ | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `DawaService`            | `dawa/client.ts`          | Client      | Address autocomplete (getSuggestions). **Deprecated Aug 2026** — Phase 3 migrates to GsearchService when token is set  |
-| `GsearchService`         | `gsearch/client.ts`       | Server only | Phase 3 replacement for DawaService. Requires `DATAFORSYNINGEN_TOKEN` from dataforsyningen.dk                          |
+| `GsearchService`         | `gsearch/client.ts`       | Server only | Address autocomplete via Dataforsyningen GSearch v2. Requires `DATAFORSYNINGEN_TOKEN`                                   |
 | `BbrService`             | `bbr/client.ts`           | Server only | Building register via Datafordeler GraphQL v2. Requires `DATAFORDELER_API_KEY`                                         |
 | `MatService`             | `mat/client.ts`           | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2                                                             |
 | `DarService`             | `dar/client.ts`           | Server only | Address register via Datafordeler GraphQL v1                                                                           |
@@ -151,13 +150,10 @@ ANTHROPIC_API_KEY
 
 **wrangler.toml** er i rod-mappen. Sæt `account_id` til din Cloudflare-konto-ID inden første deploy.
 
-## DAWA migration (deadline: Aug 2026)
+## DAWA migration — ✅ COMPLETED (ARCH-23)
 
-DAWA (`api.dataforsyningen.dk`) is being replaced in three phases:
+DAWA (`api.dataforsyningen.dk`) er fuldt erstattet. Alle tre faser er done:
 
 - **Phase 1** ✅: `grundareal` → `MatService.getGrundareal(ejerlavskode, matrikelnummer)`
 - **Phase 2** ✅: `DawaService.getAddressDetails()` → `DarService.getAddressDetails()`
-- **Phase 3** ⏳: `DawaService.getSuggestions()` → `GsearchService.getSuggestions()` (ARCH-23)
-  - `GsearchService` is implemented in `gsearch/client.ts` and ready
-  - Blocked on: obtain a `DATAFORSYNINGEN_TOKEN` from dataforsyningen.dk (free registration)
-  - Once token is in env, swap `projekt.adresse.tsx` to use a `createServerFn` → `GsearchService`
+- **Phase 3** ✅: `DawaService.getSuggestions()` → `GsearchService.getSuggestions()` (server-side via `createServerFn`)
