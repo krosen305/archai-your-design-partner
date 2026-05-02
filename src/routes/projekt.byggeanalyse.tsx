@@ -51,6 +51,66 @@ type Status = "loading" | "done" | "error";
 
 function ComplianceStep() {
   const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { getSession } = await import("@/lib/auth");
+      const session = await getSession();
+      if (cancelled) return;
+      setNeedsLogin(!session);
+      setAuthChecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (authChecked && needsLogin) {
+    return (
+      <PageTransition>
+        <div className="mx-auto max-w-[560px] px-6 py-16">
+          <div className="mb-6">
+            <BackLink to="/projekt/ejendom" />
+          </div>
+          <Card className="text-center">
+            <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+              LOGIN PÅKRÆVET
+            </div>
+            <h2 className="text-xl text-foreground mb-2">Byggeanalyse kræver konto</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Vi henter data fra BBR og Plandata til din analyse. Opret en gratis konto for at
+              fortsætte.
+            </p>
+            <button
+              onClick={() => navigate({ to: "/" })}
+              className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground hover:brightness-110 transition-all"
+            >
+              Log ind eller opret konto →
+            </button>
+          </Card>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (!authChecked) {
+    return (
+      <PageTransition>
+        <div className="mx-auto max-w-[560px] px-6 py-16 text-center">
+          <div className="font-mono text-xs text-muted-foreground">Tjekker login...</div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  return <ComplianceContent />;
+}
+
+function ComplianceContent() {
+  const navigate = useNavigate();
   const {
     address,
     bbrData,
