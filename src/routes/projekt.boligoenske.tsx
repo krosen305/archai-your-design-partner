@@ -275,7 +275,7 @@ function ByggeoenskeStep() {
   const canContinue =
     step.type === "upload" ||
     step.type === "toggle" ||
-    (value !== undefined && value !== null && value !== "");
+    (value !== undefined && value !== null);
 
   const devBypass = () => {
     setByggeoenske(MOCK_BYGGEOENSKE);
