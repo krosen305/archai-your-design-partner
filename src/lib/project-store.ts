@@ -59,7 +59,41 @@ export type HusDna = {
 };
 
 // ---------------------------------------------------------------------------
-// Compliance flags (Phase 2 — Match-rapport)
+// Byggeønske (Phase 1) — 22-trins guidet wizard
+// ---------------------------------------------------------------------------
+
+export type Byggeoenske = {
+  // Trin 1-5: Grundlæggende
+  byggetype?: "nybyg" | "tilbyg" | "ombyg";
+  husstandsstoerrelse?: number;
+  voksne?: number;
+  boern?: number;
+  livsfase?: "ung" | "etableret" | "senior";
+  // Trin 6-10: Areal & rum
+  oensketAreal?: number;
+  antalEtager?: 1 | 1.5 | 2 | 3;
+  antalSovevaerelser?: number;
+  antalBadevaerelser?: number;
+  hjemmekontor?: boolean;
+  // Trin 11-15: Stil & arkitektur
+  arkitektoniskStil?: "moderne" | "klassisk" | "skandinavisk" | "industriel" | "minimalistisk";
+  tagform?: "fladt" | "saddeltag" | "valm" | "ensidig";
+  facademateriale?: "tegl" | "trae" | "puds" | "metal" | "kombineret";
+  vinduesandel?: "lille" | "mellem" | "stor";
+  udeomraade?: "terrasse" | "have" | "altan" | "tagterrasse";
+  // Trin 16-20: Bæredygtighed & teknik
+  energiklasse?: "BR18" | "lavenergi" | "passiv" | "plusenergi";
+  varmekilde?: "varmepumpe" | "fjernvarme" | "jordvarme" | "solvarme";
+  solceller?: boolean;
+  ventilation?: "naturlig" | "mekanisk" | "balanceret";
+  ladestander?: boolean;
+  // Trin 21-22: Budget & inspiration
+  budget?: "under-3" | "3-5" | "5-8" | "8-12" | "over-12";
+  inspirationsbilleder?: string[]; // Supabase Storage URLs
+};
+
+// ---------------------------------------------------------------------------
+// Hus-DNA (afledt af Byggeønske via AI)
 // ---------------------------------------------------------------------------
 
 export type ComplianceFlag = {
