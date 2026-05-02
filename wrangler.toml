@@ -7,6 +7,7 @@
 #   bunx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 #   bunx wrangler secret put SUPABASE_PUBLISHABLE_KEY
 #   bunx wrangler secret put ANTHROPIC_API_KEY
+#   bunx wrangler secret put DATAFORSYNINGEN_TOKEN
 #
 # For GitHub Actions sættes de som GitHub repository secrets.
 

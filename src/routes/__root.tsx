@@ -12,6 +12,7 @@ import { TopBar } from "@/components/wizard-chrome";
 import { PhaseSidebar } from "@/components/phase-sidebar";
 import { useProject, isHusDna, parseComplianceData } from "@/lib/project-store";
 import { restoreProject } from "@/lib/project-sync";
+import { AuthProvider } from "@/lib/auth-context";
 
 import appCss from "../styles.css?url";
 
@@ -133,22 +134,24 @@ function RootComponent() {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="min-h-screen bg-background">
-      {!isWelcome && <TopBar />}
-      {isWelcome ? (
-        <AnimatePresence mode="wait">
-          <Outlet key={location.pathname} />
-        </AnimatePresence>
-      ) : (
-        <div className="flex">
-          <PhaseSidebar />
-          <main className="flex-1 min-w-0">
-            <AnimatePresence mode="wait">
-              <Outlet key={location.pathname} />
-            </AnimatePresence>
-          </main>
-        </div>
-      )}
-    </div>
+    <AuthProvider>
+      <div className="min-h-screen bg-background">
+        {!isWelcome && <TopBar />}
+        {isWelcome ? (
+          <AnimatePresence mode="wait">
+            <Outlet key={location.pathname} />
+          </AnimatePresence>
+        ) : (
+          <div className="flex">
+            <PhaseSidebar />
+            <main className="flex-1 min-w-0">
+              <AnimatePresence mode="wait">
+                <Outlet key={location.pathname} />
+              </AnimatePresence>
+            </main>
+          </div>
+        )}
+      </div>
+    </AuthProvider>
   );
 }
