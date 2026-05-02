@@ -251,7 +251,7 @@ function ByggeoenskeStep() {
 
   const goNext = () => {
     if (isLast) {
-      syncPatch({ byggeoenske, currentStep: "ejendom" } as never);
+      syncPatch({ byggeoenske, currentStep: "ejendom" });
       navigate({ to: "/projekt/byggeanalyse" });
       return;
     }
@@ -279,7 +279,7 @@ function ByggeoenskeStep() {
 
   const devBypass = () => {
     setByggeoenske(MOCK_BYGGEOENSKE);
-    syncPatch({ byggeoenske: MOCK_BYGGEOENSKE, currentStep: "ejendom" } as never);
+    syncPatch({ byggeoenske: MOCK_BYGGEOENSKE, currentStep: "ejendom" });
     navigate({ to: "/projekt/byggeanalyse" });
   };
 
