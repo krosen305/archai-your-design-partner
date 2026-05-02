@@ -28,7 +28,7 @@ The app follows a 5-phase architecture. Steps map directly to file-based routes 
 
 ```
 /                         → index.tsx              (landing / welcome)
-/projekt/adresse          → projekt.adresse.tsx    (address autocomplete via GSearch + DAR)
+/projekt/adresse          → projekt.adresse.tsx    (address autocomplete via DAWA/DAR)
 /projekt/hus-dna          → projekt.hus-dna.tsx    (Phase 1: AI Hus-DNA — dream house input)
 /projekt/compliance       → projekt.compliance.tsx  (cache-first BBR + Plandata pipeline)
 /projekt/match            → projekt.match.tsx       (Phase 2: compliance matrix vs. plangrundlag)
@@ -61,7 +61,8 @@ Each integration is a standalone service class. Server-side services must **neve
 
 | Service                  | File                      | Side        | Notes                                                                                                                  |
 | ------------------------ | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `GsearchService`         | `gsearch/client.ts`       | Server only | Address autocomplete via Dataforsyningen GSearch v2. Optional `DATAFORSYNINGEN_TOKEN`                                  |
+| `DawaService`            | `dawa/client.ts`          | Client      | Address autocomplete (getSuggestions). **Deprecated Aug 2026** — Phase 3 migrates to GsearchService when token is set  |
+| `GsearchService`         | `gsearch/client.ts`       | Server only | Phase 3 replacement for DawaService. Requires `DATAFORSYNINGEN_TOKEN` from dataforsyningen.dk                          |
 | `BbrService`             | `bbr/client.ts`           | Server only | Building register via Datafordeler GraphQL v2. Requires `DATAFORDELER_API_KEY`                                         |
 | `MatService`             | `mat/client.ts`           | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2                                                             |
 | `DarService`             | `dar/client.ts`           | Server only | Address register via Datafordeler GraphQL v1                                                                           |
@@ -150,10 +151,13 @@ ANTHROPIC_API_KEY
 
 **wrangler.toml** er i rod-mappen. Sæt `account_id` til din Cloudflare-konto-ID inden første deploy.
 
-## DAWA migration — ✅ COMPLETED (ARCH-23)
+## DAWA migration (deadline: Aug 2026)
 
-DAWA (`api.dataforsyningen.dk`) has been fully replaced. All three phases are done:
+DAWA (`api.dataforsyningen.dk`) is being replaced in three phases:
 
 - **Phase 1** ✅: `grundareal` → `MatService.getGrundareal(ejerlavskode, matrikelnummer)`
 - **Phase 2** ✅: `DawaService.getAddressDetails()` → `DarService.getAddressDetails()`
-- **Phase 3** ✅: `DawaService.getSuggestions()` → `GsearchService.getSuggestions()` (server-side via `createServerFn`)
+- **Phase 3** ⏳: `DawaService.getSuggestions()` → `GsearchService.getSuggestions()` (ARCH-23)
+  - `GsearchService` is implemented in `gsearch/client.ts` and ready
+  - Blocked on: obtain a `DATAFORSYNINGEN_TOKEN` from dataforsyningen.dk (free registration)
+  - Once token is in env, swap `projekt.adresse.tsx` to use a `createServerFn` → `GsearchService`
