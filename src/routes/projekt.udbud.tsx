@@ -12,7 +12,7 @@ export const Route = createFileRoute("/projekt/udbud")({
         "Tilbudsindhentning fra 3+ entreprenører",
         "Standard- og specialkontrakter",
       ]}
-      backTo="/projekt/engineering"
+      backTo="/projekt/teknik"
     />
   ),
 });
