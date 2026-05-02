@@ -41,7 +41,7 @@ function HusDnaStep() {
         data: { fritekst: text, billedUrls: images },
       });
       setHusDna(result);
-      syncPatch({ husDna: result, currentStep: "compliance" });
+      syncPatch({ husDna: result, currentStep: "byggeanalyse" });
     } catch (e) {
       setGenerateError("Generering fejlede – prøv igen.");
       console.error("[HusDna] generering fejlede:", e);
