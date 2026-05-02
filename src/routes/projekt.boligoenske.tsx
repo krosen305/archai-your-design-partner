@@ -252,7 +252,7 @@ function ByggeoenskeStep() {
   const goNext = () => {
     if (isLast) {
       syncPatch({ byggeoenske, currentStep: "ejendom" });
-      navigate({ to: "/projekt/byggeanalyse" });
+      navigate({ to: "/projekt/ejendom" });
       return;
     }
     setDirection(1);
