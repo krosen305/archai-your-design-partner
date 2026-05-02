@@ -59,7 +59,41 @@ export type HusDna = {
 };
 
 // ---------------------------------------------------------------------------
-// Compliance flags (Phase 2 — Match-rapport)
+// Byggeønske (Phase 1) — 22-trins guidet wizard
+// ---------------------------------------------------------------------------
+
+export type Byggeoenske = {
+  // Trin 1-5: Grundlæggende
+  byggetype?: "nybyg" | "tilbyg" | "ombyg";
+  husstandsstoerrelse?: number;
+  voksne?: number;
+  boern?: number;
+  livsfase?: "ung" | "etableret" | "senior";
+  // Trin 6-10: Areal & rum
+  oensketAreal?: number;
+  antalEtager?: 1 | 1.5 | 2 | 3;
+  antalSovevaerelser?: number;
+  antalBadevaerelser?: number;
+  hjemmekontor?: boolean;
+  // Trin 11-15: Stil & arkitektur
+  arkitektoniskStil?: "moderne" | "klassisk" | "skandinavisk" | "industriel" | "minimalistisk";
+  tagform?: "fladt" | "saddeltag" | "valm" | "ensidig";
+  facademateriale?: "tegl" | "trae" | "puds" | "metal" | "kombineret";
+  vinduesandel?: "lille" | "mellem" | "stor";
+  udeomraade?: "terrasse" | "have" | "altan" | "tagterrasse";
+  // Trin 16-20: Bæredygtighed & teknik
+  energiklasse?: "BR18" | "lavenergi" | "passiv" | "plusenergi";
+  varmekilde?: "varmepumpe" | "fjernvarme" | "jordvarme" | "solvarme";
+  solceller?: boolean;
+  ventilation?: "naturlig" | "mekanisk" | "balanceret";
+  ladestander?: boolean;
+  // Trin 21-22: Budget & inspiration
+  budget?: "under-3" | "3-5" | "5-8" | "8-12" | "over-12";
+  inspirationsbilleder?: string[]; // Supabase Storage URLs
+};
+
+// ---------------------------------------------------------------------------
+// Hus-DNA (afledt af Byggeønske via AI)
 // ---------------------------------------------------------------------------
 
 export type ComplianceFlag = {
@@ -87,13 +121,14 @@ type State = {
   // 5-fase arkitektur
   phases: Record<PhaseName, PhaseStatus>;
   husDna: HusDna | null;
+  byggeoenske: Byggeoenske;
   complianceFlags: ComplianceFlag[];
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
   kommuneplanramme: Kommuneplanramme | null;
 
   // Setters — eksisterende
-  setAddress: (a: Address) => void;
+  setAddress: (a: Address | null) => void;
   setBbrData: (d: BbrKompliantData | null) => void;
   setComplianceDone: (v: boolean) => void;
   setProject: (p: Partial<ProjectData>) => void;
@@ -102,6 +137,8 @@ type State = {
   // Setters — nye
   setPhase: (phase: PhaseName, status: PhaseStatus) => void;
   setHusDna: (dna: HusDna | null) => void;
+  setByggeoenske: (b: Partial<Byggeoenske>) => void;
+  resetByggeoenske: () => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setLokalplaner: (lp: Lokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
@@ -126,6 +163,7 @@ export const useProject = create<State>((set) => ({
   briefDone: false,
   phases: { ...DEFAULT_PHASES },
   husDna: null,
+  byggeoenske: {},
   complianceFlags: [],
   lokalplaner: [],
   lokalplanExtract: null,
@@ -138,6 +176,8 @@ export const useProject = create<State>((set) => ({
   setBriefDone: (v) => set({ briefDone: v }),
   setPhase: (phase, status) => set((s) => ({ phases: { ...s.phases, [phase]: status } })),
   setHusDna: (husDna) => set({ husDna }),
+  setByggeoenske: (b) => set((s) => ({ byggeoenske: { ...s.byggeoenske, ...b } })),
+  resetByggeoenske: () => set({ byggeoenske: {} }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
@@ -152,6 +192,7 @@ export const useProject = create<State>((set) => ({
       briefDone: false,
       phases: { ...DEFAULT_PHASES },
       husDna: null,
+      byggeoenske: {},
       complianceFlags: [],
       lokalplaner: [],
       lokalplanExtract: null,

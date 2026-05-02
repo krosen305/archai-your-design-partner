@@ -224,6 +224,35 @@ function AddressStep() {
           <p className="mt-1 text-[11px] text-muted-foreground text-center">
             Vi henter automatisk data om grunden fra offentlige registre.
           </p>
+
+          {import.meta.env.DEV && (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const mock = {
+                    adresseid: "0a3f50a8-471d-32b8-e044-0003ba298018",
+                    adresse: "Hasselvej 48, 2830 Virum",
+                    postnr: "2830",
+                    postnrnavn: "Virum",
+                    kommune: "Lyngby-Taarbæk",
+                    kommunekode: "0173",
+                    matrikel: "8a Virum By, Virum",
+                    adgangsadresseid: "0a3f5081-d7e2-32b8-e044-0003ba298018",
+                    koordinater: { lat: 55.7989, lng: 12.4769 },
+                    bbrId: null,
+                    ejerlavskode: 173551,
+                    matrikelnummer: "8a",
+                  };
+                  setAddress(mock);
+                  navigate({ to: "/projekt/boligoenske" });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-accent/40 bg-accent/5 px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-accent hover:bg-accent/10 transition-colors"
+              >
+                ⚡ DEV: Brug mock-adresse (Hasselvej 48, Virum)
+              </button>
+            </div>
+          )}
         </Card>
       </div>
     </PageTransition>

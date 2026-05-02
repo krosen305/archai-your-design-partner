@@ -8,7 +8,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json, Database } from "@/integrations/supabase/types";
 
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
-import type { Address, HusDna, ComplianceFlag } from "@/lib/project-store";
+import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project-store";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 
@@ -20,6 +20,7 @@ export type ProjectPatch = {
   address?: Address;
   bbrData?: BbrKompliantData | null;
   husDna?: HusDna | null;
+  byggeoenske?: Byggeoenske;
   complianceFlags?: ComplianceFlag[];
   lokalplaner?: Lokalplan[];
   kommuneplanramme?: Kommuneplanramme | null;
