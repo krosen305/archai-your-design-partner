@@ -105,11 +105,11 @@ function AddressStep() {
       };
       setSelected(fullAddress);
       setAddress(fullAddress);
-      syncPatch({ address: fullAddress, currentStep: "hus-dna" });
+      syncPatch({ address: fullAddress, currentStep: "boligoenske" });
     } catch (err) {
       console.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
       // Behold immediateAddress – vi har stadig adgangsadresseid til BBR
-      syncPatch({ address: immediateAddress, currentStep: "hus-dna" });
+      syncPatch({ address: immediateAddress, currentStep: "boligoenske" });
     }
   }
 
