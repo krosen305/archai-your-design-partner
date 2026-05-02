@@ -370,7 +370,7 @@ function ResultView({
         onClick={onContinue}
         className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >
-        Fortsæt til Match →
+        Fortsæt til Økonomi →
       </button>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
