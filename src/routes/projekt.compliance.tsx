@@ -73,7 +73,7 @@ function ComplianceStep() {
       return;
     }
 
-    if (!address?.adgangsadresseid) {
+    if (!address?.adresseid) {
       setFetchError("Ingen adresse valgt – gå tilbage og vælg en adresse.");
       setStatus("error");
       return;

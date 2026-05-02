@@ -63,7 +63,19 @@ export type AnalysisInput = {
 // ---------------------------------------------------------------------------
 
 export async function analyseAddress(input: AnalysisInput): Promise<ComplianceResult> {
-  const { addressId, adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = input;
+  const { addressId, ejerlavskode, matrikelnummer, koordinater } = input;
+
+  // GSearch returnerer ikke adgangsadresseid — resolve server-side via DAR hvis nødvendigt.
+  let adgangsadresseid = input.adgangsadresseid;
+  if (!adgangsadresseid && addressId) {
+    try {
+      const { DarService } = await import("@/integrations/dar/client");
+      const dar = await DarService.getAddressDetails(addressId);
+      adgangsadresseid = dar.adgangsadresseid;
+    } catch (e) {
+      console.warn("[Orchestrator] DAR adgangsadresseid-opslag fejlede:", (e as Error).message);
+    }
+  }
 
   // ── Layer 1: compliance_result (BBR + MAT + Plandata) ──────────────────
   type ComplianceBase = Omit<ComplianceResult, "lokalplanExtract" | "naturbeskyttelse" | "dkjord">;
