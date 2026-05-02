@@ -36,7 +36,7 @@ const fetchCompliance = createServerFn({ method: "POST" })
 // Route
 // ---------------------------------------------------------------------------
 
-export const Route = createFileRoute("/projekt/compliance")({
+export const Route = createFileRoute("/projekt/byggeanalyse")({
   component: ComplianceStep,
 });
 

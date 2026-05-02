@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PhaseComingSoon } from "@/components/phase-coming-soon";
 
-export const Route = createFileRoute("/projekt/finans")({
+export const Route = createFileRoute("/projekt/oekonomi")({
   component: () => (
     <PhaseComingSoon
       step={3}
