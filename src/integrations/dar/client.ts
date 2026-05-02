@@ -292,7 +292,7 @@ function getMatUrl(apiKey: string): URL {
 export class DarService {
   /**
    * Henter adressedetaljer fra DAR GraphQL.
-   * Drop-in erstatning for DawaService.getAddressDetails() (DAWA Phase 2).
+   * Henter adressedetaljer til brug efter addressevalg (erstatter DawaService, DAWA Phase 2+3).
    *
    * Kæde: DAR_Adresse → DAR_Husnummer → [DAR_Postnummer + DAR_Adressepunkt + MAT_Jordstykke] → MAT_Ejerlav
    *

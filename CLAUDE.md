@@ -28,7 +28,7 @@ The app follows a 5-phase architecture. Steps map directly to file-based routes 
 
 ```
 /                         → index.tsx              (landing / welcome)
-/projekt/adresse          → projekt.adresse.tsx    (address autocomplete via DAWA/DAR)
+/projekt/adresse          → projekt.adresse.tsx    (address autocomplete via GSearch + DAR)
 /projekt/hus-dna          → projekt.hus-dna.tsx    (Phase 1: AI Hus-DNA — dream house input)
 /projekt/compliance       → projekt.compliance.tsx  (cache-first BBR + Plandata pipeline)
 /projekt/match            → projekt.match.tsx       (Phase 2: compliance matrix vs. plangrundlag)
@@ -61,10 +61,10 @@ Each integration is a standalone service class. Server-side services must **neve
 
 | Service                  | File                      | Side        | Notes                                                                                                                  |
 | ------------------------ | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `DawaService`            | `dawa/client.ts`          | Client      | Address autocomplete + details. **Deprecated Aug 17 2026** — see migration phases in file comments                     |
+| `GsearchService`         | `gsearch/client.ts`       | Server only | Address autocomplete via Dataforsyningen GSearch v2. Optional `DATAFORSYNINGEN_TOKEN`                                  |
 | `BbrService`             | `bbr/client.ts`           | Server only | Building register via Datafordeler GraphQL v2. Requires `DATAFORDELER_API_KEY`                                         |
 | `MatService`             | `mat/client.ts`           | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2                                                             |
-| `DarService`             | `dar/client.ts`           | Server only | Address register via Datafordeler GraphQL v1. **Skeleton — not production-ready**                                      |
+| `DarService`             | `dar/client.ts`           | Server only | Address register via Datafordeler GraphQL v1                                                                           |
 | `PlandataService`        | `plandata/client.ts`      | Server only | Local plans via public WFS. No API key needed                                                                          |
 | `TinglysningService`     | `tinglysning/client.ts`   | Server only | Servitutter. **IS_MOCK=true** — live API pending (ARCH-26)                                                             |
 | `PdfExtractorService`    | `ai/pdf-extractor.ts`     | Server only | Lokalplan PDF → structured rules via Claude API. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-25)             |
@@ -89,6 +89,7 @@ DATAFORDELER_BBR_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/BBR
 DATAFORDELER_MAT_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/MAT/v2
 DATAFORDELER_DAR_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/DAR/v1
 ANTHROPIC_API_KEY            # Required for PdfExtractorService + HusDnaGeneratorService (IS_MOCK=true skips this)
+DATAFORSYNINGEN_TOKEN        # Optional for GsearchService — free token from dataforsyningen.dk; unauthenticated requests may be rate-limited
 ```
 
 ### Styling
@@ -149,10 +150,10 @@ ANTHROPIC_API_KEY
 
 **wrangler.toml** er i rod-mappen. Sæt `account_id` til din Cloudflare-konto-ID inden første deploy.
 
-## DAWA migration (deadline: Aug 17 2026)
+## DAWA migration — ✅ COMPLETED (ARCH-23)
 
-DAWA (`api.dataforsyningen.dk`) is being replaced by Datafordeler services in three phases documented in `src/integrations/dawa/client.ts`:
+DAWA (`api.dataforsyningen.dk`) has been fully replaced. All three phases are done:
 
-- **Phase 1**: Replace `grundareal` fetch with `MatService.getGrundareal(ejerlavskode, matrikelnummer)`
-- **Phase 2**: Replace `DawaService.getAddressDetails()` with `DarService.getAddressDetails()` (after DAR schema confirmation)
-- **Phase 3**: Replace `DawaService.getSuggestions()` with an Adressevælger widget or DAR search
+- **Phase 1** ✅: `grundareal` → `MatService.getGrundareal(ejerlavskode, matrikelnummer)`
+- **Phase 2** ✅: `DawaService.getAddressDetails()` → `DarService.getAddressDetails()`
+- **Phase 3** ✅: `DawaService.getSuggestions()` → `GsearchService.getSuggestions()` (server-side via `createServerFn`)
