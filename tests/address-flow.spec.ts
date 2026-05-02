@@ -70,27 +70,22 @@ test("address flow: DAWA select + chips vises", async ({ page }) => {
   await expect(page.getByTestId("chip-kommune")).toContainText(/Kommune:\s*\S+/);
   await expect(page.getByTestId("chip-bbr")).toContainText(/Klar/);
 
-  const knap = page.getByRole("button", { name: /Analysér adresse/ });
+  const knap = page.getByRole("button", { name: /Fortsæt/ });
   await expect(knap).toBeEnabled();
 });
 
-test("address flow: navigation til compliance virker", async ({ page }) => {
+test("address flow: navigation til byggeanalyse virker", async ({ page }) => {
   await mockBbr(page);
   await page.goto("/projekt/adresse");
 
   await typeInAddressInput(page, TEST_ADRESSE);
   await vælgFørsteForslag(page);
 
-  await expect(page.getByRole("button", { name: /Analysér adresse/ })).toBeEnabled({
+  await expect(page.getByRole("button", { name: /^Fortsæt →$/ })).toBeEnabled({
     timeout: 8_000,
   });
 
-  await page.getByRole("button", { name: /Analysér adresse/ }).click();
-  await expect(page).toHaveURL("/projekt/compliance");
-
-  await expect(page.getByText("BYGNING FUNDET")).toBeVisible({
-    timeout: 10_000,
-  });
-  await expect(page.getByText("16.5%")).toBeVisible();
-  await expect(page.getByText(/Opført 1962/)).toBeVisible();
+  await page.getByRole("button", { name: /^Fortsæt →$/ }).click();
+  // Adresse → boligoenske → byggeanalyse — tjek at vi forlader adresse-siden
+  await expect(page).toHaveURL(/\/projekt\/(boligoenske|byggeanalyse)/);
 });

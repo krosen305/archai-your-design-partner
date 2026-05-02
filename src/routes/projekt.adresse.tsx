@@ -105,11 +105,11 @@ function AddressStep() {
       };
       setSelected(fullAddress);
       setAddress(fullAddress);
-      syncPatch({ address: fullAddress, currentStep: "hus-dna" });
+      syncPatch({ address: fullAddress, currentStep: "boligoenske" });
     } catch (err) {
       console.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
       // Behold immediateAddress – vi har stadig adgangsadresseid til BBR
-      syncPatch({ address: immediateAddress, currentStep: "hus-dna" });
+      syncPatch({ address: immediateAddress, currentStep: "boligoenske" });
     }
   }
 
@@ -204,11 +204,26 @@ function AddressStep() {
 
           <button
             disabled={!selected}
-            onClick={() => navigate({ to: "/projekt/hus-dna" })}
+            onClick={() => navigate({ to: "/projekt/boligoenske" })}
             className="mt-6 w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Fortsæt →
           </button>
+
+          {/* Spring over: fortsæt uden adresse */}
+          <button
+            type="button"
+            onClick={() => {
+              setAddress(null as never); // ryd evt. tidligere valgt
+              navigate({ to: "/projekt/boligoenske" });
+            }}
+            className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+          >
+            Fortsæt uden adresse →
+          </button>
+          <p className="mt-1 text-[11px] text-muted-foreground text-center">
+            Vi henter automatisk data om grunden fra offentlige registre.
+          </p>
         </Card>
       </div>
     </PageTransition>

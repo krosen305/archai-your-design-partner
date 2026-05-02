@@ -15,30 +15,30 @@ export type Phase = {
 export const PHASES: Phase[] = [
   {
     id: 1,
-    label: "DISCOVERY",
-    shortLabel: "Discovery",
+    label: "GRUNDLAGET",
+    shortLabel: "Grundlaget",
     route: "/projekt/adresse",
-    description: "Hus-DNA & lokalplan",
+    description: "Adresse, byggeønske & ejendom",
   },
   {
     id: 2,
-    label: "THE MATCH",
-    shortLabel: "Match",
-    route: "/projekt/match",
-    description: "Tjek lokalplan",
+    label: "BYGGEANALYSE",
+    shortLabel: "Byggeanalyse",
+    route: "/projekt/byggeanalyse",
+    description: "Lokalplan & krav",
   },
   {
     id: 3,
-    label: "FINANS",
-    shortLabel: "Finans",
-    route: "/projekt/finans",
+    label: "ØKONOMI",
+    shortLabel: "Økonomi",
+    route: "/projekt/oekonomi",
     description: "Bank & forsikring",
   },
   {
     id: 4,
-    label: "ENGINEERING",
-    shortLabel: "Engineering",
-    route: "/projekt/engineering",
+    label: "TEKNIK",
+    shortLabel: "Teknik",
+    route: "/projekt/teknik",
     description: "BR18 & statik",
   },
   {
@@ -50,14 +50,19 @@ export const PHASES: Phase[] = [
   },
 ];
 
-const PHASE_1_ROUTES = ["/projekt/adresse", "/projekt/hus-dna", "/projekt/compliance"];
+const PHASE_1_ROUTES = [
+  "/projekt/start",
+  "/projekt/adresse",
+  "/projekt/boligoenske",
+  "/projekt/ejendom",
+];
 
 /** Hvilken fase en given route hører til (null hvis ingen). */
 export function phaseForRoute(pathname: string): PhaseId | null {
   if (PHASE_1_ROUTES.includes(pathname)) return 1;
-  if (pathname === "/projekt/match") return 2;
-  if (pathname === "/projekt/finans") return 3;
-  if (pathname === "/projekt/engineering") return 4;
+  if (pathname === "/projekt/byggeanalyse") return 2;
+  if (pathname === "/projekt/oekonomi") return 3;
+  if (pathname === "/projekt/teknik") return 4;
   if (pathname === "/projekt/udbud") return 5;
   return null;
 }
@@ -84,9 +89,7 @@ export function usePhaseStates(currentPath: string): PhaseStateMap {
     } else if (completed[p.id]) {
       map[p.id] = "complete";
     } else {
-      // Locked, hvis tidligere faser ikke er complete
-      const prevDone = PHASES.slice(0, p.id - 1).every((pp) => completed[pp.id]);
-      map[p.id] = prevDone ? "locked" : "locked";
+      map[p.id] = "locked";
     }
   }
   return map;
@@ -98,12 +101,12 @@ export function usePhaseSubKeys(): Record<PhaseId, { label: string; value: strin
   return {
     1: [
       { label: "Adresse", value: address?.adresse?.split(",")[0] ?? "—" },
-      { label: "Hus-DNA", value: husDna ? "Genereret" : "—" },
+      { label: "Byggeønske", value: husDna ? "Udfyldt" : "—" },
+      { label: "Ejendom", value: bbrData ? "Hentet" : "—" },
     ],
     2: [
       { label: "BBR", value: bbrData ? "Hentet" : "—" },
-      { label: "Lokalplan", value: bbrData ? "LP-123" : "—" },
-      { label: "Servitutter", value: bbrData ? "Ingen" : "—" },
+      { label: "Lokalplan", value: bbrData ? "Tjekket" : "—" },
     ],
     3: [],
     4: [],

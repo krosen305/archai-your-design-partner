@@ -9,7 +9,7 @@ import { BackLink } from "@/components/wizard-chrome";
 import type { HusDnaInput, HusDnaResult } from "@/integrations/ai/hus-dna-generator";
 import { syncPatch } from "@/lib/project-sync";
 
-export const Route = createFileRoute("/projekt/hus-dna")({
+export const Route = createFileRoute("/projekt/boligoenske")({
   component: HusDnaStep,
 });
 
@@ -41,7 +41,7 @@ function HusDnaStep() {
         data: { fritekst: text, billedUrls: images },
       });
       setHusDna(result);
-      syncPatch({ husDna: result, currentStep: "compliance" });
+      syncPatch({ husDna: result, currentStep: "byggeanalyse" });
     } catch (e) {
       setGenerateError("Generering fejlede – prøv igen.");
       console.error("[HusDna] generering fejlede:", e);
@@ -136,7 +136,7 @@ function HusDnaStep() {
             {husDna && !generating && (
               <ResultOutput
                 dna={husDna}
-                onContinue={() => navigate({ to: "/projekt/compliance" })}
+                onContinue={() => navigate({ to: "/projekt/byggeanalyse" })}
               />
             )}
           </div>

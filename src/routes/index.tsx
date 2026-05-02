@@ -1,23 +1,61 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { Search, GitMerge, Wallet, Hammer, FileSignature } from "lucide-react";
+import { signIn, signUp, setGuest, getSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
-  component: Welcome,
+  head: () => ({
+    meta: [
+      { title: "ArchAI — Fra idé til byggetilladelse" },
+      {
+        name: "description",
+        content: "AI-drevet byggerådgivning for private bygherrer i Danmark.",
+      },
+    ],
+  }),
+  component: AuthPage,
 });
 
-const PHASES = [
-  { icon: Search, label: "Discovery", desc: "Hus-DNA & lokalplan" },
-  { icon: GitMerge, label: "Match", desc: "Tjek lokalplan" },
-  { icon: Wallet, label: "Finans", desc: "Bank & forsikring" },
-  { icon: Hammer, label: "Engineering", desc: "BR18 & statik" },
-  { icon: FileSignature, label: "Udbud", desc: "Udbud & kontrakt" },
-];
+function AuthPage() {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-function Welcome() {
+  // Allerede logget ind → redirect direkte til /projekt/start
+  useEffect(() => {
+    getSession().then((session) => {
+      if (session) navigate({ to: "/projekt/start" });
+    });
+  }, [navigate]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      if (mode === "login") {
+        await signIn(email, password);
+      } else {
+        await signUp(email, password);
+      }
+      navigate({ to: "/projekt/start" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunne ikke logge ind. Prøv igen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleGuest() {
+    setGuest();
+    navigate({ to: "/projekt/start" });
+  }
+
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center px-6 py-16 overflow-hidden">
-      {/* Radial glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full"
@@ -28,64 +66,98 @@ function Welcome() {
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center text-center max-w-3xl w-full">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="font-mono text-[32px] tracking-[0.2em] text-accent"
-        >
-          ARCHAI
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-8 space-y-2"
-        >
-          <p className="text-foreground text-lg">Fra tom grund til byggetilladelse.</p>
-          <p className="text-sm text-muted-foreground">
-            AI-drevet byggerådgivning for private bygherrer.
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="mt-12 w-full flex flex-col items-center"
-        >
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-[420px]"
+      >
+        <div className="text-center mb-8">
           <Link
-            to="/projekt/adresse"
-            className="w-full md:w-[360px] inline-flex items-center justify-center rounded-md bg-accent px-6 py-3.5 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 hover:shadow-[0_0_24px_rgba(232,255,77,0.25)]"
+            to="/"
+            className="font-mono text-[28px] tracking-[0.2em] text-accent inline-block"
           >
-            Start dit projekt →
+            ARCHAI
           </Link>
-          <p className="mt-4 text-xs text-muted-foreground">Gratis at prøve. Ingen kreditkort.</p>
-        </motion.div>
+          <p className="mt-3 text-sm text-muted-foreground">Fra idé til byggetilladelse</p>
+        </div>
 
-        {/* Fase-oversigt */}
-        <div className="mt-16 w-full">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {PHASES.map((p, i) => (
-              <motion.div
-                key={p.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.6 + i * 0.1 }}
-                className="rounded-md border border-border bg-[#1A1A1A] p-4 text-left"
-              >
-                <p.icon size={16} className="text-accent mb-2" />
-                <div className="font-mono text-[10px] tracking-[0.15em] text-foreground uppercase">
-                  {p.label}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground leading-tight">{p.desc}</div>
-              </motion.div>
-            ))}
+        <div className="rounded-md border border-border bg-[#111111] p-6">
+          {/* Tabs */}
+          <div className="flex gap-1 mb-5 p-1 rounded-md bg-[#1A1A1A]">
+            <button
+              onClick={() => setMode("login")}
+              className={`flex-1 py-2 rounded font-mono text-[11px] tracking-[0.1em] transition-colors ${
+                mode === "login" ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+              }`}
+            >
+              LOG IND
+            </button>
+            <button
+              onClick={() => setMode("signup")}
+              className={`flex-1 py-2 rounded font-mono text-[11px] tracking-[0.1em] transition-colors ${
+                mode === "signup" ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+              }`}
+            >
+              OPRET KONTO
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-1.5">
+                EMAIL
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full rounded-sm border border-[#333] bg-[#0A0A0A] px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
+                placeholder="dig@example.dk"
+              />
+            </div>
+            <div>
+              <label className="block font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-1.5">
+                ADGANGSKODE
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full rounded-sm border border-[#333] bg-[#0A0A0A] px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {error && (
+              <p className="text-xs text-danger font-mono leading-relaxed">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 disabled:opacity-50"
+            >
+              {busy ? "Vent…" : mode === "login" ? "Log ind" : "Opret konto"}
+            </button>
+          </form>
+
+          <div className="mt-5 pt-5 border-t border-[#222] text-center">
+            <button
+              onClick={handleGuest}
+              className="text-xs text-foreground/80 hover:text-accent transition-colors"
+            >
+              Fortsæt uden at logge ind →
+            </button>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Uden konto gemmes dit projekt ikke
+            </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     </main>
   );
 }

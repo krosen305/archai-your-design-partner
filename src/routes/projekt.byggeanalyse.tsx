@@ -36,7 +36,7 @@ const fetchCompliance = createServerFn({ method: "POST" })
 // Route
 // ---------------------------------------------------------------------------
 
-export const Route = createFileRoute("/projekt/compliance")({
+export const Route = createFileRoute("/projekt/byggeanalyse")({
   component: ComplianceStep,
 });
 
@@ -101,14 +101,14 @@ function ComplianceStep() {
         setComplianceFlags(flags);
         setComplianceDone(true);
         setPhase("hus-dna", "complete");
-        setPhase("match", "active");
+        setPhase("match", "complete");
         syncPatch({
           bbrData: result.bbr,
           complianceFlags: flags,
           lokalplaner: result.lokalplaner,
           kommuneplanramme: result.kommuneplanramme,
           complianceDone: true,
-          currentStep: "match",
+          currentStep: "byggeanalyse",
         });
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
@@ -132,7 +132,7 @@ function ComplianceStep() {
     <PageTransition>
       <div className="mx-auto max-w-[720px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/projekt/hus-dna" />
+          <BackLink to="/projekt/boligoenske" />
         </div>
         {status === "loading" && <LoadingView />}
         {status === "error" && (
@@ -151,7 +151,7 @@ function ComplianceStep() {
             adresse={address?.adresse ?? ""}
             data={bbrData}
             lokalplaner={lokalplanerLocal}
-            onContinue={() => navigate({ to: "/projekt/match" })}
+            onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
       </div>
@@ -370,7 +370,7 @@ function ResultView({
         onClick={onContinue}
         className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >
-        Fortsæt til Match →
+        Fortsæt til Økonomi →
       </button>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.

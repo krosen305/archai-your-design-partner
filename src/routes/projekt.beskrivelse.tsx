@@ -34,7 +34,7 @@ function DescriptionStep() {
     <PageTransition>
       <div className="mx-auto max-w-[720px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/projekt/compliance" />
+          <BackLink to="/projekt/byggeanalyse" />
         </div>
         <StepHeader
           step={3}
