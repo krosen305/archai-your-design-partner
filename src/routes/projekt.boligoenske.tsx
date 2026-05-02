@@ -9,7 +9,7 @@ import { BackLink } from "@/components/wizard-chrome";
 import type { HusDnaInput, HusDnaResult } from "@/integrations/ai/hus-dna-generator";
 import { syncPatch } from "@/lib/project-sync";
 
-export const Route = createFileRoute("/projekt/hus-dna")({
+export const Route = createFileRoute("/projekt/boligoenske")({
   component: HusDnaStep,
 });
 
