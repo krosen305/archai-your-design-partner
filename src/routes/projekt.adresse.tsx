@@ -6,11 +6,10 @@ import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
-import { DarService } from "@/integrations/dar/client";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
-// Server function — GSearch kræver DATAFORSYNINGEN_TOKEN, holdes server-side.
+// Server functions — begge kræver credentials der kun er tilgængelige server-side.
 // ---------------------------------------------------------------------------
 
 const searchAddresses = createServerFn({ method: "POST" })
@@ -18,6 +17,13 @@ const searchAddresses = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { GsearchService } = await import("@/integrations/gsearch/client");
     return GsearchService.getSuggestions(data.q);
+  });
+
+const fetchAddressDetails = createServerFn({ method: "POST" })
+  .inputValidator((data: { adresseid: string }) => data)
+  .handler(async ({ data }) => {
+    const { DarService } = await import("@/integrations/dar/client");
+    return DarService.getAddressDetails(data.adresseid);
   });
 
 export const Route = createFileRoute("/projekt/adresse")({
@@ -96,9 +102,9 @@ function AddressStep() {
     setQuery(s.tekst);
     setOpen(false);
 
-    // TRIN 2: Hent kommunenavn + matrikel i baggrunden (blokerer ikke flowet)
+    // TRIN 2: Hent kommunenavn + matrikel server-side (blokerer ikke flowet)
     try {
-      const details = await DarService.getAddressDetails(s.adresseid);
+      const details = await fetchAddressDetails({ data: { adresseid: s.adresseid } });
       const fullAddress = {
         ...immediateAddress,
         adresse: details.adresse || s.tekst,
