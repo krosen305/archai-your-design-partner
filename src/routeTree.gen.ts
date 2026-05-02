@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjektUdbudRouteImport } from './routes/projekt.udbud'
 import { Route as ProjektTeknikRouteImport } from './routes/projekt.teknik'
+import { Route as ProjektStartRouteImport } from './routes/projekt.start'
 import { Route as ProjektOekonomiRouteImport } from './routes/projekt.oekonomi'
 import { Route as ProjektByggeanalyseRouteImport } from './routes/projekt.byggeanalyse'
 import { Route as ProjektBriefRouteImport } from './routes/projekt.brief'
@@ -32,6 +33,11 @@ const ProjektUdbudRoute = ProjektUdbudRouteImport.update({
 const ProjektTeknikRoute = ProjektTeknikRouteImport.update({
   id: '/projekt/teknik',
   path: '/projekt/teknik',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjektStartRoute = ProjektStartRouteImport.update({
+  id: '/projekt/start',
+  path: '/projekt/start',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjektOekonomiRoute = ProjektOekonomiRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/projekt/brief': typeof ProjektBriefRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
+  '/projekt/start': typeof ProjektStartRoute
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/projekt/brief': typeof ProjektBriefRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
+  '/projekt/start': typeof ProjektStartRoute
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/projekt/brief': typeof ProjektBriefRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
+  '/projekt/start': typeof ProjektStartRoute
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/projekt/brief'
     | '/projekt/byggeanalyse'
     | '/projekt/oekonomi'
+    | '/projekt/start'
     | '/projekt/teknik'
     | '/projekt/udbud'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/projekt/brief'
     | '/projekt/byggeanalyse'
     | '/projekt/oekonomi'
+    | '/projekt/start'
     | '/projekt/teknik'
     | '/projekt/udbud'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/projekt/brief'
     | '/projekt/byggeanalyse'
     | '/projekt/oekonomi'
+    | '/projekt/start'
     | '/projekt/teknik'
     | '/projekt/udbud'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   ProjektBriefRoute: typeof ProjektBriefRoute
   ProjektByggeanalyseRoute: typeof ProjektByggeanalyseRoute
   ProjektOekonomiRoute: typeof ProjektOekonomiRoute
+  ProjektStartRoute: typeof ProjektStartRoute
   ProjektTeknikRoute: typeof ProjektTeknikRoute
   ProjektUdbudRoute: typeof ProjektUdbudRoute
 }
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/projekt/teknik'
       fullPath: '/projekt/teknik'
       preLoaderRoute: typeof ProjektTeknikRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projekt/start': {
+      id: '/projekt/start'
+      path: '/projekt/start'
+      fullPath: '/projekt/start'
+      preLoaderRoute: typeof ProjektStartRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projekt/oekonomi': {
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjektBriefRoute: ProjektBriefRoute,
   ProjektByggeanalyseRoute: ProjektByggeanalyseRoute,
   ProjektOekonomiRoute: ProjektOekonomiRoute,
+  ProjektStartRoute: ProjektStartRoute,
   ProjektTeknikRoute: ProjektTeknikRoute,
   ProjektUdbudRoute: ProjektUdbudRoute,
 }
