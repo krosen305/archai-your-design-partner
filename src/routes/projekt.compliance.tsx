@@ -372,6 +372,7 @@ function ResultView({
       )}
 
       <button
+        data-testid="compliance-continue"
         onClick={onContinue}
         className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >

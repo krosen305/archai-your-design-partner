@@ -113,6 +113,7 @@ function HusDnaStep() {
                 rows={4}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                data-testid="hus-dna-beskrivelse"
                 placeholder="F.eks. åben planløsning, stor have-forbindelse, hjemmekontor..."
                 className="w-full rounded-sm border border-[#333] bg-[#111] px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all resize-none leading-relaxed"
               />
@@ -120,6 +121,7 @@ function HusDnaStep() {
 
             {generateError && <p className="text-xs text-danger font-mono mb-2">{generateError}</p>}
             <button
+              data-testid="generer-hus-dna"
               onClick={generate}
               disabled={generating}
               className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 disabled:opacity-50"
@@ -185,6 +187,7 @@ function GeneratingOutput() {
 function ResultOutput({ dna, onContinue }: { dna: HusDna; onContinue: () => void }) {
   return (
     <motion.div
+      data-testid="hus-dna-result"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -248,6 +251,7 @@ function ResultOutput({ dna, onContinue }: { dna: HusDna; onContinue: () => void
       </Card>
 
       <button
+        data-testid="analyser-adresse"
         onClick={onContinue}
         className="mt-4 w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >

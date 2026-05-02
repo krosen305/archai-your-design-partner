@@ -38,20 +38,29 @@ const MOCK_DAR_DETAILS = {
   matrikelnummer: "5a",
 };
 
+// fetchCompliance returnerer ComplianceResult — ikke flad BBR-data
 const MOCK_BBR_RESULT = {
-  byggeaar: "1962",
-  bebygget_areal: 140,
-  samlet_areal: 175,
-  antal_etager: 1,
-  anvendelseskode: "120",
-  anvendelse_tekst: "Fritliggende enfamilieshus",
-  ydervæg_kode: "1",
-  tagdækning_kode: "3",
-  varme_kode: "1",
-  grundareal: 850,
-  bebyggelsesprocent: 16.5,
-  beregning_mulig: true,
-  fejl: null,
+  bbr: {
+    byggeaar: "1962",
+    bebygget_areal: 140,
+    samlet_areal: 175,
+    antal_etager: 1,
+    anvendelseskode: "120",
+    anvendelse_tekst: "Fritliggende enfamilieshus",
+    ydervæg_kode: "1",
+    tagdækning_kode: "3",
+    varme_kode: "1",
+    grundareal: 850,
+    bebyggelsesprocent: 16.5,
+    beregning_mulig: true,
+    fejl: null,
+  },
+  lokalplaner: [],
+  kommuneplanramme: null,
+  analysedAt: "2026-05-02T12:00:00.000Z",
+  lokalplanExtract: null,
+  naturbeskyttelse: null,
+  dkjord: null,
 };
 
 async function mockServerFns(page: Page) {
