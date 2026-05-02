@@ -2,6 +2,8 @@ import { create } from "zustand";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
+import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
+import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 
 // ---------------------------------------------------------------------------
 // Adresse
@@ -69,7 +71,7 @@ export type ComplianceFlag = {
   detalje: string | null;
   aktuelVærdi: string | null;
   tilladt: string | null;
-  kilde: "bbr" | "plandata" | "servitut" | "beregnet";
+  kilde: "bbr" | "plandata" | "servitut" | "beregnet" | "sdfi" | "dkjord";
 };
 
 // ---------------------------------------------------------------------------
@@ -199,6 +201,8 @@ export function parseComplianceData(v: unknown): ParsedComplianceData | null {
 export function deriveComplianceFlags(
   bbr: BbrKompliantData | null,
   ramme: Kommuneplanramme | null,
+  naturbeskyttelse?: NaturbeskyttelsesResultat | null,
+  dkjord?: DkJordResultat | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
@@ -259,6 +263,102 @@ export function deriveComplianceFlags(
       tilladt: ramme.anvendelseGenerel,
       kilde: "plandata",
     });
+  }
+
+  // ── Naturbeskyttelseslinjer (ARCH-65) ───────────────────────────────────
+  if (naturbeskyttelse) {
+    const linjer: Array<{ key: keyof NaturbeskyttelsesResultat; label: string; detalje: string }> =
+      [
+        {
+          key: "strandbeskyttelse",
+          label: "Strandbeskyttelseslinje",
+          detalje: "300 m fra kyst — byggestop uden dispensation fra Kystdirektoratet",
+        },
+        {
+          key: "skovbyggelinje",
+          label: "Skovbyggelinje",
+          detalje: "300 m fra statsskov — byggestop uden dispensation",
+        },
+        {
+          key: "soebeskyttelse",
+          label: "Søbeskyttelseslinje",
+          detalje: "150 m fra søer >3 ha — byggestop uden dispensation",
+        },
+        {
+          key: "aabeskyttelse",
+          label: "Åbeskyttelseslinje",
+          detalje: "150 m fra vandløb — byggestop uden dispensation",
+        },
+        { key: "klitfredning", label: "Klitfredning", detalje: "Byggestop i klitfredet område" },
+        {
+          key: "kirkebyggelinje",
+          label: "Kirkebyggelinje",
+          detalje: "Op til 300 m fra kirke — højdebegrænsning",
+        },
+      ];
+
+    for (const { key, label, detalje } of linjer) {
+      if (naturbeskyttelse[key]) {
+        flags.push({
+          id: `naturbeskyttelse-${key}`,
+          label,
+          status: "blocker",
+          detalje,
+          aktuelVærdi: "Inden for zone",
+          tilladt: "Ingen byggeri uden dispensation",
+          kilde: "sdfi",
+        });
+      }
+    }
+  }
+
+  // ── DK-Jord forurening (ARCH-66) ───────────────────────────────��────────
+  if (dkjord) {
+    if (dkjord.v2Kortlagt) {
+      flags.push({
+        id: "dkjord-v2",
+        label: "V2-kortlagt grund",
+        status: "blocker",
+        detalje:
+          "Dokumenteret forurening — oprensning kræves inden byggeri. Potentielt 500.000+ kr.",
+        aktuelVærdi: "V2-kortlagt",
+        tilladt: null,
+        kilde: "dkjord",
+      });
+    }
+    if (dkjord.v1Kortlagt) {
+      flags.push({
+        id: "dkjord-v1",
+        label: "V1-kortlagt grund",
+        status: "advarsel",
+        detalje: "Mulig forurening — miljøteknisk undersøgelse kræves inden byggeri",
+        aktuelVærdi: "V1-kortlagt",
+        tilladt: null,
+        kilde: "dkjord",
+      });
+    }
+    if (dkjord.olietank.eksisterer) {
+      flags.push({
+        id: "dkjord-olietank",
+        label: "Olietank registreret",
+        status: "advarsel",
+        detalje: `Gammel olietank${dkjord.olietank.driftsstatus ? ` (${dkjord.olietank.driftsstatus})` : ""} — prøvetagning af jord kræves`,
+        aktuelVærdi: dkjord.olietank.driftsstatus ?? "registreret",
+        tilladt: null,
+        kilde: "dkjord",
+      });
+    }
+    if (dkjord.omraadeklassificering) {
+      flags.push({
+        id: "dkjord-omraade",
+        label: "Områdeklassificering",
+        status: "advarsel",
+        detalje: "Krav om jordsundhedsattest ved jordflytning — kontakt kommunen",
+        aktuelVærdi: dkjord.omraadeklassificering,
+        tilladt: null,
+        kilde: "dkjord",
+      });
+    }
   }
 
   return flags;

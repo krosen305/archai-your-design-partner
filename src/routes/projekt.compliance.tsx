@@ -97,7 +97,12 @@ function ComplianceStep() {
         setLokalplaner(result.lokalplaner);
         setLokalplanExtract(result.lokalplanExtract);
         setKommuneplanramme(result.kommuneplanramme);
-        const flags = deriveComplianceFlags(result.bbr, result.kommuneplanramme);
+        const flags = deriveComplianceFlags(
+          result.bbr,
+          result.kommuneplanramme,
+          result.naturbeskyttelse,
+          result.dkjord,
+        );
         setComplianceFlags(flags);
         setComplianceDone(true);
         setPhase("hus-dna", "complete");

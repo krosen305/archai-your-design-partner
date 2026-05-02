@@ -9,6 +9,8 @@
 // Current layer status:
 //   compliance_result   ✅  BBR + MAT + Plandata pipeline (live)
 //   lokalplan_extracted ✅  live Anthropic PDF-parsing (ARCH-53)
+//   naturbeskyttelse    ⏳  IS_MOCK=true — ARCH-65 (DAI WFS endpoint afventer verifikation)
+//   dkjord              ⏳  IS_MOCK=true — ARCH-66 (dkjord.mst.dk ikke tilgængelig fra dev)
 //   servitut_extracted  ⏳  IS_MOCK=true — ARCH-26 (live Tinglysning API ikke implementeret)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
@@ -18,6 +20,8 @@ validateEnv();
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
+import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
+import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { Json } from "@/integrations/supabase/types";
 import {
   getCachedCompliance,
@@ -38,6 +42,8 @@ export type ComplianceResult = {
   kommuneplanramme: Kommuneplanramme | null;
   analysedAt: string;
   lokalplanExtract: LokalplanExtract | null;
+  naturbeskyttelse: NaturbeskyttelsesResultat | null;
+  dkjord: DkJordResultat | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -60,7 +66,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   const { addressId, adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = input;
 
   // ── Layer 1: compliance_result (BBR + MAT + Plandata) ──────────────────
-  type ComplianceBase = Omit<ComplianceResult, "lokalplanExtract">;
+  type ComplianceBase = Omit<ComplianceResult, "lokalplanExtract" | "naturbeskyttelse" | "dkjord">;
   let complianceBase: ComplianceBase | null = null;
   try {
     const cached = await getCachedCompliance(addressId);
@@ -122,7 +128,30 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
   }
 
-  return { ...complianceBase, lokalplanExtract };
+  // ── Layer 4: naturbeskyttelse + dkjord — kører parallelt (IS_MOCK=true) ─
+  let naturbeskyttelse: NaturbeskyttelsesResultat | null = null;
+  let dkjord: DkJordResultat | null = null;
+
+  if (koordinater) {
+    const [natur, jord] = await Promise.all([
+      import("@/integrations/sdfi/naturbeskyttelse")
+        .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
+        .catch((e: Error) => {
+          console.warn("[Orchestrator] naturbeskyttelse fejlede:", e.message);
+          return null;
+        }),
+      import("@/integrations/miljoe/dkjord")
+        .then(({ DkJordService }) => DkJordService.getTilstand(koordinater))
+        .catch((e: Error) => {
+          console.warn("[Orchestrator] DK-Jord fejlede:", e.message);
+          return null;
+        }),
+    ]);
+    naturbeskyttelse = natur;
+    dkjord = jord;
+  }
+
+  return { ...complianceBase, lokalplanExtract, naturbeskyttelse, dkjord };
 }
 
 // ---------------------------------------------------------------------------
