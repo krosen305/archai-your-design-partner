@@ -80,6 +80,55 @@ export type Database = {
         };
         Relationships: [];
       };
+      projekter: {
+        Row: {
+          id: string;
+          user_id: string;
+          created_at: string;
+          updated_at: string;
+          adresse: string | null;
+          adresse_dar_id: string | null;
+          byggeoenske: Json | null;
+          bbr_data: Json | null;
+          dar_data: Json | null;
+          mat_data: Json | null;
+          byggeanalyse_resultat: Json | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          created_at?: string;
+          updated_at?: string;
+          adresse?: string | null;
+          adresse_dar_id?: string | null;
+          byggeoenske?: Json | null;
+          bbr_data?: Json | null;
+          dar_data?: Json | null;
+          mat_data?: Json | null;
+          byggeanalyse_resultat?: Json | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          created_at?: string;
+          updated_at?: string;
+          adresse?: string | null;
+          adresse_dar_id?: string | null;
+          byggeoenske?: Json | null;
+          bbr_data?: Json | null;
+          dar_data?: Json | null;
+          mat_data?: Json | null;
+          byggeanalyse_resultat?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "projekter_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       projects: {
         Row: {
           address_adresseid: string | null;
