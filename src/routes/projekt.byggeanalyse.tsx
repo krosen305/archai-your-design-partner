@@ -101,14 +101,14 @@ function ComplianceStep() {
         setComplianceFlags(flags);
         setComplianceDone(true);
         setPhase("hus-dna", "complete");
-        setPhase("match", "active");
+        setPhase("match", "complete");
         syncPatch({
           bbrData: result.bbr,
           complianceFlags: flags,
           lokalplaner: result.lokalplaner,
           kommuneplanramme: result.kommuneplanramme,
           complianceDone: true,
-          currentStep: "match",
+          currentStep: "byggeanalyse",
         });
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
