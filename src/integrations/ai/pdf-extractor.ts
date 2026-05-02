@@ -98,41 +98,57 @@ export class PdfExtractorService {
     const pdfBuffer = await pdfRes.arrayBuffer();
     const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
 
-    // Send til Claude med PDF som dokument
-    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "document",
-                source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-              },
-              { type: "text", text: EXTRACTION_PROMPT },
-            ],
-          },
-        ],
-      }),
-    });
+    // Send til Claude med PDF som dokument — retry ved 429 (rate limit)
+    let anthropicRes: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1024,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "document",
+                  source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+                },
+                { type: "text", text: EXTRACTION_PROMPT },
+              ],
+            },
+          ],
+        }),
+      });
 
-    if (!anthropicRes.ok) {
-      const body = await anthropicRes.text();
+      if (anthropicRes.status !== 429) break;
+
+      // Eksponentiel backoff: 10s, 20s, 40s
+      const delayMs = 10_000 * Math.pow(2, attempt);
+      console.warn(`[PdfExtractor] Rate limit (429) — venter ${delayMs / 1000}s før retry ${attempt + 1}/3`);
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+
+    if (!anthropicRes!.ok) {
+      const body = await anthropicRes!.text();
       throw new Error(
-        `PdfExtractorService: Anthropic API fejl (${anthropicRes.status}): ${body.slice(0, 200)}`,
+        `PdfExtractorService: Anthropic API fejl (${anthropicRes!.status}): ${body.slice(0, 200)}`,
       );
     }
 
-    const json = (await anthropicRes.json()) as any;
-    const text: string = json?.content?.[0]?.text ?? "{}";
+    const json = (await anthropicRes!.json()) as any;
+    const rawText: string = json?.content?.[0]?.text ?? "{}";
+
+    // Claude returnerer ind imellem JSON pakket i ```json ... ``` — strip disse
+    const text = rawText
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/i, "")
+      .trim() || "{}";
 
     try {
       const parsed = JSON.parse(text);
