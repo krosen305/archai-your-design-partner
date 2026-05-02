@@ -121,13 +121,14 @@ type State = {
   // 5-fase arkitektur
   phases: Record<PhaseName, PhaseStatus>;
   husDna: HusDna | null;
+  byggeoenske: Byggeoenske;
   complianceFlags: ComplianceFlag[];
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
   kommuneplanramme: Kommuneplanramme | null;
 
   // Setters — eksisterende
-  setAddress: (a: Address) => void;
+  setAddress: (a: Address | null) => void;
   setBbrData: (d: BbrKompliantData | null) => void;
   setComplianceDone: (v: boolean) => void;
   setProject: (p: Partial<ProjectData>) => void;
@@ -136,6 +137,8 @@ type State = {
   // Setters — nye
   setPhase: (phase: PhaseName, status: PhaseStatus) => void;
   setHusDna: (dna: HusDna | null) => void;
+  setByggeoenske: (b: Partial<Byggeoenske>) => void;
+  resetByggeoenske: () => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setLokalplaner: (lp: Lokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
@@ -160,6 +163,7 @@ export const useProject = create<State>((set) => ({
   briefDone: false,
   phases: { ...DEFAULT_PHASES },
   husDna: null,
+  byggeoenske: {},
   complianceFlags: [],
   lokalplaner: [],
   lokalplanExtract: null,
@@ -172,6 +176,8 @@ export const useProject = create<State>((set) => ({
   setBriefDone: (v) => set({ briefDone: v }),
   setPhase: (phase, status) => set((s) => ({ phases: { ...s.phases, [phase]: status } })),
   setHusDna: (husDna) => set({ husDna }),
+  setByggeoenske: (b) => set((s) => ({ byggeoenske: { ...s.byggeoenske, ...b } })),
+  resetByggeoenske: () => set({ byggeoenske: {} }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
@@ -186,6 +192,7 @@ export const useProject = create<State>((set) => ({
       briefDone: false,
       phases: { ...DEFAULT_PHASES },
       husDna: null,
+      byggeoenske: {},
       complianceFlags: [],
       lokalplaner: [],
       lokalplanExtract: null,
