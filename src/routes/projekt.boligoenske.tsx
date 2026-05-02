@@ -280,7 +280,7 @@ function ByggeoenskeStep() {
   const devBypass = () => {
     setByggeoenske(MOCK_BYGGEOENSKE);
     syncPatch({ byggeoenske: MOCK_BYGGEOENSKE, currentStep: "ejendom" });
-    navigate({ to: "/projekt/byggeanalyse" });
+    navigate({ to: "/projekt/ejendom" });
   };
 
   return (
