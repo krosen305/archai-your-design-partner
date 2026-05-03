@@ -90,6 +90,14 @@ function ComplianceStep() {
             >
               Log ind eller opret konto →
             </button>
+            {import.meta.env.DEV && (
+              <button
+                onClick={() => setNeedsLogin(false)}
+                className="mt-3 w-full inline-flex items-center justify-center rounded-md border border-dashed border-accent/40 bg-accent/5 px-3 py-2 font-mono text-[10px] tracking-[0.1em] text-accent hover:bg-accent/10 transition-colors"
+              >
+                ⚡ DEV: Spring login over
+              </button>
+            )}
           </Card>
         </div>
       </PageTransition>
