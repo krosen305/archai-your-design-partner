@@ -16,9 +16,7 @@ import { Route as ProjektStartRouteImport } from './routes/projekt.start'
 import { Route as ProjektOekonomiRouteImport } from './routes/projekt.oekonomi'
 import { Route as ProjektEjendomRouteImport } from './routes/projekt.ejendom'
 import { Route as ProjektByggeanalyseRouteImport } from './routes/projekt.byggeanalyse'
-import { Route as ProjektBriefRouteImport } from './routes/projekt.brief'
 import { Route as ProjektBoligoenskeRouteImport } from './routes/projekt.boligoenske'
-import { Route as ProjektBeskrivelseRouteImport } from './routes/projekt.beskrivelse'
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
 
 const IndexRoute = IndexRouteImport.update({
@@ -56,19 +54,9 @@ const ProjektByggeanalyseRoute = ProjektByggeanalyseRouteImport.update({
   path: '/projekt/byggeanalyse',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektBriefRoute = ProjektBriefRouteImport.update({
-  id: '/projekt/brief',
-  path: '/projekt/brief',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProjektBoligoenskeRoute = ProjektBoligoenskeRouteImport.update({
   id: '/projekt/boligoenske',
   path: '/projekt/boligoenske',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjektBeskrivelseRoute = ProjektBeskrivelseRouteImport.update({
-  id: '/projekt/beskrivelse',
-  path: '/projekt/beskrivelse',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
@@ -80,9 +68,7 @@ const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
   '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
-  '/projekt/brief': typeof ProjektBriefRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/ejendom': typeof ProjektEjendomRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
@@ -93,9 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
   '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
-  '/projekt/brief': typeof ProjektBriefRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/ejendom': typeof ProjektEjendomRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
@@ -107,9 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
   '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
-  '/projekt/brief': typeof ProjektBriefRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/ejendom': typeof ProjektEjendomRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
@@ -122,9 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/projekt/adresse'
-    | '/projekt/beskrivelse'
     | '/projekt/boligoenske'
-    | '/projekt/brief'
     | '/projekt/byggeanalyse'
     | '/projekt/ejendom'
     | '/projekt/oekonomi'
@@ -135,9 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/projekt/adresse'
-    | '/projekt/beskrivelse'
     | '/projekt/boligoenske'
-    | '/projekt/brief'
     | '/projekt/byggeanalyse'
     | '/projekt/ejendom'
     | '/projekt/oekonomi'
@@ -148,9 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/projekt/adresse'
-    | '/projekt/beskrivelse'
     | '/projekt/boligoenske'
-    | '/projekt/brief'
     | '/projekt/byggeanalyse'
     | '/projekt/ejendom'
     | '/projekt/oekonomi'
@@ -162,9 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjektAdresseRoute: typeof ProjektAdresseRoute
-  ProjektBeskrivelseRoute: typeof ProjektBeskrivelseRoute
   ProjektBoligoenskeRoute: typeof ProjektBoligoenskeRoute
-  ProjektBriefRoute: typeof ProjektBriefRoute
   ProjektByggeanalyseRoute: typeof ProjektByggeanalyseRoute
   ProjektEjendomRoute: typeof ProjektEjendomRoute
   ProjektOekonomiRoute: typeof ProjektOekonomiRoute
@@ -224,25 +198,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjektByggeanalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/brief': {
-      id: '/projekt/brief'
-      path: '/projekt/brief'
-      fullPath: '/projekt/brief'
-      preLoaderRoute: typeof ProjektBriefRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/projekt/boligoenske': {
       id: '/projekt/boligoenske'
       path: '/projekt/boligoenske'
       fullPath: '/projekt/boligoenske'
       preLoaderRoute: typeof ProjektBoligoenskeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projekt/beskrivelse': {
-      id: '/projekt/beskrivelse'
-      path: '/projekt/beskrivelse'
-      fullPath: '/projekt/beskrivelse'
-      preLoaderRoute: typeof ProjektBeskrivelseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projekt/adresse': {
@@ -258,9 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjektAdresseRoute: ProjektAdresseRoute,
-  ProjektBeskrivelseRoute: ProjektBeskrivelseRoute,
   ProjektBoligoenskeRoute: ProjektBoligoenskeRoute,
-  ProjektBriefRoute: ProjektBriefRoute,
   ProjektByggeanalyseRoute: ProjektByggeanalyseRoute,
   ProjektEjendomRoute: ProjektEjendomRoute,
   ProjektOekonomiRoute: ProjektOekonomiRoute,
