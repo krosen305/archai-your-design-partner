@@ -1,0 +1,150 @@
+# ARCH-74: GitHub PR → Linear status sync
+#
+# PR opened  → Linear issue "In Review"
+# PR merged  → Linear issue "Done"
+# PR closed (without merge) → Linear issue back to "In Progress"
+#
+# Extracts ARCH-XX from the branch name, then queries Linear for the issue
+# and updates its workflow state.
+#
+# ── Required GitHub Secrets ───────────────────────────────────────────────────
+#   LINEAR_API_KEY: Personal API key fra Linear (Settings → API → Personal API keys)
+#
+# ── Skips ─────────────────────────────────────────────────────────────────────
+#   Branches without ARCH-XX in the name are silently skipped.
+
+name: GitHub PR → Linear status
+
+on:
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  sync-to-linear:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract Linear issue ID from branch
+        id: extract
+        run: |
+          ISSUE_ID=$(echo "${{ github.head_ref }}" | grep -oiE 'arch-[0-9]+' | tr '[:lower:]' '[:upper:]' | head -1)
+          echo "issue_id=${ISSUE_ID}" >> $GITHUB_OUTPUT
+          if [ -z "$ISSUE_ID" ]; then
+            echo "Ingen ARCH-XX fundet i branch '${{ github.head_ref }}' — springer over."
+          else
+            echo "Linear issue: $ISSUE_ID"
+          fi
+
+      - name: Opdater Linear issue status
+        if: steps.extract.outputs.issue_id != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueIdentifier = '${{ steps.extract.outputs.issue_id }}';
+            const action          = context.payload.action;
+            const merged          = context.payload.pull_request?.merged ?? false;
+            const prUrl           = context.payload.pull_request?.html_url ?? '';
+
+            // Bestem måltilstand
+            let targetStateName;
+            if (action === 'opened') {
+              targetStateName = 'In Review';
+            } else if (action === 'closed' && merged) {
+              targetStateName = 'Done';
+            } else if (action === 'closed' && !merged) {
+              targetStateName = 'In Progress';
+            } else {
+              console.log(`Ukendt action "${action}" — springer over.`);
+              return;
+            }
+
+            const TEAM_ID = '7b8276b0-e8ca-48a7-a877-68057311b5c8';
+            const LINEAR_API = 'https://api.linear.app/graphql';
+            const headers = {
+              'Authorization': process.env.LINEAR_API_KEY,
+              'Content-Type':  'application/json',
+            };
+
+            // Hent issue + tilgængelige workflow-tilstande for teamet
+            const queryRes = await fetch(LINEAR_API, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                query: `
+                  query GetIssueAndStates($identifier: String!, $teamId: String!) {
+                    issue(id: $identifier) { id identifier title state { name } }
+                    workflowStates(filter: { team: { id: { eq: $teamId } } }) {
+                      nodes { id name type }
+                    }
+                  }
+                `,
+                variables: { identifier: issueIdentifier, teamId: TEAM_ID },
+              }),
+            });
+
+            if (!queryRes.ok) {
+              throw new Error(`Linear API HTTP ${queryRes.status}: ${await queryRes.text()}`);
+            }
+
+            const queryData = await queryRes.json();
+            if (queryData.errors?.length) {
+              throw new Error(`Linear GraphQL: ${JSON.stringify(queryData.errors)}`);
+            }
+
+            const issue = queryData.data?.issue;
+            if (!issue) {
+              console.log(`Issue ${issueIdentifier} ikke fundet i Linear — springer over.`);
+              return;
+            }
+
+            // Find tilstandens ID — søg primært efter navn, sekundært efter type
+            const states = queryData.data?.workflowStates?.nodes ?? [];
+            let targetState = states.find((s) => s.name === targetStateName);
+
+            // Fallback: "In Review" → brug "In Progress" hvis ikke "In Review" eksisterer
+            if (!targetState && targetStateName === 'In Review') {
+              targetState = states.find((s) => s.type === 'started' && s.name === 'In Progress');
+            }
+
+            if (!targetState) {
+              console.log(`Tilstand "${targetStateName}" ikke fundet i Linear — springer over.`);
+              console.log(`Tilgængelige tilstande: ${states.map((s) => s.name).join(', ')}`);
+              return;
+            }
+
+            if (issue.state?.name === targetState.name) {
+              console.log(`Issue ${issueIdentifier} er allerede i "${targetState.name}" — springer over.`);
+              return;
+            }
+
+            // Opdater issue status
+            const updateRes = await fetch(LINEAR_API, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                query: `
+                  mutation UpdateIssueState($id: String!, $stateId: String!) {
+                    issueUpdate(id: $id, input: { stateId: $stateId }) {
+                      success
+                      issue { identifier state { name } }
+                    }
+                  }
+                `,
+                variables: { id: issue.id, stateId: targetState.id },
+              }),
+            });
+
+            if (!updateRes.ok) {
+              throw new Error(`Linear API HTTP ${updateRes.status}: ${await updateRes.text()}`);
+            }
+
+            const updateData = await updateRes.json();
+            if (updateData.errors?.length) {
+              throw new Error(`Linear GraphQL: ${JSON.stringify(updateData.errors)}`);
+            }
+
+            const updated = updateData.data?.issueUpdate?.issue;
+            console.log(`✅ ${issueIdentifier} → "${updated?.state?.name}" (${action}, merged=${merged})`);
+            console.log(`   PR: ${prUrl}`);
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}

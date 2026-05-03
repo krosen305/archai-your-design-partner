@@ -1,0 +1,85 @@
+# ARCH-74: Linear → GitHub branch auto-creation
+#
+# Triggered by the Linear webhook bridge at POST /api/webhooks/linear
+# (src/server.ts) which fires a repository_dispatch when an issue moves
+# to "In Progress".
+#
+# Branch naming follows existing convention: krosenmejer/arch-XX-slug
+# Linear already provides the exact branchName in the webhook payload.
+#
+# ── Required GitHub Secrets ───────────────────────────────────────────────────
+#   (none — uses built-in GITHUB_TOKEN)
+#
+# ── Manual test ───────────────────────────────────────────────────────────────
+#   gh api repos/{owner}/{repo}/dispatches \
+#     --method POST \
+#     -f event_type=linear-issue-in-progress \
+#     -F client_payload[issueId]=ARCH-99 \
+#     -F client_payload[issueTitle]="Test issue" \
+#     -F client_payload[branchName]=krosenmejer/arch-99-test-issue
+
+name: Linear → GitHub branch
+
+on:
+  repository_dispatch:
+    types: [linear-issue-in-progress]
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create branch from Linear issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const payload = context.payload.client_payload;
+            const issueId    = payload.issueId    ?? '';
+            const issueTitle = payload.issueTitle ?? '';
+
+            // Use branch name from Linear if provided, otherwise derive it
+            let branchName = payload.branchName ?? '';
+            if (!branchName) {
+              const slug = issueTitle
+                .toLowerCase()
+                .replace(/[æøå]/g, (c) => ({ æ: 'ae', ø: 'oe', å: 'aa' })[c] ?? c)
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
+                .substring(0, 50);
+              branchName = `krosenmejer/${issueId.toLowerCase()}-${slug}`;
+            }
+
+            // Check if branch already exists (idempotent)
+            try {
+              await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                ref:   `heads/${branchName}`,
+              });
+              console.log(`Branch "${branchName}" eksisterer allerede — springer over.`);
+              return;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+
+            // Get SHA of main branch to branch from
+            const main = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              ref:   'heads/main',
+            });
+
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              ref:   `refs/heads/${branchName}`,
+              sha:   main.data.object.sha,
+            });
+
+            console.log(`✅ Branch oprettet: ${branchName}`);
+            console.log(`   Linear issue: ${issueId} — ${issueTitle}`);
