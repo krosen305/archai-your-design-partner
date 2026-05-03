@@ -143,15 +143,15 @@ A task is done when all of the following are true:
 
 GitHub Actions kører automatisk via `.github/workflows/`:
 
-| Workflow                      | Trigger                                | Steps                                                       |
-| ----------------------------- | -------------------------------------- | ----------------------------------------------------------- |
-| `ci.yml`                      | PR til main + push til main            | tsc · eslint · bun test · bun build                         |
-| `deploy.yml`                  | Push til main                          | bun build · wrangler deploy (production)                    |
-| `sentry-to-linear.yml`        | `repository_dispatch` / manuelt        | Opretter Linear bug issue fra Sentry fejl                   |
-| `ai-pr-review.yml`            | PR opened/synchronize                  | Claude Haiku review-kommentar på PR                         |
-| `linear-to-github.yml`        | `repository_dispatch: linear-issue-in-progress` | Opretter GitHub branch fra Linear issue        |
-| `github-to-linear.yml`        | PR opened/closed                       | Opdaterer Linear issue status (In Review / Done)            |
-| `setup-branch-protection.yml` | `workflow_dispatch` (én gang)          | Aktiverer branch protection på main                         |
+| Workflow                      | Trigger                                         | Steps                                            |
+| ----------------------------- | ----------------------------------------------- | ------------------------------------------------ |
+| `ci.yml`                      | PR til main + push til main                     | tsc · eslint · bun test · bun build              |
+| `deploy.yml`                  | Push til main                                   | bun build · wrangler deploy (production)         |
+| `sentry-to-linear.yml`        | `repository_dispatch` / manuelt                 | Opretter Linear bug issue fra Sentry fejl        |
+| `ai-pr-review.yml`            | PR opened/synchronize                           | Claude Haiku review-kommentar på PR              |
+| `linear-to-github.yml`        | `repository_dispatch: linear-issue-in-progress` | Opretter GitHub branch fra Linear issue          |
+| `github-to-linear.yml`        | PR opened/closed                                | Opdaterer Linear issue status (In Review / Done) |
+| `setup-branch-protection.yml` | `workflow_dispatch` (én gang)                   | Aktiverer branch protection på main              |
 
 **Preview deploys** på PR: `wrangler deploy --name archai-preview-pr-<N>` — kræver at Cloudflare Workers plan tillader flere workers.
 
@@ -178,13 +178,14 @@ Opret derefter en Alert Rule med "Create Linear Issue" action (filter: level=err
 Manuel test: `gh workflow run sentry-to-linear.yml -f title="Test" -f environment="production"`
 
 **Linear ↔ GitHub sync opsætning** (ARCH-74):
+
 1. Opret GitHub PAT (Settings → Developer settings → Personal access tokens → Fine-grained) med `Contents: Write` på dette repo. Gem som `GITHUB_DISPATCH_TOKEN` i GitHub Secrets og Wrangler secret.
 2. Opret Linear webhook (Linear → Settings → API → Webhooks → New webhook):
    - URL: `https://archai-your-design-partner.workers.dev/api/webhooks/linear`
    - Events: `Issues` (state changed)
    - Kopier signing secret → gem som `LINEAR_WEBHOOK_SECRET` i Wrangler secret
 3. `github-to-linear.yml` kræver kun `LINEAR_API_KEY` (allerede sat).
-Manuel test af branch-oprettelse: `gh api repos/krosen305/archai-your-design-partner/dispatches --method POST -f event_type=linear-issue-in-progress -F client_payload[issueId]=ARCH-99 -F client_payload[issueTitle]="Test"`
+   Manuel test af branch-oprettelse: `gh api repos/krosen305/archai-your-design-partner/dispatches --method POST -f event_type=linear-issue-in-progress -F client_payload[issueId]=ARCH-99 -F client_payload[issueTitle]="Test"`
 
 **wrangler.toml** er i rod-mappen. Sæt `account_id` til din Cloudflare-konto-ID inden første deploy.
 

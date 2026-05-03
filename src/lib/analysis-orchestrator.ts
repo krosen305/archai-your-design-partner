@@ -53,9 +53,10 @@ export type ComplianceResult = {
 export type AnalysisInput = {
   addressId: string; // DAWA adresseid — used as cache key
   adgangsadresseid: string; // for BBR lookup
-  ejerlavskode: number | null; // for MAT (grundareal)
-  matrikelnummer: string | null; // for MAT (grundareal)
+  ejerlavskode: number | null; // for MAT (grundareal) — fallback hvis grundareal mangler
+  matrikelnummer: string | null; // for MAT (grundareal) — fallback hvis grundareal mangler
   koordinater: { lat: number; lng: number } | null; // for Plandata
+  grundareal?: number | null; // Pre-fetched fra DAR_Jordstykke — skip MAT-kald hvis tilgængeligt
 };
 
 // ---------------------------------------------------------------------------
@@ -92,7 +93,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
 
   if (!complianceBase) {
     const [bbrResult, plandataResult] = await Promise.all([
-      fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer),
+      fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer, input.grundareal ?? null),
       fetchPlandata(koordinater),
     ]);
     complianceBase = {
@@ -179,14 +180,28 @@ async function fetchBbr(
   adgangsadresseid: string,
   ejerlavskode: number | null,
   matrikelnummer: string | null,
+  preFetchedGrundareal: number | null = null,
 ): Promise<BbrKompliantData | null> {
   try {
-    let grundareal: number | null = null;
-    if (ejerlavskode && matrikelnummer) {
+    let grundareal: number | null = preFetchedGrundareal;
+
+    // Brug pre-fetched grundareal fra DAR hvis tilgængeligt — undgår dobbelt MAT-kald.
+    // Fallback: hent via ejerlavskode + matrikelnummer hvis DAR-opslaget fejlede.
+    if (grundareal === null && ejerlavskode && matrikelnummer) {
       const { MatService } = await import("@/integrations/mat/client");
       const mat = await MatService.getGrundareal(ejerlavskode, matrikelnummer);
-      grundareal = mat.registreretAreal;
+      if (mat.registreretAreal !== null) {
+        grundareal = mat.registreretAreal;
+      } else {
+        console.warn("[Orchestrator] MAT grundareal mangler:", mat.fejl ?? "ukendt fejl");
+      }
+    } else if (grundareal === null) {
+      console.warn(
+        "[Orchestrator] Grundareal ikke tilgængeligt — ejerlavskode/matrikelnummer mangler.",
+        { ejerlavskode, matrikelnummer },
+      );
     }
+
     const { BbrService } = await import("@/integrations/bbr/client");
     return BbrService.getKompliantData(adgangsadresseid, grundareal);
   } catch (e) {

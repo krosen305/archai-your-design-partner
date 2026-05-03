@@ -253,7 +253,7 @@ function getSmartDefault(key: keyof Byggeoenske, current: Byggeoenske): unknown 
       const total = current.husstandsstoerrelse ?? 2;
       const boern = current.boern ?? 0;
       // voksne each get their own room; children share if >1
-      return Math.max(1, (total - boern) + Math.ceil(boern / 2));
+      return Math.max(1, total - boern + Math.ceil(boern / 2));
     }
     case "oensketAreal":
       // Dansk gennemsnit for enfamilieshus ~150 m²
@@ -265,9 +265,7 @@ function getSmartDefault(key: keyof Byggeoenske, current: Byggeoenske): unknown 
 
 // Number of non-upload fields answered — used for skip-flow threshold
 function filledFieldCount(b: Byggeoenske): number {
-  return STEPS.filter(
-    (s) => s.type !== "upload" && b[s.key] !== undefined,
-  ).length;
+  return STEPS.filter((s) => s.type !== "upload" && b[s.key] !== undefined).length;
 }
 
 // ---------------------------------------------------------------------------
@@ -306,12 +304,19 @@ function SummaryView({
         <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-2">
           DINE BYGGEØNSKER
         </div>
-        <h1 className="text-2xl font-medium text-foreground mb-6">Du har allerede udfyldt dine ønsker</h1>
+        <h1 className="text-2xl font-medium text-foreground mb-6">
+          Du har allerede udfyldt dine ønsker
+        </h1>
 
         <Card className="mb-4 divide-y divide-[#222]">
           {rows.map((r) => (
-            <div key={r.label} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-              <span className="text-xs text-muted-foreground font-mono">{r.label.toUpperCase()}</span>
+            <div
+              key={r.label}
+              className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+            >
+              <span className="text-xs text-muted-foreground font-mono">
+                {r.label.toUpperCase()}
+              </span>
               <span className="text-sm text-foreground capitalize">{r.value}</span>
             </div>
           ))}

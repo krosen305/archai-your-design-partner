@@ -405,7 +405,13 @@ function ResultView({
         <MetricCard
           title="Bebyggelsesprocent"
           value={curPct !== null ? `${curPct}%` : "—"}
-          sub={maxPct !== null ? `Max tilladt: ${maxPct}%` : (data.bebygget_areal !== null ? `${data.bebygget_areal} m² bebygget` : "Ikke tilgængeligt")}
+          sub={
+            maxPct !== null
+              ? `Max tilladt: ${maxPct}%`
+              : data.bebygget_areal !== null
+                ? `${data.bebygget_areal} m² bebygget`
+                : "Ikke tilgængeligt"
+          }
           bar={barFraction}
         />
         <MetricCard
@@ -414,7 +420,9 @@ function ResultView({
           sub={
             metrics?.maxEtager !== null && metrics?.maxEtager !== undefined
               ? `Max tilladt: ${metrics.maxEtager}`
-              : (data.byggeaar ? `Opført ${data.byggeaar}` : "Byggeår ukendt")
+              : data.byggeaar
+                ? `Opført ${data.byggeaar}`
+                : "Byggeår ukendt"
           }
         />
         <MetricCard
@@ -431,14 +439,22 @@ function ResultView({
             <MetricCard
               title="Max bygningsareal"
               value={`${metrics.maxBygningsareal} m²`}
-              sub={metrics.currentBygningsareal !== null ? `Nuværende: ${metrics.currentBygningsareal} m²` : "Beregnet fra grundareal"}
+              sub={
+                metrics.currentBygningsareal !== null
+                  ? `Nuværende: ${metrics.currentBygningsareal} m²`
+                  : "Beregnet fra grundareal"
+              }
             />
           )}
           {metrics.remainingBygningsareal !== null && (
             <MetricCard
               title="Bygningsret tilbage"
               value={`${metrics.remainingBygningsareal} m²`}
-              sub={metrics.remainingBygningsareal >= 0 ? "Kan bebygges yderligere" : "Overskrider rammen"}
+              sub={
+                metrics.remainingBygningsareal >= 0
+                  ? "Kan bebygges yderligere"
+                  : "Overskrider rammen"
+              }
               subClass={metrics.remainingBygningsareal >= 0 ? "text-success" : "text-danger"}
             />
           )}
@@ -451,7 +467,6 @@ function ResultView({
           )}
         </div>
       )}
-
 
       {byggeanalyse ? (
         <ByggeanalyseKort analyse={byggeanalyse} />

@@ -60,11 +60,7 @@ export async function handleLinearWebhook(
   const updatedFrom = payload.updatedFrom as Record<string, unknown> | undefined;
 
   // Kør kun når tilstanden skiftede til "In Progress" (type: started)
-  if (
-    !updatedFrom?.stateId ||
-    state?.type !== "started" ||
-    state?.name !== "In Progress"
-  ) {
+  if (!updatedFrom?.stateId || state?.type !== "started" || state?.name !== "In Progress") {
     return new Response("OK", { status: 200 });
   }
 
@@ -80,7 +76,9 @@ export async function handleLinearWebhook(
   const token = env.GITHUB_DISPATCH_TOKEN;
 
   if (!token) {
-    console.warn("[LinearWebhook] GITHUB_DISPATCH_TOKEN ikke sat — springer branch-oprettelse over");
+    console.warn(
+      "[LinearWebhook] GITHUB_DISPATCH_TOKEN ikke sat — springer branch-oprettelse over",
+    );
     return new Response("OK (ingen GitHub token)", { status: 200 });
   }
 

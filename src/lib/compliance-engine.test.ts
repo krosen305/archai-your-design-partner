@@ -91,10 +91,13 @@ describe("calculateComplianceMetrics", () => {
     // 700 × 30% = 210 — allerede heltal
     // 700 × 33% = 231 — heltal
     // 1000 × 33% = 330 — heltal
-    const m = calculateComplianceMetrics({ ...baseBbr, grundareal: 1000 }, {
-      ...baseRamme,
-      bebygpct: 33,
-    });
+    const m = calculateComplianceMetrics(
+      { ...baseBbr, grundareal: 1000 },
+      {
+        ...baseRamme,
+        bebygpct: 33,
+      },
+    );
     expect(m.maxBygningsareal).toBe(330);
   });
 });

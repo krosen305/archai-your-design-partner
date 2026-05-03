@@ -68,6 +68,7 @@ export type DarAddressDetails = {
   bbrId: string | null;
   ejerlavskode: number | null;
   matrikelnummer: string | null;
+  grundareal: number | null; // registreretAreal fra MAT_Jordstykke (hentes i samme kald som matrikelnummer)
 };
 
 // ---------------------------------------------------------------------------
@@ -360,6 +361,7 @@ export class DarService {
     const jordstykkeNode = jordstykkeData?.MAT_Jordstykke?.nodes?.[0] ?? null;
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
+    const grundareal: number | null = jordstykkeNode?.registreretAreal ?? null;
 
     // ── Kald 4: MAT_Ejerlav (afhænger af ejerlavLokalId fra kald 3c) ────────
     let ejerlavskode: number | null = null;
@@ -397,6 +399,7 @@ export class DarService {
       bbrId: null,
       ejerlavskode,
       matrikelnummer,
+      grundareal,
     };
   }
 }

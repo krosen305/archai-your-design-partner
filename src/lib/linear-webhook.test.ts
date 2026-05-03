@@ -92,11 +92,7 @@ describe("ARCH-92: missing LINEAR_WEBHOOK_SECRET", () => {
 describe("signatur-validering", () => {
   it("accepterer request med korrekt HMAC-signatur", async () => {
     const req = await makeRequest(IN_PROGRESS_PAYLOAD, TEST_SECRET);
-    const res = await handleLinearWebhook(
-      req,
-      { LINEAR_WEBHOOK_SECRET: TEST_SECRET },
-      okFetch,
-    );
+    const res = await handleLinearWebhook(req, { LINEAR_WEBHOOK_SECRET: TEST_SECRET }, okFetch);
     // 200 (ingen GitHub token, men signatur OK)
     expect(res.status).toBe(200);
   });
@@ -241,11 +237,7 @@ describe("GitHub dispatch", () => {
   it("returnerer 200 (no-op) når GITHUB_DISPATCH_TOKEN ikke er sat", async () => {
     const fetchSpy = mock(async () => new Response("", { status: 204 }));
     const req = await makeRequest(IN_PROGRESS_PAYLOAD, TEST_SECRET);
-    const res = await handleLinearWebhook(
-      req,
-      { LINEAR_WEBHOOK_SECRET: TEST_SECRET },
-      fetchSpy,
-    );
+    const res = await handleLinearWebhook(req, { LINEAR_WEBHOOK_SECRET: TEST_SECRET }, fetchSpy);
     expect(res.status).toBe(200);
     expect(fetchSpy).not.toHaveBeenCalled();
   });

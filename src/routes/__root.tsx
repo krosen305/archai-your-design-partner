@@ -108,6 +108,7 @@ function RootComponent() {
           kommunekode: "",
           matrikel: project.address_matrikel,
           adgangsadresseid: project.address_bbr,
+          grundareal: null,
           koordinater: (project.address_koordinater as { lat: number; lng: number } | null) ?? {
             lat: 0,
             lng: 0,

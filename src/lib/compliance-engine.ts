@@ -58,8 +58,7 @@ export function calculateComplianceMetrics(
     maxBebyggelsesprocent === null ||
     currentBebyggelsesprocent <= maxBebyggelsesprocent;
 
-  const etagerOk =
-    currentEtager === null || maxEtager === null || currentEtager <= maxEtager;
+  const etagerOk = currentEtager === null || maxEtager === null || currentEtager <= maxEtager;
 
   return {
     grundareal,
