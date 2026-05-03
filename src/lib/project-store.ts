@@ -4,6 +4,7 @@ import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 
 // ---------------------------------------------------------------------------
 // Adresse
@@ -124,6 +125,7 @@ type State = {
   phases: Record<PhaseName, PhaseStatus>;
   husDna: HusDna | null;
   byggeoenske: Byggeoenske;
+  byggeanalyseResultat: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null;
   complianceFlags: ComplianceFlag[];
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
@@ -140,6 +142,7 @@ type State = {
   setPhase: (phase: PhaseName, status: PhaseStatus) => void;
   setHusDna: (dna: HusDna | null) => void;
   setByggeoenske: (b: Partial<Byggeoenske>) => void;
+  setByggeanalyseResultat: (r: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null) => void;
   resetByggeoenske: () => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setLokalplaner: (lp: Lokalplan[]) => void;
@@ -166,6 +169,7 @@ export const useProject = create<State>((set) => ({
   phases: { ...DEFAULT_PHASES },
   husDna: null,
   byggeoenske: {},
+  byggeanalyseResultat: null,
   complianceFlags: [],
   lokalplaner: [],
   lokalplanExtract: null,
@@ -179,6 +183,7 @@ export const useProject = create<State>((set) => ({
   setPhase: (phase, status) => set((s) => ({ phases: { ...s.phases, [phase]: status } })),
   setHusDna: (husDna) => set({ husDna }),
   setByggeoenske: (b) => set((s) => ({ byggeoenske: { ...s.byggeoenske, ...b } })),
+  setByggeanalyseResultat: (byggeanalyseResultat) => set({ byggeanalyseResultat }),
   resetByggeoenske: () => set({ byggeoenske: {} }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
@@ -195,6 +200,7 @@ export const useProject = create<State>((set) => ({
       phases: { ...DEFAULT_PHASES },
       husDna: null,
       byggeoenske: {},
+      byggeanalyseResultat: null,
       complianceFlags: [],
       lokalplaner: [],
       lokalplanExtract: null,

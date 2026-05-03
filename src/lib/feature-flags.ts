@@ -11,4 +11,6 @@ export const FEATURE_FLAGS = {
   pdfExtractorMock: false,
   /** Hus-DNA via Claude vision. False = live (ARCH-52). */
   husDnaMock: false,
+  /** Byggeanalyse via Anthropic (Byggeoenske → struktureret compliance). False = live (ARCH-83). */
+  byggeanalyseMock: false,
 } as const;

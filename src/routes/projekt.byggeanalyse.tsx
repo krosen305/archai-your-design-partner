@@ -10,6 +10,7 @@ import {
   Info,
   ExternalLink,
   Map,
+  Sparkles,
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -20,6 +21,7 @@ import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
+import type { ByggeanalyseInput, ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
@@ -46,6 +48,14 @@ const fetchCompliance = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ComplianceResult> => {
     const { analyseAddress } = await import("@/lib/analysis-orchestrator");
     return analyseAddress(data);
+  });
+
+const runByggeanalyse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: ByggeanalyseInput) => data)
+  .handler(async ({ data }): Promise<ByggeanalyseResultat> => {
+    const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
+    return ByggeanalyseService.analyse(data);
   });
 
 // ---------------------------------------------------------------------------
@@ -138,6 +148,7 @@ function ComplianceContent() {
   const {
     address,
     bbrData,
+    byggeoenske,
     setBbrData,
     setComplianceDone,
     setComplianceFlags,
@@ -145,6 +156,8 @@ function ComplianceContent() {
     setLokalplanExtract,
     setPhase,
     setKommuneplanramme,
+    setByggeanalyseResultat,
+    byggeanalyseResultat,
   } = useProject();
 
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
@@ -175,7 +188,7 @@ function ComplianceContent() {
         koordinater: address.koordinater ?? null,
       },
     })
-      .then((result) => {
+      .then(async (result) => {
         setBbrData(result.bbr);
         setLokalplanerLocal(result.lokalplaner);
         setLokalplaner(result.lokalplaner);
@@ -199,6 +212,26 @@ function ComplianceContent() {
           complianceDone: true,
           currentStep: "byggeanalyse",
         });
+
+        // Kør AI byggeanalyse hvis brugeren har udfyldt byggeønsker (ARCH-83)
+        const harByggeoenskeData = Object.values(byggeoenske).some((v) => v !== undefined);
+        if (harByggeoenskeData) {
+          const lokalplanNavn =
+            result.lokalplaner[0]?.plannavn ?? result.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
+          runByggeanalyse({
+            data: {
+              byggeoenske,
+              lokalplanExtract: result.lokalplanExtract,
+              bbr: result.bbr,
+              lokalplanNavn,
+            },
+          })
+            .then((analyse) => setByggeanalyseResultat(analyse))
+            .catch((e: unknown) =>
+              console.warn("[Byggeanalyse] AI analyse fejlede (ikke kritisk):", e),
+            );
+        }
+
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
       })
@@ -240,6 +273,7 @@ function ComplianceContent() {
             adresse={address?.adresse ?? ""}
             data={bbrData}
             lokalplaner={lokalplanerLocal}
+            byggeanalyse={byggeanalyseResultat}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -309,11 +343,13 @@ function ResultView({
   adresse,
   data,
   lokalplaner,
+  byggeanalyse,
   onContinue,
 }: {
   adresse: string;
   data: BbrKompliantData;
   lokalplaner: Lokalplan[];
+  byggeanalyse: ByggeanalyseResultat | null;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -375,12 +411,16 @@ function ResultView({
         />
       </div>
 
-      <Card className="mb-4">
-        <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
-          AI VURDERING
-        </div>
-        <p className="text-sm leading-relaxed text-foreground">{genererVurdering(data, adresse)}</p>
-      </Card>
+      {byggeanalyse ? (
+        <ByggeanalyseKort analyse={byggeanalyse} />
+      ) : (
+        <Card className="mb-4">
+          <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+            BYGGEVURDERING
+          </div>
+          <p className="text-sm leading-relaxed text-foreground">{genererVurdering(data, adresse)}</p>
+        </Card>
+      )}
 
       {/* Lokalplan-sektion */}
       {lokalplaner.length > 0 ? (
@@ -466,6 +506,67 @@ function ResultView({
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
       </p>
     </motion.div>
+  );
+}
+
+function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
+  const sections: Array<{
+    key: keyof ByggeanalyseResultat;
+    label: string;
+    color: string;
+    icon: typeof Check;
+  }> = [
+    { key: "tilladt", label: "TILLADT", color: "text-success border-success/40 bg-success/5", icon: Check },
+    { key: "kraever_dispensation", label: "KRÆVER DISPENSATION", color: "text-warning border-warning/40 bg-warning/5", icon: AlertTriangle },
+    { key: "konflikt", label: "KONFLIKT", color: "text-danger border-danger/40 bg-danger/5", icon: AlertTriangle },
+    { key: "mangler_data", label: "MANGLER DATA", color: "text-muted-foreground border-border bg-[#1a1a1a]", icon: Info },
+  ];
+
+  return (
+    <Card className="mb-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Sparkles size={14} className="text-accent" />
+        <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
+          AI BYGGEANALYSE
+          {analyse.kilde === "mock" && (
+            <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">MOCK</span>
+          )}
+        </div>
+      </div>
+
+      {analyse.stilOpsummering && (
+        <p className="text-sm text-foreground/80 italic leading-relaxed border-l-2 border-accent/40 pl-3">
+          {analyse.stilOpsummering}
+        </p>
+      )}
+
+      {sections.map(({ key, label, color, icon: Icon }) => {
+        const items = analyse[key] as Array<Record<string, string>>;
+        if (!items || items.length === 0) return null;
+        return (
+          <div key={key}>
+            <div className={`inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] rounded-full border px-2 py-0.5 mb-2 ${color}`}>
+              <Icon size={10} /> {label}
+            </div>
+            <div className="space-y-2">
+              {items.map((item, i) => (
+                <div key={i} className="text-sm">
+                  <span className="font-medium text-foreground">{item.emne}:</span>{" "}
+                  <span className="text-foreground/80">
+                    {item.begrundelse ?? item.konflikt ?? item.hvad_mangler}
+                  </span>
+                  {item.lovhjemmel && (
+                    <span className="ml-1 font-mono text-[10px] text-muted-foreground">
+                      ({item.lovhjemmel})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </Card>
   );
 }
 

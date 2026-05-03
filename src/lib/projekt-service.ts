@@ -5,7 +5,9 @@
 // supabase-klienten kræver VITE_SUPABASE_* env vars i browseren.
 
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import type { Byggeoenske, Projekt, ProjektInsert } from "@/lib/byggeoenske";
+import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 
 // ---------------------------------------------------------------------------
 // Hjælper: returnér aktiv user_id eller null (gæst)
@@ -27,9 +29,20 @@ export async function gemProjekt(data: ProjektInsert): Promise<Projekt | null> {
   const userId = await getUserId();
   if (!userId) return null;
 
+  const insertData = {
+    user_id: userId,
+    adresse: data.adresse ?? null,
+    adresse_dar_id: data.adresse_dar_id ?? null,
+    byggeoenske: (data.byggeoenske ?? null) as Json | null,
+    bbr_data: (data.bbr_data ?? null) as Json | null,
+    dar_data: (data.dar_data ?? null) as Json | null,
+    mat_data: (data.mat_data ?? null) as Json | null,
+    byggeanalyse_resultat: (data.byggeanalyse_resultat ?? null) as Json | null,
+  };
+
   const { data: row, error } = await supabase
     .from("projekter")
-    .insert({ ...data, user_id: userId })
+    .insert(insertData)
     .select()
     .single();
 
@@ -55,10 +68,27 @@ export async function hentProjekt(id: string): Promise<Projekt | null> {
 export async function opdaterByggeoenske(id: string, b: Byggeoenske): Promise<void> {
   const { error } = await supabase
     .from("projekter")
-    .update({ byggeoenske: b as unknown as Record<string, unknown> })
+    .update({ byggeoenske: b as unknown as Json })
     .eq("id", id);
 
   if (error) throw new Error(`[ProjektService] opdaterByggeoenske fejlede: ${error.message}`);
+}
+
+// ---------------------------------------------------------------------------
+// opdaterByggeanalyseResultat — gem analyse-output (ARCH-83).
+// ---------------------------------------------------------------------------
+
+export async function opdaterByggeanalyseResultat(
+  id: string,
+  resultat: ByggeanalyseResultat,
+): Promise<void> {
+  const { error } = await supabase
+    .from("projekter")
+    .update({ byggeanalyse_resultat: resultat as unknown as Json })
+    .eq("id", id);
+
+  if (error)
+    throw new Error(`[ProjektService] opdaterByggeanalyseResultat fejlede: ${error.message}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +112,6 @@ export async function listProjekter(): Promise<Projekt[]> {
 
 // ---------------------------------------------------------------------------
 // migrerGaestTilBruger — kald når gæst opretter konto.
-// Opretter et nyt projekt med det lokale state og returnerer projekt-id.
 // ---------------------------------------------------------------------------
 
 export async function migrerGaestTilBruger(data: ProjektInsert): Promise<string | null> {

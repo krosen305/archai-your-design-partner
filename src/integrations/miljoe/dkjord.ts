@@ -69,10 +69,10 @@ export class DkJordService {
     }
 
     const [v1Data, v2Data, olietankData, omraadeData] = await Promise.all([
-      getFeatures("dkjord:V1", koordinat).catch(() => ({ features: [] })),
-      getFeatures("dkjord:V2", koordinat).catch(() => ({ features: [] })),
-      getFeatures("dkjord:olietank", koordinat).catch(() => ({ features: [] })),
-      getFeatures("dkjord:omraadet", koordinat).catch(() => ({ features: [] })),
+      getFeatures("dkjord:V1", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
+      getFeatures("dkjord:V2", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
+      getFeatures("dkjord:olietank", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
+      getFeatures("dkjord:omraadet", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
     ]);
 
     const olietankFeature = olietankData.features?.[0];
