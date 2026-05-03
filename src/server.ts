@@ -13,8 +13,8 @@ interface CloudflareEnv {
 
 export default withSentry(
   (env: CloudflareEnv) => ({
-    dsn: env.SENTRY_DSN ?? "",
-    environment: env.ENVIRONMENT ?? "production",
+    dsn: env?.SENTRY_DSN ?? "",
+    environment: env?.ENVIRONMENT ?? "production",
     tracesSampleRate: 0.1,
   }),
   { fetch: createStartHandler(defaultStreamHandler) },
