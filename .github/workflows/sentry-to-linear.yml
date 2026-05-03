@@ -1,0 +1,146 @@
+# ARCH-70: Sentry → Linear auto-bug workflow
+#
+# Opretter automatisk en Linear bug-issue når Sentry fanger en production error.
+#
+# ── Triggers ──────────────────────────────────────────────────────────────────
+# 1. repository_dispatch (type: sentry-error): kaldt af Sentry Internal Integration
+#    Payload-format: { title, error, url, environment, sentryUrl, stacktrace }
+#
+# 2. workflow_dispatch: manuel trigger til test
+#
+# ── Sentry-opsætning (én gang) ────────────────────────────────────────────────
+# Brug Sentry's NATIVE Linear integration — ingen webhook nødvendig:
+#   Sentry → Settings → Integrations → søg "Linear" → Installer
+#   Opret Alert Rule: Issue Alert → "Create Linear Issue" action
+#   Filter: level:error OR level:fatal, first seen only (undgår duplikater)
+#
+# Alternativ (GitHub webhook-bro):
+#   Sentry → Settings → Developer Settings → New Internal Integration
+#   Tilføj webhook URL + header: Authorization: token <GITHUB_PAT>
+#   POST til: https://api.github.com/repos/krosen305/archai-your-design-partner/dispatches
+#   Body: { "event_type": "sentry-error", "client_payload": { ... } }
+#
+# ── GitHub Secrets der skal sættes ────────────────────────────────────────────
+#   LINEAR_API_KEY: Personal API key fra Linear (Settings → API → Personal API keys)
+#
+# ── Test workflow manuelt ─────────────────────────────────────────────────────
+#   gh workflow run sentry-to-linear.yml \
+#     -f title="TypeError: Cannot read property" \
+#     -f sentry_url="https://archai.sentry.io/issues/123" \
+#     -f url="https://archai-your-design-partner.workers.dev/projekt/byggeanalyse" \
+#     -f environment="production"
+
+name: Sentry → Linear bug issue
+
+on:
+  repository_dispatch:
+    types: [sentry-error]
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "Fejl-titel"
+        required: true
+        default: "Test: manuel trigger"
+      sentry_url:
+        description: "Sentry issue URL"
+        required: false
+        default: ""
+      url:
+        description: "Side-URL hvor fejlen opstod"
+        required: false
+        default: ""
+      environment:
+        description: "Environment (production/staging)"
+        required: false
+        default: "production"
+
+jobs:
+  create-linear-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Opret Linear bug issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Normalisér payload fra enten repository_dispatch eller workflow_dispatch
+            const isDispatch = context.eventName === 'repository_dispatch';
+            const raw = isDispatch
+              ? context.payload.client_payload
+              : {
+                  title:       context.payload.inputs?.title       ?? 'Ukendt fejl',
+                  sentryUrl:   context.payload.inputs?.sentry_url  ?? '',
+                  url:         context.payload.inputs?.url         ?? '',
+                  environment: context.payload.inputs?.environment ?? 'production',
+                  error:       '',
+                  stacktrace:  '',
+                };
+
+            const title       = raw.title       ?? 'Ukendt fejl';
+            const sentryUrl   = raw.sentryUrl   ?? '';
+            const pageUrl     = raw.url         ?? '';
+            const environment = raw.environment ?? 'production';
+            const error       = raw.error       ?? '';
+            const stacktrace  = raw.stacktrace  ?? '';
+
+            const issueTitle = `🐛 [Sentry] ${title}`;
+
+            // Beskrivelse med al relevant kontekst
+            const parts = [
+              '## Auto-genereret fra Sentry',
+              '',
+              error       ? `**Error:** \`${error}\``              : '',
+              pageUrl     ? `**Side:** ${pageUrl}`                 : '',
+              environment ? `**Environment:** \`${environment}\``  : '',
+              sentryUrl   ? `**Sentry:** ${sentryUrl}`             : '',
+              stacktrace  ? `\n### Stack trace\n\`\`\`\n${stacktrace.slice(0, 1500)}\n\`\`\`` : '',
+            ].filter(Boolean);
+
+            const description = parts.join('\n');
+
+            const mutation = {
+              query: `
+                mutation CreateIssue($input: IssueCreateInput!) {
+                  issueCreate(input: $input) {
+                    success
+                    issue { id identifier title url }
+                  }
+                }
+              `,
+              variables: {
+                input: {
+                  teamId:      '7b8276b0-e8ca-48a7-a877-68057311b5c8',
+                  title:       issueTitle,
+                  description,
+                  priority:    1,   // Urgent
+                },
+              },
+            };
+
+            const res = await fetch('https://api.linear.app/graphql', {
+              method:  'POST',
+              headers: {
+                'Authorization': process.env.LINEAR_API_KEY,
+                'Content-Type':  'application/json',
+              },
+              body: JSON.stringify(mutation),
+            });
+
+            if (!res.ok) {
+              throw new Error(`Linear API HTTP ${res.status}: ${await res.text()}`);
+            }
+
+            const data = await res.json();
+
+            if (data.errors?.length) {
+              throw new Error(`Linear GraphQL fejl: ${JSON.stringify(data.errors)}`);
+            }
+
+            const issue = data.data?.issueCreate?.issue;
+            if (!issue) {
+              throw new Error('issueCreate returnerede intet issue');
+            }
+
+            console.log(`✅ Linear issue oprettet: ${issue.identifier} — ${issue.title}`);
+            console.log(`   URL: ${issue.url}`);
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}

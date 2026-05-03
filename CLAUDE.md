@@ -141,8 +141,9 @@ GitHub Actions kører automatisk via `.github/workflows/`:
 
 | Workflow     | Trigger                     | Steps                                    |
 | ------------ | --------------------------- | ---------------------------------------- |
-| `ci.yml`     | PR til main + push til main | tsc · eslint · bun test · bun build      |
-| `deploy.yml` | Push til main               | bun build · wrangler deploy (production) |
+| `ci.yml`              | PR til main + push til main | tsc · eslint · bun test · bun build      |
+| `deploy.yml`          | Push til main               | bun build · wrangler deploy (production) |
+| `sentry-to-linear.yml`| `repository_dispatch` / manuelt | Opretter Linear bug issue fra Sentry fejl |
 
 **Preview deploys** på PR: `wrangler deploy --name archai-preview-pr-<N>` — kræver at Cloudflare Workers plan tillader flere workers.
 
@@ -155,7 +156,14 @@ SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 SUPABASE_PUBLISHABLE_KEY
 ANTHROPIC_API_KEY
+SENTRY_AUTH_TOKEN            # Til source map upload i deploy.yml
+LINEAR_API_KEY               # Linear personal API key — bruges af sentry-to-linear.yml
 ```
+
+**Sentry → Linear opsætning** (ARCH-70):
+Brug Sentry's native Linear integration: Sentry → Settings → Integrations → "Linear" → Installer.
+Opret derefter en Alert Rule med "Create Linear Issue" action (filter: level=error/fatal, first seen).
+Manuel test: `gh workflow run sentry-to-linear.yml -f title="Test" -f environment="production"`
 
 **wrangler.toml** er i rod-mappen. Sæt `account_id` til din Cloudflare-konto-ID inden første deploy.
 
