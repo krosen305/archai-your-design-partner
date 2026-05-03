@@ -134,8 +134,14 @@ export class PdfExtractorService {
     const json = (await anthropicRes.json()) as any;
     const text: string = json?.content?.[0]?.text ?? "{}";
 
+    // Strip evt. markdown code fence (```json ... ```) som Claude ofte tilføjer
+    const cleaned = text
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+
     try {
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(cleaned);
       return {
         maxEtager: parsed.maxEtager ?? null,
         maxBebyggelsespct: parsed.maxBebyggelsespct ?? null,
