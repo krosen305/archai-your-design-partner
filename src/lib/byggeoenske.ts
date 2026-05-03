@@ -1,31 +1,8 @@
-// Typer for det strukturerede byggeønskeflow (ARCH-81).
-// Byggeoenske produceres af det guidede 22-trins flow og persisteres i
-// `projekter`-tabellen i Supabase.
+// Typer for `projekter`-tabellen (ARCH-81).
+// Byggeoenske-typen defineres i project-store — her kun DB-wrapper typer.
 
-export type Byggeoenske = {
-  boligtype: string;
-  areal: string;
-  etager: string;
-  kalder: string;
-  tagform: string;
-  tagmateriale: string;
-  facade: string[];
-  stil: string;
-  planloesning: string;
-  have: string[];
-  garage: string;
-  sovevaerelser: string;
-  badevaerelser: string;
-  ekstrarum: string[];
-  energi: string;
-  opvarmning: string;
-  baeredygtighed: string[];
-  budget: string;
-  tidshorisont: string;
-  raadgivning: string[];
-  fritekst: string | null;
-  billeder: { url: string; beskrivelse: string }[];
-};
+import type { Byggeoenske } from "@/lib/project-store";
+export type { Byggeoenske };
 
 export type Projekt = {
   id: string;
@@ -44,7 +21,7 @@ export type Projekt = {
 export type ProjektInsert = {
   adresse?: string | null;
   adresse_dar_id?: string | null;
-  byggeoenske?: Byggeoenske | null;
+  byggeoenske?: Partial<Byggeoenske> | null;
   bbr_data?: unknown | null;
   dar_data?: unknown | null;
   mat_data?: unknown | null;

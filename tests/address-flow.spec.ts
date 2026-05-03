@@ -136,19 +136,22 @@ test("address flow: GSearch forslag vises + chips opdateres", async ({ page }) =
   await expect(page.getByTestId("chip-matrikel")).toContainText(/5a/);
   await expect(page.getByTestId("chip-kommune")).toContainText(/Ballerup/);
 
-  // Fortsæt-knap aktiveres
-  await expect(page.getByRole("button", { name: /Fortsæt/ })).toBeEnabled();
+  const knap = page.getByRole("button", { name: /Fortsæt/ });
+  await expect(knap).toBeEnabled();
 });
 
-test("address flow: navigation til hus-dna virker", async ({ page }) => {
+test("address flow: navigation til byggeanalyse virker", async ({ page }) => {
   await mockServerFns(page);
   await page.goto("/projekt/adresse");
 
   await typeInAddressInput(page, TEST_ADRESSE);
   await vælgFørsteForslag(page);
 
-  await expect(page.getByRole("button", { name: /Fortsæt/ })).toBeEnabled({ timeout: 8_000 });
-  await page.getByRole("button", { name: /Fortsæt/ }).click();
+  await expect(page.getByRole("button", { name: /^Fortsæt →$/ })).toBeEnabled({
+    timeout: 8_000,
+  });
 
-  await expect(page).toHaveURL("/projekt/hus-dna");
+  await page.getByRole("button", { name: /^Fortsæt →$/ }).click();
+  // Adresse → boligoenske — tjek at vi forlader adresse-siden
+  await expect(page).toHaveURL(/\/projekt\/(boligoenske|byggeanalyse)/);
 });

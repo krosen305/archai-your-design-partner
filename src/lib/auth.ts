@@ -1,50 +1,47 @@
+// Tynd wrapper omkring Supabase auth + gæste-tilstand i sessionStorage.
+// Bruges af / (auth-side) og /projekt/start.
+
 import { supabase } from "@/integrations/supabase/client";
-import type { Session, User } from "@supabase/supabase-js";
 
-// ---------------------------------------------------------------------------
-// Supabase auth helpers
-// ---------------------------------------------------------------------------
+const GUEST_KEY = "archai:guestMode";
 
-export async function signIn(email: string, password: string): Promise<void> {
+export async function signIn(email: string, password: string) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  clearGuest();
 }
 
-export async function signUp(email: string, password: string): Promise<void> {
-  const { error } = await supabase.auth.signUp({ email, password });
+export async function signUp(email: string, password: string) {
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: window.location.origin + "/projekt/start" },
+  });
   if (error) throw error;
+  clearGuest();
 }
 
-export async function signOut(): Promise<void> {
+export async function signOut() {
   await supabase.auth.signOut();
-  clearGuestMode();
+  clearGuest();
 }
 
-export async function getSession(): Promise<Session | null> {
+export async function getSession() {
   const { data } = await supabase.auth.getSession();
   return data.session;
 }
 
-export async function getUser(): Promise<User | null> {
-  const session = await getSession();
-  return session?.user ?? null;
-}
-
-// ---------------------------------------------------------------------------
-// Gæstetilstand — localStorage-flag, kun klient-side
-// ---------------------------------------------------------------------------
-
-const GUEST_KEY = "archai_guest_mode";
-
 export function isGuest(): boolean {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem(GUEST_KEY) === "true";
+  return window.sessionStorage.getItem(GUEST_KEY) === "1";
 }
 
-export function setGuestMode(): void {
-  if (typeof window !== "undefined") localStorage.setItem(GUEST_KEY, "true");
+export function setGuest() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(GUEST_KEY, "1");
 }
 
-export function clearGuestMode(): void {
-  if (typeof window !== "undefined") localStorage.removeItem(GUEST_KEY);
+export function clearGuest() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(GUEST_KEY);
 }

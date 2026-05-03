@@ -13,7 +13,8 @@
 // Mock flag — sæt til false når live API er implementeret
 // ---------------------------------------------------------------------------
 
-const IS_MOCK = true;
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
+const IS_MOCK = FEATURE_FLAGS.tinglysningMock;
 
 // ---------------------------------------------------------------------------
 // Output type

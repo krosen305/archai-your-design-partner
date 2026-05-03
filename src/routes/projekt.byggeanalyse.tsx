@@ -12,21 +12,37 @@ import {
   Map,
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { useProject, deriveComplianceFlags } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
-import type { AnalysisInput, ComplianceResult } from "@/lib/analysis-orchestrator";
+import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
-// Kalder analyseAddress() som håndterer BBR + MAT + Plandata + Supabase-cache.
+// Auth-gated: kun indloggede brugere kan trigge analyse (forhindrer API-quota-misbrug).
 // ---------------------------------------------------------------------------
 
+const analysisInputSchema = z.object({
+  addressId: z.string().min(1).max(64),
+  adgangsadresseid: z.string().min(1).max(64),
+  ejerlavskode: z.number().int().nullable(),
+  matrikelnummer: z.string().max(32).nullable(),
+  koordinater: z
+    .object({
+      lat: z.number().gte(-90).lte(90),
+      lng: z.number().gte(-180).lte(180),
+    })
+    .nullable(),
+});
+
 const fetchCompliance = createServerFn({ method: "POST" })
-  .inputValidator((data: AnalysisInput) => data)
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => analysisInputSchema.parse(data))
   .handler(async ({ data }): Promise<ComplianceResult> => {
     const { analyseAddress } = await import("@/lib/analysis-orchestrator");
     return analyseAddress(data);
@@ -36,7 +52,7 @@ const fetchCompliance = createServerFn({ method: "POST" })
 // Route
 // ---------------------------------------------------------------------------
 
-export const Route = createFileRoute("/projekt/compliance")({
+export const Route = createFileRoute("/projekt/byggeanalyse")({
   component: ComplianceStep,
 });
 
@@ -50,6 +66,74 @@ const ROWS = [
 type Status = "loading" | "done" | "error";
 
 function ComplianceStep() {
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { getSession } = await import("@/lib/auth");
+      const session = await getSession();
+      if (cancelled) return;
+      setNeedsLogin(!session);
+      setAuthChecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (authChecked && needsLogin) {
+    return (
+      <PageTransition>
+        <div className="mx-auto max-w-[560px] px-6 py-16">
+          <div className="mb-6">
+            <BackLink to="/projekt/ejendom" />
+          </div>
+          <Card className="text-center">
+            <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+              LOGIN PÅKRÆVET
+            </div>
+            <h2 className="text-xl text-foreground mb-2">Byggeanalyse kræver konto</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Vi henter data fra BBR og Plandata til din analyse. Opret en gratis konto for at
+              fortsætte.
+            </p>
+            <button
+              onClick={() => navigate({ to: "/" })}
+              className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground hover:brightness-110 transition-all"
+            >
+              Log ind eller opret konto →
+            </button>
+            {import.meta.env.DEV && (
+              <button
+                onClick={() => setNeedsLogin(false)}
+                className="mt-3 w-full inline-flex items-center justify-center rounded-md border border-dashed border-accent/40 bg-accent/5 px-3 py-2 font-mono text-[10px] tracking-[0.1em] text-accent hover:bg-accent/10 transition-colors"
+              >
+                ⚡ DEV: Spring login over
+              </button>
+            )}
+          </Card>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (!authChecked) {
+    return (
+      <PageTransition>
+        <div className="mx-auto max-w-[560px] px-6 py-16 text-center">
+          <div className="font-mono text-xs text-muted-foreground">Tjekker login...</div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  return <ComplianceContent />;
+}
+
+function ComplianceContent() {
   const navigate = useNavigate();
   const {
     address,
@@ -106,14 +190,14 @@ function ComplianceStep() {
         setComplianceFlags(flags);
         setComplianceDone(true);
         setPhase("hus-dna", "complete");
-        setPhase("match", "active");
+        setPhase("match", "complete");
         syncPatch({
           bbrData: result.bbr,
           complianceFlags: flags,
           lokalplaner: result.lokalplaner,
           kommuneplanramme: result.kommuneplanramme,
           complianceDone: true,
-          currentStep: "match",
+          currentStep: "byggeanalyse",
         });
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => setStatus("done"), remaining);
@@ -137,7 +221,7 @@ function ComplianceStep() {
     <PageTransition>
       <div className="mx-auto max-w-[720px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/projekt/hus-dna" />
+          <BackLink to="/projekt/boligoenske" />
         </div>
         {status === "loading" && <LoadingView />}
         {status === "error" && (
@@ -156,7 +240,7 @@ function ComplianceStep() {
             adresse={address?.adresse ?? ""}
             data={bbrData}
             lokalplaner={lokalplanerLocal}
-            onContinue={() => navigate({ to: "/projekt/match" })}
+            onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
       </div>
@@ -376,7 +460,7 @@ function ResultView({
         onClick={onContinue}
         className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >
-        Fortsæt til Match →
+        Fortsæt til Økonomi →
       </button>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.

@@ -81,7 +81,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const location = useLocation();
-  const isWelcome = location.pathname === "/";
+  const isWelcome = location.pathname === "/" || location.pathname === "/projekt/start";
   const {
     address,
     setAddress,

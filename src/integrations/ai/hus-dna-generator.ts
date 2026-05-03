@@ -10,7 +10,8 @@
 // Mock flag
 // ---------------------------------------------------------------------------
 
-const IS_MOCK = false;
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
+const IS_MOCK = FEATURE_FLAGS.husDnaMock;
 
 // ---------------------------------------------------------------------------
 // Input / Output typer

@@ -11,13 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjektUdbudRouteImport } from './routes/projekt.udbud'
-import { Route as ProjektMatchRouteImport } from './routes/projekt.match'
-import { Route as ProjektHusDnaRouteImport } from './routes/projekt.hus-dna'
-import { Route as ProjektFinansRouteImport } from './routes/projekt.finans'
-import { Route as ProjektEngineeringRouteImport } from './routes/projekt.engineering'
-import { Route as ProjektComplianceRouteImport } from './routes/projekt.compliance'
-import { Route as ProjektBriefRouteImport } from './routes/projekt.brief'
-import { Route as ProjektBeskrivelseRouteImport } from './routes/projekt.beskrivelse'
+import { Route as ProjektTeknikRouteImport } from './routes/projekt.teknik'
+import { Route as ProjektStartRouteImport } from './routes/projekt.start'
+import { Route as ProjektOekonomiRouteImport } from './routes/projekt.oekonomi'
+import { Route as ProjektEjendomRouteImport } from './routes/projekt.ejendom'
+import { Route as ProjektByggeanalyseRouteImport } from './routes/projekt.byggeanalyse'
+import { Route as ProjektBoligoenskeRouteImport } from './routes/projekt.boligoenske'
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
 
 const IndexRoute = IndexRouteImport.update({
@@ -30,39 +29,34 @@ const ProjektUdbudRoute = ProjektUdbudRouteImport.update({
   path: '/projekt/udbud',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektMatchRoute = ProjektMatchRouteImport.update({
-  id: '/projekt/match',
-  path: '/projekt/match',
+const ProjektTeknikRoute = ProjektTeknikRouteImport.update({
+  id: '/projekt/teknik',
+  path: '/projekt/teknik',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektHusDnaRoute = ProjektHusDnaRouteImport.update({
-  id: '/projekt/hus-dna',
-  path: '/projekt/hus-dna',
+const ProjektStartRoute = ProjektStartRouteImport.update({
+  id: '/projekt/start',
+  path: '/projekt/start',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektFinansRoute = ProjektFinansRouteImport.update({
-  id: '/projekt/finans',
-  path: '/projekt/finans',
+const ProjektOekonomiRoute = ProjektOekonomiRouteImport.update({
+  id: '/projekt/oekonomi',
+  path: '/projekt/oekonomi',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektEngineeringRoute = ProjektEngineeringRouteImport.update({
-  id: '/projekt/engineering',
-  path: '/projekt/engineering',
+const ProjektEjendomRoute = ProjektEjendomRouteImport.update({
+  id: '/projekt/ejendom',
+  path: '/projekt/ejendom',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektComplianceRoute = ProjektComplianceRouteImport.update({
-  id: '/projekt/compliance',
-  path: '/projekt/compliance',
+const ProjektByggeanalyseRoute = ProjektByggeanalyseRouteImport.update({
+  id: '/projekt/byggeanalyse',
+  path: '/projekt/byggeanalyse',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektBriefRoute = ProjektBriefRouteImport.update({
-  id: '/projekt/brief',
-  path: '/projekt/brief',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjektBeskrivelseRoute = ProjektBeskrivelseRouteImport.update({
-  id: '/projekt/beskrivelse',
-  path: '/projekt/beskrivelse',
+const ProjektBoligoenskeRoute = ProjektBoligoenskeRouteImport.update({
+  id: '/projekt/boligoenske',
+  path: '/projekt/boligoenske',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
@@ -74,38 +68,35 @@ const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
-  '/projekt/brief': typeof ProjektBriefRoute
-  '/projekt/compliance': typeof ProjektComplianceRoute
-  '/projekt/engineering': typeof ProjektEngineeringRoute
-  '/projekt/finans': typeof ProjektFinansRoute
-  '/projekt/hus-dna': typeof ProjektHusDnaRoute
-  '/projekt/match': typeof ProjektMatchRoute
+  '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
+  '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
+  '/projekt/ejendom': typeof ProjektEjendomRoute
+  '/projekt/oekonomi': typeof ProjektOekonomiRoute
+  '/projekt/start': typeof ProjektStartRoute
+  '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
-  '/projekt/brief': typeof ProjektBriefRoute
-  '/projekt/compliance': typeof ProjektComplianceRoute
-  '/projekt/engineering': typeof ProjektEngineeringRoute
-  '/projekt/finans': typeof ProjektFinansRoute
-  '/projekt/hus-dna': typeof ProjektHusDnaRoute
-  '/projekt/match': typeof ProjektMatchRoute
+  '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
+  '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
+  '/projekt/ejendom': typeof ProjektEjendomRoute
+  '/projekt/oekonomi': typeof ProjektOekonomiRoute
+  '/projekt/start': typeof ProjektStartRoute
+  '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/beskrivelse': typeof ProjektBeskrivelseRoute
-  '/projekt/brief': typeof ProjektBriefRoute
-  '/projekt/compliance': typeof ProjektComplianceRoute
-  '/projekt/engineering': typeof ProjektEngineeringRoute
-  '/projekt/finans': typeof ProjektFinansRoute
-  '/projekt/hus-dna': typeof ProjektHusDnaRoute
-  '/projekt/match': typeof ProjektMatchRoute
+  '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
+  '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
+  '/projekt/ejendom': typeof ProjektEjendomRoute
+  '/projekt/oekonomi': typeof ProjektOekonomiRoute
+  '/projekt/start': typeof ProjektStartRoute
+  '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
 }
 export interface FileRouteTypes {
@@ -113,50 +104,46 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/projekt/adresse'
-    | '/projekt/beskrivelse'
-    | '/projekt/brief'
-    | '/projekt/compliance'
-    | '/projekt/engineering'
-    | '/projekt/finans'
-    | '/projekt/hus-dna'
-    | '/projekt/match'
+    | '/projekt/boligoenske'
+    | '/projekt/byggeanalyse'
+    | '/projekt/ejendom'
+    | '/projekt/oekonomi'
+    | '/projekt/start'
+    | '/projekt/teknik'
     | '/projekt/udbud'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/projekt/adresse'
-    | '/projekt/beskrivelse'
-    | '/projekt/brief'
-    | '/projekt/compliance'
-    | '/projekt/engineering'
-    | '/projekt/finans'
-    | '/projekt/hus-dna'
-    | '/projekt/match'
+    | '/projekt/boligoenske'
+    | '/projekt/byggeanalyse'
+    | '/projekt/ejendom'
+    | '/projekt/oekonomi'
+    | '/projekt/start'
+    | '/projekt/teknik'
     | '/projekt/udbud'
   id:
     | '__root__'
     | '/'
     | '/projekt/adresse'
-    | '/projekt/beskrivelse'
-    | '/projekt/brief'
-    | '/projekt/compliance'
-    | '/projekt/engineering'
-    | '/projekt/finans'
-    | '/projekt/hus-dna'
-    | '/projekt/match'
+    | '/projekt/boligoenske'
+    | '/projekt/byggeanalyse'
+    | '/projekt/ejendom'
+    | '/projekt/oekonomi'
+    | '/projekt/start'
+    | '/projekt/teknik'
     | '/projekt/udbud'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjektAdresseRoute: typeof ProjektAdresseRoute
-  ProjektBeskrivelseRoute: typeof ProjektBeskrivelseRoute
-  ProjektBriefRoute: typeof ProjektBriefRoute
-  ProjektComplianceRoute: typeof ProjektComplianceRoute
-  ProjektEngineeringRoute: typeof ProjektEngineeringRoute
-  ProjektFinansRoute: typeof ProjektFinansRoute
-  ProjektHusDnaRoute: typeof ProjektHusDnaRoute
-  ProjektMatchRoute: typeof ProjektMatchRoute
+  ProjektBoligoenskeRoute: typeof ProjektBoligoenskeRoute
+  ProjektByggeanalyseRoute: typeof ProjektByggeanalyseRoute
+  ProjektEjendomRoute: typeof ProjektEjendomRoute
+  ProjektOekonomiRoute: typeof ProjektOekonomiRoute
+  ProjektStartRoute: typeof ProjektStartRoute
+  ProjektTeknikRoute: typeof ProjektTeknikRoute
   ProjektUdbudRoute: typeof ProjektUdbudRoute
 }
 
@@ -176,53 +163,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjektUdbudRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/match': {
-      id: '/projekt/match'
-      path: '/projekt/match'
-      fullPath: '/projekt/match'
-      preLoaderRoute: typeof ProjektMatchRouteImport
+    '/projekt/teknik': {
+      id: '/projekt/teknik'
+      path: '/projekt/teknik'
+      fullPath: '/projekt/teknik'
+      preLoaderRoute: typeof ProjektTeknikRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/hus-dna': {
-      id: '/projekt/hus-dna'
-      path: '/projekt/hus-dna'
-      fullPath: '/projekt/hus-dna'
-      preLoaderRoute: typeof ProjektHusDnaRouteImport
+    '/projekt/start': {
+      id: '/projekt/start'
+      path: '/projekt/start'
+      fullPath: '/projekt/start'
+      preLoaderRoute: typeof ProjektStartRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/finans': {
-      id: '/projekt/finans'
-      path: '/projekt/finans'
-      fullPath: '/projekt/finans'
-      preLoaderRoute: typeof ProjektFinansRouteImport
+    '/projekt/oekonomi': {
+      id: '/projekt/oekonomi'
+      path: '/projekt/oekonomi'
+      fullPath: '/projekt/oekonomi'
+      preLoaderRoute: typeof ProjektOekonomiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/engineering': {
-      id: '/projekt/engineering'
-      path: '/projekt/engineering'
-      fullPath: '/projekt/engineering'
-      preLoaderRoute: typeof ProjektEngineeringRouteImport
+    '/projekt/ejendom': {
+      id: '/projekt/ejendom'
+      path: '/projekt/ejendom'
+      fullPath: '/projekt/ejendom'
+      preLoaderRoute: typeof ProjektEjendomRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/compliance': {
-      id: '/projekt/compliance'
-      path: '/projekt/compliance'
-      fullPath: '/projekt/compliance'
-      preLoaderRoute: typeof ProjektComplianceRouteImport
+    '/projekt/byggeanalyse': {
+      id: '/projekt/byggeanalyse'
+      path: '/projekt/byggeanalyse'
+      fullPath: '/projekt/byggeanalyse'
+      preLoaderRoute: typeof ProjektByggeanalyseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/brief': {
-      id: '/projekt/brief'
-      path: '/projekt/brief'
-      fullPath: '/projekt/brief'
-      preLoaderRoute: typeof ProjektBriefRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projekt/beskrivelse': {
-      id: '/projekt/beskrivelse'
-      path: '/projekt/beskrivelse'
-      fullPath: '/projekt/beskrivelse'
-      preLoaderRoute: typeof ProjektBeskrivelseRouteImport
+    '/projekt/boligoenske': {
+      id: '/projekt/boligoenske'
+      path: '/projekt/boligoenske'
+      fullPath: '/projekt/boligoenske'
+      preLoaderRoute: typeof ProjektBoligoenskeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projekt/adresse': {
@@ -238,13 +218,12 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjektAdresseRoute: ProjektAdresseRoute,
-  ProjektBeskrivelseRoute: ProjektBeskrivelseRoute,
-  ProjektBriefRoute: ProjektBriefRoute,
-  ProjektComplianceRoute: ProjektComplianceRoute,
-  ProjektEngineeringRoute: ProjektEngineeringRoute,
-  ProjektFinansRoute: ProjektFinansRoute,
-  ProjektHusDnaRoute: ProjektHusDnaRoute,
-  ProjektMatchRoute: ProjektMatchRoute,
+  ProjektBoligoenskeRoute: ProjektBoligoenskeRoute,
+  ProjektByggeanalyseRoute: ProjektByggeanalyseRoute,
+  ProjektEjendomRoute: ProjektEjendomRoute,
+  ProjektOekonomiRoute: ProjektOekonomiRoute,
+  ProjektStartRoute: ProjektStartRoute,
+  ProjektTeknikRoute: ProjektTeknikRoute,
   ProjektUdbudRoute: ProjektUdbudRoute,
 }
 export const routeTree = rootRouteImport
