@@ -15,6 +15,8 @@ import {
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { useProject, deriveComplianceFlags } from "@/lib/project-store";
+import { calculateComplianceMetrics } from "@/lib/compliance-engine";
+import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
@@ -41,6 +43,7 @@ const analysisInputSchema = z.object({
       lng: z.number().gte(-180).lte(180),
     })
     .nullable(),
+  grundareal: z.number().positive().nullable().optional(),
 });
 
 const fetchCompliance = createServerFn({ method: "POST" })
@@ -148,9 +151,11 @@ function ComplianceContent() {
     address,
     bbrData,
     byggeoenske,
+    complianceMetrics,
     setBbrData,
     setComplianceDone,
     setComplianceFlags,
+    setComplianceMetrics,
     setLokalplaner,
     setLokalplanExtract,
     setPhase,
@@ -185,6 +190,7 @@ function ComplianceContent() {
         ejerlavskode: address.ejerlavskode ?? null,
         matrikelnummer: address.matrikelnummer ?? null,
         koordinater: address.koordinater ?? null,
+        grundareal: address.grundareal ?? null,
       },
     })
       .then(async (result) => {
@@ -200,6 +206,7 @@ function ComplianceContent() {
           result.dkjord,
         );
         setComplianceFlags(flags);
+        setComplianceMetrics(calculateComplianceMetrics(result.bbr, result.kommuneplanramme));
         setComplianceDone(true);
         setPhase("hus-dna", "complete");
         setPhase("match", "complete");
@@ -273,6 +280,7 @@ function ComplianceContent() {
             data={bbrData}
             lokalplaner={lokalplanerLocal}
             byggeanalyse={byggeanalyseResultat}
+            metrics={complianceMetrics}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -343,12 +351,14 @@ function ResultView({
   data,
   lokalplaner,
   byggeanalyse,
+  metrics,
   onContinue,
 }: {
   adresse: string;
   data: BbrKompliantData;
   lokalplaner: Lokalplan[];
   byggeanalyse: ByggeanalyseResultat | null;
+  metrics: ComplianceMetrics | null;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -365,6 +375,11 @@ function ResultView({
       !p.status.toLowerCase().includes("forslag"),
   );
   const forslag = lokalplaner.filter((p) => p.status?.toLowerCase().includes("forslag"));
+
+  const maxPct = metrics?.maxBebyggelsesprocent ?? null;
+  const curPct = metrics?.currentBebyggelsesprocent ?? data.bebyggelsesprocent;
+  const barFraction =
+    curPct !== null && maxPct !== null && maxPct > 0 ? curPct / maxPct : undefined;
 
   return (
     <motion.div
@@ -386,21 +401,21 @@ function ResultView({
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
+      <div className="grid gap-4 md:grid-cols-3 mb-4">
         <MetricCard
           title="Bebyggelsesprocent"
-          value={data.bebyggelsesprocent !== null ? `${data.bebyggelsesprocent}%` : "—"}
-          sub={
-            data.bebygget_areal !== null
-              ? `${data.bebygget_areal} m² bebygget`
-              : "Ikke tilgængeligt"
-          }
-          bar={data.bebyggelsesprocent !== null ? data.bebyggelsesprocent / 30 : undefined}
+          value={curPct !== null ? `${curPct}%` : "—"}
+          sub={maxPct !== null ? `Max tilladt: ${maxPct}%` : (data.bebygget_areal !== null ? `${data.bebygget_areal} m² bebygget` : "Ikke tilgængeligt")}
+          bar={barFraction}
         />
         <MetricCard
           title="Antal etager"
           value={data.antal_etager !== null ? `${data.antal_etager}` : "—"}
-          sub={data.byggeaar ? `Opført ${data.byggeaar}` : "Byggeår ukendt"}
+          sub={
+            metrics?.maxEtager !== null && metrics?.maxEtager !== undefined
+              ? `Max tilladt: ${metrics.maxEtager}`
+              : (data.byggeaar ? `Opført ${data.byggeaar}` : "Byggeår ukendt")
+          }
         />
         <MetricCard
           title="Anvendelse"
@@ -409,6 +424,34 @@ function ResultView({
           subClass={harErhverv ? "text-success" : "text-muted-foreground"}
         />
       </div>
+
+      {metrics && (metrics.maxBygningsareal !== null || metrics.maxBygningshoejde !== null) && (
+        <div className="grid gap-4 md:grid-cols-3 mb-6">
+          {metrics.maxBygningsareal !== null && (
+            <MetricCard
+              title="Max bygningsareal"
+              value={`${metrics.maxBygningsareal} m²`}
+              sub={metrics.currentBygningsareal !== null ? `Nuværende: ${metrics.currentBygningsareal} m²` : "Beregnet fra grundareal"}
+            />
+          )}
+          {metrics.remainingBygningsareal !== null && (
+            <MetricCard
+              title="Bygningsret tilbage"
+              value={`${metrics.remainingBygningsareal} m²`}
+              sub={metrics.remainingBygningsareal >= 0 ? "Kan bebygges yderligere" : "Overskrider rammen"}
+              subClass={metrics.remainingBygningsareal >= 0 ? "text-success" : "text-danger"}
+            />
+          )}
+          {metrics.maxBygningshoejde !== null && (
+            <MetricCard
+              title="Max bygningshøjde"
+              value={`${metrics.maxBygningshoejde} m`}
+              sub="Fra kommuneplanramme"
+            />
+          )}
+        </div>
+      )}
+
 
       {byggeanalyse ? (
         <ByggeanalyseKort analyse={byggeanalyse} />

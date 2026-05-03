@@ -4,7 +4,9 @@ import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import type { ComplianceMetrics } from "@/lib/compliance-engine";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
+export type { ComplianceMetrics } from "@/lib/compliance-engine";
 
 // ---------------------------------------------------------------------------
 // Adresse
@@ -23,6 +25,7 @@ export type Address = {
   bbrId: string | null;
   ejerlavskode: number | null;
   matrikelnummer: string | null;
+  grundareal: number | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -127,6 +130,7 @@ type State = {
   byggeoenske: Byggeoenske;
   byggeanalyseResultat: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null;
   complianceFlags: ComplianceFlag[];
+  complianceMetrics: ComplianceMetrics | null;
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
   kommuneplanramme: Kommuneplanramme | null;
@@ -147,6 +151,7 @@ type State = {
   ) => void;
   resetByggeoenske: () => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
+  setComplianceMetrics: (m: ComplianceMetrics | null) => void;
   setLokalplaner: (lp: Lokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
   setKommuneplanramme: (ramme: Kommuneplanramme | null) => void;
@@ -173,6 +178,7 @@ export const useProject = create<State>((set) => ({
   byggeoenske: {},
   byggeanalyseResultat: null,
   complianceFlags: [],
+  complianceMetrics: null,
   lokalplaner: [],
   lokalplanExtract: null,
   kommuneplanramme: null,
@@ -188,6 +194,7 @@ export const useProject = create<State>((set) => ({
   setByggeanalyseResultat: (byggeanalyseResultat) => set({ byggeanalyseResultat }),
   resetByggeoenske: () => set({ byggeoenske: {} }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
+  setComplianceMetrics: (complianceMetrics) => set({ complianceMetrics }),
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
   setKommuneplanramme: (kommuneplanramme) => set({ kommuneplanramme }),
@@ -204,6 +211,7 @@ export const useProject = create<State>((set) => ({
       byggeoenske: {},
       byggeanalyseResultat: null,
       complianceFlags: [],
+      complianceMetrics: null,
       lokalplaner: [],
       lokalplanExtract: null,
       kommuneplanramme: null,

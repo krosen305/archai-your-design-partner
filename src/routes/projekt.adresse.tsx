@@ -94,6 +94,7 @@ function AddressStep() {
       bbrId: null,
       ejerlavskode: null,
       matrikelnummer: null,
+      grundareal: null,
     };
 
     setBbrData(null);
@@ -117,6 +118,7 @@ function AddressStep() {
         koordinater: details.koordinater || s.koordinater,
         ejerlavskode: details.ejerlavskode,
         matrikelnummer: details.matrikelnummer,
+        grundareal: details.grundareal ?? null,
         // adresseid stays as s.adresseid from immediateAddress (DAR ID = DAWA ID)
       };
       setSelected(fullAddress);
@@ -259,6 +261,7 @@ function AddressStep() {
                     bbrId: null,
                     ejerlavskode: 173551,
                     matrikelnummer: "8a",
+                    grundareal: null,
                   };
                   setAddress(mock);
                   navigate({ to: "/projekt/boligoenske" });
