@@ -21,8 +21,6 @@ jobs:
   setup:
     name: Konfigurér branch protection på main
     runs-on: ubuntu-latest
-    permissions:
-      administration: write
 
     steps:
       - name: Aktivér branch protection
