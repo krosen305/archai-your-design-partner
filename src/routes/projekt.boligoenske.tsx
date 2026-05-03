@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, X, ChevronLeft, ChevronRight, Zap, Check } from "lucide-react";
 import { useProject, type Byggeoenske } from "@/lib/project-store";
@@ -238,16 +238,128 @@ const MOCK_BYGGEOENSKE: Byggeoenske = {
   inspirationsbilleder: [],
 };
 
+// ---------------------------------------------------------------------------
+// Smart defaults — pre-fill based on earlier answers (ARCH-87)
+// ---------------------------------------------------------------------------
+
+function getSmartDefault(key: keyof Byggeoenske, current: Byggeoenske): unknown {
+  switch (key) {
+    case "boern":
+      if (current.husstandsstoerrelse !== undefined && current.voksne !== undefined) {
+        return Math.max(0, current.husstandsstoerrelse - current.voksne);
+      }
+      return undefined;
+    case "antalSovevaerelser": {
+      const total = current.husstandsstoerrelse ?? 2;
+      const boern = current.boern ?? 0;
+      // voksne each get their own room; children share if >1
+      return Math.max(1, (total - boern) + Math.ceil(boern / 2));
+    }
+    case "oensketAreal":
+      // Dansk gennemsnit for enfamilieshus ~150 m²
+      return 150;
+    default:
+      return undefined;
+  }
+}
+
+// Number of non-upload fields answered — used for skip-flow threshold
+function filledFieldCount(b: Byggeoenske): number {
+  return STEPS.filter(
+    (s) => s.type !== "upload" && b[s.key] !== undefined,
+  ).length;
+}
+
+// ---------------------------------------------------------------------------
+// Summary view shown when returning to an already-completed flow (ARCH-87)
+// ---------------------------------------------------------------------------
+
+function SummaryView({
+  byggeoenske,
+  onSkip,
+  onEdit,
+}: {
+  byggeoenske: Byggeoenske;
+  onSkip: () => void;
+  onEdit: () => void;
+}) {
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "Byggetype", value: byggeoenske.byggetype ?? "—" },
+    {
+      label: "Husstand",
+      value: `${byggeoenske.husstandsstoerrelse ?? "?"} pers. (${byggeoenske.voksne ?? "?"} voksne, ${byggeoenske.boern ?? "?"} børn)`,
+    },
+    { label: "Areal", value: `${byggeoenske.oensketAreal ?? "?"} m²` },
+    { label: "Etager", value: `${byggeoenske.antalEtager ?? "?"}` },
+    { label: "Soveværelser", value: `${byggeoenske.antalSovevaerelser ?? "?"}` },
+    { label: "Stil", value: byggeoenske.arkitektoniskStil ?? "—" },
+    { label: "Energi", value: byggeoenske.energiklasse ?? "—" },
+    { label: "Budget", value: byggeoenske.budget ?? "—" },
+  ];
+
+  return (
+    <PageTransition>
+      <div className="mx-auto max-w-[560px] px-6 py-10">
+        <div className="mb-6">
+          <BackLink to="/projekt/start" />
+        </div>
+        <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-2">
+          DINE BYGGEØNSKER
+        </div>
+        <h1 className="text-2xl font-medium text-foreground mb-6">Du har allerede udfyldt dine ønsker</h1>
+
+        <Card className="mb-4 divide-y divide-[#222]">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+              <span className="text-xs text-muted-foreground font-mono">{r.label.toUpperCase()}</span>
+              <span className="text-sm text-foreground capitalize">{r.value}</span>
+            </div>
+          ))}
+        </Card>
+
+        <button
+          onClick={onSkip}
+          className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 mb-3"
+        >
+          Spring direkte til analyse →
+        </button>
+        <button
+          onClick={onEdit}
+          className="w-full inline-flex items-center justify-center rounded-md border border-[#333] bg-[#111] px-6 py-3 font-mono text-sm text-muted-foreground transition-all hover:border-[#555] hover:text-foreground"
+        >
+          Rediger svar
+        </button>
+      </div>
+    </PageTransition>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main step component
+// ---------------------------------------------------------------------------
+
 function ByggeoenskeStep() {
   const navigate = useNavigate();
   const { byggeoenske, setByggeoenske } = useProject();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [showSummary, setShowSummary] = useState(() => filledFieldCount(byggeoenske) >= 20);
 
   const step = STEPS[currentStep];
   const value = byggeoenske[step.key];
   const isLast = currentStep === STEPS.length - 1;
   const progress = ((currentStep + 1) / STEPS.length) * 100;
+
+  // Apply smart defaults when arriving at a step (ARCH-87)
+  useEffect(() => {
+    const key = STEPS[currentStep].key;
+    if (byggeoenske[key] === undefined) {
+      const def = getSmartDefault(key, byggeoenske);
+      if (def !== undefined) {
+        setByggeoenske({ [key]: def } as Partial<Byggeoenske>);
+      }
+    }
+  }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goNext = () => {
     if (isLast) {
@@ -280,6 +392,19 @@ function ByggeoenskeStep() {
     syncPatch({ byggeoenske: MOCK_BYGGEOENSKE, currentStep: "ejendom" });
     navigate({ to: "/projekt/ejendom" });
   };
+
+  if (showSummary) {
+    return (
+      <SummaryView
+        byggeoenske={byggeoenske}
+        onSkip={() => {
+          syncPatch({ byggeoenske, currentStep: "ejendom" });
+          navigate({ to: "/projekt/ejendom" });
+        }}
+        onEdit={() => setShowSummary(false)}
+      />
+    );
+  }
 
   return (
     <PageTransition>
