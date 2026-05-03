@@ -37,6 +37,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
 
+      - name: Upload source maps to Sentry
+        run: bunx @sentry/cli sourcemaps upload ./dist
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: archai
+          SENTRY_PROJECT: archai-design-partner
+        continue-on-error: true
+
       - name: Deploy to Cloudflare Workers
         run: bunx wrangler deploy
         env:

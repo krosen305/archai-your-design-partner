@@ -55,6 +55,8 @@ Global wizard state is managed by a single Zustand store: `src/lib/project-store
 
 The route tree (`src/routeTree.gen.ts`) is **auto-generated** by TanStack Router — never edit it manually. `vite.config.ts` delegates entirely to `@lovable.dev/vite-tanstack-config` and must not have plugins added manually.
 
+**Cloudflare Worker entry**: `src/server.ts` is the custom server entry (pointed to by `wrangler.toml`'s `main`). It wraps the TanStack Start handler with Sentry via `withSentry`. Do not delete this file — without it, `wrangler.toml` falls back to `@tanstack/react-start/server-entry` and Sentry is not included.
+
 ### Integrations (`src/integrations/`)
 
 Each integration is a standalone service class. Server-side services must **never** be called directly from the browser — use TanStack Start's `createServerFn` as the boundary (see `projekt.compliance.tsx`).
@@ -90,6 +92,13 @@ DATAFORDELER_MAT_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/MAT
 DATAFORDELER_DAR_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/DAR/v1
 ANTHROPIC_API_KEY            # Required for PdfExtractorService + HusDnaGeneratorService (IS_MOCK=true skips this)
 DATAFORSYNINGEN_TOKEN        # Optional for GsearchService — free token from dataforsyningen.dk; unauthenticated requests may be rate-limited
+SENTRY_DSN                   # Optional — Sentry error tracking DSN. If absent, Sentry is silently disabled.
+ENVIRONMENT                  # Optional — used as Sentry environment tag (defaults to "production")
+```
+
+**GitHub Actions secrets** required for source map upload:
+```
+SENTRY_AUTH_TOKEN            # Sentry auth token for source map upload (Settings → Auth Tokens)
 ```
 
 ### Styling
