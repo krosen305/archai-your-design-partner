@@ -46,20 +46,19 @@ const MOCK_EXTRACT: LokalplanExtract = {
 // ---------------------------------------------------------------------------
 
 const EXTRACTION_PROMPT = `
-Du er en dansk byggesagsbehandler. Læs følgende lokalplan-tekst og udtræk disse oplysninger som JSON:
+Du er en dansk byggesagsbehandler. Læs vedhæftede lokalplan og udtræk de byggeretlige bestemmelser
+som struktureret JSON. Vær præcis — er en bestemmelse ikke nævnt, returnér null/tomt array.
+
+Returnér KUN dette JSON-objekt — ingen markdown, ingen forklaring:
 
 {
   "maxEtager": <antal etager som heltal eller null>,
   "maxBebyggelsespct": <bebyggelsesprocent som heltal eller null>,
   "tagform": <beskrivelse af krav til tagform som string eller null>,
-  "materialer": <array af tilladte facadematerialer>,
+  "materialer": <array af tilladte facadematerialer, fx ["tegl","træ"]>,
   "byggelinjer": <afstandskrav til skel/vej som string eller null>,
-  "specialBestemmelser": <array af øvrige vigtige bestemmelser>
+  "specialBestemmelser": <array af 3-7 vigtige bestemmelser som korte sætninger>
 }
-
-Svar KUN med JSON — ingen forklaring eller ekstra tekst.
-
-LOKALPLAN-TEKST:
 `.trim();
 
 // ---------------------------------------------------------------------------
