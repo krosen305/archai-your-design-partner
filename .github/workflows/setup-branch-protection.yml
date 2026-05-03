@@ -26,8 +26,8 @@ jobs:
       - name: Aktivér branch protection
         uses: actions/github-script@v7
         with:
-          # GITHUB_TOKEN er automatisk tilgængeligt for repo-ejere
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Kræver PAT med 'repo' scope gemt som BRANCH_PROTECTION_PAT secret
+          github-token: ${{ secrets.BRANCH_PROTECTION_PAT }}
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
