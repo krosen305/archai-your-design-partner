@@ -63,7 +63,7 @@ Each integration is a standalone service class. Server-side services must **neve
 
 | Service                  | File                      | Side        | Notes                                                                                                                  |
 | ------------------------ | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `GsearchService`         | `gsearch/client.ts`       | Server only | Address autocomplete via Dataforsyningen GSearch v2. Requires `DATAFORSYNINGEN_TOKEN`                                   |
+| `GsearchService`         | `gsearch/client.ts`       | Server only | Address autocomplete via Dataforsyningen GSearch v2. Requires `DATAFORSYNINGEN_TOKEN`                                  |
 | `BbrService`             | `bbr/client.ts`           | Server only | Building register via Datafordeler GraphQL v2. Requires `DATAFORDELER_API_KEY`                                         |
 | `MatService`             | `mat/client.ts`           | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2                                                             |
 | `DarService`             | `dar/client.ts`           | Server only | Address register via Datafordeler GraphQL v1                                                                           |
@@ -97,6 +97,7 @@ ENVIRONMENT                  # Optional — used as Sentry environment tag (defa
 ```
 
 **GitHub Actions secrets** required for source map upload:
+
 ```
 SENTRY_AUTH_TOKEN            # Sentry auth token for source map upload (Settings → Auth Tokens)
 ```
@@ -139,13 +140,13 @@ A task is done when all of the following are true:
 
 GitHub Actions kører automatisk via `.github/workflows/`:
 
-| Workflow     | Trigger                     | Steps                                    |
-| ------------ | --------------------------- | ---------------------------------------- |
-| `ci.yml`              | PR til main + push til main | tsc · eslint · bun test · bun build      |
-| `deploy.yml`          | Push til main               | bun build · wrangler deploy (production) |
-| `sentry-to-linear.yml`    | `repository_dispatch` / manuelt | Opretter Linear bug issue fra Sentry fejl |
-| `ai-pr-review.yml`        | PR opened/synchronize           | Claude Haiku review-kommentar på PR       |
-| `setup-branch-protection.yml` | `workflow_dispatch` (én gang) | Aktiverer branch protection på main  |
+| Workflow                      | Trigger                         | Steps                                     |
+| ----------------------------- | ------------------------------- | ----------------------------------------- |
+| `ci.yml`                      | PR til main + push til main     | tsc · eslint · bun test · bun build       |
+| `deploy.yml`                  | Push til main                   | bun build · wrangler deploy (production)  |
+| `sentry-to-linear.yml`        | `repository_dispatch` / manuelt | Opretter Linear bug issue fra Sentry fejl |
+| `ai-pr-review.yml`            | PR opened/synchronize           | Claude Haiku review-kommentar på PR       |
+| `setup-branch-protection.yml` | `workflow_dispatch` (én gang)   | Aktiverer branch protection på main       |
 
 **Preview deploys** på PR: `wrangler deploy --name archai-preview-pr-<N>` — kræver at Cloudflare Workers plan tillader flere workers.
 

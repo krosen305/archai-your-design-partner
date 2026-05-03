@@ -142,7 +142,9 @@ type State = {
   setPhase: (phase: PhaseName, status: PhaseStatus) => void;
   setHusDna: (dna: HusDna | null) => void;
   setByggeoenske: (b: Partial<Byggeoenske>) => void;
-  setByggeanalyseResultat: (r: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null) => void;
+  setByggeanalyseResultat: (
+    r: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null,
+  ) => void;
   resetByggeoenske: () => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setLokalplaner: (lp: Lokalplan[]) => void;

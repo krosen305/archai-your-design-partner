@@ -100,7 +100,13 @@ function ChoiceCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
     >
-      {disabled || !to ? <div className={cls}>{inner}</div> : <Link to={to} className={cls}>{inner}</Link>}
+      {disabled || !to ? (
+        <div className={cls}>{inner}</div>
+      ) : (
+        <Link to={to} className={cls}>
+          {inner}
+        </Link>
+      )}
     </motion.div>
   );
 }

@@ -73,10 +73,7 @@ function AuthPage() {
         className="relative z-10 w-full max-w-[420px]"
       >
         <div className="text-center mb-8">
-          <Link
-            to="/"
-            className="font-mono text-[28px] tracking-[0.2em] text-accent inline-block"
-          >
+          <Link to="/" className="font-mono text-[28px] tracking-[0.2em] text-accent inline-block">
             ARCHAI
           </Link>
           <p className="mt-3 text-sm text-muted-foreground">Fra idé til byggetilladelse</p>
@@ -132,9 +129,7 @@ function AuthPage() {
               />
             </div>
 
-            {error && (
-              <p className="text-xs text-danger font-mono leading-relaxed">{error}</p>
-            )}
+            {error && <p className="text-xs text-danger font-mono leading-relaxed">{error}</p>}
 
             <button
               type="submit"

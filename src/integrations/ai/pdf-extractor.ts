@@ -130,7 +130,9 @@ export class PdfExtractorService {
 
       // Eksponentiel backoff: 10s, 20s, 40s
       const delayMs = 10_000 * Math.pow(2, attempt);
-      console.warn(`[PdfExtractor] Rate limit (429) — venter ${delayMs / 1000}s før retry ${attempt + 1}/3`);
+      console.warn(
+        `[PdfExtractor] Rate limit (429) — venter ${delayMs / 1000}s før retry ${attempt + 1}/3`,
+      );
       await new Promise((r) => setTimeout(r, delayMs));
     }
 
@@ -145,10 +147,11 @@ export class PdfExtractorService {
     const rawText: string = json?.content?.[0]?.text ?? "{}";
 
     // Claude returnerer ind imellem JSON pakket i ```json ... ``` — strip disse
-    const text = rawText
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/i, "")
-      .trim() || "{}";
+    const text =
+      rawText
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/i, "")
+        .trim() || "{}";
 
     // Strip evt. markdown code fence (```json ... ```) som Claude ofte tilføjer
     const cleaned = text

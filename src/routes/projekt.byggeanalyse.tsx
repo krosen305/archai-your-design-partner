@@ -417,7 +417,9 @@ function ResultView({
           <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
             BYGGEVURDERING
           </div>
-          <p className="text-sm leading-relaxed text-foreground">{genererVurdering(data, adresse)}</p>
+          <p className="text-sm leading-relaxed text-foreground">
+            {genererVurdering(data, adresse)}
+          </p>
         </Card>
       )}
 
@@ -515,10 +517,30 @@ function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
     color: string;
     icon: typeof Check;
   }> = [
-    { key: "tilladt", label: "TILLADT", color: "text-success border-success/40 bg-success/5", icon: Check },
-    { key: "kraever_dispensation", label: "KRÆVER DISPENSATION", color: "text-warning border-warning/40 bg-warning/5", icon: AlertTriangle },
-    { key: "konflikt", label: "KONFLIKT", color: "text-danger border-danger/40 bg-danger/5", icon: AlertTriangle },
-    { key: "mangler_data", label: "MANGLER DATA", color: "text-muted-foreground border-border bg-[#1a1a1a]", icon: Info },
+    {
+      key: "tilladt",
+      label: "TILLADT",
+      color: "text-success border-success/40 bg-success/5",
+      icon: Check,
+    },
+    {
+      key: "kraever_dispensation",
+      label: "KRÆVER DISPENSATION",
+      color: "text-warning border-warning/40 bg-warning/5",
+      icon: AlertTriangle,
+    },
+    {
+      key: "konflikt",
+      label: "KONFLIKT",
+      color: "text-danger border-danger/40 bg-danger/5",
+      icon: AlertTriangle,
+    },
+    {
+      key: "mangler_data",
+      label: "MANGLER DATA",
+      color: "text-muted-foreground border-border bg-[#1a1a1a]",
+      icon: Info,
+    },
   ];
 
   return (
@@ -528,7 +550,9 @@ function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
         <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
           AI BYGGEANALYSE
           {analyse.kilde === "mock" && (
-            <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">MOCK</span>
+            <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
+              MOCK
+            </span>
           )}
         </div>
       </div>
@@ -544,7 +568,9 @@ function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
         if (!items || items.length === 0) return null;
         return (
           <div key={key}>
-            <div className={`inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] rounded-full border px-2 py-0.5 mb-2 ${color}`}>
+            <div
+              className={`inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] rounded-full border px-2 py-0.5 mb-2 ${color}`}
+            >
               <Icon size={10} /> {label}
             </div>
             <div className="space-y-2">

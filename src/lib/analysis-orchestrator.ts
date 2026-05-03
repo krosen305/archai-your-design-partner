@@ -102,7 +102,12 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
       analysedAt: new Date().toISOString(),
     };
     try {
-      await setCachedCompliance(addressId, { ...complianceBase, lokalplanExtract: null, naturbeskyttelse: null, dkjord: null });
+      await setCachedCompliance(addressId, {
+        ...complianceBase,
+        lokalplanExtract: null,
+        naturbeskyttelse: null,
+        dkjord: null,
+      });
     } catch (e) {
       console.warn(
         "[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):",

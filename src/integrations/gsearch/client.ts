@@ -32,10 +32,13 @@ type GsearchResult = {
 
 // EPSG:25832 (UTM 32N) → WGS84 — mirrors dar/client.ts
 function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: number } {
-  const k0 = 0.9996, a = 6378137.0, e2 = 0.00669437999014;
+  const k0 = 0.9996,
+    a = 6378137.0,
+    e2 = 0.00669437999014;
   const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
   const lon0 = 9 * (Math.PI / 180);
-  const x = easting - 500000, y = northing;
+  const x = easting - 500000,
+    y = northing;
   const M = y / k0;
   const mu = M / (a * (1 - e2 / 4 - (3 * e2 * e2) / 64 - (5 * e2 * e2 * e2) / 256));
   const phi1 =
@@ -44,9 +47,12 @@ function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: n
     ((21 * e1 ** 2) / 16 - (55 * e1 ** 4) / 32) * Math.sin(4 * mu) +
     ((151 * e1 ** 3) / 96) * Math.sin(6 * mu) +
     ((1097 * e1 ** 4) / 512) * Math.sin(8 * mu);
-  const sp = Math.sin(phi1), cp = Math.cos(phi1), tp = Math.tan(phi1);
+  const sp = Math.sin(phi1),
+    cp = Math.cos(phi1),
+    tp = Math.tan(phi1);
   const N1 = a / Math.sqrt(1 - e2 * sp * sp);
-  const T1 = tp * tp, C1 = (e2 * cp * cp) / (1 - e2);
+  const T1 = tp * tp,
+    C1 = (e2 * cp * cp) / (1 - e2);
   const R1 = (a * (1 - e2)) / Math.pow(1 - e2 * sp * sp, 1.5);
   const D = x / (N1 * k0);
   const lat =
@@ -57,7 +63,8 @@ function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: n
         ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * e2 - 3 * C1 * C1) * D ** 6) / 720);
   const lon =
     lon0 +
-    (D - ((1 + 2 * T1 + C1) * D ** 3) / 6 +
+    (D -
+      ((1 + 2 * T1 + C1) * D ** 3) / 6 +
       ((5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * e2 + 24 * T1 * T1) * D ** 5) / 120) /
       cp;
   return { lat: lat * (180 / Math.PI), lng: lon * (180 / Math.PI) };

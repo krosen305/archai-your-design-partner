@@ -62,7 +62,8 @@ const MOCK_RESULTAT: ByggeanalyseResultat = {
     },
     {
       emne: "Energiklasse",
-      begrundelse: "Lavenergi-standard overstiger BR18-minimumskrav og er ikke begrænset af lokalplan.",
+      begrundelse:
+        "Lavenergi-standard overstiger BR18-minimumskrav og er ikke begrænset af lokalplan.",
     },
   ],
   kraever_dispensation: [
@@ -122,9 +123,11 @@ function buildUserMessage(input: ByggeanalyseInput): string {
   if (byggeoenske.byggetype) projektDele.push(`Byggetype: ${byggeoenske.byggetype}`);
   if (byggeoenske.oensketAreal) projektDele.push(`Ønsket areal: ${byggeoenske.oensketAreal} m²`);
   if (byggeoenske.antalEtager) projektDele.push(`Etager: ${byggeoenske.antalEtager}`);
-  if (byggeoenske.arkitektoniskStil) projektDele.push(`Arkitektonisk stil: ${byggeoenske.arkitektoniskStil}`);
+  if (byggeoenske.arkitektoniskStil)
+    projektDele.push(`Arkitektonisk stil: ${byggeoenske.arkitektoniskStil}`);
   if (byggeoenske.tagform) projektDele.push(`Tagform: ${byggeoenske.tagform}`);
-  if (byggeoenske.facademateriale) projektDele.push(`Facademateriale: ${byggeoenske.facademateriale}`);
+  if (byggeoenske.facademateriale)
+    projektDele.push(`Facademateriale: ${byggeoenske.facademateriale}`);
   if (byggeoenske.vinduesandel) projektDele.push(`Vinduesandel: ${byggeoenske.vinduesandel}`);
   if (byggeoenske.udeomraade) projektDele.push(`Udeområde: ${byggeoenske.udeomraade}`);
   if (byggeoenske.energiklasse) projektDele.push(`Energiklasse: ${byggeoenske.energiklasse}`);
@@ -138,20 +141,26 @@ function buildUserMessage(input: ByggeanalyseInput): string {
     const bbrDele: string[] = [];
     if (bbr.grundareal) bbrDele.push(`Grundareal: ${bbr.grundareal} m²`);
     if (bbr.bebygget_areal) bbrDele.push(`Nuv. bebygget areal: ${bbr.bebygget_areal} m²`);
-    if (bbr.bebyggelsesprocent !== null) bbrDele.push(`Nuv. bebyggelsesprocent: ${bbr.bebyggelsesprocent}%`);
+    if (bbr.bebyggelsesprocent !== null)
+      bbrDele.push(`Nuv. bebyggelsesprocent: ${bbr.bebyggelsesprocent}%`);
     if (bbr.antal_etager !== null) bbrDele.push(`Nuv. etager: ${bbr.antal_etager}`);
     if (bbrDele.length > 0) msg += `\n\n## Ejendom (BBR)\n${bbrDele.join("\n")}`;
   }
 
   if (lokalplanExtract) {
     const lpDele: string[] = [];
-    if (lokalplanExtract.maxEtager !== null) lpDele.push(`Max etager: ${lokalplanExtract.maxEtager}`);
-    if (lokalplanExtract.maxBebyggelsespct !== null) lpDele.push(`Max bebyggelsesprocent: ${lokalplanExtract.maxBebyggelsespct}%`);
+    if (lokalplanExtract.maxEtager !== null)
+      lpDele.push(`Max etager: ${lokalplanExtract.maxEtager}`);
+    if (lokalplanExtract.maxBebyggelsespct !== null)
+      lpDele.push(`Max bebyggelsesprocent: ${lokalplanExtract.maxBebyggelsespct}%`);
     if (lokalplanExtract.tagform) lpDele.push(`Tagformkrav: ${lokalplanExtract.tagform}`);
-    if (lokalplanExtract.materialer.length > 0) lpDele.push(`Tilladte materialer: ${lokalplanExtract.materialer.join(", ")}`);
+    if (lokalplanExtract.materialer.length > 0)
+      lpDele.push(`Tilladte materialer: ${lokalplanExtract.materialer.join(", ")}`);
     if (lokalplanExtract.byggelinjer) lpDele.push(`Byggelinjer: ${lokalplanExtract.byggelinjer}`);
     if (lokalplanExtract.specialBestemmelser.length > 0) {
-      lpDele.push(`Særlige bestemmelser:\n${lokalplanExtract.specialBestemmelser.map((s) => `- ${s}`).join("\n")}`);
+      lpDele.push(
+        `Særlige bestemmelser:\n${lokalplanExtract.specialBestemmelser.map((s) => `- ${s}`).join("\n")}`,
+      );
     }
     if (lpDele.length > 0) msg += `\n\n## Lokalplan: ${lokalplanNavn}\n${lpDele.join("\n")}`;
   }
@@ -159,10 +168,7 @@ function buildUserMessage(input: ByggeanalyseInput): string {
   msg +=
     "\n\nIdentificer præcist hvilke af brugerens valg der er tilladt, kræver dispensation, er i direkte konflikt, eller mangler data til at vurdere.";
 
-  if (
-    byggeoenske.inspirationsbilleder &&
-    byggeoenske.inspirationsbilleder.length > 0
-  ) {
+  if (byggeoenske.inspirationsbilleder && byggeoenske.inspirationsbilleder.length > 0) {
     msg +=
       "\n\nDer er uploadet inspirationsbilleder. Beskriv kort den arkitektoniske stil i stilOpsummering-feltet.";
   }
@@ -177,7 +183,10 @@ function buildUserMessage(input: ByggeanalyseInput): string {
 type ContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; source: { type: "url"; url: string } }
-  | { type: "image"; source: { type: "base64"; media_type: "image/jpeg" | "image/png"; data: string } };
+  | {
+      type: "image";
+      source: { type: "base64"; media_type: "image/jpeg" | "image/png"; data: string };
+    };
 
 function buildImageBlocks(urls: string[]): ContentBlock[] {
   const blocks: ContentBlock[] = [];
@@ -211,7 +220,7 @@ export class ByggeanalyseService {
 
     if (FEATURE_FLAGS.byggeanalyseMock) return MOCK_RESULTAT;
 
-    const apiKey = (process as any)?.env?.ANTHROPIC_API_KEY as string ?? "";
+    const apiKey = ((process as any)?.env?.ANTHROPIC_API_KEY as string) ?? "";
     if (!apiKey) {
       console.warn("[ByggeanalyseService] ANTHROPIC_API_KEY mangler — returnerer mock");
       return MOCK_RESULTAT;
@@ -220,10 +229,7 @@ export class ByggeanalyseService {
     const userText = buildUserMessage(input);
     const imageBlocks = buildImageBlocks(byggeoenske.inspirationsbilleder ?? []);
 
-    const userContent: ContentBlock[] = [
-      ...imageBlocks,
-      { type: "text", text: userText },
-    ];
+    const userContent: ContentBlock[] = [...imageBlocks, { type: "text", text: userText }];
 
     let res: Response | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -244,13 +250,17 @@ export class ByggeanalyseService {
 
       if (res.status !== 429) break;
       const delayMs = 10_000 * Math.pow(2, attempt);
-      console.warn(`[ByggeanalyseService] Rate limit — venter ${delayMs / 1000}s (forsøg ${attempt + 1}/3)`);
+      console.warn(
+        `[ByggeanalyseService] Rate limit — venter ${delayMs / 1000}s (forsøg ${attempt + 1}/3)`,
+      );
       await new Promise((r) => setTimeout(r, delayMs));
     }
 
     if (!res!.ok) {
       const body = await res!.text();
-      throw new Error(`ByggeanalyseService: Anthropic API fejl (${res!.status}): ${body.slice(0, 200)}`);
+      throw new Error(
+        `ByggeanalyseService: Anthropic API fejl (${res!.status}): ${body.slice(0, 200)}`,
+      );
     }
 
     const json = (await res!.json()) as { content?: Array<{ text?: string }> };

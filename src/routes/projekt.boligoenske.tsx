@@ -273,9 +273,7 @@ function ByggeoenskeStep() {
   };
 
   const canContinue =
-    step.type === "upload" ||
-    step.type === "toggle" ||
-    (value !== undefined && value !== null);
+    step.type === "upload" || step.type === "toggle" || (value !== undefined && value !== null);
 
   const devBypass = () => {
     setByggeoenske(MOCK_BYGGEOENSKE);
@@ -311,17 +309,11 @@ function ByggeoenskeStep() {
             transition={{ duration: 0.2 }}
           >
             <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">{step.title}</h1>
-            {step.subtitle && (
-              <p className="text-sm text-muted-foreground mb-6">{step.subtitle}</p>
-            )}
+            {step.subtitle && <p className="text-sm text-muted-foreground mb-6">{step.subtitle}</p>}
 
             <div className="mt-6">
               {step.type === "choice" && (
-                <ChoiceInput
-                  options={step.options!}
-                  value={value}
-                  onChange={(v) => setValue(v)}
-                />
+                <ChoiceInput options={step.options!} value={value} onChange={(v) => setValue(v)} />
               )}
               {step.type === "number" && (
                 <NumberInput
@@ -410,9 +402,7 @@ function ChoiceInput({
                 >
                   {o.label}
                 </div>
-                {o.hint && (
-                  <div className="mt-0.5 text-xs text-muted-foreground">{o.hint}</div>
-                )}
+                {o.hint && <div className="mt-0.5 text-xs text-muted-foreground">{o.hint}</div>}
               </div>
               {selected && <Check size={16} className="text-accent shrink-0" />}
             </div>
@@ -491,13 +481,7 @@ function ToggleInput({
   );
 }
 
-function UploadInput({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (v: string[]) => void;
-}) {
+function UploadInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
