@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { useProject, deriveComplianceFlags } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
@@ -26,7 +25,9 @@ import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
-// Auth-gated: kun indloggede brugere kan trigge analyse (forhindrer API-quota-misbrug).
+// Auth-check sker client-side i ComplianceStep (gæster blokeres der).
+// Middleware fjernet: TanStack Start sender ikke Authorization-header automatisk,
+// da Supabase-sessionen lever i localStorage — ikke i request-headers.
 // ---------------------------------------------------------------------------
 
 const analysisInputSchema = z.object({
@@ -43,7 +44,6 @@ const analysisInputSchema = z.object({
 });
 
 const fetchCompliance = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => analysisInputSchema.parse(data))
   .handler(async ({ data }): Promise<ComplianceResult> => {
     const { analyseAddress } = await import("@/lib/analysis-orchestrator");
@@ -51,7 +51,6 @@ const fetchCompliance = createServerFn({ method: "POST" })
   });
 
 const runByggeanalyse = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((data: ByggeanalyseInput) => data)
   .handler(async ({ data }): Promise<ByggeanalyseResultat> => {
     const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
