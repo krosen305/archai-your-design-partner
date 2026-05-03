@@ -1,0 +1,78 @@
+# ARCH-79: GitHub branch protection setup
+#
+# Kør dette workflow én gang for at aktivere branch protection på main.
+# Kræver at GITHUB_TOKEN har admin-adgang til repo (automatisk for repo-ejere).
+#
+# Hvad det sætter op:
+#   - Kræver PR før merge til main (0 godkendelser — solo dev)
+#   - Kræver at CI-check "Type-check · Lint · Test · Build" er grønt
+#   - Blokerer direkte push til main
+#   - Blokerer force push og sletning af main
+#   - Admin kan stadig bypasse i nødstilfælde (enforce_admins: false)
+#
+# Kør med: Actions → "Setup: Branch Protection" → Run workflow
+
+name: "Setup: Branch Protection"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    name: Konfigurér branch protection på main
+    runs-on: ubuntu-latest
+    permissions:
+      administration: write
+
+    steps:
+      - name: Aktivér branch protection
+        uses: actions/github-script@v7
+        with:
+          # GITHUB_TOKEN er automatisk tilgængeligt for repo-ejere
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const branch = 'main';
+
+            console.log(`Sætter branch protection op på ${owner}/${repo}:${branch}…`);
+
+            await github.rest.repos.updateBranchProtection({
+              owner,
+              repo,
+              branch,
+
+              // Kræv at CI-check er grønt inden merge
+              required_status_checks: {
+                strict: false,          // Kræv IKKE at branch er up-to-date (for solo dev)
+                checks: [
+                  { context: 'Type-check · Lint · Test · Build' },
+                ],
+              },
+
+              // Kræv PR — men 0 godkendelser (solo dev, ingen blocker)
+              required_pull_request_reviews: {
+                required_approving_review_count: 0,
+                dismiss_stale_reviews: false,
+                require_code_owner_reviews: false,
+                require_last_push_approval: false,
+              },
+
+              // Ingen push-restrictions (enhver med write-adgang kan lave PR)
+              restrictions: null,
+
+              // enforce_admins: false → repo-ejer kan stadig bypasse i nødstilfælde
+              enforce_admins: false,
+
+              // Blokér force push og sletning af main
+              allow_force_pushes: false,
+              allow_deletions: false,
+            });
+
+            console.log('✅ Branch protection aktiveret på main.');
+            console.log('');
+            console.log('Hvad der gælder nu:');
+            console.log('  - Direkte push til main er blokeret');
+            console.log('  - Alle ændringer skal gå via PR');
+            console.log('  - CI-check skal være grønt inden merge');
+            console.log('  - Repo-ejer kan stadig bypasse via GitHub UI (nødstilfælde)');

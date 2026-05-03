@@ -143,7 +143,9 @@ GitHub Actions kører automatisk via `.github/workflows/`:
 | ------------ | --------------------------- | ---------------------------------------- |
 | `ci.yml`              | PR til main + push til main | tsc · eslint · bun test · bun build      |
 | `deploy.yml`          | Push til main               | bun build · wrangler deploy (production) |
-| `sentry-to-linear.yml`| `repository_dispatch` / manuelt | Opretter Linear bug issue fra Sentry fejl |
+| `sentry-to-linear.yml`    | `repository_dispatch` / manuelt | Opretter Linear bug issue fra Sentry fejl |
+| `ai-pr-review.yml`        | PR opened/synchronize           | Claude Haiku review-kommentar på PR       |
+| `setup-branch-protection.yml` | `workflow_dispatch` (én gang) | Aktiverer branch protection på main  |
 
 **Preview deploys** på PR: `wrangler deploy --name archai-preview-pr-<N>` — kræver at Cloudflare Workers plan tillader flere workers.
 
@@ -159,6 +161,9 @@ ANTHROPIC_API_KEY
 SENTRY_AUTH_TOKEN            # Til source map upload i deploy.yml
 LINEAR_API_KEY               # Linear personal API key — bruges af sentry-to-linear.yml
 ```
+
+**Branch protection** (ARCH-79): Kør `setup-branch-protection.yml` via Actions → Run workflow.
+Herefter kræves PR + grøn CI for alle merges til main. Admin kan bypasse i nødstilfælde.
 
 **Sentry → Linear opsætning** (ARCH-70):
 Brug Sentry's native Linear integration: Sentry → Settings → Integrations → "Linear" → Installer.
