@@ -12,21 +12,37 @@ import {
   Map,
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { useProject, deriveComplianceFlags } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
-import type { AnalysisInput, ComplianceResult } from "@/lib/analysis-orchestrator";
+import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
-// Kalder analyseAddress() som håndterer BBR + MAT + Plandata + Supabase-cache.
+// Auth-gated: kun indloggede brugere kan trigge analyse (forhindrer API-quota-misbrug).
 // ---------------------------------------------------------------------------
 
+const analysisInputSchema = z.object({
+  addressId: z.string().min(1).max(64),
+  adgangsadresseid: z.string().min(1).max(64),
+  ejerlavskode: z.number().int().nullable(),
+  matrikelnummer: z.string().max(32).nullable(),
+  koordinater: z
+    .object({
+      lat: z.number().gte(-90).lte(90),
+      lng: z.number().gte(-180).lte(180),
+    })
+    .nullable(),
+});
+
 const fetchCompliance = createServerFn({ method: "POST" })
-  .inputValidator((data: AnalysisInput) => data)
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => analysisInputSchema.parse(data))
   .handler(async ({ data }): Promise<ComplianceResult> => {
     const { analyseAddress } = await import("@/lib/analysis-orchestrator");
     return analyseAddress(data);
