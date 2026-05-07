@@ -21,12 +21,14 @@ import { complianceSuite } from './cases/compliance-flags.eval.ts'
 import { pdfExtractorSuite } from './cases/pdf-extractor.eval.ts'
 import { husDnaSuite } from './cases/hus-dna-generator.eval.ts'
 import { orchestratorSuite } from './cases/analysis-orchestrator.eval.ts'
+import { ruleEngineSuite } from './cases/rule-engine.eval.ts'
 
 const ALL_SUITES: EvalSuite[] = [
   complianceSuite,
   pdfExtractorSuite,
   husDnaSuite,
   orchestratorSuite,
+  ruleEngineSuite,
 ]
 
 // ─── Config ───────────────────────────────────────────────────────────────────

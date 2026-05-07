@@ -30,7 +30,7 @@ export function loadSnapshot(caseId: string): Snapshot | null {
 }
 
 export function saveSnapshot(caseId: string, score: number, output: unknown): void {
-  mkdirSync(SNAPSHOTS_DIR, { recursive: true })
+  if (!existsSync(SNAPSHOTS_DIR)) mkdirSync(SNAPSHOTS_DIR, { recursive: true })
   const snap: Snapshot = {
     caseId,
     score,
