@@ -23,6 +23,7 @@ import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import type { ByggeanalyseInput, ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
+import type { GeusRiskData } from "@/integrations/geus/client";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
@@ -180,6 +181,7 @@ function ComplianceContent() {
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>([]);
+  const [geusRiskLocal, setGeusRiskLocal] = useState<GeusRiskData | null>(null);
 
   useEffect(() => {
     if (bbrData) {
@@ -226,11 +228,13 @@ function ComplianceContent() {
           setLokalplaner(result.lokalplaner);
           setLokalplanExtract(result.lokalplanExtract);
           setKommuneplanramme(result.kommuneplanramme);
+          setGeusRiskLocal(result.geusRisk ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
             result.kommuneplanramme,
             result.naturbeskyttelse,
             result.dkjord,
+            result.geusRisk,
           );
           setComplianceFlags(flags);
           setComplianceMetrics(calculateComplianceMetrics(result.bbr, result.kommuneplanramme));
@@ -312,6 +316,7 @@ function ComplianceContent() {
             lokalplaner={lokalplanerLocal}
             byggeanalyse={byggeanalyseResultat}
             metrics={complianceMetrics}
+            geusRisk={geusRiskLocal}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -383,6 +388,7 @@ function ResultView({
   lokalplaner,
   byggeanalyse,
   metrics,
+  geusRisk,
   onContinue,
 }: {
   adresse: string;
@@ -390,6 +396,7 @@ function ResultView({
   lokalplaner: Lokalplan[];
   byggeanalyse: ByggeanalyseResultat | null;
   metrics: ComplianceMetrics | null;
+  geusRisk: GeusRiskData | null;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -585,6 +592,8 @@ function ResultView({
         </div>
       )}
 
+      {geusRisk && <GeusRisikoSektion data={geusRisk} />}
+
       <button
         data-testid="compliance-continue"
         onClick={onContinue}
@@ -680,6 +689,78 @@ function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
           </div>
         );
       })}
+    </Card>
+  );
+}
+
+function GeusRisikoSektion({ data }: { data: GeusRiskData }) {
+  const radonBadge = {
+    high: { label: "HØJ RADONRISIKO", color: "text-danger border-danger/40 bg-danger/10" },
+    medium: { label: "MIDDEL RADONRISIKO", color: "text-warning border-warning/40 bg-warning/10" },
+    low: { label: "LAV RADONRISIKO", color: "text-success border-success/40 bg-success/10" },
+    unknown: { label: "RADON UKENDT", color: "text-muted-foreground border-border bg-[#1a1a1a]" },
+  }[data.radonRisk];
+
+  const vandHighRisk = data.groundwaterDepthM !== null && data.groundwaterDepthM < 1.0;
+  const vandLowRisk =
+    data.groundwaterDepthM !== null &&
+    data.groundwaterDepthM >= 1.0 &&
+    data.groundwaterDepthM < 2.0;
+
+  return (
+    <Card className="mb-4">
+      <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+        GEOTEKNISK RISIKOPROFIL
+        {data.kilde === "mock" && (
+          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
+            MOCK
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2 mb-3">
+        <span
+          className={`inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 ${radonBadge.color}`}
+        >
+          {radonBadge.label}
+        </span>
+        {(vandHighRisk || vandLowRisk) && (
+          <span
+            className={`inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 ${vandHighRisk ? "text-danger border-danger/40 bg-danger/10" : "text-warning border-warning/40 bg-warning/10"}`}
+          >
+            {vandHighRisk ? "KRITISK GRUNDVAND" : "LAVT GRUNDVAND"}
+          </span>
+        )}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">RADON</div>
+          <div className="text-sm text-foreground">
+            {data.radonRisk === "high" && "Høj — radonafskærmning påkrævet (BR18 §301)"}
+            {data.radonRisk === "medium" && "Middel — radonspærre anbefalet"}
+            {data.radonRisk === "low" && "Lav — ingen særlige krav"}
+            {data.radonRisk === "unknown" && "Ingen data tilgængeligt"}
+          </div>
+        </div>
+        {data.groundwaterDepthM !== null && (
+          <div>
+            <div className="text-[11px] font-mono text-muted-foreground mb-1">GRUNDVAND</div>
+            <div className="text-sm text-foreground">
+              {data.groundwaterDepthM.toFixed(1)} m under terræn
+              {data.groundwaterDataSource && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({data.groundwaterDataSource})
+                </span>
+              )}
+            </div>
+            {vandHighRisk && (
+              <div className="text-xs text-danger mt-0.5">Dræning + vandtæt kælder kræves</div>
+            )}
+            {vandLowRisk && (
+              <div className="text-xs text-warning mt-0.5">Dræning anbefalet ved kælder</div>
+            )}
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

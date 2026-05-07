@@ -4,6 +4,7 @@ import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import type { GeusRiskData } from "@/integrations/geus/client";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 export type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -109,7 +110,7 @@ export type ComplianceFlag = {
   detalje: string | null;
   aktuelVærdi: string | null;
   tilladt: string | null;
-  kilde: "bbr" | "plandata" | "servitut" | "beregnet" | "sdfi" | "dkjord";
+  kilde: "bbr" | "plandata" | "servitut" | "beregnet" | "sdfi" | "dkjord" | "geus";
 };
 
 // ---------------------------------------------------------------------------
@@ -260,6 +261,7 @@ export function deriveComplianceFlags(
   ramme: Kommuneplanramme | null,
   naturbeskyttelse?: NaturbeskyttelsesResultat | null,
   dkjord?: DkJordResultat | null,
+  geusRisk?: GeusRiskData | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
@@ -414,6 +416,52 @@ export function deriveComplianceFlags(
         aktuelVærdi: dkjord.omraadeklassificering,
         tilladt: null,
         kilde: "dkjord",
+      });
+    }
+  }
+
+  // ── GEUS geoteknisk risiko (ARCH-101) ──────────────────────────────────────
+  if (geusRisk) {
+    if (geusRisk.radonRisk === "high") {
+      flags.push({
+        id: "geus-radon",
+        label: "Høj radonrisiko",
+        status: "blocker",
+        detalje: "Høj radonkoncentration i undergrunden — radonafskærmning påkrævet jf. BR18 §301",
+        aktuelVærdi: "Høj",
+        tilladt: "Lav–middel",
+        kilde: "geus",
+      });
+    } else if (geusRisk.radonRisk === "medium") {
+      flags.push({
+        id: "geus-radon",
+        label: "Middel radonrisiko",
+        status: "advarsel",
+        detalje: "Middel radonkoncentration — anbefalet med radonspærre i konstruktionen",
+        aktuelVærdi: "Middel",
+        tilladt: null,
+        kilde: "geus",
+      });
+    }
+    if (geusRisk.groundwaterDepthM !== null && geusRisk.groundwaterDepthM < 1.0) {
+      flags.push({
+        id: "geus-grundvand",
+        label: "Højt grundvand",
+        status: "blocker",
+        detalje: `Grundvand ${geusRisk.groundwaterDepthM.toFixed(1)} m under terræn — drænforanstaltninger og vandtæt kælder kræves`,
+        aktuelVærdi: `${geusRisk.groundwaterDepthM.toFixed(1)} m`,
+        tilladt: ">1,0 m",
+        kilde: "geus",
+      });
+    } else if (geusRisk.groundwaterDepthM !== null && geusRisk.groundwaterDepthM < 2.0) {
+      flags.push({
+        id: "geus-grundvand",
+        label: "Lavt grundvand",
+        status: "advarsel",
+        detalje: `Grundvand ${geusRisk.groundwaterDepthM.toFixed(1)} m under terræn — dræning anbefalet ved kælder eller terrændæk`,
+        aktuelVærdi: `${geusRisk.groundwaterDepthM.toFixed(1)} m`,
+        tilladt: null,
+        kilde: "geus",
       });
     }
   }
