@@ -7,6 +7,7 @@ import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import { syncPatch } from "@/lib/project-sync";
+import { MOCK_ADRESSE } from "@/lib/mock-data";
 
 // ---------------------------------------------------------------------------
 // Server functions — begge kræver credentials der kun er tilgængelige server-side.
@@ -114,9 +115,7 @@ function AddressStep() {
         kommunekode: details.kommunekode || s.kommunekode,
         kommune:
           details.kommunenavn ||
-          (await import("@/lib/kommuner")).kommunenavnFraKode(
-            details.kommunekode || s.kommunekode,
-          ),
+          (await import("@/lib/kommuner")).kommunenavnFraKode(details.kommunekode || s.kommunekode),
         matrikel: details.matrikel,
         adgangsadresseid: details.adgangsadresseid || s.adgangsadresseid,
         koordinater: details.koordinater || s.koordinater,
@@ -252,22 +251,7 @@ function AddressStep() {
               <button
                 type="button"
                 onClick={() => {
-                  const mock = {
-                    adresseid: "0a3f50a8-471d-32b8-e044-0003ba298018",
-                    adresse: "Hasselvej 48, 2830 Virum",
-                    postnr: "2830",
-                    postnrnavn: "Virum",
-                    kommune: "Lyngby-Taarbæk",
-                    kommunekode: "0173",
-                    matrikel: "8a Virum By, Virum",
-                    adgangsadresseid: "0a3f5081-d7e2-32b8-e044-0003ba298018",
-                    koordinater: { lat: 55.7989, lng: 12.4769 },
-                    bbrId: null,
-                    ejerlavskode: 173551,
-                    matrikelnummer: "8a",
-                    grundareal: 829,
-                  };
-                  setAddress(mock);
+                  setAddress(MOCK_ADRESSE);
                   navigate({ to: "/projekt/boligoenske" });
                 }}
                 className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-accent/40 bg-accent/5 px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-accent hover:bg-accent/10 transition-colors"

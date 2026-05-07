@@ -7,6 +7,7 @@ import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { syncPatch } from "@/lib/project-sync";
 import { supabase } from "@/integrations/supabase/client";
+import { MOCK_BYGGEOENSKE } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/projekt/boligoenske")({
   component: ByggeoenskeStep,
@@ -211,32 +212,6 @@ const STEPS: Step[] = [
     type: "upload",
   },
 ];
-
-// Mock-data til dev-bypass
-const MOCK_BYGGEOENSKE: Byggeoenske = {
-  byggetype: "nybyg",
-  husstandsstoerrelse: 4,
-  voksne: 2,
-  boern: 2,
-  livsfase: "etableret",
-  oensketAreal: 180,
-  antalEtager: 2,
-  antalSovevaerelser: 4,
-  antalBadevaerelser: 2,
-  hjemmekontor: true,
-  arkitektoniskStil: "skandinavisk",
-  tagform: "saddeltag",
-  facademateriale: "trae",
-  vinduesandel: "stor",
-  udeomraade: "terrasse",
-  energiklasse: "lavenergi",
-  varmekilde: "varmepumpe",
-  solceller: true,
-  ventilation: "balanceret",
-  ladestander: true,
-  budget: "5-8",
-  inspirationsbilleder: [],
-};
 
 // ---------------------------------------------------------------------------
 // Smart defaults — pre-fill based on earlier answers (ARCH-87)

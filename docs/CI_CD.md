@@ -46,6 +46,42 @@ gh api repos/krosen305/archai-your-design-partner/dispatches \
   -F client_payload[issueTitle]="Test"
 ```
 
+## Evals i CI/CD (ARCH-97)
+
+### Hvornår kører hvad
+
+| Pipeline | Kommando | Live API-kald | Blokerer |
+|---|---|---|---|
+| `ci.yml` (alle PR + push til main) | `bun run evals` | Nej (mock) | Ja — fejl stopper CI |
+| `deploy.yml` (push til main) | `EVAL_LIVE=true bun run evals` | Ja | Ja — fejl stopper deploy |
+
+Mock-evals kræver ingen secrets. Live-evals kræver `ANTHROPIC_API_KEY` + `DATAFORDELER_API_KEY`.
+
+### Snapshots
+
+Snapshots gemmes i `evals/snapshots/` og skal committes — de registrerer baseline-scores og opdager regressioner. Filen er ikke ekskluderet af `.gitignore`.
+
+**Opdatér snapshots** ved intentionelle forbedringer (ny model, bedre prompt):
+
+```bash
+EVAL_UPDATE_SNAPSHOTS=true bun run evals
+git add evals/snapshots/
+git commit -m "chore: opdatér eval-snapshots efter [hvad der ændrede sig]"
+```
+
+**Kør én bestemt suite** under udvikling:
+
+```bash
+bun run evals --suite=pdf-extractor
+bun run evals --suite=compliance
+```
+
+### Tilføj ny eval-suite
+
+1. Opret `evals/cases/<navn>.eval.ts` med `EvalSuite`-type
+2. Importér og tilføj til `ALL_SUITES` i `evals/runner.ts`
+3. Kør `EVAL_UPDATE_SNAPSHOTS=true bun run evals` for at gemme initial baseline
+
 ## Preview deploys
 
 `wrangler deploy --name archai-preview-pr-<N>` — kræver Cloudflare Workers-plan der tillader flere workers.
