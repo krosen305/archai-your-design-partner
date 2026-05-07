@@ -1,8 +1,13 @@
 // SERVER-SIDE ONLY – never import this from browser code.
 //
-// Cache-first orchestrator for address analysis.
+// Cache-first orchestrator for address analysis (ARCH-32: fuldt paralleliseret).
 // Checks Supabase before making any AI or data API calls.
 // Each layer (BBR/Plandata, lokalplan PDF, servitut) is cached independently.
+//
+// Paralleliseringsstrategi:
+//   Layer 1: BBR + Plandata (parallel)
+//   Layer 2+3+4: lokalplan PDF, servitutter, geodata (alle tre parallel efter Layer 1)
+//   Target: < 5 sekunder live (primært begrænset af PDF-udtræk ~2s)
 //
 // A returning user for a previously-analysed address pays $0.00 in AI costs.
 //
@@ -165,101 +170,115 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     }
   }
 
-  // ── Layer 2: lokalplan_extracted ────────────────────────────────────────
+  // ── Layers 2 + 3 + 4: kører parallelt — ingen indbyrdes afhængighed ──────
+  // Layer 2 (lokalplan PDF), Layer 3 (servitutter) og Layer 4 (geodata)
+  // behøver alle kun Layer 1's output. Parallel Promise.all sparer ~2s live.
   const primaryPdfUrl = complianceBase.lokalplaner[0]?.plandokumentLink ?? null;
-  let lokalplanExtract: LokalplanExtract | null = null;
-  try {
-    const cached = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
-    if (cached) {
-      lokalplanExtract = cached as unknown as LokalplanExtract;
-    } else if (primaryPdfUrl) {
-      const { PdfExtractorService } = await import("@/integrations/ai/pdf-extractor");
-      const extract = await PdfExtractorService.extractLokalplan(primaryPdfUrl);
-      await setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as Json);
-      lokalplanExtract = extract;
-    }
-  } catch (e) {
-    console.warn("[Orchestrator] lokalplan PDF-udtræk fejlede:", (e as Error).message);
-  }
 
-  // ── Layer 3: servitut_extracted (IS_MOCK=true — ARCH-104) ──────────────
-  let servitutter: TinglysningResult | null = null;
-  try {
-    const cachedServitut = await getCachedServitut(addressId);
-    if (cachedServitut) {
-      servitutter = cachedServitut as unknown as TinglysningResult;
-    } else {
-      const { TinglysningService } = await import("@/integrations/tinglysning/client");
-      servitutter = await TinglysningService.getServitutter(
-        addressId,
-        ejerlavskode,
-        matrikelnummer,
-      );
-      await setCachedServitut(addressId, servitutter as unknown as Json);
-    }
-  } catch (e) {
-    console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
-  }
+  const [lokalplanExtract, servitutter, layer4] = await Promise.all([
+    // ── Layer 2: lokalplan_extracted ────────────────────────────────────
+    (async (): Promise<LokalplanExtract | null> => {
+      try {
+        const cached = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
+        if (cached) return cached as unknown as LokalplanExtract;
+        if (primaryPdfUrl) {
+          const { PdfExtractorService } = await import("@/integrations/ai/pdf-extractor");
+          const extract = await PdfExtractorService.extractLokalplan(primaryPdfUrl);
+          await setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as Json);
+          return extract;
+        }
+        return null;
+      } catch (e) {
+        console.warn("[Orchestrator] lokalplan PDF-udtræk fejlede:", (e as Error).message);
+        return null;
+      }
+    })(),
 
-  // ── Layer 4: naturbeskyttelse + dkjord + geus + terrain + naboer + fjernvarme — parallelt ─
-  let naturbeskyttelse: NaturbeskyttelsesResultat | null = null;
-  let dkjord: DkJordResultat | null = null;
-  let geusRisk: GeusRiskData | null = null;
-  let terrain: TerrainData | null = null;
-  let naboer: NeighborBuildingData | null = null;
-  let fjernvarme: FjernvarmeResultat | null = null;
+    // ── Layer 3: servitut_extracted (IS_MOCK=true — ARCH-104) ───────────
+    (async (): Promise<TinglysningResult | null> => {
+      try {
+        const cachedServitut = await getCachedServitut(addressId);
+        if (cachedServitut) return cachedServitut as unknown as TinglysningResult;
+        const { TinglysningService } = await import("@/integrations/tinglysning/client");
+        const result = await TinglysningService.getServitutter(
+          addressId,
+          ejerlavskode,
+          matrikelnummer,
+        );
+        await setCachedServitut(addressId, result as unknown as Json);
+        return result;
+      } catch (e) {
+        console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
+        return null;
+      }
+    })(),
 
-  if (koordinater) {
-    const [natur, jord, geus, terr, nabo, varme] = await Promise.all([
-      import("@/integrations/sdfi/naturbeskyttelse")
-        .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
-        .catch((e: Error) => {
-          console.warn("[Orchestrator] naturbeskyttelse fejlede:", e.message);
-          return null;
-        }),
-      import("@/integrations/miljoe/dkjord")
-        .then(({ DkJordService }) => DkJordService.getTilstand(koordinater))
-        .catch((e: Error) => {
-          console.warn("[Orchestrator] DK-Jord fejlede:", e.message);
-          return null;
-        }),
-      import("@/integrations/geus/client")
-        .then(({ GeusService }) => GeusService.getRiskData(koordinater.lat, koordinater.lng))
-        .catch((e: Error) => {
-          console.warn("[Orchestrator] GEUS fejlede:", e.message);
-          return null;
-        }),
-      import("@/integrations/sdfi/dhm-client")
-        .then(({ DhmService, bboxFromPoint }) => {
-          const bbox = bboxFromPoint(koordinater.lat, koordinater.lng, preFetchedGrundareal);
-          return DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng);
-        })
-        .catch((e: Error) => {
-          console.warn("[Orchestrator] DHM terrain fejlede:", e.message);
-          return null;
-        }),
-      import("@/integrations/bbr/neighbor-client")
-        .then(({ NaboService }) =>
-          NaboService.getNaboer(koordinater.lat, koordinater.lng, adgangsadresseid),
-        )
-        .catch((e: Error) => {
-          console.warn("[Orchestrator] NaboService fejlede:", e.message);
-          return null;
-        }),
-      import("@/integrations/plandata/fjernvarme")
-        .then(({ FjernvarmeService }) => FjernvarmeService.getDaekning(koordinater))
-        .catch((e: Error) => {
-          console.warn("[Orchestrator] FjernvarmeService fejlede:", e.message);
-          return null;
-        }),
-    ]);
-    naturbeskyttelse = natur;
-    dkjord = jord;
-    geusRisk = geus;
-    terrain = terr;
-    naboer = nabo;
-    fjernvarme = varme;
-  }
+    // ── Layer 4: naturbeskyttelse + dkjord + geus + terrain + naboer + fjernvarme ─
+    (async () => {
+      let naturbeskyttelse: NaturbeskyttelsesResultat | null = null;
+      let dkjord: DkJordResultat | null = null;
+      let geusRisk: GeusRiskData | null = null;
+      let terrain: TerrainData | null = null;
+      let naboer: NeighborBuildingData | null = null;
+      let fjernvarme: FjernvarmeResultat | null = null;
+
+      if (koordinater) {
+        const [natur, jord, geus, terr, nabo, varme] = await Promise.all([
+          import("@/integrations/sdfi/naturbeskyttelse")
+            .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
+            .catch((e: Error) => {
+              console.warn("[Orchestrator] naturbeskyttelse fejlede:", e.message);
+              return null;
+            }),
+          import("@/integrations/miljoe/dkjord")
+            .then(({ DkJordService }) => DkJordService.getTilstand(koordinater))
+            .catch((e: Error) => {
+              console.warn("[Orchestrator] DK-Jord fejlede:", e.message);
+              return null;
+            }),
+          import("@/integrations/geus/client")
+            .then(({ GeusService }) => GeusService.getRiskData(koordinater.lat, koordinater.lng))
+            .catch((e: Error) => {
+              console.warn("[Orchestrator] GEUS fejlede:", e.message);
+              return null;
+            }),
+          import("@/integrations/sdfi/dhm-client")
+            .then(({ DhmService, bboxFromPoint }) => {
+              const bbox = bboxFromPoint(koordinater.lat, koordinater.lng, preFetchedGrundareal);
+              return DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng);
+            })
+            .catch((e: Error) => {
+              console.warn("[Orchestrator] DHM terrain fejlede:", e.message);
+              return null;
+            }),
+          import("@/integrations/bbr/neighbor-client")
+            .then(({ NaboService }) =>
+              NaboService.getNaboer(koordinater.lat, koordinater.lng, adgangsadresseid),
+            )
+            .catch((e: Error) => {
+              console.warn("[Orchestrator] NaboService fejlede:", e.message);
+              return null;
+            }),
+          import("@/integrations/plandata/fjernvarme")
+            .then(({ FjernvarmeService }) => FjernvarmeService.getDaekning(koordinater))
+            .catch((e: Error) => {
+              console.warn("[Orchestrator] FjernvarmeService fejlede:", e.message);
+              return null;
+            }),
+        ]);
+        naturbeskyttelse = natur;
+        dkjord = jord;
+        geusRisk = geus;
+        terrain = terr;
+        naboer = nabo;
+        fjernvarme = varme;
+      }
+
+      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme };
+    })(),
+  ]);
+
+  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme } = layer4;
 
   return {
     ...complianceBase,
