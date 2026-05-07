@@ -1,0 +1,137 @@
+name: Auto README Update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/integrations/**'
+      - 'src/lib/**'
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    name: Opdater integrationstabel i README
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect integrations + call Claude + patch README
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, re, subprocess, urllib.request, urllib.error
+
+          # ── 1. Collect integration files ──────────────────────────────────
+          integrations = []
+          for root, dirs, files in os.walk("src/integrations"):
+              dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+              for fname in sorted(files):
+                  if not fname.endswith(".ts"):
+                      continue
+                  if fname.endswith(".test.ts") or fname == "types.ts":
+                      continue
+                  path = os.path.join(root, fname).replace("\\", "/")
+                  comment = ""
+                  with open(path, encoding="utf-8") as f:
+                      for line in f:
+                          stripped = line.strip()
+                          if stripped.startswith("//"):
+                              candidate = stripped.lstrip("/ ").strip()
+                              if len(candidate) > 10 and not candidate.startswith("@"):
+                                  comment = candidate
+                                  break
+                  integrations.append({"path": path, "description": comment})
+
+          files_list = "\n".join(
+              f"- {i['path']}: {i['description']}" for i in integrations
+          )
+
+          # ── 2. Call Claude Haiku ───────────────────────────────────────────
+          api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+          if not api_key:
+              print("ANTHROPIC_API_KEY mangler — springer README-opdatering over")
+              exit(0)
+
+          prompt = f"""Based on these ArchAI integration files, generate a markdown table for the README.
+
+  Files:
+  {files_list}
+
+  Generate ONLY a markdown table with these exact columns:
+  | Service | Fil | Status | Beskrivelse |
+
+  Rules:
+  - Service: class or service name (e.g. BbrService, NaboService)
+  - Fil: relative path without "src/" prefix (e.g. integrations/bbr/client.ts)
+  - Status: ✅ Live if no IS_MOCK, 🟡 IS_MOCK=true if description mentions IS_MOCK
+  - Beskrivelse: one concise Danish sentence (max 80 chars)
+  - Sort by Fil path
+  - Return ONLY the markdown table, nothing else"""
+
+          body = json.dumps({
+              "model": "claude-haiku-4-5-20251001",
+              "max_tokens": 1024,
+              "messages": [{"role": "user", "content": prompt}],
+          }).encode("utf-8")
+
+          req = urllib.request.Request(
+              "https://api.anthropic.com/v1/messages",
+              data=body,
+              headers={
+                  "x-api-key": api_key,
+                  "anthropic-version": "2023-06-01",
+                  "content-type": "application/json",
+              },
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  data = json.loads(resp.read())
+              table = data["content"][0]["text"].strip()
+          except Exception as e:
+              print(f"Anthropic API fejl: {e} — springer README-opdatering over")
+              exit(0)
+
+          # ── 3. Patch README between markers ───────────────────────────────
+          readme_path = "README.md"
+          with open(readme_path, encoding="utf-8") as f:
+              original = f.read()
+
+          replacement = (
+              "<!-- INTEGRATIONS-START -->\n"
+              "<!-- Auto-genereret af .github/workflows/auto-readme.yml — rediger ikke manuelt -->\n\n"
+              "## Integrationer\n\n"
+              f"{table}\n\n"
+              "<!-- INTEGRATIONS-END -->"
+          )
+
+          pattern = r"<!-- INTEGRATIONS-START -->.*?<!-- INTEGRATIONS-END -->"
+          updated = re.sub(pattern, replacement, original, flags=re.DOTALL)
+
+          if updated == original:
+              print("README er allerede opdateret — ingen ændringer")
+              exit(0)
+
+          with open(readme_path, "w", encoding="utf-8") as f:
+              f.write(updated)
+
+          print("README opdateret med ny integrationstabel")
+          PYEOF
+
+      - name: Commit README hvis ændret
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "Ingen ændringer i README — intet at committe"
+          else
+            git commit -m "docs: auto-opdater integrationstabel i README"
+            git push
+          fi
