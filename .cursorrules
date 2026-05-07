@@ -1,50 +1,33 @@
 # ArchAI — Cursor Rules
 
-Du arbejder på ArchAI: AI-drevet byggetilladelsesrådgiver for danske selvbyggere. TanStack Start + Supabase + Cloudflare Workers. Dansk UI, dark-only, accent `#E8FF4D`.
+Du arbejder på ArchAI: AI-drevet byggetilladelsesrådgiver. TanStack Start + Supabase + Cloudflare Workers. Dansk UI, dark-only, accent `#E8FF4D`.
 
-## Server boundary — vigtigste regel
+## Den vigtigste regel
 
-Al kode der rammer Datafordeler, Supabase eller Anthropic API skal ligge i `createServerFn`. Importer **aldrig** server-moduler direkte i route-filer.
+Al Datafordeler/Supabase-kode går i `createServerFn`. Importer aldrig server-moduler på top-level i route-filer.
 
-```typescript
-// ✅ Korrekt
-const runCompliance = createServerFn().handler(async () => {
-  return analyseAddress(adresseid)
-})
+## Hvad du bruger til hvad
 
-// ❌ Forkert — server-modul i route top-level
-import { BbrService } from '@/integrations/bbr/client'
-```
+| Behov | Løsning |
+|---|---|
+| Data fra server | `createServerFn` + `useQuery` |
+| Wizard-state | `useProjectStore()` — aldrig lokal `useState` |
+| Formular | `useForm` + `zodResolver` |
+| Env-variabel | `src/lib/env.ts` — aldrig `process.env` |
+| Ny UI-komponent | `src/components/features/` eller `shared/` |
+| Ny integration | `src/integrations/` — eksistér allerede, tjek først |
 
-## State
+## Aldrig
 
-Wizard-data lever udelukkende i `src/lib/project-store.ts`. Ingen lokal `useState` for data der tilhører wizard-flowet.
-
-## Integrations
-
-Skriv aldrig ny API-kode — brug eksisterende services i `src/integrations/`. Datafordeler GraphQL: ét root-felt per query, `virkningstid` påkrævet, API-key som query-param (ikke header).
-
-## Styling
-
-Tailwind v4 utility-klasser — ingen inline `style`, ingen nye CSS-filer. Dark-only. Accent via `text-accent` / `bg-accent`. Fonts: Inter (body), Space Mono (labels).
-
-## TypeScript
-
-Strict. Ingen `any` — brug `unknown` + type narrowing. Eksplicitte return-typer på alle eksporterede funktioner. Brug `@/`-alias, aldrig relative `../../` på tværs af features.
-
-## Hvad du aldrig rører
-
-- `src/routeTree.gen.ts` — auto-genereret af TanStack Router
+- `src/routeTree.gen.ts` — auto-genereret
 - `vite.config.ts` — tilføj ikke plugins
-- `src/server.ts` — Sentry-wrapper, slet ikke
-- Legacy routes: `projekt.beskrivelse.tsx`, `projekt.brief.tsx`
+- `src/server.ts` — slet ikke
+- Inline `style={{}}` — brug Tailwind
+- `any` — brug `unknown` + narrowing
+- `process.env` direkte — brug `env.ts`
 
-## Tests
+## Spørg inden du
 
-Co-lokér ved siden af modulet: `bbr.test.ts` → `src/integrations/bbr/bbr.test.ts`. Kør med `bun test`.
-
-## Spørg brugeren hvis
-
-- Du skal tilføje en ny env-variabel (dokumentér i CLAUDE.md)
-- Du overvejer at kalde en IS_MOCK=true service live
-- Du er usikker på Datafordeler GraphQL-constraints
+- Tilføjer en ny npm-afhængighed
+- Fjerner IS_MOCK=true fra en service
+- Laver breaking changes i en service der bruges mange steder

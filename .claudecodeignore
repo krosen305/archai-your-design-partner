@@ -30,3 +30,6 @@ DAWA_MIGRATION*.md
 # Legacy routes — ikke i primært flow
 src/routes/projekt.beskrivelse.tsx
 src/routes/projekt.brief.tsx
+
+# Agent runtime traces (ikke kildekode)
+agent-traces/

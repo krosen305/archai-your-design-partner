@@ -45,6 +45,9 @@ jobs:
           SENTRY_PROJECT: archai-design-partner
         continue-on-error: true
 
+      - name: QA gate (agent session check)
+        run: bun run agent/ci-gate.ts
+
       - name: Deploy to Cloudflare Workers
         run: bunx wrangler deploy
         env:
