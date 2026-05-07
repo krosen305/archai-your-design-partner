@@ -17,6 +17,12 @@ Server-side services må **aldrig** importeres direkte i route-filer — brug `c
 | `PdfExtractorService` | `ai/pdf-extractor.ts` | ✅ Live | Lokalplan PDF → regler via Claude API, kræver `ANTHROPIC_API_KEY` |
 | `HusDnaGeneratorService` | `ai/hus-dna-generator.ts` | ✅ Live | Billeder+tekst → Hus-DNA via Claude vision, kræver `ANTHROPIC_API_KEY` |
 | `TinglysningService` | `tinglysning/client.ts` | 🟡 IS_MOCK=true | Servitutter, live API afventes (ARCH-26) |
+| `DhmService` | `sdfi/dhm-client.ts` | 🟡 IS_MOCK=true | DHM terrain-data via SDFI WCS (ARCH-102) |
+| `NaturbeskyttelseService` | `sdfi/naturbeskyttelse.ts` | 🟡 IS_MOCK=true | Naturbeskyttelseslinjer via DAI WFS (ARCH-65) |
+| `DkJordService` | `miljoe/dkjord.ts` | 🟡 IS_MOCK=true | Forurenede grunde via DK-Jord WFS (ARCH-66) |
+| `GeusService` | `geus/client.ts` | 🟡 IS_MOCK=true | Geoteknisk risikodata via GEUS WFS (ARCH-101) |
+| `FjernvarmeService` | `plandata/fjernvarme.ts` | 🟡 IS_MOCK=true | Fjernvarmedækning via Plandata WFS (ARCH-111) |
+| `NaboService` | `bbr/neighbor-client.ts` | ✅ Live | Nabobygninger inden for 40m via DAWA REST (ARCH-103) |
 | Supabase | `supabase/` | ✅ Live | Auth middleware + typed client |
 
 Schema-referencer: `bbr-schema.txt`, `mat-schema.txt` i rod-mappen.

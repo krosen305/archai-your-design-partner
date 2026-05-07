@@ -74,6 +74,14 @@ GITHUB_DISPATCH_TOKEN   # Valgfri: ARCH-74
 
 Dokumentér altid nye env-variabler her.
 
+## Slash commands (Claude Code)
+
+| Kommando | Beskrivelse |
+|---|---|
+| `/new-issue <idébeskrivelse>` | Genererer og opretter en Linear ARCH-issue direkte fra fritekst |
+
+Filer: `.claude/commands/`
+
 ## Definition of done
 
 - [ ] Feature virker end-to-end i `bun dev`
