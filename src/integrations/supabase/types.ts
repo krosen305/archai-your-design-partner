@@ -93,6 +93,7 @@ export type Database = {
           dar_data: Json | null;
           mat_data: Json | null;
           byggeanalyse_resultat: Json | null;
+          project_data_status: Json | null;
         };
         Insert: {
           id?: string;
@@ -106,6 +107,7 @@ export type Database = {
           dar_data?: Json | null;
           mat_data?: Json | null;
           byggeanalyse_resultat?: Json | null;
+          project_data_status?: Json | null;
         };
         Update: {
           id?: string;
@@ -119,6 +121,7 @@ export type Database = {
           dar_data?: Json | null;
           mat_data?: Json | null;
           byggeanalyse_resultat?: Json | null;
+          project_data_status?: Json | null;
         };
         Relationships: [
           {
