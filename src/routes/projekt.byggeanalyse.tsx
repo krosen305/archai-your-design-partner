@@ -27,9 +27,8 @@ import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
-// Auth-check sker client-side i ComplianceStep (gæster blokeres der).
-// Middleware fjernet: TanStack Start sender ikke Authorization-header automatisk,
-// da Supabase-sessionen lever i localStorage — ikke i request-headers.
+// ARCH-91: server-side auth via session token i request body.
+// Klienten henter session.access_token og passer det som `token`-felt.
 // ---------------------------------------------------------------------------
 
 const analysisInputSchema = z.object({
@@ -44,20 +43,34 @@ const analysisInputSchema = z.object({
     })
     .nullable(),
   grundareal: z.number().positive().nullable().optional(),
+  token: z.string().min(1),
 });
 
 const fetchCompliance = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => analysisInputSchema.parse(data))
   .handler(async ({ data }): Promise<ComplianceResult> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
+    if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
+
+    const { token: _token, ...analysisInput } = data;
     const { analyseAddress } = await import("@/lib/analysis-orchestrator");
-    return analyseAddress(data);
+    return analyseAddress(analysisInput);
   });
 
 const runByggeanalyse = createServerFn({ method: "POST" })
-  .inputValidator((data: ByggeanalyseInput) => data)
+  .inputValidator((data: ByggeanalyseInput & { token: string }) => {
+    if (!data.token || typeof data.token !== "string") throw new Error("Token er påkrævet");
+    return data;
+  })
   .handler(async ({ data }): Promise<ByggeanalyseResultat> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
+    if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
+
+    const { token: _token, ...analysisInput } = data;
     const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
-    return ByggeanalyseService.analyse(data);
+    return ByggeanalyseService.analyse(analysisInput);
   });
 
 // ---------------------------------------------------------------------------
@@ -183,77 +196,95 @@ function ComplianceContent() {
     const MIN_LOADING_MS = 2800;
     const startTime = Date.now();
 
-    fetchCompliance({
-      data: {
-        addressId: address.adresseid,
-        adgangsadresseid: address.adgangsadresseid,
-        ejerlavskode: address.ejerlavskode ?? null,
-        matrikelnummer: address.matrikelnummer ?? null,
-        koordinater: address.koordinater ?? null,
-        grundareal: address.grundareal ?? null,
-      },
-    })
-      .then(async (result) => {
-        setBbrData(result.bbr);
-        setLokalplanerLocal(result.lokalplaner);
-        setLokalplaner(result.lokalplaner);
-        setLokalplanExtract(result.lokalplanExtract);
-        setKommuneplanramme(result.kommuneplanramme);
-        const flags = deriveComplianceFlags(
-          result.bbr,
-          result.kommuneplanramme,
-          result.naturbeskyttelse,
-          result.dkjord,
-        );
-        setComplianceFlags(flags);
-        setComplianceMetrics(calculateComplianceMetrics(result.bbr, result.kommuneplanramme));
-        setComplianceDone(true);
-        setPhase("hus-dna", "complete");
-        setPhase("match", "complete");
-        syncPatch({
-          bbrData: result.bbr,
-          complianceFlags: flags,
-          lokalplaner: result.lokalplaner,
-          kommuneplanramme: result.kommuneplanramme,
-          complianceDone: true,
-          currentStep: "byggeanalyse",
-        });
+    (async () => {
+      const { getSession } = await import("@/lib/auth");
+      const session = await getSession();
 
-        // Kør AI byggeanalyse hvis brugeren har udfyldt byggeønsker (ARCH-83)
-        const harByggeoenskeData = Object.values(byggeoenske).some((v) => v !== undefined);
-        if (harByggeoenskeData) {
-          const lokalplanNavn =
-            result.lokalplaner[0]?.plannavn ?? result.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
-          runByggeanalyse({
-            data: {
-              byggeoenske,
-              lokalplanExtract: result.lokalplanExtract,
-              bbr: result.bbr,
-              lokalplanNavn,
-            },
-          })
-            .then((analyse) => setByggeanalyseResultat(analyse))
-            .catch((e: unknown) =>
-              console.warn("[Byggeanalyse] AI analyse fejlede (ikke kritisk):", e),
-            );
-        }
-
-        const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
-        setTimeout(() => setStatus("done"), remaining);
-      })
-      .catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.error("[Compliance] pipeline fejlede:", msg);
+      if (!session) {
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => {
-          setFetchError(
-            msg.startsWith("ArchAI: manglende")
-              ? msg // vis validateEnv()-fejl direkte så det er tydeligt hvad der mangler
-              : "BBR-data kunne ikke hentes. Prøv igen.",
-          );
+          setFetchError("Login krævet – log ind for at hente byggeanalyse.");
           setStatus("error");
         }, remaining);
-      });
+        return;
+      }
+
+      fetchCompliance({
+        data: {
+          addressId: address.adresseid,
+          adgangsadresseid: address.adgangsadresseid,
+          ejerlavskode: address.ejerlavskode ?? null,
+          matrikelnummer: address.matrikelnummer ?? null,
+          koordinater: address.koordinater ?? null,
+          grundareal: address.grundareal ?? null,
+          token: session.access_token,
+        },
+      })
+        .then(async (result) => {
+          setBbrData(result.bbr);
+          setLokalplanerLocal(result.lokalplaner);
+          setLokalplaner(result.lokalplaner);
+          setLokalplanExtract(result.lokalplanExtract);
+          setKommuneplanramme(result.kommuneplanramme);
+          const flags = deriveComplianceFlags(
+            result.bbr,
+            result.kommuneplanramme,
+            result.naturbeskyttelse,
+            result.dkjord,
+          );
+          setComplianceFlags(flags);
+          setComplianceMetrics(calculateComplianceMetrics(result.bbr, result.kommuneplanramme));
+          setComplianceDone(true);
+          setPhase("hus-dna", "complete");
+          setPhase("match", "complete");
+          syncPatch({
+            bbrData: result.bbr,
+            complianceFlags: flags,
+            lokalplaner: result.lokalplaner,
+            kommuneplanramme: result.kommuneplanramme,
+            complianceDone: true,
+            currentStep: "byggeanalyse",
+          });
+
+          // Kør AI byggeanalyse hvis brugeren har udfyldt byggeønsker (ARCH-83)
+          const harByggeoenskeData = Object.values(byggeoenske).some((v) => v !== undefined);
+          if (harByggeoenskeData) {
+            const lokalplanNavn =
+              result.lokalplaner[0]?.plannavn ??
+              result.lokalplaner[0]?.plannr ??
+              "Ukendt lokalplan";
+            runByggeanalyse({
+              data: {
+                token: session.access_token,
+                byggeoenske,
+                lokalplanExtract: result.lokalplanExtract,
+                bbr: result.bbr,
+                lokalplanNavn,
+              },
+            })
+              .then((analyse) => setByggeanalyseResultat(analyse))
+              .catch((e: unknown) =>
+                console.warn("[Byggeanalyse] AI analyse fejlede (ikke kritisk):", e),
+              );
+          }
+
+          const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
+          setTimeout(() => setStatus("done"), remaining);
+        })
+        .catch((e: unknown) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[Compliance] pipeline fejlede:", msg);
+          const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
+          setTimeout(() => {
+            setFetchError(
+              msg.startsWith("ArchAI: manglende")
+                ? msg // vis validateEnv()-fejl direkte så det er tydeligt hvad der mangler
+                : "BBR-data kunne ikke hentes. Prøv igen.",
+            );
+            setStatus("error");
+          }, remaining);
+        });
+    })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
