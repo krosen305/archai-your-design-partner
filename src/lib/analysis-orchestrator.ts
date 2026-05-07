@@ -64,17 +64,26 @@ export type AnalysisInput = {
 // ---------------------------------------------------------------------------
 
 export async function analyseAddress(input: AnalysisInput): Promise<ComplianceResult> {
-  const { addressId, ejerlavskode, matrikelnummer, koordinater } = input;
+  const { addressId, koordinater } = input;
 
-  // GSearch returnerer ikke adgangsadresseid — resolve server-side via DAR hvis nødvendigt.
+  // Løs manglende adressefelter server-side via DAR.
+  // Udløses når adgangsadresseid mangler ELLER grundareal er null — det sikrer at
+  // bebyggelsesprocent kan beregnes selv hvis klientens DAR-opslag fejlede.
   let adgangsadresseid = input.adgangsadresseid;
-  if (!adgangsadresseid && addressId) {
+  let ejerlavskode = input.ejerlavskode;
+  let matrikelnummer = input.matrikelnummer;
+  let preFetchedGrundareal = input.grundareal ?? null;
+
+  if (!adgangsadresseid || preFetchedGrundareal === null) {
     try {
       const { DarService } = await import("@/integrations/dar/client");
       const dar = await DarService.getAddressDetails(addressId);
-      adgangsadresseid = dar.adgangsadresseid;
+      if (!adgangsadresseid) adgangsadresseid = dar.adgangsadresseid;
+      if (preFetchedGrundareal === null) preFetchedGrundareal = dar.grundareal;
+      if (ejerlavskode === null) ejerlavskode = dar.ejerlavskode;
+      if (matrikelnummer === null) matrikelnummer = dar.matrikelnummer;
     } catch (e) {
-      console.warn("[Orchestrator] DAR adgangsadresseid-opslag fejlede:", (e as Error).message);
+      console.warn("[Orchestrator] DAR opslag fejlede:", (e as Error).message);
     }
   }
 
@@ -83,7 +92,15 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   let complianceBase: ComplianceBase | null = null;
   try {
     const cached = await getCachedCompliance(addressId);
-    if (cached) complianceBase = cached;
+    if (cached) {
+      // Bypass stale cache: hvis cached BBR mangler grundareal men vi nu har det,
+      // re-beregn så bebyggelsesprocent vises korrekt.
+      if (cached.bbr?.grundareal === null && preFetchedGrundareal !== null) {
+        console.warn("[Orchestrator] Stale cache bypassed — re-beregner med grundareal fra DAR");
+      } else {
+        complianceBase = cached;
+      }
+    }
   } catch (e) {
     console.warn(
       "[Orchestrator] cache-læsning fejlede (behandles som cache-miss):",
@@ -93,7 +110,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
 
   if (!complianceBase) {
     const [bbrResult, plandataResult] = await Promise.all([
-      fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer, input.grundareal ?? null),
+      fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer, preFetchedGrundareal),
       fetchPlandata(koordinater),
     ]);
     complianceBase = {

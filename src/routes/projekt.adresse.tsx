@@ -261,7 +261,7 @@ function AddressStep() {
                     bbrId: null,
                     ejerlavskode: 173551,
                     matrikelnummer: "8a",
-                    grundareal: null,
+                    grundareal: 829,
                   };
                   setAddress(mock);
                   navigate({ to: "/projekt/boligoenske" });
