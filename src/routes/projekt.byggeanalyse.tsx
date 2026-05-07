@@ -72,8 +72,35 @@ const runByggeanalyse = createServerFn({ method: "POST" })
     if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
 
     const { token: _token, ...analysisInput } = data;
+
+    // Regelkerne — deterministisk fase (ARCH-109)
+    let ruleEngineResult: import("@/lib/rule-engine/types").RuleEngineResult | undefined;
+    try {
+      const { assembleRuleEngineInput } = await import("@/lib/rule-engine/input-assembler");
+      const { runRuleEngine } = await import("@/lib/rule-engine/engine");
+      const { input: ruleInput, missingFields } = assembleRuleEngineInput({
+        bbr: analysisInput.bbr,
+        kommuneplanramme: analysisInput.kommuneplanramme ?? null,
+        lokalplaner: analysisInput.lokalplaner ?? [],
+        lokalplanExtract: analysisInput.lokalplanExtract,
+        naturbeskyttelse: analysisInput.naturbeskyttelse ?? null,
+        geusRisk: analysisInput.geusRisk ?? null,
+        servitutter: analysisInput.servitutter ?? null,
+        terrain: analysisInput.terrain ?? null,
+        byggeoenske: analysisInput.byggeoenske,
+        municipality: analysisInput.municipality ?? "",
+        kommunekode: analysisInput.kommunekode ?? "",
+      });
+      ruleEngineResult = runRuleEngine(ruleInput, missingFields);
+    } catch (e) {
+      console.warn(
+        "[ByggeanalyseService] Regelkerne fejlede (ikke kritisk):",
+        (e as Error).message,
+      );
+    }
+
     const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
-    return ByggeanalyseService.analyse(analysisInput);
+    return ByggeanalyseService.analyse({ ...analysisInput, ruleEngineResult });
   });
 
 // ---------------------------------------------------------------------------
@@ -270,9 +297,31 @@ function ComplianceContent() {
                 lokalplanExtract: result.lokalplanExtract,
                 bbr: result.bbr,
                 lokalplanNavn,
+                kommuneplanramme: result.kommuneplanramme,
+                lokalplaner: result.lokalplaner,
+                naturbeskyttelse: result.naturbeskyttelse,
+                geusRisk: result.geusRisk,
+                servitutter: result.servitutter,
+                terrain: result.terrain,
+                municipality: address?.kommune ?? "",
+                kommunekode: address?.kommunekode ?? "",
               },
             })
-              .then((analyse) => setByggeanalyseResultat(analyse))
+              .then((analyse) => {
+                setByggeanalyseResultat(analyse);
+                // Opdater compliance flags med regelkerne-violations (ARCH-109)
+                if (analyse.ruleEngine) {
+                  const updatedFlags = deriveComplianceFlags(
+                    result.bbr,
+                    result.kommuneplanramme,
+                    result.naturbeskyttelse,
+                    result.dkjord,
+                    result.geusRisk,
+                    analyse.ruleEngine,
+                  );
+                  setComplianceFlags(updatedFlags);
+                }
+              })
               .catch((e: unknown) =>
                 console.warn("[Byggeanalyse] AI analyse fejlede (ikke kritisk):", e),
               );

@@ -27,6 +27,7 @@ import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { Json } from "@/integrations/supabase/types";
 import {
   getCachedCompliance,
@@ -52,6 +53,7 @@ export type ComplianceResult = {
   geusRisk: GeusRiskData | null;
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
+  ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
 };
 
 // ---------------------------------------------------------------------------

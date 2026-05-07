@@ -1,11 +1,18 @@
 // SERVER-SIDE ONLY — Anthropic API-nøgle må aldrig nå browseren.
 // ByggeanalyseService — matcher struktureret Byggeoenske mod lokalplan + BBR.
 // IS_MOCK = false: live Anthropic-kald (ARCH-83).
+// ARCH-109: modtager RuleEngineResult som kontekst — AI genberegner ikke.
 
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import type { Byggeoenske } from "@/lib/project-store";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { Kommuneplanramme, Lokalplan } from "@/integrations/plandata/client";
+import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
+import type { GeusRiskData } from "@/integrations/geus/client";
+import type { TinglysningResult } from "@/integrations/tinglysning/client";
+import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { RuleEngineResult } from "@/lib/rule-engine/types";
 
 // ---------------------------------------------------------------------------
 // Output-typer
@@ -41,6 +48,7 @@ export type ByggeanalyseResultat = {
   mangler_data: ByggeanalyseMangel[];
   stilOpsummering: string | null;
   kilde: "mock" | "anthropic";
+  ruleEngine?: RuleEngineResult; // regelkerne-resultat fra ARCH-109
 };
 
 export type ByggeanalyseInput = {
@@ -48,6 +56,16 @@ export type ByggeanalyseInput = {
   lokalplanExtract: LokalplanExtract | null;
   bbr: BbrKompliantData | null;
   lokalplanNavn: string;
+  // Ekstra kontekst til regelkerne (ARCH-109) — valgfri for bagudkompatibilitet
+  kommuneplanramme?: Kommuneplanramme | null;
+  lokalplaner?: Lokalplan[];
+  naturbeskyttelse?: NaturbeskyttelsesResultat | null;
+  geusRisk?: GeusRiskData | null;
+  servitutter?: TinglysningResult | null;
+  terrain?: TerrainData | null;
+  municipality?: string;
+  kommunekode?: string;
+  ruleEngineResult?: RuleEngineResult; // sendt fra runByggeanalyse-handleren
 };
 
 // ---------------------------------------------------------------------------
@@ -90,7 +108,30 @@ const MOCK_RESULTAT: ByggeanalyseResultat = {
 // Prompt-konstruktion
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `
+const SYSTEM_PROMPT_BASE = `
+Du er dansk byggesagsekspert. Du modtager allerede beregnede regelresultater og skal fortolke dem, vurdere dispensationssandsynligheder og identificere risici der IKKE fanges af de deterministiske regler.
+
+Svar ALTID i følgende JSON-struktur (ingen markdown, ingen forklaring):
+{
+  "tilladt": [{ "emne": string, "begrundelse": string }],
+  "kraever_dispensation": [{ "emne": string, "begrundelse": string, "lovhjemmel": string }],
+  "konflikt": [{ "emne": string, "konflikt": string, "lokalplan_krav": string, "bruger_oenske": string }],
+  "mangler_data": [{ "emne": string, "hvad_mangler": string }],
+  "stilOpsummering": string eller null
+}
+
+Din opgave:
+1. Fortolk lokalplan-klausuler der IKKE er dækket af de beregnede regler (stil, materialer, særlige bestemmelser)
+2. Vurder dispensationssandsynlighed (høj/medium/lav) for hvert punkt i dispensationList
+3. Identificér risici der kræver ingeniørvurdering (geoteknik, konstruktion, brand)
+4. Match byggeønsker mod lokalplan-bestemmelser der ikke kan beregnes matematisk
+
+VIGTIGT: Genberegn IKKE bebyggelsesprocent, etager eller bygningshøjde — disse er allerede beregnet.
+stilOpsummering: Kun udfyldes hvis der er uploadet inspirationsbilleder.
+`.trim();
+
+// Simpel prompt til bagudkompatibilitet (ingen regelkerne-data tilgængeligt)
+const SYSTEM_PROMPT_LEGACY = `
 Du er byggesagsrådgiver og analyserer konkrete konflikter mellem et byggeprojekt og lokalplanen.
 
 Svar ALTID i følgende JSON-struktur (ingen markdown, ingen forklaring):
@@ -165,6 +206,33 @@ function buildUserMessage(input: ByggeanalyseInput): string {
     if (lpDele.length > 0) msg += `\n\n## Lokalplan: ${lokalplanNavn}\n${lpDele.join("\n")}`;
   }
 
+  // Regelkerne-kontekst (ARCH-109) — AI skal ikke genberegne disse
+  if (input.ruleEngineResult) {
+    const re = input.ruleEngineResult;
+    const reSummary: string[] = [];
+    reSummary.push(`Status: ${re.status}`);
+    if (re.violations.length > 0) {
+      reSummary.push(
+        `Violations:\n${re.violations.map((v) => `- [${v.severity}] ${v.rule}: ${v.reason.slice(0, 120)}`).join("\n")}`,
+      );
+    }
+    if (re.dispensationList.length > 0) {
+      reSummary.push(
+        `Dispensationskrav:\n${re.dispensationList.map((d) => `- ${d.label} (${d.authority})`).join("\n")}`,
+      );
+    }
+    if (re.missingInputs.length > 0) {
+      reSummary.push(`Manglende data: ${re.missingInputs.slice(0, 6).join(", ")}`);
+    }
+    const calc = re.calculations;
+    if (calc.buildingPercent.actual !== null) {
+      reSummary.push(
+        `Beregnet bebyggelsesprocent: ${calc.buildingPercent.actual}% (limit: ${calc.buildingPercent.limit}%, kilde: ${calc.buildingPercent.appliedRule})`,
+      );
+    }
+    msg += `\n\n## Deterministisk regelkerne-resultat (GENBEREGN IKKE)\n${reSummary.join("\n\n")}`;
+  }
+
   msg +=
     "\n\nIdentificer præcist hvilke af brugerens valg der er tilladt, kræver dispensation, er i direkte konflikt, eller mangler data til at vurdere.";
 
@@ -226,6 +294,7 @@ export class ByggeanalyseService {
       return MOCK_RESULTAT;
     }
 
+    const systemPrompt = input.ruleEngineResult ? SYSTEM_PROMPT_BASE : SYSTEM_PROMPT_LEGACY;
     const userText = buildUserMessage(input);
     const imageBlocks = buildImageBlocks(byggeoenske.inspirationsbilleder ?? []);
 
@@ -243,7 +312,7 @@ export class ByggeanalyseService {
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 2048,
-          system: SYSTEM_PROMPT,
+          system: systemPrompt,
           messages: [{ role: "user", content: userContent }],
         }),
       });
@@ -281,6 +350,7 @@ export class ByggeanalyseService {
         mangler_data: Array.isArray(parsed.mangler_data) ? parsed.mangler_data : [],
         stilOpsummering: typeof parsed.stilOpsummering === "string" ? parsed.stilOpsummering : null,
         kilde: "anthropic",
+        ruleEngine: input.ruleEngineResult,
       };
     } catch {
       throw new Error(

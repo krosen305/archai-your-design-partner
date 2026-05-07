@@ -5,6 +5,7 @@ import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { GeusRiskData } from "@/integrations/geus/client";
+import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 export type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -110,7 +111,9 @@ export type ComplianceFlag = {
   detalje: string | null;
   aktuelVærdi: string | null;
   tilladt: string | null;
-  kilde: "bbr" | "plandata" | "servitut" | "beregnet" | "sdfi" | "dkjord" | "geus";
+  kilde: "bbr" | "plandata" | "servitut" | "beregnet" | "sdfi" | "dkjord" | "geus" | "regelkerne";
+  dispensationMulig?: boolean;
+  dispensationMyndighed?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -262,6 +265,7 @@ export function deriveComplianceFlags(
   naturbeskyttelse?: NaturbeskyttelsesResultat | null,
   dkjord?: DkJordResultat | null,
   geusRisk?: GeusRiskData | null,
+  ruleEngine?: RuleEngineResult | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
@@ -462,6 +466,51 @@ export function deriveComplianceFlags(
         aktuelVærdi: `${geusRisk.groundwaterDepthM.toFixed(1)} m`,
         tilladt: null,
         kilde: "geus",
+      });
+    }
+  }
+
+  // ── Regelkerne violations (ARCH-109) ──────────────────────────────────────
+  if (ruleEngine) {
+    // Eksisterende flag-IDs — undgå duplikering med BBR/plandata-beregninger
+    const existingIds = new Set(flags.map((f) => f.id));
+
+    for (const violation of ruleEngine.violations) {
+      // Beregningsregler duplikerer eksisterende BBR-flags — skip dem
+      if (
+        (violation.rule === "bebyggelsesprocent" && existingIds.has("bebyggelsesprocent")) ||
+        (violation.rule === "etager" && existingIds.has("etager")) ||
+        (violation.rule === "bygningshøjde" && existingIds.has("bygningshoejde"))
+      ) {
+        continue;
+      }
+      // Beskyttelseslinjer duplikerer sdfi-flags — skip dem
+      if (
+        violation.rule.startsWith("protection_line_") &&
+        existingIds.has(`naturbeskyttelse-${violation.rule.replace("protection_line_", "")}`)
+      ) {
+        continue;
+      }
+
+      const status: ComplianceFlag["status"] =
+        violation.severity === "illegal"
+          ? "blocker"
+          : violation.severity === "dispensation_required"
+            ? "blocker"
+            : "advarsel";
+
+      flags.push({
+        id: `regelkerne-${violation.rule}`,
+        label: violation.authority
+          ? `${violation.rule.replace(/_/g, " ")} (${violation.authority})`
+          : violation.rule.replace(/_/g, " "),
+        status,
+        detalje: violation.reason,
+        aktuelVærdi: null,
+        tilladt: null,
+        kilde: "regelkerne",
+        dispensationMulig: violation.severity === "dispensation_required",
+        dispensationMyndighed: violation.authority,
       });
     }
   }
