@@ -1,0 +1,170 @@
+name: Generate Unit Tests
+
+on:
+  pull_request:
+    paths:
+      - 'src/integrations/**/*.ts'
+      - 'src/lib/**/*.ts'
+
+permissions:
+  contents: write
+
+jobs:
+  generate-tests:
+    name: Generer test-skeletons for nye service-filer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Kør ikke på auto-genererede commits
+    if: "!contains(github.event.pull_request.title, '[skip ci]')"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Find ændrede filer uden tests + generer med Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, subprocess, urllib.request
+
+          # ── 1. Find ændrede ikke-test TypeScript-filer ────────────────────
+          base = os.environ.get("BASE_REF", "main")
+          result = subprocess.run(
+              ["git", "diff", f"origin/{base}...HEAD", "--name-only",
+               "--", "src/integrations/**/*.ts", "src/lib/**/*.ts"],
+              capture_output=True, text=True
+          )
+          # Alternativ hvis glob ikke virker i git diff
+          if not result.stdout.strip():
+              result = subprocess.run(
+                  ["git", "diff", f"origin/{base}...HEAD", "--name-only"],
+                  capture_output=True, text=True
+              )
+
+          changed = [
+              p for p in result.stdout.strip().splitlines()
+              if p.endswith(".ts")
+              and ".test." not in p
+              and ".spec." not in p
+              and not p.endswith("types.ts")
+              and not p.endswith("routeTree.gen.ts")
+              and (p.startswith("src/integrations/") or p.startswith("src/lib/"))
+          ]
+
+          # Filtrer filer der allerede har en test
+          to_generate = []
+          for path in changed:
+              test_path = path.replace(".ts", ".test.ts")
+              if not os.path.exists(test_path) and os.path.exists(path):
+                  with open(path, encoding="utf-8") as f:
+                      content = f.read()
+                  # Spring over filer der primært er typer/interfaces (< 30 linjer)
+                  if len(content.splitlines()) >= 20:
+                      to_generate.append((path, test_path, content))
+
+          if not to_generate:
+              print("Ingen nye filer at generere tests til")
+              exit(0)
+
+          print(f"Genererer tests til: {[p for p, _, _ in to_generate]}")
+
+          # ── 2. Test-mønster reference (bun:test) ──────────────────────────
+          PATTERN = """// Eksempel på test-mønsteret der bruges i dette projekt:
+  import { describe, it, expect, mock, beforeEach } from "bun:test";
+
+  function mockFetch(responses) {
+    let i = 0;
+    globalThis.fetch = mock(async () => {
+      const r = responses[i++] ?? { json: {} };
+      return { ok: r.ok ?? true, status: r.status ?? 200,
+               json: async () => r.json, text: async () => JSON.stringify(r.json) };
+    });
+  }
+
+  describe("MyService", () => {
+    beforeEach(() => { globalThis.fetch = fetch; });
+    it("happy path", async () => { /* ... */ });
+    it("returnerer fejl ved tomt input", async () => { /* ... */ });
+    it("håndterer HTTP 401", async () => { /* ... */ });
+  });"""
+
+          # ── 3. Kald Claude Haiku per fil ──────────────────────────────────
+          api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+          if not api_key:
+              print("ANTHROPIC_API_KEY mangler — springer test-generering over")
+              exit(0)
+
+          for src_path, test_path, content in to_generate:
+              # Truncate meget store filer for at undgå token-grænse
+              lines = content.splitlines()
+              if len(lines) > 200:
+                  content = "\n".join(lines[:200]) + "\n// ... (truncated)"
+
+              prompt = f"""Write bun:test unit tests for this TypeScript service file.
+
+  PATTERN TO FOLLOW:
+  {PATTERN}
+
+  RULES:
+  - Use bun:test imports: import {{ describe, it, expect, mock, beforeEach }} from "bun:test"
+  - Mock globalThis.fetch for HTTP calls (not vi.mock)
+  - Cover: happy path, empty/null inputs, error handling (HTTP 4xx, network errors)
+  - IS_MOCK=true services: test that mock data is returned without fetch calls
+  - Import the service from "./<filename without .test>"
+  - Output ONLY the TypeScript test file content, no explanation
+
+  FILE: {src_path}
+  {content}"""
+
+              body = json.dumps({
+                  "model": "claude-haiku-4-5-20251001",
+                  "max_tokens": 2500,
+                  "messages": [{"role": "user", "content": prompt}],
+              }).encode("utf-8")
+
+              req = urllib.request.Request(
+                  "https://api.anthropic.com/v1/messages",
+                  data=body,
+                  headers={
+                      "x-api-key": api_key,
+                      "anthropic-version": "2023-06-01",
+                      "content-type": "application/json",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as resp:
+                      data = json.loads(resp.read())
+                  test_content = data["content"][0]["text"].strip()
+                  # Strip evt. markdown code fence
+                  if test_content.startswith("```"):
+                      test_content = "\n".join(test_content.split("\n")[1:])
+                  if test_content.endswith("```"):
+                      test_content = "\n".join(test_content.split("\n")[:-1])
+                  test_content = test_content.strip()
+              except Exception as e:
+                  print(f"API fejl for {src_path}: {e} — springer over")
+                  continue
+
+              os.makedirs(os.path.dirname(test_path) or ".", exist_ok=True)
+              with open(test_path, "w", encoding="utf-8") as f:
+                  f.write(test_content + "\n")
+              print(f"Genereret: {test_path}")
+
+          PYEOF
+
+      - name: Commit genererede tests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add 'src/**/*.test.ts' 2>/dev/null || git add $(find src -name "*.test.ts" 2>/dev/null) || true
+          if git diff --cached --quiet; then
+            echo "Ingen nye tests genereret"
+          else
+            git commit -m "test: auto-generer test-skeletons [skip ci]"
+            git push
+          fi
