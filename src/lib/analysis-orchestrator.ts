@@ -12,7 +12,8 @@
 //   naturbeskyttelse    ⏳  IS_MOCK=true — ARCH-65 (DAI WFS endpoint afventer verifikation)
 //   dkjord              ⏳  IS_MOCK=true — ARCH-66 (dkjord.mst.dk ikke tilgængelig fra dev)
 //   geus                ⏳  IS_MOCK=true — ARCH-101 (layer-navne afventer GetCapabilities)
-//   servitut_extracted  ⏳  IS_MOCK=true — ARCH-26 (live Tinglysning API ikke implementeret)
+//   servitut_extracted  ⏳  IS_MOCK=true — ARCH-104 (TingbogenV2 schema afventer verificering)
+//   terrain             ⏳  IS_MOCK=true — ARCH-102 (DHM WCS GetCoverage afventer verificering)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
 import { validateEnv } from "@/lib/env";
@@ -24,6 +25,8 @@ import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { GeusRiskData } from "@/integrations/geus/client";
+import type { TinglysningResult } from "@/integrations/tinglysning/client";
+import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { Json } from "@/integrations/supabase/types";
 import {
   getCachedCompliance,
@@ -47,6 +50,8 @@ export type ComplianceResult = {
   naturbeskyttelse: NaturbeskyttelsesResultat | null;
   dkjord: DkJordResultat | null;
   geusRisk: GeusRiskData | null;
+  servitutter: TinglysningResult | null;
+  terrain: TerrainData | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -93,7 +98,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   // ── Layer 1: compliance_result (BBR + MAT + Plandata) ──────────────────
   type ComplianceBase = Omit<
     ComplianceResult,
-    "lokalplanExtract" | "naturbeskyttelse" | "dkjord" | "geusRisk"
+    "lokalplanExtract" | "naturbeskyttelse" | "dkjord" | "geusRisk" | "servitutter" | "terrain"
   >;
   let complianceBase: ComplianceBase | null = null;
   try {
@@ -132,6 +137,8 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         naturbeskyttelse: null,
         dkjord: null,
         geusRisk: null,
+        servitutter: null,
+        terrain: null,
       });
     } catch (e) {
       console.warn(
@@ -158,25 +165,33 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     console.warn("[Orchestrator] lokalplan PDF-udtræk fejlede:", (e as Error).message);
   }
 
-  // ── Layer 3: servitut_extracted (IS_MOCK=true) ──────────────────────────
+  // ── Layer 3: servitut_extracted (IS_MOCK=true — ARCH-104) ──────────────
+  let servitutter: TinglysningResult | null = null;
   try {
     const cachedServitut = await getCachedServitut(addressId);
-    if (!cachedServitut) {
+    if (cachedServitut) {
+      servitutter = cachedServitut as unknown as TinglysningResult;
+    } else {
       const { TinglysningService } = await import("@/integrations/tinglysning/client");
-      const servitutter = await TinglysningService.getServitutter(addressId);
+      servitutter = await TinglysningService.getServitutter(
+        addressId,
+        ejerlavskode,
+        matrikelnummer,
+      );
       await setCachedServitut(addressId, servitutter as unknown as Json);
     }
   } catch (e) {
     console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
   }
 
-  // ── Layer 4: naturbeskyttelse + dkjord + geus — kører parallelt (IS_MOCK=true) ─
+  // ── Layer 4: naturbeskyttelse + dkjord + geus + terrain — kører parallelt ─
   let naturbeskyttelse: NaturbeskyttelsesResultat | null = null;
   let dkjord: DkJordResultat | null = null;
   let geusRisk: GeusRiskData | null = null;
+  let terrain: TerrainData | null = null;
 
   if (koordinater) {
-    const [natur, jord, geus] = await Promise.all([
+    const [natur, jord, geus, terr] = await Promise.all([
       import("@/integrations/sdfi/naturbeskyttelse")
         .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
         .catch((e: Error) => {
@@ -195,13 +210,31 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
           console.warn("[Orchestrator] GEUS fejlede:", e.message);
           return null;
         }),
+      import("@/integrations/sdfi/dhm-client")
+        .then(({ DhmService, bboxFromPoint }) => {
+          const bbox = bboxFromPoint(koordinater.lat, koordinater.lng, preFetchedGrundareal);
+          return DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng);
+        })
+        .catch((e: Error) => {
+          console.warn("[Orchestrator] DHM terrain fejlede:", e.message);
+          return null;
+        }),
     ]);
     naturbeskyttelse = natur;
     dkjord = jord;
     geusRisk = geus;
+    terrain = terr;
   }
 
-  return { ...complianceBase, lokalplanExtract, naturbeskyttelse, dkjord, geusRisk };
+  return {
+    ...complianceBase,
+    lokalplanExtract,
+    naturbeskyttelse,
+    dkjord,
+    geusRisk,
+    servitutter,
+    terrain,
+  };
 }
 
 // ---------------------------------------------------------------------------

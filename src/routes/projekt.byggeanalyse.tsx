@@ -24,6 +24,8 @@ import type { Lokalplan } from "@/integrations/plandata/client";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import type { ByggeanalyseInput, ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { GeusRiskData } from "@/integrations/geus/client";
+import type { TinglysningResult } from "@/integrations/tinglysning/client";
+import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
@@ -182,6 +184,8 @@ function ComplianceContent() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>([]);
   const [geusRiskLocal, setGeusRiskLocal] = useState<GeusRiskData | null>(null);
+  const [servitutterLocal, setServitutterLocal] = useState<TinglysningResult | null>(null);
+  const [terrainLocal, setTerrainLocal] = useState<TerrainData | null>(null);
 
   useEffect(() => {
     if (bbrData) {
@@ -229,6 +233,8 @@ function ComplianceContent() {
           setLokalplanExtract(result.lokalplanExtract);
           setKommuneplanramme(result.kommuneplanramme);
           setGeusRiskLocal(result.geusRisk ?? null);
+          setServitutterLocal(result.servitutter ?? null);
+          setTerrainLocal(result.terrain ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
             result.kommuneplanramme,
@@ -317,6 +323,8 @@ function ComplianceContent() {
             byggeanalyse={byggeanalyseResultat}
             metrics={complianceMetrics}
             geusRisk={geusRiskLocal}
+            servitutter={servitutterLocal}
+            terrain={terrainLocal}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -389,6 +397,8 @@ function ResultView({
   byggeanalyse,
   metrics,
   geusRisk,
+  servitutter,
+  terrain,
   onContinue,
 }: {
   adresse: string;
@@ -397,6 +407,8 @@ function ResultView({
   byggeanalyse: ByggeanalyseResultat | null;
   metrics: ComplianceMetrics | null;
   geusRisk: GeusRiskData | null;
+  servitutter: TinglysningResult | null;
+  terrain: TerrainData | null;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -594,6 +606,12 @@ function ResultView({
 
       {geusRisk && <GeusRisikoSektion data={geusRisk} />}
 
+      {terrain && <TerrainSektion data={terrain} />}
+
+      {servitutter && servitutter.servitutter.length > 0 && (
+        <ServitutterSektion data={servitutter} />
+      )}
+
       <button
         data-testid="compliance-continue"
         onClick={onContinue}
@@ -689,6 +707,126 @@ function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
           </div>
         );
       })}
+    </Card>
+  );
+}
+
+function TerrainSektion({ data }: { data: TerrainData }) {
+  const erSkraanende = data.slopePercent >= 5;
+  const erBrat = data.slopePercent >= 15;
+
+  return (
+    <Card className="mb-4">
+      <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+        TERRÆN & KOTER
+        {data.kilde === "mock" && (
+          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
+            MOCK
+          </span>
+        )}
+      </div>
+      {erBrat && (
+        <div className="mb-3 inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-warning border-warning/40 bg-warning/10">
+          BRAT TERRÆN — kælder og fundamentering kræver geoteknisk undersøgelse
+        </div>
+      )}
+      {erSkraanende && !erBrat && (
+        <div className="mb-3 inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-warning border-warning/40 bg-warning/10">
+          SKRÅNENDE TERRÆN — terræntilpasning nødvendig
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">HØJDESPÆND</div>
+          <div className="text-sm text-foreground font-mono">
+            {data.minElevationM.toFixed(1)} – {data.maxElevationM.toFixed(1)} m
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            Avg {data.avgElevationM.toFixed(1)} m over havniveau
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">HÆLDNING</div>
+          <div
+            className={`text-sm font-mono ${erBrat ? "text-warning" : erSkraanende ? "text-warning" : "text-foreground"}`}
+          >
+            {data.slopePercent.toFixed(1)} %
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {erBrat ? "Brat" : erSkraanende ? "Skrånende" : "Fladt"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">ORIENTERING</div>
+          <div className="text-sm text-foreground font-mono">{data.northOrientation}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Primær facade</div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ServitutterSektion({ data }: { data: TinglysningResult }) {
+  const kritiske = data.servitutter.filter((s) => s.kritisk);
+  const ikkeKritiske = data.servitutter.filter((s) => !s.kritisk);
+
+  return (
+    <Card className="mb-4">
+      <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+        TINGLYSTE SERVITUTTER
+        {data.kilde === "mock" && (
+          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
+            MOCK
+          </span>
+        )}
+        {data.pant > 0 && (
+          <span className="ml-2 text-[9px] border border-border text-muted-foreground rounded px-1">
+            {data.pant} PANTEHÆFTELSE{data.pant !== 1 ? "R" : ""}
+          </span>
+        )}
+      </div>
+
+      {kritiske.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <div className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] rounded-full border px-2 py-0.5 text-danger border-danger/40 bg-danger/10 mb-2">
+            <AlertTriangle size={10} /> BYGGEKRITISK
+          </div>
+          {kritiske.map((s) => (
+            <div key={s.dokumentId} className="rounded border border-danger/20 bg-danger/5 p-3">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="font-mono text-[10px] text-danger uppercase">{s.type}</span>
+                <span className="font-mono text-[9px] text-muted-foreground shrink-0">
+                  {s.tinglystDato}
+                </span>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">{s.tekst}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {ikkeKritiske.length > 0 && (
+        <div className="space-y-2">
+          {kritiske.length > 0 && (
+            <div className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground mb-2">
+              ØVRIGE
+            </div>
+          )}
+          {ikkeKritiske.map((s) => (
+            <div key={s.dokumentId} className="rounded border border-border/60 bg-[#1a1a1a] p-3">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                  {s.type}
+                </span>
+                <span className="font-mono text-[9px] text-muted-foreground shrink-0">
+                  {s.tinglystDato}
+                </span>
+              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed">{s.tekst}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
