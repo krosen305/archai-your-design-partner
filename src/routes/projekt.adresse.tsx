@@ -111,8 +111,12 @@ function AddressStep() {
         adresse: details.adresse || s.tekst,
         postnr: details.postnr || s.postnr,
         postnrnavn: details.postnrnavn || s.postnrnavn,
-        kommune: details.kommunenavn,
         kommunekode: details.kommunekode || s.kommunekode,
+        kommune:
+          details.kommunenavn ||
+          (await import("@/lib/kommuner")).kommunenavnFraKode(
+            details.kommunekode || s.kommunekode,
+          ),
         matrikel: details.matrikel,
         adgangsadresseid: details.adgangsadresseid || s.adgangsadresseid,
         koordinater: details.koordinater || s.koordinater,

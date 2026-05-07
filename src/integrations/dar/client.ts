@@ -387,12 +387,22 @@ export class DarService {
       koordinater = utm32NToWgs84(wktPoint.x, wktPoint.y);
     }
 
+    // Udled kommunekode + kommunenavn fra ejerlavskode (KKK × 1000 + løbenummer).
+    // Ejerlavskode er primær kilde; falder tilbage til "" når ejerlavskode mangler.
+    const { kommunekodeFraEjerlavskode, kommunenavnFraKode } = await import(
+      "@/lib/kommuner"
+    );
+    const kommunekode: string = ejerlavskode
+      ? kommunekodeFraEjerlavskode(ejerlavskode)
+      : "";
+    const kommunenavn: string = kommunekode ? kommunenavnFraKode(kommunekode) : "";
+
     return {
       adresse: adresse.adressebetegnelse ?? "",
       postnr: postnummerNode?.postnr ?? "",
       postnrnavn: postnummerNode?.navn ?? "",
-      kommunekode: "",
-      kommunenavn: "",
+      kommunekode,
+      kommunenavn,
       matrikel: matrikelnummer,
       adgangsadresseid: husnummerFK,
       koordinater,
