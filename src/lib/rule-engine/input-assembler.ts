@@ -278,6 +278,9 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     if (footprintM2 === null) missingFields.push("newBuilding.footprintM2");
     if (heightM === null) missingFields.push("newBuilding.heightM");
 
+    // distanceToBoundaryM kræver brugerinput — ikke i Byggeoenske endnu
+    missingFields.push("newBuilding.distanceToBoundaryM");
+
     newBuilding = {
       floorAreaM2,
       footprintM2,
@@ -285,6 +288,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
       heightM,
       heightEstimated,
       storeys,
+      distanceToBoundaryM: null,
       buildType: mapByggetypeToProjectType(byggeoenske.byggetype),
       roofType: byggeoenske.tagform ?? null,
       facadeMaterial: byggeoenske.facademateriale ?? null,

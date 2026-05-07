@@ -108,6 +108,7 @@ export type RuleEngineInput = {
     heightM: number | null; // estimeret: ceil(antalEtager) × 3.0 m
     heightEstimated: boolean; // true = heuristisk
     storeys: number | null; // ceil(antalEtager)
+    distanceToBoundaryM: number | null; // skelafstand — kræver brugerinput
     buildType: ProjectType;
     roofType: string | null; // tagform
     facadeMaterial: string | null; // facademateriale
@@ -131,30 +132,48 @@ export type RuleEngineInput = {
 };
 
 // ---------------------------------------------------------------------------
-// Output-typer (bruges i ARCH-108)
+// Output-typer (ARCH-108)
 // ---------------------------------------------------------------------------
 
 export type RuleStatus = "ok" | "incomplete" | "requires_dispensation" | "illegal";
 
-export type RuleCheckResult = {
-  ruleId: string;
+export type RuleViolation = {
+  rule: string;
+  severity: "illegal" | "dispensation_required" | "warning";
+  reason: string;
+  authority?: string;
+  confidence?: number; // propageret fra RuleValue.confidence
+};
+
+export type DispensationItem = {
+  rule: string;
   label: string;
-  status: RuleStatus;
-  message: string | null;
-  actualValue: string | null;
-  allowedValue: string | null;
-  dispensationPossible?: boolean;
-  dispensationAuthority?: string;
+  authority: string;
+  reason: string;
+};
+
+// Én beregning med hierarki-kilde og compliance-status
+export type CalcEntry = {
+  actual: number | null;
+  limit: number | null;
+  appliedRule: "lokalplan" | "kommuneplan" | "br18_default" | "unknown";
+  confidence: number; // 1.0 for kommuneplan/br18, lavere for PDF-udtræk
+  compliant: boolean | null; // null = kan ikke beregnes (manglende data)
+  violation: RuleViolation | null;
+};
+
+export type CalculationResult = {
+  buildingPercent: CalcEntry;
+  height: CalcEntry;
+  storeys: CalcEntry;
+  setback: CalcEntry;
 };
 
 export type RuleEngineResult = {
-  overordnetStatus: RuleStatus;
-  checkedRules: RuleCheckResult[];
-  missingInputs: string[]; // felter der manglede — regler sprunget over
-  dispensationList: Array<{
-    ruleId: string;
-    label: string;
-    authority: string;
-    reason: string;
-  }>;
+  status: "OK" | "INCOMPLETE" | "REQUIRES_DISPENSATION" | "ILLEGAL";
+  checkedRules: string[];
+  missingInputs: string[];
+  violations: RuleViolation[];
+  dispensationList: DispensationItem[];
+  calculations: CalculationResult;
 };
