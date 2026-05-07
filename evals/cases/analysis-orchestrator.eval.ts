@@ -46,6 +46,7 @@ export const orchestratorSuite: EvalSuite<AnalysisInput, ComplianceResult> = {
         geusRisk: "defined",
         servitutter: "defined",
         terrain: "defined",
+        naboer: "defined",
       } as never,
     },
 

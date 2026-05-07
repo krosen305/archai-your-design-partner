@@ -14,6 +14,7 @@
 //   geus                ⏳  IS_MOCK=true — ARCH-101 (layer-navne afventer GetCapabilities)
 //   servitut_extracted  ⏳  IS_MOCK=true — ARCH-104 (TingbogenV2 schema afventer verificering)
 //   terrain             ⏳  IS_MOCK=true — ARCH-102 (DHM WCS GetCoverage afventer verificering)
+//   naboer              ✅  live DAWA REST (ARCH-103)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
 import { validateEnv } from "@/lib/env";
@@ -27,6 +28,7 @@ import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { Json } from "@/integrations/supabase/types";
 import {
@@ -53,6 +55,7 @@ export type ComplianceResult = {
   geusRisk: GeusRiskData | null;
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
+  naboer: NeighborBuildingData | null;
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
 };
 
@@ -100,7 +103,13 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   // ── Layer 1: compliance_result (BBR + MAT + Plandata) ──────────────────
   type ComplianceBase = Omit<
     ComplianceResult,
-    "lokalplanExtract" | "naturbeskyttelse" | "dkjord" | "geusRisk" | "servitutter" | "terrain"
+    | "lokalplanExtract"
+    | "naturbeskyttelse"
+    | "dkjord"
+    | "geusRisk"
+    | "servitutter"
+    | "terrain"
+    | "naboer"
   >;
   let complianceBase: ComplianceBase | null = null;
   try {
@@ -141,6 +150,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         geusRisk: null,
         servitutter: null,
         terrain: null,
+        naboer: null,
       });
     } catch (e) {
       console.warn(
@@ -186,14 +196,15 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
   }
 
-  // ── Layer 4: naturbeskyttelse + dkjord + geus + terrain — kører parallelt ─
+  // ── Layer 4: naturbeskyttelse + dkjord + geus + terrain + naboer — parallelt ─
   let naturbeskyttelse: NaturbeskyttelsesResultat | null = null;
   let dkjord: DkJordResultat | null = null;
   let geusRisk: GeusRiskData | null = null;
   let terrain: TerrainData | null = null;
+  let naboer: NeighborBuildingData | null = null;
 
   if (koordinater) {
-    const [natur, jord, geus, terr] = await Promise.all([
+    const [natur, jord, geus, terr, nabo] = await Promise.all([
       import("@/integrations/sdfi/naturbeskyttelse")
         .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
         .catch((e: Error) => {
@@ -221,11 +232,20 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
           console.warn("[Orchestrator] DHM terrain fejlede:", e.message);
           return null;
         }),
+      import("@/integrations/bbr/neighbor-client")
+        .then(({ NaboService }) =>
+          NaboService.getNaboer(koordinater.lat, koordinater.lng, adgangsadresseid),
+        )
+        .catch((e: Error) => {
+          console.warn("[Orchestrator] NaboService fejlede:", e.message);
+          return null;
+        }),
     ]);
     naturbeskyttelse = natur;
     dkjord = jord;
     geusRisk = geus;
     terrain = terr;
+    naboer = nabo;
   }
 
   return {
@@ -236,6 +256,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     geusRisk,
     servitutter,
     terrain,
+    naboer,
   };
 }
 
