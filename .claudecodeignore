@@ -1,0 +1,32 @@
+# Auto-genererede filer
+src/routeTree.gen.ts
+
+# Build output
+dist/
+.output/
+.nitro/
+.vinxi/
+.tanstack/
+.wrangler/
+
+# Test artefakter
+test-results/
+playwright-report/
+
+# Binære / lockfiler uden kodeverdi
+bun.lock
+package-lock.json
+
+# Supabase temp
+supabase/.temp/
+
+# Tredjeparts editor-configs (ikke agent-guidance)
+.lovable/
+.cursor/
+
+# Afsluttede migrationer / historiske docs
+DAWA_MIGRATION*.md
+
+# Legacy routes — ikke i primært flow
+src/routes/projekt.beskrivelse.tsx
+src/routes/projekt.brief.tsx

@@ -1,6 +1,50 @@
-Du er en world-class senior software engineer. 
-- Skriv altid ren, modulær og dokumenteret TypeScript.
-- Brug altid den nyeste dokumentation for de biblioteker, vi bruger.
-- Før du ændrer i kodebasen, tænk dig om: er der en enklere måde?
-- Sørg for at alle integrationer er adskilt i deres egne services.
-- Hvis du er i tvivl om en API, så bed mig om at give dig dokumentationen først.
+# ArchAI — Cursor Rules
+
+Du arbejder på ArchAI: AI-drevet byggetilladelsesrådgiver for danske selvbyggere. TanStack Start + Supabase + Cloudflare Workers. Dansk UI, dark-only, accent `#E8FF4D`.
+
+## Server boundary — vigtigste regel
+
+Al kode der rammer Datafordeler, Supabase eller Anthropic API skal ligge i `createServerFn`. Importer **aldrig** server-moduler direkte i route-filer.
+
+```typescript
+// ✅ Korrekt
+const runCompliance = createServerFn().handler(async () => {
+  return analyseAddress(adresseid)
+})
+
+// ❌ Forkert — server-modul i route top-level
+import { BbrService } from '@/integrations/bbr/client'
+```
+
+## State
+
+Wizard-data lever udelukkende i `src/lib/project-store.ts`. Ingen lokal `useState` for data der tilhører wizard-flowet.
+
+## Integrations
+
+Skriv aldrig ny API-kode — brug eksisterende services i `src/integrations/`. Datafordeler GraphQL: ét root-felt per query, `virkningstid` påkrævet, API-key som query-param (ikke header).
+
+## Styling
+
+Tailwind v4 utility-klasser — ingen inline `style`, ingen nye CSS-filer. Dark-only. Accent via `text-accent` / `bg-accent`. Fonts: Inter (body), Space Mono (labels).
+
+## TypeScript
+
+Strict. Ingen `any` — brug `unknown` + type narrowing. Eksplicitte return-typer på alle eksporterede funktioner. Brug `@/`-alias, aldrig relative `../../` på tværs af features.
+
+## Hvad du aldrig rører
+
+- `src/routeTree.gen.ts` — auto-genereret af TanStack Router
+- `vite.config.ts` — tilføj ikke plugins
+- `src/server.ts` — Sentry-wrapper, slet ikke
+- Legacy routes: `projekt.beskrivelse.tsx`, `projekt.brief.tsx`
+
+## Tests
+
+Co-lokér ved siden af modulet: `bbr.test.ts` → `src/integrations/bbr/bbr.test.ts`. Kør med `bun test`.
+
+## Spørg brugeren hvis
+
+- Du skal tilføje en ny env-variabel (dokumentér i CLAUDE.md)
+- Du overvejer at kalde en IS_MOCK=true service live
+- Du er usikker på Datafordeler GraphQL-constraints

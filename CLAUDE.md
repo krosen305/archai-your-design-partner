@@ -1,198 +1,146 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+**ArchAI** — AI-assisted byggetilladelsesrådgiver for danske selvbyggere. TanStack Start (React SSR) på Cloudflare Workers.
 
 ## Commands
 
 ```bash
-bun dev          # Start development server
-bun build        # Production build (Cloudflare Workers target)
-bun test         # Run tests with Bun test runner
-bunx eslint .    # Lint TypeScript files
-bunx prettier --write .   # Format code
+bun dev                                          # Dev server
+bun build                                        # Production build (Cloudflare Workers)
+bun test                                         # Alle tests
+bun test src/integrations/bbr/bbr.test.ts        # Én testfil
+bunx eslint .                                    # Lint
+bunx prettier --write .                          # Format
 ```
 
-To run a single test file:
+## Wizard flow
 
-```bash
-bun test src/integrations/bbr/bbr.test.ts
-```
-
-## Architecture
-
-**ArchAI** is an AI-assisted building permit advisor for Danish private builders. It is a TanStack Start (React SSR) application deployed on **Cloudflare Workers** via Wrangler.
-
-### Wizard flow
-
-The app follows a 5-phase architecture. Steps map directly to file-based routes in `src/routes/`:
+5-fase wizard. Routes er filbaserede i `src/routes/`:
 
 ```
-/                         → index.tsx              (landing / welcome)
-/projekt/adresse          → projekt.adresse.tsx    (address autocomplete via DAWA/DAR)
-/projekt/hus-dna          → projekt.hus-dna.tsx    (Phase 1: AI Hus-DNA — dream house input)
-/projekt/compliance       → projekt.compliance.tsx  (cache-first BBR + Plandata pipeline)
-/projekt/match            → projekt.match.tsx       (Phase 2: compliance matrix vs. plangrundlag)
-/projekt/finans           → projekt.finans.tsx      (Phase 3: finansiering — placeholder)
-/projekt/engineering      → projekt.engineering.tsx (Phase 4: ingeniør — placeholder)
-/projekt/udbud            → projekt.udbud.tsx       (Phase 5: udbud — placeholder)
+/                         → index.tsx
+/projekt/adresse          → projekt.adresse.tsx       (GSearch autocomplete)
+/projekt/hus-dna          → projekt.hus-dna.tsx       (Phase 1: AI drømmehus-input)
+/projekt/compliance       → projekt.compliance.tsx     (BBR + Plandata pipeline)
+/projekt/match            → projekt.match.tsx          (Phase 2: compliance matrix)
+/projekt/finans           → projekt.finans.tsx         (Phase 3: placeholder)
+/projekt/engineering      → projekt.engineering.tsx    (Phase 4: placeholder)
+/projekt/udbud            → projekt.udbud.tsx          (Phase 5: placeholder)
 ```
 
-**Navigation flow:** adresse → hus-dna → compliance (auto-runs BBR+Plandata) → match → finans → …
+Flow: adresse → hus-dna → compliance (auto-kører BBR+Plandata) → match → finans → …
 
-**Legacy routes** (from earlier wizard design — not in primary flow):
+Compliance kører som én `createServerFn` via `src/lib/analysis-orchestrator.ts`. Resultater caches i Supabase `address_analysis` (key: `address.adresseid`).
 
-- `projekt.beskrivelse.tsx` — project description form
-- `projekt.brief.tsx` — AI-generated design brief
+**Auto-genererede filer — redigér aldrig:**
+- `src/routeTree.gen.ts` — TanStack Router
+- `vite.config.ts` — delegerer til `@lovable.dev/vite-tanstack-config`
 
-**Compliance pipeline** runs as a single `createServerFn` that calls `analyseAddress()` from `src/lib/analysis-orchestrator.ts`. Results are cached in Supabase `address_analysis` table (cache key: `address.adresseid`).
+**Kritisk server-entry:** `src/server.ts` wrapper TanStack Start med Sentry via `withSentry`. Slet ikke.
 
-Global wizard state is managed by a single Zustand store: `src/lib/project-store.ts`. Key fields: `address` (incl. `adresseid` for cache key), `bbrData`, `complianceDone`, `complianceFlags`, `lokalplaner`, `husDna`, `phases`.
+## src/lib/ — nøglefiler
 
-### Shared UI primitives
+Tjek altid om logik allerede eksisterer her inden du skriver nyt:
 
-- `src/components/wizard-ui.tsx` — `PageTransition`, `StepHeader`, `Card` (used on every step)
-- `src/components/wizard-chrome.tsx` — `TopBar`, `StepDots`, `BackLink` (navigation chrome)
+| Fil | Indhold |
+|---|---|
+| `project-store.ts` | Global Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `phases`) |
+| `analysis-orchestrator.ts` | Entry point for compliance pipeline |
+| `compliance-*.ts` | Compliance-logik og flagberegning |
+| `phase-*.ts` | Fase-styring og -tilstand |
+| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware |
+| `env.ts` | Zod-valideret env (brug denne — importér ikke `process.env` direkte) |
+| `feature-*.ts` | Feature flags |
+| `linear-*.ts` | Linear webhook-håndtering |
+| `utils.ts` | `cn()` og øvrige utilities |
 
-The route tree (`src/routeTree.gen.ts`) is **auto-generated** by TanStack Router — never edit it manually. `vite.config.ts` delegates entirely to `@lovable.dev/vite-tanstack-config` and must not have plugins added manually.
+## Integrations
 
-**Cloudflare Worker entry**: `src/server.ts` is the custom server entry (pointed to by `wrangler.toml`'s `main`). It wraps the TanStack Start handler with Sentry via `withSentry`. Do not delete this file — without it, `wrangler.toml` falls back to `@tanstack/react-start/server-entry` and Sentry is not included.
+Alle integrationer i `src/integrations/`. Server-side tjenester **må aldrig** importeres direkte i route-filer — brug `createServerFn` som grænse.
 
-### Integrations (`src/integrations/`)
+**Schema-referencer** (Datafordeler GraphQL): `bbr-schema.txt`, `mat-schema.txt` i rod-mappen.
 
-Each integration is a standalone service class. Server-side services must **never** be called directly from the browser — use TanStack Start's `createServerFn` as the boundary (see `projekt.compliance.tsx`).
+| Service | Fil | Status |
+|---|---|---|
+| `GsearchService` | `gsearch/client.ts` | ✅ Live |
+| `BbrService` | `bbr/client.ts` | ✅ Live |
+| `MatService` | `mat/client.ts` | ✅ Live |
+| `DarService` | `dar/client.ts` | ✅ Live |
+| `PlandataService` | `plandata/client.ts` | ✅ Live |
+| `TinglysningService` | `tinglysning/client.ts` | 🟡 IS_MOCK=true (ARCH-26) |
+| `PdfExtractorService` | `ai/pdf-extractor.ts` | ✅ Live |
+| `HusDnaGeneratorService` | `ai/hus-dna-generator.ts` | ✅ Live |
+| Supabase | `supabase/` | ✅ Live |
 
-| Service                  | File                      | Side        | Notes                                                                                                                  |
-| ------------------------ | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `GsearchService`         | `gsearch/client.ts`       | Server only | Address autocomplete via Dataforsyningen GSearch v2. Requires `DATAFORSYNINGEN_TOKEN`                                  |
-| `BbrService`             | `bbr/client.ts`           | Server only | Building register via Datafordeler GraphQL v2. Requires `DATAFORDELER_API_KEY`                                         |
-| `MatService`             | `mat/client.ts`           | Server only | Matrikel register (grundareal) via Datafordeler GraphQL v2                                                             |
-| `DarService`             | `dar/client.ts`           | Server only | Address register via Datafordeler GraphQL v1                                                                           |
-| `PlandataService`        | `plandata/client.ts`      | Server only | Local plans via public WFS. No API key needed                                                                          |
-| `TinglysningService`     | `tinglysning/client.ts`   | Server only | Servitutter. **IS_MOCK=true** — live API pending (ARCH-26)                                                             |
-| `PdfExtractorService`    | `ai/pdf-extractor.ts`     | Server only | Lokalplan PDF → structured rules via Claude API. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-25)             |
-| `HusDnaGeneratorService` | `ai/hus-dna-generator.ts` | Server only | Inspirationsbilleder + fritekst → Hus-DNA via Claude vision. **IS_MOCK=true** — requires `ANTHROPIC_API_KEY` (ARCH-47) |
-| Supabase                 | `supabase/`               | Both        | Auth middleware and typed client                                                                                       |
+**Datafordeler GraphQL-constraints** (BBR, MAT, DAR):
+- Ét root-felt per query (DAF-GQL-0010)
+- `virkningstid` påkrævet (DAF-GQL-0009)
+- Ingen aliases (DAF-GQL-0008)
+- `?apiKey=...` som query-param — aldrig `Authorization` header
 
-**Datafordeler GraphQL constraints** (applies to BBR, MAT, DAR):
+## Tests
 
-- Only one root field per query (`DAF-GQL-0010`)
-- `virkningstid` parameter is required on all queries (`DAF-GQL-0009`)
-- No aliases (`DAF-GQL-0008`)
-- Introspection disabled (`HC0046`)
-- API key goes as a **query parameter** (`?apiKey=...`), never as an `Authorization` header
+- **Unit tests**: co-lokeres ved siden af modulet (`bbr.test.ts` → `src/integrations/bbr/`)
+- **E2E tests**: `tests/` i rod-mappen (Playwright)
 
-### Environment variables
+## Shared UI-primitiver
 
-Server-side only — **no `VITE_` prefix** (these must not reach the browser):
+- `src/components/wizard-ui.tsx` — `PageTransition`, `StepHeader`, `Card`
+- `src/components/wizard-chrome.tsx` — `TopBar`, `StepDots`, `BackLink`
+
+## Styling
+
+**Dark-only.** Accent: `#E8FF4D` (via `text-accent` / `bg-accent`). Fonts: Inter (body), Space Mono (labels/headings). Tailwind v4 + CSS-variabler i `src/styles.css`.
+
+## Environment variables
+
+Server-side only — **ingen `VITE_` prefix**. Valideres via `src/lib/env.ts` — importér derfra, ikke fra `process.env`.
 
 ```
-DATAFORDELER_API_KEY         # Required for BBR, MAT, DAR
-DATAFORDELER_BBR_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/BBR/v2
-DATAFORDELER_MAT_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/MAT/v2
-DATAFORDELER_DAR_ENDPOINT    # Optional, defaults to graphql.datafordeler.dk/DAR/v1
-ANTHROPIC_API_KEY            # Required for PdfExtractorService + HusDnaGeneratorService (IS_MOCK=true skips this)
-DATAFORSYNINGEN_TOKEN        # Optional for GsearchService — free token from dataforsyningen.dk; unauthenticated requests may be rate-limited
-SENTRY_DSN                   # Optional — Sentry error tracking DSN. If absent, Sentry is silently disabled.
-ENVIRONMENT                  # Optional — used as Sentry environment tag (defaults to "production")
-LINEAR_WEBHOOK_SECRET        # Optional — HMAC signing secret from Linear webhook config (ARCH-74)
-GITHUB_DISPATCH_TOKEN        # Optional — GitHub PAT with repo scope for Linear webhook bridge (ARCH-74)
-GITHUB_REPO                  # Optional — "owner/repo" for dispatch; defaults to krosen305/archai-your-design-partner
+DATAFORDELER_API_KEY          # Påkrævet: BBR, MAT, DAR
+ANTHROPIC_API_KEY             # Påkrævet: PdfExtractor + HusDnaGenerator (IS_MOCK bypasser)
+DATAFORSYNINGEN_TOKEN         # Valgfri: GSearch (rate-limits uden)
+SENTRY_DSN                    # Valgfri: Sentry error tracking
+ENVIRONMENT                   # Valgfri: Sentry environment tag (default: "production")
+LINEAR_WEBHOOK_SECRET         # Valgfri: HMAC signing (ARCH-74)
+GITHUB_DISPATCH_TOKEN         # Valgfri: GitHub PAT til Linear bridge (ARCH-74)
+GITHUB_REPO                   # Valgfri: default krosen305/archai-your-design-partner
+DATAFORDELER_BBR_ENDPOINT     # Valgfri: default graphql.datafordeler.dk/BBR/v2
+DATAFORDELER_MAT_ENDPOINT     # Valgfri: default graphql.datafordeler.dk/MAT/v2
+DATAFORDELER_DAR_ENDPOINT     # Valgfri: default graphql.datafordeler.dk/DAR/v1
 ```
 
-**GitHub Actions secrets** required for source map upload:
-
-```
-SENTRY_AUTH_TOKEN            # Sentry auth token for source map upload (Settings → Auth Tokens)
-```
-
-### Styling
-
-Dark-only design. Accent color is `#E8FF4D` (yellow-green). Fonts: Inter (body), Space Mono (monospace labels/headings). Tailwind CSS v4 with custom CSS variables defined in `src/styles.css`. The `@/` path alias resolves to `src/`.
-
-## Linear task management
-
-Issues are tracked in the **ArchAI** team on Linear (`linear.app/archai-design-partner`).
-
-- Issue identifiers follow the pattern `ARCH-N`
-- When starting work on an issue, move it to **In Progress**
-- Link commits to issues by including the identifier in the commit message (e.g. `ARCH-5: setup auth`)
-- Priorities: Urgent (1) → High (2) → Normal (3) → Low (4)
+Dokumentér altid nye env-variabler her.
 
 ## Code conventions
 
-- **Language**: TypeScript throughout — no `any`, prefer explicit return types on exported functions
-- **Imports**: Use the `@/` alias for `src/` imports; never use relative `../../` paths crossing feature boundaries
-- **Server boundary**: All Datafordeler / Supabase calls go inside `createServerFn` — never import server-only modules at the top level of a route file
-- **State**: Global wizard state lives exclusively in `src/lib/project-store.ts`; do not add local `useState` for data that belongs to the wizard flow
-- **Styling**: Tailwind utility classes only — no inline `style` props, no new CSS files. Dark-only; use the `#E8FF4D` accent via `text-accent` / `bg-accent` CSS variable classes
-- **Tests**: Co-locate test files next to the module (e.g. `bbr.test.ts` beside `bbr/client.ts`); use `bun test`
+- **TypeScript strict** — ingen `any`, eksplicitte return-typer på eksporterede funktioner
+- **Imports**: `@/`-alias for `src/`; aldrig `../../` på tværs af feature-grænser
+- **Server boundary**: al Datafordeler/Supabase-kode i `createServerFn`
+- **State**: global wizard-state udelukkende i `src/lib/project-store.ts`
+- **Env**: importér altid fra `src/lib/env.ts`, aldrig `process.env` direkte
+- **Styling**: Tailwind utility-klasser — ingen inline `style`, ingen nye CSS-filer
+- **Linear**: ARCH-N i commit-beskeder; flyt issue til **Done** ved task-afslutning
 
 ## Definition of done
 
-A task is done when all of the following are true:
-
-- [ ] Feature works end-to-end in `bun dev` (golden path + obvious edge cases)
-- [ ] `bun build` succeeds with no type errors
-- [ ] `bun test` passes (no skipped tests introduced)
-- [ ] `bunx eslint .` reports no new errors
-- [ ] No `console.log` or debug code left in
-- [ ] Environment variables documented in CLAUDE.md if new ones were added
-- [ ] Linear issue moved to **Done**
+- [ ] Feature virker end-to-end i `bun dev` (happy path + edge cases)
+- [ ] `bun build` — ingen type-fejl
+- [ ] `bun test` — ingen failing/skipped tests
+- [ ] `bunx eslint .` — ingen nye fejl
+- [ ] Ingen `console.log` eller debug-kode
+- [ ] Nye env-variabler dokumenteret herover
+- [ ] Linear issue → **Done**
 
 ## CI/CD
 
-GitHub Actions kører automatisk via `.github/workflows/`:
+| Workflow | Trigger | Formål |
+|---|---|---|
+| `ci.yml` | PR + push til main | tsc · eslint · test · build |
+| `deploy.yml` | Push til main | Build + wrangler deploy |
+| `sentry-to-linear.yml` | `repository_dispatch` | Sentry fejl → Linear bug |
+| `ai-pr-review.yml` | PR opened/sync | Claude Haiku PR-review |
+| `linear-to-github.yml` | `repository_dispatch` | Linear issue → GitHub branch |
+| `github-to-linear.yml` | PR opened/closed | Opdatér Linear status |
 
-| Workflow                      | Trigger                                         | Steps                                            |
-| ----------------------------- | ----------------------------------------------- | ------------------------------------------------ |
-| `ci.yml`                      | PR til main + push til main                     | tsc · eslint · bun test · bun build              |
-| `deploy.yml`                  | Push til main                                   | bun build · wrangler deploy (production)         |
-| `sentry-to-linear.yml`        | `repository_dispatch` / manuelt                 | Opretter Linear bug issue fra Sentry fejl        |
-| `ai-pr-review.yml`            | PR opened/synchronize                           | Claude Haiku review-kommentar på PR              |
-| `linear-to-github.yml`        | `repository_dispatch: linear-issue-in-progress` | Opretter GitHub branch fra Linear issue          |
-| `github-to-linear.yml`        | PR opened/closed                                | Opdaterer Linear issue status (In Review / Done) |
-| `setup-branch-protection.yml` | `workflow_dispatch` (én gang)                   | Aktiverer branch protection på main              |
-
-**Preview deploys** på PR: `wrangler deploy --name archai-preview-pr-<N>` — kræver at Cloudflare Workers plan tillader flere workers.
-
-**GitHub Secrets der skal sættes** (Settings → Secrets → Actions):
-
-```
-CLOUDFLARE_API_TOKEN         # Cloudflare API token med Workers:Edit permission
-DATAFORDELER_API_KEY
-SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY
-SUPABASE_PUBLISHABLE_KEY
-ANTHROPIC_API_KEY
-SENTRY_AUTH_TOKEN            # Til source map upload i deploy.yml
-LINEAR_API_KEY               # Linear personal API key — bruges af sentry-to-linear.yml + github-to-linear.yml
-GITHUB_DISPATCH_TOKEN        # GitHub PAT med repo scope — bruges af Linear webhook bridge (ARCH-74)
-```
-
-**Branch protection** (ARCH-79): Kør `setup-branch-protection.yml` via Actions → Run workflow.
-Herefter kræves PR + grøn CI for alle merges til main. Admin kan bypasse i nødstilfælde.
-
-**Sentry → Linear opsætning** (ARCH-70):
-Brug Sentry's native Linear integration: Sentry → Settings → Integrations → "Linear" → Installer.
-Opret derefter en Alert Rule med "Create Linear Issue" action (filter: level=error/fatal, first seen).
-Manuel test: `gh workflow run sentry-to-linear.yml -f title="Test" -f environment="production"`
-
-**Linear ↔ GitHub sync opsætning** (ARCH-74):
-
-1. Opret GitHub PAT (Settings → Developer settings → Personal access tokens → Fine-grained) med `Contents: Write` på dette repo. Gem som `GITHUB_DISPATCH_TOKEN` i GitHub Secrets og Wrangler secret.
-2. Opret Linear webhook (Linear → Settings → API → Webhooks → New webhook):
-   - URL: `https://archai-your-design-partner.workers.dev/api/webhooks/linear`
-   - Events: `Issues` (state changed)
-   - Kopier signing secret → gem som `LINEAR_WEBHOOK_SECRET` i Wrangler secret
-3. `github-to-linear.yml` kræver kun `LINEAR_API_KEY` (allerede sat).
-   Manuel test af branch-oprettelse: `gh api repos/krosen305/archai-your-design-partner/dispatches --method POST -f event_type=linear-issue-in-progress -F client_payload[issueId]=ARCH-99 -F client_payload[issueTitle]="Test"`
-
-**wrangler.toml** er i rod-mappen. Sæt `account_id` til din Cloudflare-konto-ID inden første deploy.
-
-## DAWA migration — ✅ COMPLETED (ARCH-23)
-
-DAWA (`api.dataforsyningen.dk`) er fuldt erstattet. Alle tre faser er done:
-
-- **Phase 1** ✅: `grundareal` → `MatService.getGrundareal(ejerlavskode, matrikelnummer)`
-- **Phase 2** ✅: `DawaService.getAddressDetails()` → `DarService.getAddressDetails()`
-- **Phase 3** ✅: `DawaService.getSuggestions()` → `GsearchService.getSuggestions()` (server-side via `createServerFn`)
+Opsætningsvejledning: `docs/CI_CD.md`.
