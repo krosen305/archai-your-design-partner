@@ -1,0 +1,134 @@
+name: Auto Changelog
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    name: Generer changelog-entry via Claude Haiku
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Skip hvis dette selv er et changelog-commit
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find commits siden sidste changelog-opdatering + kald Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, subprocess, re, urllib.request, datetime
+
+          # ── 1. Find commits siden sidste changelog-commit ─────────────────
+          # Leder efter seneste "docs: update changelog" commit
+          result = subprocess.run(
+              ["git", "log", "--oneline", "--no-merges", "-50"],
+              capture_output=True, text=True
+          )
+          all_lines = result.stdout.strip().splitlines()
+
+          # Find indexet for det seneste changelog-commit
+          cutoff = len(all_lines)
+          for i, line in enumerate(all_lines):
+              if "update changelog" in line.lower() or "[skip ci]" in line.lower():
+                  cutoff = i
+                  break
+
+          new_commits = all_lines[:cutoff]
+
+          if not new_commits:
+              print("Ingen nye commits siden sidste changelog — springer over")
+              exit(0)
+
+          commits_text = "\n".join(new_commits)
+          print(f"Behandler {len(new_commits)} commits:\n{commits_text}")
+
+          # ── 2. Call Claude Haiku ───────────────────────────────────────────
+          api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+          if not api_key:
+              print("ANTHROPIC_API_KEY mangler — springer changelog-generering over")
+              exit(0)
+
+          today = datetime.date.today().isoformat()
+          prompt = f"""Konverter disse git commits til én changelog-entry på dansk.
+
+  Commits:
+  {commits_text}
+
+  Regler:
+  - Start med ## {today}
+  - Grupper i disse sektioner (inkludér kun sektioner der er relevante):
+    ### Nyt
+    ### Forbedringer
+    ### Fejlrettelser
+  - Hvert punkt starter med "- " og er maks 1 linje
+  - Teknisk jargon er OK, men skriv til en dansk udvikler
+  - Ignorer "Changes" og "chore: prettier"-commits
+  - Returnér KUN markdown, ingen forklaring"""
+
+          body = json.dumps({
+              "model": "claude-haiku-4-5-20251001",
+              "max_tokens": 600,
+              "messages": [{"role": "user", "content": prompt}],
+          }).encode("utf-8")
+
+          req = urllib.request.Request(
+              "https://api.anthropic.com/v1/messages",
+              data=body,
+              headers={
+                  "x-api-key": api_key,
+                  "anthropic-version": "2023-06-01",
+                  "content-type": "application/json",
+              },
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  data = json.loads(resp.read())
+              entry = data["content"][0]["text"].strip()
+          except Exception as e:
+              print(f"Anthropic API fejl: {e} — springer changelog-generering over")
+              exit(0)
+
+          print(f"\nGenereret entry:\n{entry}")
+
+          # ── 3. Prepend til CHANGELOG.md ────────────────────────────────────
+          changelog_path = "CHANGELOG.md"
+          if os.path.exists(changelog_path):
+              with open(changelog_path, encoding="utf-8") as f:
+                  existing = f.read()
+          else:
+              existing = "# Changelog\n\n"
+
+          # Indsæt ny entry efter første linje (# Changelog header)
+          lines = existing.split("\n", 2)
+          if len(lines) >= 2:
+              new_content = lines[0] + "\n\n" + entry + "\n\n" + "\n".join(lines[1:]).lstrip("\n")
+          else:
+              new_content = existing + "\n" + entry + "\n"
+
+          with open(changelog_path, "w", encoding="utf-8") as f:
+              f.write(new_content)
+
+          print("CHANGELOG.md opdateret")
+          PYEOF
+
+      - name: Commit changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "Ingen ændringer i CHANGELOG.md — intet at committe"
+          else
+            git commit -m "docs: update changelog [skip ci]"
+            git push
+          fi

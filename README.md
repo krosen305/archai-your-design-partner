@@ -101,3 +101,5 @@ src/
 GitHub Actions: type-check → lint → test → build → evals (mock) → E2E → deploy til Cloudflare Workers.
 
 Se `.github/workflows/` for detaljer.
+
+Se [CHANGELOG.md](CHANGELOG.md) for versionshistorik.
