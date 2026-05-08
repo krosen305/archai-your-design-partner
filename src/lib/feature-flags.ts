@@ -13,4 +13,6 @@ export const FEATURE_FLAGS = {
   husDnaMock: false,
   /** Byggeanalyse via Anthropic (Byggeoenske → struktureret compliance). False = live (ARCH-83). */
   byggeanalyseMock: false,
+  /** Fjernvarme WFS-layer afventer GetCapabilities-verifikation (ARCH-111). */
+  fjernvarmeMock: true,
 } as const;

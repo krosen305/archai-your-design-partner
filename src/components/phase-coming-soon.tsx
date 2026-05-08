@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 
@@ -46,12 +46,12 @@ export function PhaseComingSoon({
           >
             Gå tilbage
           </button>
-          <button
-            disabled
-            className="inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground opacity-30 cursor-not-allowed"
+          <Link
+            to="/projekt/datacheck"
+            className="inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground hover:brightness-110 transition-all"
           >
-            Fortsæt →
-          </button>
+            Se din projektparathed →
+          </Link>
         </div>
       </div>
     </PageTransition>
