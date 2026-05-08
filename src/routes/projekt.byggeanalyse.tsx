@@ -220,6 +220,8 @@ function ComplianceContent() {
   const [servitutterLocal, setServitutterLocal] = useState<TinglysningResult | null>(null);
   const [terrainLocal, setTerrainLocal] = useState<TerrainData | null>(null);
   const [saveLocal, setSaveLocal] = useState<SaveData | null>(null);
+  const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
+  const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
 
   useEffect(() => {
     if (bbrData) {
