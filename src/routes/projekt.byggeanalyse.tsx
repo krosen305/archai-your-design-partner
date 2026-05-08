@@ -684,6 +684,10 @@ function ResultView({
         <ServitutterSektion data={servitutter} />
       )}
 
+      {fjernvarme && <FjernvarmeSektion data={fjernvarme} />}
+
+      {naboer && naboer.count > 0 && <NaboerSektion data={naboer} />}
+
       <button
         data-testid="compliance-continue"
         onClick={onContinue}
@@ -691,10 +695,91 @@ function ResultView({
       >
         Fortsæt til Økonomi →
       </button>
+      <Link
+        to="/projekt/datacheck"
+        className="mt-3 w-full inline-flex items-center justify-center rounded-md border border-border bg-transparent px-6 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"
+      >
+        Se projektparathed →
+      </Link>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
       </p>
     </motion.div>
+  );
+}
+
+function FjernvarmeSektion({ data }: { data: FjernvarmeResultat }) {
+  const badge =
+    data.fjernvarmeDaekket === true
+      ? { label: "FJERNVARME TILGÆNGELIGT", color: "text-success border-success/40 bg-success/10" }
+      : data.fjernvarmeDaekket === false
+        ? {
+            label: "INGEN FJERNVARME",
+            color: "text-muted-foreground border-border bg-[#1a1a1a]",
+          }
+        : { label: "UKENDT", color: "text-warning border-warning/40 bg-warning/10" };
+
+  return (
+    <Card className="mb-4">
+      <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+        <Flame size={12} className="text-accent" />
+        FJERNVARMEDÆKNING
+        {FEATURE_FLAGS.fjernvarmeMock && (
+          <span className="text-[9px] border border-warning/40 text-warning rounded px-1">
+            MOCK
+          </span>
+        )}
+      </div>
+      <span
+        className={`inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 ${badge.color}`}
+      >
+        {badge.label}
+      </span>
+      {data.fejl && (
+        <p className="text-xs text-muted-foreground mt-2">{data.fejl}</p>
+      )}
+      {data.fjernvarmeDaekket === true && (
+        <p className="text-sm text-foreground/80 mt-3">
+          Adressen ligger inden for et vedtaget fjernvarmeforsyningsområde – tilslutningspligt kan
+          være gældende.
+        </p>
+      )}
+      {data.fjernvarmeDaekket === false && (
+        <p className="text-sm text-foreground/80 mt-3">
+          Ingen fjernvarmeforsyning på adressen – varmepumpe eller anden lokal løsning.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+function NaboerSektion({ data }: { data: NeighborBuildingData }) {
+  const naer = data.nearestDistanceM !== null && data.nearestDistanceM < 2.5;
+  return (
+    <Card className="mb-4">
+      <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+        <HomeIcon size={12} className="text-accent" />
+        NABOBYGNINGER
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">NÆRMESTE NABO</div>
+          <div className={`text-sm font-mono ${naer ? "text-warning" : "text-foreground"}`}>
+            {data.nearestDistanceM !== null ? `${data.nearestDistanceM.toFixed(1)} m` : "—"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">INDEN FOR 40 M</div>
+          <div className="text-sm font-mono text-foreground">{data.count} bygninger</div>
+        </div>
+      </div>
+      {naer && (
+        <p className="text-xs text-warning mt-3">
+          Afstand under 2,5 m kræver byggetilladelse — brandkrav (BR18 §126) skal overholdes.
+        </p>
+      )}
+      {data.fejl && <p className="text-xs text-muted-foreground mt-2">{data.fejl}</p>}
+    </Card>
   );
 }
 
