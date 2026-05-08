@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Plus, ChevronRight, LogIn, Clock } from "lucide-react";
+import { MapPin, Plus, ChevronRight, LogIn, Clock, LogOut } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 import type { Projekt } from "@/lib/byggeoenske";
