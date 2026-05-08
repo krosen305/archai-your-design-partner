@@ -13,19 +13,19 @@ import type { BbrKompliantData } from "@/integrations/bbr/client";
 // ---------------------------------------------------------------------------
 
 export const MOCK_ADRESSE: Address = {
-  adresseid: "0a3f50a8-471d-32b8-e044-0003ba298018",
+  adresseid: "0a3f50a6-34da-32b8-e044-0003ba298018",
   adresse: "Hasselvej 48, 2830 Virum",
   postnr: "2830",
   postnrnavn: "Virum",
   kommune: "Lyngby-Taarbæk",
   kommunekode: "0173",
-  matrikel: "8a Virum By, Virum",
-  adgangsadresseid: "0a3f5081-d7e2-32b8-e044-0003ba298018",
-  koordinater: { lat: 55.7989, lng: 12.4769 },
+  matrikel: "5fo Virum By, Virum",
+  adgangsadresseid: "0a3f507d-4cf9-32b8-e044-0003ba298018",
+  koordinater: { lat: 55.79367463, lng: 12.4802852 },
   bbrId: null,
-  ejerlavskode: 173551,
-  matrikelnummer: "8a",
-  grundareal: 829,
+  ejerlavskode: 12352,
+  matrikelnummer: "5fo",
+  grundareal: 441,
 };
 
 // ---------------------------------------------------------------------------
@@ -34,23 +34,23 @@ export const MOCK_ADRESSE: Address = {
 
 export const MOCK_BBR: BbrKompliantData = {
   beregning_mulig: true,
-  grundareal: 829,
-  bebygget_areal: 121,
-  samlet_areal: 129,
+  grundareal: 441,
+  bebygget_areal: 68,
+  samlet_areal: 121,
   bebyggelsesprocent: 15,
-  antal_etager: 1,
+  antal_etager: 2,
   byggeaar: "1937",
-  anvendelseskode: "120",
-  anvendelse_tekst: "Fritliggende enfamilieshus",
+  anvendelseskode: "130",
+  anvendelse_tekst: "Række-, kæde- eller dobbelthus",
   fejl: null,
-  varmeinstallation: "Fjernvarme/blokvarme",
-  opvarmningsmiddel: "Fjernvarme",
+  varmeinstallation: "Centralvarme (én fyringsenhed)",
+  opvarmningsmiddel: "Gas",
   ydervaegs_materiale: "Mursten/tegl",
-  tagdaekning: "Tagsten (tegl/beton)",
+  tagdaekning: "Eternit/fibercement",
   fredet: null,
-  mat_strandbeskyttelse: null,
-  mat_fredskov: null,
-  mat_klitfredning: null,
+  mat_strandbeskyttelse: false,
+  mat_fredskov: false,
+  mat_klitfredning: false,
 };
 
 // ---------------------------------------------------------------------------
