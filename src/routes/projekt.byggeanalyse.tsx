@@ -464,6 +464,8 @@ function ResultView({
   servitutter,
   terrain,
   save,
+  fjernvarme,
+  naboer,
   onContinue,
 }: {
   adresse: string;
@@ -475,6 +477,8 @@ function ResultView({
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
   save: SaveData | null;
+  fjernvarme: FjernvarmeResultat | null;
+  naboer: NeighborBuildingData | null;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
