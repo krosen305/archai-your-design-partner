@@ -1,81 +1,13 @@
 // SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 // VUR (Vurdering) GraphQL via Datafordeler.
 //
-// Bruges til: ejendomsværdi + grundværdi fra seneste ejendomsvurdering.
-// Input: BFE-nummer (fra EBR_Ejendomsbeliggenhed.bestemtFastEjendomBFENr)
-//
-// Schema: schema/VUR.graphql (gitignored, lokal kopi)
-// Opslag-kæde (2 kald):
-//   VUR_BFEKrydsreference(BFEnummer) → fkEjendomsvurderingID
-//   VUR_Ejendomsvurdering(fkVurderingsejendomID) → ejendomvaerdiBeloeb, grundvaerdiBeloeb, vurderetAreal
-//
-// VUR har ingen @filterRequirement → virkningstid er ikke obligatorisk.
-// Hent seneste vurdering med first:1 + orderBy seneste aar.
+// Opslag-kæde (3 kald):
+//   VUR_BFEKrydsreference(BFEnummer) → fkEjendomsvurderingID (record-ID)
+//   VUR_Ejendomsvurdering(id=recordId) → fkVurderingsejendomID (ejendoms-ID)
+//   VUR_Ejendomsvurdering(fkVurderingsejendomID) → hent historik, vælg nyeste
 
 // ---------------------------------------------------------------------------
-// Konfiguration
-// ---------------------------------------------------------------------------
-
-type VurClientConfig = {
-  apiKey?: string;
-  endpoint?: string;
-};
-
-function getConfig(explicit?: VurClientConfig) {
-  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
-
-  const endpoint =
-    explicit?.endpoint ??
-    (process as any)?.env?.DATAFORDELER_VUR_ENDPOINT ??
-    "https://graphql.datafordeler.dk/VUR/v1";
-
-  if (!apiKey) {
-    throw new Error(
-      "VUR GraphQL: Manglende DATAFORDELER_API_KEY. " +
-        "Sæt denne som environment variable (uden VITE_ prefix).",
-    );
-  }
-
-  return { apiKey, endpoint };
-}
-
-// ---------------------------------------------------------------------------
-// GraphQL queries
-// ---------------------------------------------------------------------------
-
-// Trin 1: Find fkEjendomsvurderingID via BFE-nummer
-const BFE_KRYDS_QUERY = `
-query GetBFEKrydsreference($bfe: Long!) {
-  VUR_BFEKrydsreference(
-    where: { BFEnummer: { eq: $bfe } }
-    first: 1
-  ) {
-    nodes {
-      fkEjendomsvurderingID
-      BFEnummer
-    }
-  }
-}`;
-
-// Trin 2: Hent seneste ejendomsvurdering via fkVurderingsejendomID
-// first:1 returnerer den nyeste (Datafordeler returnerer nyeste pr. default)
-const VURDERING_QUERY = `
-query GetEjendomsvurdering($vurderingsejendomId: Long!) {
-  VUR_Ejendomsvurdering(
-    where: { fkVurderingsejendomID: { eq: $vurderingsejendomId } }
-    first: 1
-  ) {
-    nodes {
-      ejendomvaerdiBeloeb
-      grundvaerdiBeloeb
-      vurderetAreal
-      aar
-    }
-  }
-}`;
-
-// ---------------------------------------------------------------------------
-// Output type
+// Typer
 // ---------------------------------------------------------------------------
 
 export type VurData = {
@@ -87,38 +19,51 @@ export type VurData = {
   fejl: string | null;
 };
 
+type VurClientConfig = {
+  apiKey?: string;
+  endpoint?: string;
+};
+
 // ---------------------------------------------------------------------------
-// Hjælpefunktion: GraphQL-kald
+// GraphQL Queries
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  const bodyText = await response.text();
-
-  if (!response.ok) {
-    const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
-    console.error("[VUR] HTTP-fejl:", {
-      status: response.status,
-      keyHint: `${keyHint}…`,
-      body: bodyText.slice(0, 500),
-    });
-    throw new Error(`VUR Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
+// Trin 1: Find et historisk Record-ID via BFE-nummer
+const BFE_KRYDS_QUERY = `
+query GetBFEKrydsreference($bfe: Long!) {
+  VUR_BFEKrydsreference(where: { BFEnummer: { eq: $bfe } }, first: 1) {
+    nodes {
+      fkEjendomsvurderingID
+      BFEnummer
+    }
   }
+}`;
 
-  const parsed = JSON.parse(bodyText);
-
-  if (parsed.errors?.length) {
-    console.error("[VUR] GraphQL-fejl:", parsed.errors);
-    throw new Error(parsed.errors[0].message);
+// Trin 1.5: Find Ejendommens overordnede ID (fkVurderingsejendomID) ud fra Record-ID
+const GET_PROPERTY_ID_QUERY = `
+query GetPropertyID($recordId: Long!) {
+  VUR_Ejendomsvurdering(where: { id: { eq: $recordId } }) {
+    nodes {
+      fkVurderingsejendomID
+    }
   }
+}`;
 
-  return parsed.data;
-}
+// Trin 2: Hent ALLE vurderinger knyttet til Ejendommens ID
+const VURDERING_HISTORY_QUERY = `
+query GetVurderingHistory($propId: Long!) {
+  VUR_Ejendomsvurdering(
+    where: { fkVurderingsejendomID: { eq: $propId } }
+    first: 100
+  ) {
+    nodes {
+      ejendomvaerdiBeloeb
+      grundvaerdiBeloeb
+      vurderetAreal
+      aar
+    }
+  }
+}`;
 
 // ---------------------------------------------------------------------------
 // VurService
@@ -126,72 +71,106 @@ async function gqlFetch(url: URL, query: string, variables: Record<string, unkno
 
 export class VurService {
   /**
-   * Henter seneste ejendomsvurdering (ejendomsværdi + grundværdi) via BFE-nummer.
-   *
-   * Kæde: BFEnummer → VUR_BFEKrydsreference.fkEjendomsvurderingID → VUR_Ejendomsvurdering
-   *
-   * @param bfeNr  BFE-nummer fra EBR (streng, konverteres til Long)
+   * Henter den absolut nyeste ejendomsvurdering via BFE-nummer.
+   * Går gennem 3 led for at sikre, at vi ikke sidder fast i gamle historiske data.
    */
   static async getVurdering(bfeNr: string, config?: VurClientConfig): Promise<VurData> {
     const bfe = parseInt(bfeNr, 10);
     if (isNaN(bfe)) {
-      return { ejendomsvaerdi: null, grundvaerdi: null, vurderetAreal: null, vurderingsaar: null, bfeNr, fejl: `Ugyldigt BFE-nummer: ${bfeNr}` };
+      return this.errorResult(bfeNr, `Ugyldigt BFE-nummer format: ${bfeNr}`);
     }
 
     try {
-      const { apiKey, endpoint } = getConfig(config);
+      const { apiKey, endpoint } = this.getConfig(config);
       const url = new URL(endpoint);
       url.searchParams.set("apiKey", apiKey);
 
-      // ── Trin 1: BFEKrydsreference ──────────────────────────────────────────
-      const krydsData = await gqlFetch(url, BFE_KRYDS_QUERY, { bfe });
-      const krydsNodes: any[] = krydsData?.VUR_BFEKrydsreference?.nodes ?? [];
+      // ── Trin 1: Find record-ID via BFE-krydsreference ──────────────────
+      const krydsData = await this.gqlFetch(url, BFE_KRYDS_QUERY, { bfe });
+      const recordId = krydsData?.VUR_BFEKrydsreference?.nodes?.[0]?.fkEjendomsvurderingID;
 
-      if (!krydsNodes.length) {
-        return {
-          ejendomsvaerdi: null, grundvaerdi: null, vurderetAreal: null, vurderingsaar: null,
-          bfeNr,
-          fejl: `VUR_BFEKrydsreference ikke fundet for BFEnummer ${bfe}`,
-        };
+      if (!recordId) {
+        return this.errorResult(bfeNr, `Ingen VUR-krydsreference fundet for BFE ${bfe}`);
       }
 
-      const vurderingsejendomId: number | null = krydsNodes[0].fkEjendomsvurderingID ?? null;
-      if (vurderingsejendomId === null) {
-        return {
-          ejendomsvaerdi: null, grundvaerdi: null, vurderetAreal: null, vurderingsaar: null,
-          bfeNr,
-          fejl: "fkEjendomsvurderingID mangler på VUR_BFEKrydsreference",
-        };
+      // ── Trin 1.5: Find ejendoms-ID via record-ID ────────────────────────
+      const propData = await this.gqlFetch(url, GET_PROPERTY_ID_QUERY, { recordId });
+      const propertyId = propData?.VUR_Ejendomsvurdering?.nodes?.[0]?.fkVurderingsejendomID;
+
+      if (!propertyId) {
+        return this.errorResult(bfeNr, "fkVurderingsejendomID ikke fundet via record-ID");
       }
 
-      // ── Trin 2: Ejendomsvurdering ──────────────────────────────────────────
-      const vurData = await gqlFetch(url, VURDERING_QUERY, { vurderingsejendomId });
-      const vurNodes: any[] = vurData?.VUR_Ejendomsvurdering?.nodes ?? [];
+      // ── Trin 2: Hent vurderingshistorik og vælg nyeste ──────────────────
+      const historyData = await this.gqlFetch(url, VURDERING_HISTORY_QUERY, { propId: propertyId });
+      const nodes: any[] = historyData?.VUR_Ejendomsvurdering?.nodes ?? [];
 
-      if (!vurNodes.length) {
-        return {
-          ejendomsvaerdi: null, grundvaerdi: null, vurderetAreal: null, vurderingsaar: null,
-          bfeNr,
-          fejl: `VUR_Ejendomsvurdering ikke fundet for fkVurderingsejendomID ${vurderingsejendomId}`,
-        };
+      if (nodes.length === 0) {
+        return this.errorResult(bfeNr, `Ingen vurderingsdata fundet for ejendoms-ID ${propertyId}`);
       }
 
-      const v = vurNodes[0];
+      const nyeste = nodes.sort((a, b) => (b.aar || 0) - (a.aar || 0))[0];
+
       return {
-        ejendomsvaerdi: v.ejendomvaerdiBeloeb ?? null,
-        grundvaerdi: v.grundvaerdiBeloeb ?? null,
-        vurderetAreal: v.vurderetAreal ?? null,
-        vurderingsaar: v.aar ?? null,
+        ejendomsvaerdi: nyeste.ejendomvaerdiBeloeb ?? null,
+        grundvaerdi: nyeste.grundvaerdiBeloeb ?? null,
+        vurderetAreal: nyeste.vurderetAreal ?? null,
+        vurderingsaar: nyeste.aar ?? null,
         bfeNr,
         fejl: null,
       };
+
     } catch (e) {
       console.error("[VUR] Service fejl:", e);
-      return {
-        ejendomsvaerdi: null, grundvaerdi: null, vurderetAreal: null, vurderingsaar: null,
-        bfeNr,
-        fejl: (e as Error).message,
-      };
+      return this.errorResult(bfeNr, (e as Error).message);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Hjælpefunktioner (Private)
+  // -------------------------------------------------------------------------
+
+  private static getConfig(explicit?: VurClientConfig) {
+    const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
+    const endpoint =
+      explicit?.endpoint ??
+      (process as any)?.env?.DATAFORDELER_VUR_ENDPOINT ??
+      "https://graphql.datafordeler.dk/VUR/v1";
+
+    if (!apiKey) {
+      throw new Error(
+        "VUR GraphQL: Manglende DATAFORDELER_API_KEY. " +
+          "Sæt denne som environment variable (uden VITE_ prefix).",
+      );
+    }
+    return { apiKey, endpoint };
+  }
+
+  private static async gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    });
+
+    const bodyText = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${bodyText.slice(0, 200)}`);
+    }
+
+    const parsed = JSON.parse(bodyText);
+    if (parsed.errors?.length) {
+      throw new Error(`GraphQL Fejl: ${parsed.errors[0].message}`);
+    }
+
+    return parsed.data;
+  }
+
+  private static errorResult(bfeNr: string, msg: string): VurData {
+    return {
+      ejendomsvaerdi: null, grundvaerdi: null, vurderetAreal: null, vurderingsaar: null,
+      bfeNr, fejl: msg
+    };
   }
 }
