@@ -1,6 +1,17 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, Lock, AlertTriangle } from "lucide-react";
-import { PHASES, usePhaseStates, type PhaseStatus } from "@/lib/phases";
+import { ArrowLeft, Check, Lock, AlertTriangle, Menu, LogOut, FolderOpen, LogIn } from "lucide-react";
+import { PHASES, usePhaseStates, usePhaseSubKeys, type PhaseStatus } from "@/lib/phases";
+import { useAuth } from "@/lib/auth-context";
+import { signOut } from "@/lib/auth";
+import { UserMenu } from "@/components/user-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 
 export function PhaseBar() {
   const { pathname } = useLocation();
