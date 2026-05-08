@@ -17,9 +17,18 @@ import {
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { useProject, deriveComplianceFlags } from "@/lib/project-store";
+import type { ComplianceFlag } from "@/lib/project-store";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import { PageTransition, Card } from "@/components/wizard-ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
@@ -200,6 +209,7 @@ function ComplianceContent() {
     address,
     bbrData,
     byggeoenske,
+    complianceFlags,
     complianceMetrics,
     setBbrData,
     setComplianceDone,
@@ -322,17 +332,25 @@ function ComplianceContent() {
               .then((analyse) => {
                 setByggeanalyseResultat(analyse);
                 // Opdater compliance flags med regelkerne-violations (ARCH-109)
-                if (analyse.ruleEngine) {
-                  const updatedFlags = deriveComplianceFlags(
-                    result.bbr,
-                    result.kommuneplanramme,
-                    result.naturbeskyttelse,
-                    result.dkjord,
-                    result.geusRisk,
-                    analyse.ruleEngine,
-                  );
-                  setComplianceFlags(updatedFlags);
-                }
+                const updatedFlags = analyse.ruleEngine
+                  ? deriveComplianceFlags(
+                      result.bbr,
+                      result.kommuneplanramme,
+                      result.naturbeskyttelse,
+                      result.dkjord,
+                      result.geusRisk,
+                      analyse.ruleEngine,
+                    )
+                  : null;
+                if (updatedFlags) setComplianceFlags(updatedFlags);
+                // Persist AI-analyse til Supabase (ARCH-112)
+                syncPatch({
+                  byggeanalyseResultat: analyse,
+                  bbrData: result.bbr,
+                  complianceFlags: updatedFlags ?? flags,
+                  lokalplaner: result.lokalplaner,
+                  kommuneplanramme: result.kommuneplanramme,
+                });
               })
               .catch((e: unknown) =>
                 console.warn("[Byggeanalyse] AI analyse fejlede (ikke kritisk):", e),
@@ -389,6 +407,7 @@ function ComplianceContent() {
             save={saveLocal}
             fjernvarme={fjernvarmeLocal}
             naboer={naboerLocal}
+            complianceFlags={complianceFlags}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -466,6 +485,7 @@ function ResultView({
   save,
   fjernvarme,
   naboer,
+  complianceFlags,
   onContinue,
 }: {
   adresse: string;
@@ -479,8 +499,16 @@ function ResultView({
   save: SaveData | null;
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
+  complianceFlags: ComplianceFlag[];
   onContinue: () => void;
 }) {
+  const [showBlockerModal, setShowBlockerModal] = useState(false);
+  const hardBlockers = complianceFlags.filter(
+    (f) => f.status === "blocker" && !f.dispensationMulig,
+  );
+  const softBlockers = complianceFlags.filter(
+    (f) => f.status === "blocker" && f.dispensationMulig === true,
+  );
   const harData = data.beregning_mulig;
   const erBolig = data.anvendelseskode
     ? ["110", "120", "121", "122", "130", "131", "140", "190"].includes(data.anvendelseskode)
@@ -688,13 +716,114 @@ function ResultView({
 
       {naboer && naboer.count > 0 && <NaboerSektion data={naboer} />}
 
-      <button
-        data-testid="compliance-continue"
-        onClick={onContinue}
-        className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
-      >
-        Fortsæt til Økonomi →
-      </button>
+      {hardBlockers.length > 0 && (
+        <div className="flex gap-3 rounded-md border border-danger/40 bg-danger/10 p-4 mb-4">
+          <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-danger mb-1">
+              Byggeri er juridisk blokeret — kan ikke fortsætte
+            </p>
+            <ul className="text-sm text-foreground space-y-1">
+              {hardBlockers.map((f) => (
+                <li key={f.id}>
+                  • {f.label}
+                  {f.detalje ? ` — ${f.detalje}` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {softBlockers.length > 0 && hardBlockers.length === 0 && (
+        <div className="flex gap-3 rounded-md border border-warning/40 bg-warning/10 p-4 mb-4">
+          <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-warning mb-1">
+              Aktive blokkere kræver dispensation
+            </p>
+            <ul className="text-sm text-foreground space-y-1">
+              {softBlockers.map((f) => (
+                <li key={f.id}>
+                  • {f.label}
+                  {f.dispensationMyndighed ? ` (dispensation fra ${f.dispensationMyndighed})` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {hardBlockers.length > 0 ? (
+        <button
+          disabled
+          className="w-full inline-flex items-center justify-center rounded-md bg-danger/10 border border-danger/30 px-6 py-3 font-mono text-sm text-danger/50 cursor-not-allowed"
+        >
+          Byggeri blokeret — kan ikke fortsætte
+        </button>
+      ) : softBlockers.length > 0 ? (
+        <button
+          data-testid="compliance-continue"
+          onClick={() => setShowBlockerModal(true)}
+          className="w-full inline-flex items-center justify-center rounded-md border border-warning/40 bg-warning/10 px-6 py-3 font-mono text-sm text-warning transition-all hover:bg-warning/20"
+        >
+          Fortsæt alligevel (kræver dispensation) →
+        </button>
+      ) : (
+        <button
+          data-testid="compliance-continue"
+          onClick={onContinue}
+          className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
+        >
+          Fortsæt til Økonomi →
+        </button>
+      )}
+
+      <Dialog open={showBlockerModal} onOpenChange={setShowBlockerModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fortsæt med aktive blokkere?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-sm text-muted-foreground">
+              Følgende compliance-blokkere kræver dispensation for at byggeriet kan gennemføres:
+            </p>
+            <ul className="space-y-1">
+              {softBlockers.map((f) => (
+                <li key={f.id} className="text-sm text-foreground">
+                  • {f.label}
+                  {f.dispensationMyndighed ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      — dispensation fra {f.dispensationMyndighed}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-warning">
+              Dispensation er ikke garanteret. Sæt dig ind i kravene inden du fortsætter.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <button className="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-2 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors">
+                Gå tilbage
+              </button>
+            </DialogClose>
+            <button
+              onClick={() => {
+                setShowBlockerModal(false);
+                onContinue();
+              }}
+              className="inline-flex items-center justify-center rounded-md bg-warning/20 border border-warning/40 px-4 py-2 font-mono text-sm text-warning transition-all hover:bg-warning/30"
+            >
+              Jeg forstår — fortsæt alligevel
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Link
         to="/projekt/datacheck"
         className="mt-3 w-full inline-flex items-center justify-center rounded-md border border-border bg-transparent px-6 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"

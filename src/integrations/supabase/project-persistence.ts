@@ -11,6 +11,7 @@ type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
 import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project-store";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -24,6 +25,7 @@ export type ProjectPatch = {
   complianceFlags?: ComplianceFlag[];
   lokalplaner?: Lokalplan[];
   kommuneplanramme?: Kommuneplanramme | null;
+  byggeanalyseResultat?: ByggeanalyseResultat | null;
   complianceDone?: boolean;
   currentStep?: string;
 };
@@ -125,13 +127,15 @@ export async function saveProject(accessToken: string, patch: ProjectPatch): Pro
     patch.bbrData !== undefined ||
     patch.complianceFlags !== undefined ||
     patch.lokalplaner !== undefined ||
-    patch.kommuneplanramme !== undefined
+    patch.kommuneplanramme !== undefined ||
+    patch.byggeanalyseResultat !== undefined
   ) {
     update.compliance_data = {
       bbr: patch.bbrData ?? null,
       flags: patch.complianceFlags ?? [],
       lokalplaner: patch.lokalplaner ?? [],
       kommuneplanramme: patch.kommuneplanramme ?? null,
+      byggeanalyseResultat: patch.byggeanalyseResultat ?? null,
     };
   }
 

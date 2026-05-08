@@ -91,6 +91,8 @@ function RootComponent() {
     setComplianceDone,
     setHusDna,
     setKommuneplanramme,
+    setByggeoenske,
+    setByggeanalyseResultat,
   } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
@@ -123,6 +125,12 @@ function RootComponent() {
           ...project.brief_data,
           kilde: (project.brief_data as { kilde?: "mock" | "anthropic" }).kilde ?? "mock",
         });
+      } else if (
+        typeof project.brief_data === "object" &&
+        project.brief_data !== null &&
+        Object.keys(project.brief_data).length > 0
+      ) {
+        setByggeoenske(project.brief_data as Record<string, unknown>);
       }
       const cd = parseComplianceData(project.compliance_data);
       if (cd) {
@@ -130,6 +138,7 @@ function RootComponent() {
         setComplianceFlags(cd.flags);
         setLokalplaner(cd.lokalplaner);
         if (cd.kommuneplanramme) setKommuneplanramme(cd.kommuneplanramme);
+        if (cd.byggeanalyseResultat) setByggeanalyseResultat(cd.byggeanalyseResultat);
         if (project.compliance_done) setComplianceDone(true);
       }
     });

@@ -240,6 +240,7 @@ type ParsedComplianceData = {
   flags: ComplianceFlag[];
   lokalplaner: Lokalplan[];
   kommuneplanramme: Kommuneplanramme | null;
+  byggeanalyseResultat: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null;
 };
 
 export function parseComplianceData(v: unknown): ParsedComplianceData | null {
@@ -252,6 +253,9 @@ export function parseComplianceData(v: unknown): ParsedComplianceData | null {
     kommuneplanramme: (typeof o.kommuneplanramme === "object"
       ? o.kommuneplanramme
       : null) as Kommuneplanramme | null,
+    byggeanalyseResultat: (typeof o.byggeanalyseResultat === "object"
+      ? o.byggeanalyseResultat
+      : null) as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null,
   };
 }
 
