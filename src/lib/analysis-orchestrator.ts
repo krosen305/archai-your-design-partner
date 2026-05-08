@@ -319,17 +319,25 @@ async function fetchBbr(
 ): Promise<BbrKompliantData | null> {
   try {
     let grundareal: number | null = preFetchedGrundareal;
+    let mat_strandbeskyttelse: boolean | null = null;
+    let mat_fredskov: boolean | null = null;
+    let mat_klitfredning: boolean | null = null;
 
-    // Brug pre-fetched grundareal fra DAR hvis tilgængeligt — undgår dobbelt MAT-kald.
-    // Fallback: hent via ejerlavskode + matrikelnummer hvis DAR-opslaget fejlede.
-    if (grundareal === null && ejerlavskode && matrikelnummer) {
+    // Kald altid MAT hvis ejerlavskode + matrikelnummer er tilgængeligt:
+    //   1. Grundareal (fallback når DAR-opslaget fejlede)
+    //   2. Beskyttelseslinjer (strandbeskyttelse, fredskov, klitfredning) — nul ekstra kost
+    if (ejerlavskode && matrikelnummer) {
       const { MatService } = await import("@/integrations/mat/client");
       const mat = await MatService.getGrundareal(ejerlavskode, matrikelnummer);
-      if (mat.registreretAreal !== null) {
+      if (grundareal === null && mat.registreretAreal !== null) {
         grundareal = mat.registreretAreal;
-      } else {
-        console.warn("[Orchestrator] MAT grundareal mangler:", mat.fejl ?? "ukendt fejl");
       }
+      if (mat.fejl) {
+        console.warn("[Orchestrator] MAT fejl:", mat.fejl);
+      }
+      mat_strandbeskyttelse = mat.strandbeskyttelse;
+      mat_fredskov = mat.fredskov;
+      mat_klitfredning = mat.klitfredning;
     } else if (grundareal === null) {
       console.warn(
         "[Orchestrator] Grundareal ikke tilgængeligt — ejerlavskode/matrikelnummer mangler.",
@@ -338,7 +346,13 @@ async function fetchBbr(
     }
 
     const { BbrService } = await import("@/integrations/bbr/client");
-    return BbrService.getKompliantData(adgangsadresseid, grundareal);
+    const bbrResult = await BbrService.getKompliantData(adgangsadresseid, grundareal);
+    if (bbrResult) {
+      bbrResult.mat_strandbeskyttelse = mat_strandbeskyttelse;
+      bbrResult.mat_fredskov = mat_fredskov;
+      bbrResult.mat_klitfredning = mat_klitfredning;
+    }
+    return bbrResult;
   } catch (e) {
     console.error("[Orchestrator] BBR fejlede:", (e as Error).message);
     return null;

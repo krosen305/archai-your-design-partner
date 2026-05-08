@@ -68,7 +68,9 @@ query GetEjerlav($kode: Long!, $virkningstid: DafDateTime!) {
   }
 }`;
 
-// Trin 2: Slå jordstykke op via ejerlavLokalId + matrikelnummer → hent registreretAreal
+// Trin 2: Slå jordstykke op via ejerlavLokalId + matrikelnummer
+// Henter registreretAreal + beskyttelseslinjer (strandbeskyttelse, fredskov, klitfredning)
+// direkte fra MAT_Jordstykke — samme kald, nul ekstra API-kost.
 const JORDSTYKKE_QUERY = `
 query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virkningstid: DafDateTime!) {
   MAT_Jordstykke(
@@ -82,6 +84,9 @@ query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virknin
     nodes {
       registreretAreal
       matrikelnummer
+      strandbeskyttelse_omfang
+      fredskov_omfang
+      klitfredning_omfang
     }
   }
 }`;
@@ -128,6 +133,10 @@ export type MatGrundarealResult = {
   ejerlavLokalId: string | null;
   ejerlavsnavn: string | null;
   fejl: string | null;
+  // Beskyttelseslinjer fra MAT_Jordstykke — null = ikke berørt eller data mangler
+  strandbeskyttelse: boolean | null;
+  fredskov: boolean | null;
+  klitfredning: boolean | null;
 };
 
 export class MatService {
@@ -153,6 +162,9 @@ export class MatService {
         ejerlavLokalId: null,
         ejerlavsnavn: null,
         fejl: "ejerlavskode og matrikelnummer er påkrævet",
+        strandbeskyttelse: null,
+        fredskov: null,
+        klitfredning: null,
       };
     }
 
@@ -176,6 +188,9 @@ export class MatService {
           ejerlavLokalId: null,
           ejerlavsnavn: null,
           fejl: `MAT_Ejerlav ikke fundet for ejerlavskode ${ejerlavskode}`,
+          strandbeskyttelse: null,
+          fredskov: null,
+          klitfredning: null,
         };
       }
 
@@ -197,15 +212,25 @@ export class MatService {
           ejerlavLokalId,
           ejerlavsnavn,
           fejl: `MAT_Jordstykke ikke fundet: ejerlav ${ejerlavLokalId}, matr ${matr}`,
+          strandbeskyttelse: null,
+          fredskov: null,
+          klitfredning: null,
         };
       }
 
-      const areal: number = jordstykker[0].registreretAreal;
+      const js = jordstykker[0];
+      // omfang-felter: ikke-null og ikke-tom streng = berørt af beskyttelseslinje
+      const omfangToBool = (v: string | null | undefined): boolean | null =>
+        v == null ? null : v !== "" && v !== "Ingen";
+
       return {
-        registreretAreal: areal ?? null,
+        registreretAreal: js.registreretAreal ?? null,
         ejerlavLokalId,
         ejerlavsnavn,
         fejl: null,
+        strandbeskyttelse: omfangToBool(js.strandbeskyttelse_omfang),
+        fredskov: omfangToBool(js.fredskov_omfang),
+        klitfredning: omfangToBool(js.klitfredning_omfang),
       };
     } catch (e) {
       console.error("[MAT] Service fejl:", e);
@@ -214,6 +239,9 @@ export class MatService {
         ejerlavLokalId: null,
         ejerlavsnavn: null,
         fejl: (e as Error).message,
+        strandbeskyttelse: null,
+        fredskov: null,
+        klitfredning: null,
       };
     }
   }

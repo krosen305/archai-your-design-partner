@@ -9,10 +9,8 @@
 //
 // Schema-kilde: https://graphql.datafordeler.dk/BBR/v2/schema
 // Feltnavne bekræftet mod schema:
-//   BBR_Bygning:   byg021, byg026Opfoerelsesaar, byg038SamletBygningsareal,
-//                  byg041BebyggetAreal, byg054AntalEtager
-//   BBR_Grund:     Indeholder IKKE grundareal – grundareal hentes fra DAWA
-//                  (jordstykke.registreretAreal på adgangsadresse-responsen)
+//   BBR_Bygning:   byg021, byg026, byg032, byg033, byg038, byg041, byg054, byg056, byg057, byg070
+//   BBR_Grund:     Indeholder IKKE grundareal – grundareal hentes fra MAT/DAR
 //   Filter-felt:   husnummer (ikke husnummerIdentificerer)
 
 // ---------------------------------------------------------------------------
@@ -59,11 +57,70 @@ const ANVENDELSE_KODER: Record<string, string> = {
   "930": "Udhus",
 };
 
+// byg056 Varmeinstallation (primær)
+const VARMEINSTALLATION_KODER: Record<string, string> = {
+  "1": "Fjernvarme/blokvarme",
+  "2": "Centralvarme (én fyringsenhed)",
+  "3": "Ovn (el, gas, olie mv.)",
+  "5": "Varmepumpe",
+  "6": "Centralvarme (to fyringsenheder)",
+  "7": "Etagecentralvarme",
+  "8": "Ingen varmeinstallation",
+  "9": "Blandet",
+};
+
+// byg057 Opvarmningsmiddel (primært brændstof)
+const OPVARMNINGSMIDDEL_KODER: Record<string, string> = {
+  "1": "El",
+  "2": "Gasolin/olie",
+  "3": "Gas",
+  "4": "Fast brændsel (kul/koks/træ)",
+  "6": "Halm",
+  "7": "Naturgas",
+  "8": "Fjernvarme",
+  "9": "Biobrændsel",
+  "10": "Solenergi",
+  "11": "Andet",
+};
+
+// byg032 YdervaeggensMateriale
+const YDERVAEGS_KODER: Record<string, string> = {
+  "1": "Mursten/tegl",
+  "2": "Letbeton/porebeton",
+  "3": "Træbeklædning",
+  "4": "Betonsten",
+  "5": "Eternit/fibercement",
+  "6": "Plastmateriale",
+  "7": "Metal",
+  "8": "Glas",
+  "10": "Gul mursten",
+  "11": "Rød mursten",
+  "12": "Puds",
+  "80": "Andet",
+  "90": "Blandet",
+};
+
+// byg033 Tagdaekningsmateriale
+const TAGDAEKNING_KODER: Record<string, string> = {
+  "1": "Tagsten (tegl/beton)",
+  "2": "Eternit/fibercement",
+  "3": "Metaltagplader",
+  "4": "Bygningsplader",
+  "5": "Stråtag",
+  "6": "Tagpap",
+  "7": "Glas",
+  "10": "Tagfolie",
+  "11": "Grønt tag",
+  "80": "Andet",
+  "90": "Blandet",
+};
+
 // ---------------------------------------------------------------------------
 // Output type
 // ---------------------------------------------------------------------------
 
 export type BbrKompliantData = {
+  // Eksisterende felter
   byggeaar: string | null;
   bebygget_areal: number | null;
   samlet_areal: number | null;
@@ -74,6 +131,18 @@ export type BbrKompliantData = {
   bebyggelsesprocent: number | null;
   beregning_mulig: boolean;
   fejl: string | null;
+  // Varme (byg056 + byg057) — bruges i energianalyse og fjernvarme-matching
+  varmeinstallation: string | null;
+  opvarmningsmiddel: string | null;
+  // Materialer (byg032 + byg033) — bruges i AI-analyse og materialematch
+  ydervaegs_materiale: string | null;
+  tagdaekning: string | null;
+  // Fredning (byg070) — direkte fra BBR, supplement til SAVE
+  fredet: boolean | null;
+  // Beskyttelseslinjer fra MAT_Jordstykke — sættes af orchestratoren
+  mat_strandbeskyttelse: boolean | null;
+  mat_fredskov: boolean | null;
+  mat_klitfredning: boolean | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -92,9 +161,14 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!) {
     nodes {
       byg021BygningensAnvendelse
       byg026Opfoerelsesaar
+      byg032YdervaeggensMateriale
+      byg033Tagdaekningsmateriale
       byg038SamletBygningsareal
       byg041BebyggetAreal
       byg054AntalEtager
+      byg056Varmeinstallation
+      byg057Opvarmningsmiddel
+      byg070Fredning
     }
   }
 }`;
@@ -185,6 +259,11 @@ export class BbrService {
       }
 
       const anv_kode: string | null = primærBygning.byg021BygningensAnvendelse ?? null;
+      const varme_kode: string | null = primærBygning.byg056Varmeinstallation?.toString() ?? null;
+      const opv_kode: string | null = primærBygning.byg057Opvarmningsmiddel?.toString() ?? null;
+      const yv_kode: string | null = primærBygning.byg032YdervaeggensMateriale?.toString() ?? null;
+      const tag_kode: string | null = primærBygning.byg033Tagdaekningsmateriale?.toString() ?? null;
+      const fredning_raw: string | null = primærBygning.byg070Fredning ?? null;
 
       return {
         byggeaar: primærBygning.byg026Opfoerelsesaar?.toString() ?? null,
@@ -199,6 +278,14 @@ export class BbrService {
         fejl: grundareal
           ? null
           : "Grundareal ikke tilgængeligt – bebyggelsesprocent kan ikke beregnes",
+        varmeinstallation: varme_kode ? (VARMEINSTALLATION_KODER[varme_kode] ?? `Kode ${varme_kode}`) : null,
+        opvarmningsmiddel: opv_kode ? (OPVARMNINGSMIDDEL_KODER[opv_kode] ?? `Kode ${opv_kode}`) : null,
+        ydervaegs_materiale: yv_kode ? (YDERVAEGS_KODER[yv_kode] ?? `Kode ${yv_kode}`) : null,
+        tagdaekning: tag_kode ? (TAGDAEKNING_KODER[tag_kode] ?? `Kode ${tag_kode}`) : null,
+        fredet: fredning_raw !== null ? fredning_raw !== "0" && fredning_raw !== "" : null,
+        mat_strandbeskyttelse: null,
+        mat_fredskov: null,
+        mat_klitfredning: null,
       };
     } catch (e) {
       console.error("[BBR] Service fejl:", e);
@@ -218,6 +305,14 @@ export class BbrService {
       bebyggelsesprocent: null,
       beregning_mulig: false,
       fejl,
+      varmeinstallation: null,
+      opvarmningsmiddel: null,
+      ydervaegs_materiale: null,
+      tagdaekning: null,
+      fredet: null,
+      mat_strandbeskyttelse: null,
+      mat_fredskov: null,
+      mat_klitfredning: null,
     };
   }
 }

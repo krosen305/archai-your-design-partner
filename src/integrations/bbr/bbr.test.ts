@@ -41,9 +41,14 @@ function mockFetch(responses: MockResponse[]) {
 const MOCK_BYGNING = {
   byg026Opfoerelsesaar: 1992,
   byg021BygningensAnvendelse: "120",
+  byg032YdervaeggensMateriale: "1",
+  byg033Tagdaekningsmateriale: "1",
   byg038SamletBygningsareal: 185,
   byg041BebyggetAreal: 120,
   byg054AntalEtager: 1,
+  byg056Varmeinstallation: "1",
+  byg057Opvarmningsmiddel: "8",
+  byg070Fredning: null,
 };
 
 // Grundareal sendes nu udefra (fra MAT) – ikke fra BBR_Grund.
@@ -178,5 +183,49 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     await expect(
       BbrService.getKompliantData("test-id", null, { apiKey: "", endpoint: "x" }),
     ).rejects.toThrow("DATAFORDELER_API_KEY");
+  });
+
+  it("dekoder varmeinstallation kode 1 → Fjernvarme/blokvarme", async () => {
+    mockFetch([okResponse([MOCK_BYGNING])]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.varmeinstallation).toBe("Fjernvarme/blokvarme");
+  });
+
+  it("dekoder opvarmningsmiddel kode 8 → Fjernvarme", async () => {
+    mockFetch([okResponse([MOCK_BYGNING])]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.opvarmningsmiddel).toBe("Fjernvarme");
+  });
+
+  it("dekoder ydervaegs_materiale kode 1 → Mursten/tegl", async () => {
+    mockFetch([okResponse([MOCK_BYGNING])]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.ydervaegs_materiale).toBe("Mursten/tegl");
+  });
+
+  it("dekoder tagdaekning kode 1 → Tagsten (tegl/beton)", async () => {
+    mockFetch([okResponse([MOCK_BYGNING])]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.tagdaekning).toBe("Tagsten (tegl/beton)");
+  });
+
+  it("fredet = null når byg070Fredning er null", async () => {
+    mockFetch([okResponse([MOCK_BYGNING])]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.fredet).toBeNull();
+  });
+
+  it("fredet = true ved ikke-null byg070Fredning", async () => {
+    mockFetch([okResponse([{ ...MOCK_BYGNING, byg070Fredning: "F" }])]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.fredet).toBe(true);
+  });
+
+  it("mat-beskyttelsesfelter er null som standard (sættes af orchestrator)", async () => {
+    mockFetch([okResponse([MOCK_BYGNING])]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.mat_strandbeskyttelse).toBeNull();
+    expect(result.mat_fredskov).toBeNull();
+    expect(result.mat_klitfredning).toBeNull();
   });
 });

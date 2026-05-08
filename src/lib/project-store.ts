@@ -332,6 +332,51 @@ export function deriveComplianceFlags(
     });
   }
 
+  // ── Beskyttelseslinjer fra MAT_Jordstykke (autoritative kildedata) ────────
+  // Supplerer eller erstatter SDFI naturbeskyttelse (IS_MOCK=true) for de tre
+  // typer MAT_Jordstykke registrerer: strandbeskyttelse, fredskov, klitfredning.
+  if (bbr) {
+    if (bbr.mat_strandbeskyttelse) {
+      flags.push({
+        id: "mat-strandbeskyttelse",
+        label: "Strandbeskyttelseslinje",
+        status: "blocker",
+        detalje: "Jordstykket er registreret inden for strandbeskyttelseslinje i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
+        aktuelVærdi: "Inden for zone",
+        tilladt: "Ingen byggeri uden dispensation",
+        kilde: "bbr",
+        dispensationMulig: true,
+        dispensationMyndighed: "Kystdirektoratet",
+      });
+    }
+    if (bbr.mat_fredskov) {
+      flags.push({
+        id: "mat-fredskov",
+        label: "Fredskov",
+        status: "blocker",
+        detalje: "Jordstykket er udlagt som fredskov i Matrikelregistret — skovlovens §28 forbyder byggeri uden dispensation fra Miljøstyrelsen",
+        aktuelVærdi: "Fredskov",
+        tilladt: "Ingen byggeri uden dispensation",
+        kilde: "bbr",
+        dispensationMulig: true,
+        dispensationMyndighed: "Miljøstyrelsen",
+      });
+    }
+    if (bbr.mat_klitfredning) {
+      flags.push({
+        id: "mat-klitfredning",
+        label: "Klitfredning",
+        status: "blocker",
+        detalje: "Jordstykket er klitfredet i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
+        aktuelVærdi: "Inden for klitfredet zone",
+        tilladt: "Ingen byggeri uden dispensation",
+        kilde: "bbr",
+        dispensationMulig: true,
+        dispensationMyndighed: "Kystdirektoratet",
+      });
+    }
+  }
+
   // ── Naturbeskyttelseslinjer (ARCH-65) ───────────────────────────────────
   if (naturbeskyttelse) {
     const linjer: Array<{ key: keyof NaturbeskyttelsesResultat; label: string; detalje: string }> =

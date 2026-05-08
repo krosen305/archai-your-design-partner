@@ -43,6 +43,14 @@ export const MOCK_BBR: BbrKompliantData = {
   anvendelseskode: "120",
   anvendelse_tekst: "Fritliggende enfamilieshus",
   fejl: null,
+  varmeinstallation: "Fjernvarme/blokvarme",
+  opvarmningsmiddel: "Fjernvarme",
+  ydervaegs_materiale: "Mursten/tegl",
+  tagdaekning: "Tagsten (tegl/beton)",
+  fredet: null,
+  mat_strandbeskyttelse: null,
+  mat_fredskov: null,
+  mat_klitfredning: null,
 };
 
 // ---------------------------------------------------------------------------
