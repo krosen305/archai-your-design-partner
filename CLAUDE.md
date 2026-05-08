@@ -103,9 +103,10 @@ Regenerér: `curl -s "https://graphql.datafordeler.dk/{REGISTER}/v2/schema?apiKe
 
 ## Slash commands (Claude Code)
 
-| Kommando                      | Beskrivelse                                                     |
-| ----------------------------- | --------------------------------------------------------------- |
-| `/new-issue <idébeskrivelse>` | Genererer og opretter en Linear ARCH-issue direkte fra fritekst |
+| Kommando                      | Beskrivelse                                                          |
+| ----------------------------- | -------------------------------------------------------------------- |
+| `/new-issue <idébeskrivelse>` | Genererer og opretter en Linear ARCH-issue direkte fra fritekst      |
+| `/sync-docs`                  | Tjekker og retter forældet dokumentation — kør efter store ændringer |
 
 Filer: `.claude/commands/`
 
@@ -117,4 +118,5 @@ Filer: `.claude/commands/`
 - [ ] `bunx eslint .` — ingen nye fejl
 - [ ] Ingen `console.log` eller debug-kode
 - [ ] Nye env-variabler dokumenteret herover
+- [ ] Docs i sync: hvis integration-klient, project-store, orchestrator eller routes er ændret → kør `/sync-docs`
 - [ ] Linear issue → **Done**
