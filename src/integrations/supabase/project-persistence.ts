@@ -12,6 +12,7 @@ import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
+import type { VurData } from "@/integrations/vur/client";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -26,6 +27,7 @@ export type ProjectPatch = {
   lokalplaner?: Lokalplan[];
   kommuneplanramme?: Kommuneplanramme | null;
   byggeanalyseResultat?: ByggeanalyseResultat | null;
+  vurderingData?: VurData | null;
   complianceDone?: boolean;
   currentStep?: string;
 };
@@ -128,7 +130,8 @@ export async function saveProject(accessToken: string, patch: ProjectPatch): Pro
     patch.complianceFlags !== undefined ||
     patch.lokalplaner !== undefined ||
     patch.kommuneplanramme !== undefined ||
-    patch.byggeanalyseResultat !== undefined
+    patch.byggeanalyseResultat !== undefined ||
+    patch.vurderingData !== undefined
   ) {
     update.compliance_data = {
       bbr: patch.bbrData ?? null,
@@ -136,6 +139,7 @@ export async function saveProject(accessToken: string, patch: ProjectPatch): Pro
       lokalplaner: patch.lokalplaner ?? [],
       kommuneplanramme: patch.kommuneplanramme ?? null,
       byggeanalyseResultat: patch.byggeanalyseResultat ?? null,
+      vurderingData: patch.vurderingData ?? null,
     };
   }
 

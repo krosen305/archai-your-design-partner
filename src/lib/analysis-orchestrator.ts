@@ -39,6 +39,7 @@ import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { SaveData } from "@/integrations/save/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
+import type { VurData } from "@/integrations/vur/client";
 import type { Json } from "@/integrations/supabase/types";
 import {
   getCachedCompliance,
@@ -67,6 +68,7 @@ export type ComplianceResult = {
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
   save: SaveData | null;
+  vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
 };
 
@@ -123,6 +125,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     | "naboer"
     | "fjernvarme"
     | "save"
+    | "ruleEngine"
   >;
   let complianceBase: ComplianceBase | null = null;
   try {
@@ -144,15 +147,17 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   }
 
   if (!complianceBase) {
-    const [bbrResult, plandataResult] = await Promise.all([
+    const [bbrResult, plandataResult, vurderingResult] = await Promise.all([
       fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer, preFetchedGrundareal),
       fetchPlandata(koordinater),
+      fetchVur(adgangsadresseid),
     ]);
     complianceBase = {
       bbr: bbrResult,
       lokalplaner: plandataResult.lokalplaner,
       kommuneplanramme: plandataResult.kommuneplanramme,
       analysedAt: new Date().toISOString(),
+      vurderingData: vurderingResult,
     };
     try {
       await setCachedCompliance(addressId, {
@@ -166,6 +171,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         naboer: null,
         fjernvarme: null,
         save: null,
+        vurderingData: complianceBase.vurderingData,
       });
     } catch (e) {
       console.warn(
@@ -304,6 +310,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     naboer,
     fjernvarme,
     save,
+    vurderingData: complianceBase.vurderingData,
   };
 }
 
@@ -380,4 +387,21 @@ async function fetchPlandata(
     lokalplaner: lokalplanerResult.lokalplaner,
     kommuneplanramme: kommuneplanrammeResult.ramme,
   };
+}
+
+async function fetchVur(adgangsadresseid: string): Promise<VurData | null> {
+  if (!adgangsadresseid) return null;
+  try {
+    const { EbrService } = await import("@/integrations/ebr/client");
+    const ebr = await EbrService.getBfeNr(adgangsadresseid);
+    if (ebr.fejl || !ebr.bfeNr) {
+      console.warn("[Orchestrator] EBR fejl — VUR springes over:", ebr.fejl);
+      return null;
+    }
+    const { VurService } = await import("@/integrations/vur/client");
+    return await VurService.getVurdering(ebr.bfeNr);
+  } catch (e) {
+    console.warn("[Orchestrator] VUR fejlede:", (e as Error).message);
+    return null;
+  }
 }

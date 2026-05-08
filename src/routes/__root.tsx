@@ -93,6 +93,7 @@ function RootComponent() {
     setKommuneplanramme,
     setByggeoenske,
     setByggeanalyseResultat,
+    setVurderingData,
   } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
@@ -139,6 +140,7 @@ function RootComponent() {
         setLokalplaner(cd.lokalplaner);
         if (cd.kommuneplanramme) setKommuneplanramme(cd.kommuneplanramme);
         if (cd.byggeanalyseResultat) setByggeanalyseResultat(cd.byggeanalyseResultat);
+        if (cd.vurderingData) setVurderingData(cd.vurderingData);
         if (project.compliance_done) setComplianceDone(true);
       }
     });

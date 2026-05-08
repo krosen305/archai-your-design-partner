@@ -6,6 +6,7 @@ import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskytt
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
+import type { VurData } from "@/integrations/vur/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
@@ -139,6 +140,7 @@ type State = {
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
   kommuneplanramme: Kommuneplanramme | null;
+  vurderingData: VurData | null;
 
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
@@ -160,6 +162,7 @@ type State = {
   setLokalplaner: (lp: Lokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
   setKommuneplanramme: (ramme: Kommuneplanramme | null) => void;
+  setVurderingData: (v: VurData | null) => void;
 
   reset: () => void;
 };
@@ -187,6 +190,7 @@ export const useProject = create<State>((set) => ({
   lokalplaner: [],
   lokalplanExtract: null,
   kommuneplanramme: null,
+  vurderingData: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -203,6 +207,7 @@ export const useProject = create<State>((set) => ({
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
   setKommuneplanramme: (kommuneplanramme) => set({ kommuneplanramme }),
+  setVurderingData: (vurderingData) => set({ vurderingData }),
 
   reset: () =>
     set({
@@ -220,6 +225,7 @@ export const useProject = create<State>((set) => ({
       lokalplaner: [],
       lokalplanExtract: null,
       kommuneplanramme: null,
+      vurderingData: null,
     }),
 }));
 
@@ -242,6 +248,7 @@ type ParsedComplianceData = {
   lokalplaner: Lokalplan[];
   kommuneplanramme: Kommuneplanramme | null;
   byggeanalyseResultat: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null;
+  vurderingData: VurData | null;
 };
 
 export function parseComplianceData(v: unknown): ParsedComplianceData | null {
@@ -257,6 +264,7 @@ export function parseComplianceData(v: unknown): ParsedComplianceData | null {
     byggeanalyseResultat: (typeof o.byggeanalyseResultat === "object"
       ? o.byggeanalyseResultat
       : null) as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null,
+    vurderingData: (typeof o.vurderingData === "object" ? o.vurderingData : null) as VurData | null,
   };
 }
 

@@ -221,6 +221,7 @@ function ComplianceContent() {
     setKommuneplanramme,
     setByggeanalyseResultat,
     byggeanalyseResultat,
+    setVurderingData,
   } = useProject();
 
   const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
@@ -283,6 +284,7 @@ function ComplianceContent() {
           setTerrainLocal(result.terrain ?? null);
           setSaveLocal(result.save ?? null);
           setFjernvarmeLocal(result.fjernvarme ?? null);
+          if (result.vurderingData) setVurderingData(result.vurderingData);
           setNaboerLocal(result.naboer ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
@@ -303,6 +305,7 @@ function ComplianceContent() {
             complianceFlags: flags,
             lokalplaner: result.lokalplaner,
             kommuneplanramme: result.kommuneplanramme,
+            vurderingData: result.vurderingData,
             complianceDone: true,
             currentStep: "byggeanalyse",
           });
