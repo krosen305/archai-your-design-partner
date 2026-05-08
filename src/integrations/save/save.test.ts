@@ -1,19 +1,48 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { SaveService } from "./client";
 
-// IS_MOCK=true — alle tests kører mod mock-implementationen
+// DAI WFS er live (IS_MOCK=false) — tests mocker fetch-kaldet
 
-describe("SaveService (IS_MOCK=true)", () => {
-  it("returnerer fredet=false og saveBevaringsvaerdi=null for alle koordinater", async () => {
+function mockFetch(features: unknown[] = []) {
+  globalThis.fetch = mock(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ totalFeatures: features.length, features }),
+  })) as any;
+}
+
+describe("SaveService", () => {
+  beforeEach(() => {
+    globalThis.fetch = fetch;
+  });
+
+  it("returnerer fredet=false når DAI WFS returnerer 0 features", async () => {
+    mockFetch([]);
     const result = await SaveService.getBevaringsdata({ lat: 55.676, lng: 12.568 });
     expect(result.fredet).toBe(false);
     expect(result.saveBevaringsvaerdi).toBeNull();
-    expect(result.kilde).toBe("mock");
+    expect(result.kilde).toBe("dai_wfs");
   });
 
-  it("returnerer samme mock-data uanset koordinater", async () => {
-    const r1 = await SaveService.getBevaringsdata({ lat: 55.0, lng: 10.0 });
-    const r2 = await SaveService.getBevaringsdata({ lat: 57.0, lng: 9.0 });
-    expect(r1).toEqual(r2);
+  it("returnerer fredet=true når DAI WFS returnerer features", async () => {
+    mockFetch([{ id: "mock-fredet" }]);
+    const result = await SaveService.getBevaringsdata({ lat: 55.676, lng: 12.568 });
+    expect(result.fredet).toBe(true);
+    expect(result.kilde).toBe("dai_wfs");
+  });
+
+  it("returnerer fredet=false og kilde=null ved fetch-fejl (fail-open)", async () => {
+    globalThis.fetch = mock(async () => {
+      throw new Error("netværksfejl");
+    }) as any;
+    const result = await SaveService.getBevaringsdata({ lat: 55.676, lng: 12.568 });
+    expect(result.fredet).toBe(false);
+    expect(result.kilde).toBeNull();
+  });
+
+  it("saveBevaringsvaerdi er altid null (kræver separat Kulturmiljøregisteret-endpoint)", async () => {
+    mockFetch([{ id: "fredet" }]);
+    const result = await SaveService.getBevaringsdata({ lat: 55.0, lng: 10.0 });
+    expect(result.saveBevaringsvaerdi).toBeNull();
   });
 });

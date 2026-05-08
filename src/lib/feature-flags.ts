@@ -5,7 +5,7 @@
 // (det håndteres internt i hver service).
 
 export const FEATURE_FLAGS = {
-  /** Tinglysning servitut-API er ikke implementeret endnu (ARCH-26). */
+  /** TingbogenV2 kræver særskilt TINGBOG-abonnement på Datafordeler (ARCH-30). */
   tinglysningMock: true,
   /** Lokalplan PDF-udtræk via Anthropic. False = live (ARCH-53). */
   pdfExtractorMock: false,
@@ -13,6 +13,6 @@ export const FEATURE_FLAGS = {
   husDnaMock: false,
   /** Byggeanalyse via Anthropic (Byggeoenske → struktureret compliance). False = live (ARCH-83). */
   byggeanalyseMock: false,
-  /** Fjernvarme WFS-layer afventer GetCapabilities-verifikation (ARCH-111). */
-  fjernvarmeMock: true,
+  /** Fjernvarme — live via Plandata WFS pdk:theme_pdk_varmeplansomraade_vedtaget_v (ARCH-111). */
+  fjernvarmeMock: false,
 } as const;

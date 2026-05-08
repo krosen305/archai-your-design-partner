@@ -3,23 +3,19 @@
 // SDFI naturbeskyttelseslinjer — ARCH-65.
 // Hårde bygge-stop fra naturbeskyttelsesloven der gælder OVENI lokalplanen.
 //
-// ⚠️  IS_MOCK=true — live API afventer endpoint-verifikation.
+// Endpoint verificeret 2026-05-08 (ARCH-65): alle 5 typenames returnerer HTTP 200.
 //
-// Forventet API: Danmarks Arealinformation (DAI) WFS via Miljøportalen.
+// API: Danmarks Arealinformation (DAI) WFS via Miljøportalen.
 //   Endpoint:   https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer
 //   Auth:       Ingen (offentlig tjeneste)
-//   Format:     WFS 2.0, BBOX eller CQL_FILTER, OUTPUTFORMAT=application/json
+//   Format:     WFS 2.0, CQL_FILTER med INTERSECTS(Shape,...), outputformat=application/json
 //   Typenames:  dmp:STRANDBESKYTTELSESLINJE, dmp:SKOVBYGGELINJE,
 //               dmp:SOEBESKYTTELSESLINJE, dmp:AABESKYTTELSESLINJE, dmp:KLITFREDNING
 //
-// Alternativt endpoint (ubekræftet — kræver DATAFORSYNINGEN_TOKEN):
-//   https://api.dataforsyningen.dk/<theme>?SERVICE=WFS&REQUEST=GetFeature&...
-//   Themes: theme_pdk_strandbeskyttelseslinje_vedtaget, theme_pdk_skovbyggelinje,
-//           theme_pdk_soebeskyttelseslinje, theme_pdk_aabeskyttelseslinje, theme_pdk_klitfredning
-//
-// Aktiver live API: sæt IS_MOCK = false og verificér endpoint + typename mod GetCapabilities.
+// OBS: strandbeskyttelse + klitfredning dækkes OGSÅ af MAT_Jordstykke (live).
+// DAI WFS er den spatiale kilde; MAT er den registrerede kilde — komplementære checks.
 
-const IS_MOCK = true;
+const IS_MOCK = false;
 
 const DAI_WFS = "https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer";
 

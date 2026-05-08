@@ -14,14 +14,14 @@
 // Current layer status:
 //   compliance_result   ✅  BBR + MAT + Plandata pipeline (live)
 //   lokalplan_extracted ✅  live Anthropic PDF-parsing (ARCH-53)
-//   naturbeskyttelse    ⏳  IS_MOCK=true — ARCH-65 (DAI WFS endpoint afventer verifikation)
+//   naturbeskyttelse    ✅  live DAI WFS — ARCH-65 (verificeret 2026-05-08, alle 5 typenames)
 //   dkjord              ⏳  IS_MOCK=true — ARCH-66 (dkjord.mst.dk ikke tilgængelig fra dev)
-//   geus                ⏳  IS_MOCK=true — ARCH-101 (layer-navne afventer GetCapabilities)
-//   servitut_extracted  ⏳  IS_MOCK=true — ARCH-104 (TingbogenV2 schema afventer verificering)
-//   terrain             ⏳  IS_MOCK=true — ARCH-102 (DHM WCS GetCoverage afventer verificering)
+//   geus                ⏳  IS_MOCK=true — ARCH-101 (radon-layer eksisterer ikke i GEUS WFS)
+//   servitut_extracted  ⏳  IS_MOCK=true — ARCH-30 (TingbogenV2 kræver særskilt Datafordeler-abonnement)
+//   terrain             ⏳  IS_MOCK=true — ARCH-102 (DHM WCS kræver særskilt Datafordeler-abonnement)
 //   naboer              ✅  live DAWA REST (ARCH-103)
-//   fjernvarme          ⏳  IS_MOCK=true — ARCH-111 (layer-navn afventer GetCapabilities-verifikation)
-//   save                ⏳  IS_MOCK=true — ARCH-29 (DAI WFS + Kulturmiljøregisteret afventer verifikation)
+//   fjernvarme          ✅  live Plandata WFS pdk:theme_pdk_varmeplansomraade_vedtaget_v (ARCH-111)
+//   save                ✅  live DAI WFS dmp:FREDEDE_BYGNINGER (ARCH-29, verificeret 2026-05-08)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
 import { validateEnv } from "@/lib/env";

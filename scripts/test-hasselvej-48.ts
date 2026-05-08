@@ -1,36 +1,39 @@
 /**
  * Live-test: Hasselvej 48, 2830 Virum
- * Kør: bun --env-file=.env.local scripts/test-hasselvej-48.ts
+ * Kør: bun --env-file=dist/server/.dev.vars scripts/test-hasselvej-48.ts
  *
- * Tester EBR, VUR og BBR (nye felter) direkte mod Datafordeler.
+ * Tester ALLE services direkte mod live endpoints.
+ * Outputter opdateret oversigt til docs/datapunkter-hasselvej-48.md
  */
 
-// Kendte IDs for Hasselvej 48, 2830 Virum
-const ADRESSEID = "0a3f50a6-34da-32b8-e044-0003ba298018";       // DAR adresse id_lokalId
-const ADGANGSADRESSEID = "0a3f5081-d7e2-32b8-e044-0003ba298018"; // DAR husnummer id_lokalId (fra DAWA)
+// Kendte IDs for Hasselvej 48, 2830 Virum (verificeret via DAWA/DAR, 2026-05-08)
+const ADRESSEID        = "0a3f50a6-34da-32b8-e044-0003ba298018"; // DAR adresse id_lokalId
+const ADGANGSADRESSEID = "0a3f507d-4cf9-32b8-e044-0003ba298018"; // DAR husnummer id_lokalId
+const EJERLAVSKODE     = 12352;     // Virum By, Virum
+const MATRIKELNUMMER   = "5fo";
+const LAT              = 55.7937;
+const LNG              = 12.4803;
+
+const API_KEY = process.env.DATAFORDELER_API_KEY ?? "";
+if (!API_KEY) {
+  console.error("DATAFORDELER_API_KEY mangler");
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const API_KEY = process.env.DATAFORDELER_API_KEY ?? "";
-if (!API_KEY) {
-  console.error("DATAFORDELER_API_KEY mangler — kør med: bun --env-file=.env.local scripts/test-hasselvej-48.ts");
-  process.exit(1);
-}
-
-function url(endpoint: string) {
-  const u = new URL(endpoint);
-  u.searchParams.set("apiKey", API_KEY);
-  return u;
-}
+const virkningstid = new Date().toISOString();
 
 async function gql(endpoint: string, query: string, variables: Record<string, unknown>) {
-  const u = url(endpoint);
+  const u = new URL(endpoint);
+  u.searchParams.set("apiKey", API_KEY);
   const res = await fetch(u.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(10_000),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
@@ -39,254 +42,372 @@ async function gql(endpoint: string, query: string, variables: Record<string, un
   return parsed.data;
 }
 
-const virkningstid = new Date().toISOString();
+async function wfsGet(url: string): Promise<{ ok: boolean; status: number; body: string }> {
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8_000),
+    });
+    const body = await res.text();
+    return { ok: res.ok, status: res.status, body };
+  } catch (e) {
+    return { ok: false, status: 0, body: (e as Error).message };
+  }
+}
+
+const ok   = (s: string) => `  ✅ ${s}`;
+const warn = (s: string) => `  ⚠️  ${s}`;
+const err  = (s: string) => `  ❌ ${s}`;
 
 // ---------------------------------------------------------------------------
-// 1. BBR — nye felter (varme, materialer, fredning)
+// Resultater (akkumuleret til markdown-output)
+// ---------------------------------------------------------------------------
+
+type ServiceResult = { navn: string; status: "live" | "mock" | "fejl"; noter: string[] };
+const resultater: ServiceResult[] = [];
+
+// ---------------------------------------------------------------------------
+// 1. BBR
 // ---------------------------------------------------------------------------
 
 console.log("\n═══ 1. BBR — bygningsdata ═══");
+const bbrResult: ServiceResult = { navn: "BBR v2 GraphQL", status: "fejl", noter: [] };
 try {
-  const bbrData = await gql(
+  const data = await gql(
     "https://graphql.datafordeler.dk/BBR/v2",
-    `query GetBygning($id: String!, $virkningstid: DafDateTime!) {
-      BBR_Bygning(
-        where: { husnummer: { eq: $id } }
-        virkningstid: $virkningstid
-      ) {
+    `query Q($id: String!, $vt: DafDateTime!) {
+      BBR_Bygning(where: { husnummer: { eq: $id } } virkningstid: $vt) {
         nodes {
-          byg021BygningensAnvendelse
-          byg026Opfoerelsesaar
-          byg032YdervaeggensMateriale
-          byg033Tagdaekningsmateriale
-          byg038SamletBygningsareal
-          byg041BebyggetAreal
-          byg054AntalEtager
-          byg056Varmeinstallation
-          byg057Opvarmningsmiddel
-          byg070Fredning
+          byg021BygningensAnvendelse byg026Opfoerelsesaar
+          byg032YdervaeggensMateriale byg033Tagdaekningsmateriale
+          byg038SamletBygningsareal byg041BebyggetAreal byg054AntalEtager
+          byg056Varmeinstallation byg057Opvarmningsmiddel byg070Fredning
         }
       }
     }`,
-    { id: ADGANGSADRESSEID, virkningstid },
+    { id: ADGANGSADRESSEID, vt: virkningstid },
   );
-  const bygninger = bbrData?.BBR_Bygning?.nodes ?? [];
-  console.log(`  Antal bygninger fundet: ${bygninger.length}`);
-  if (bygninger.length > 0) {
-    const b = bygninger[0];
-    console.log("  byg021 Anvendelse:", b.byg021BygningensAnvendelse);
-    console.log("  byg026 Byggeår:", b.byg026Opfoerelsesaar);
-    console.log("  byg032 Ydervæg:", b.byg032YdervaeggensMateriale);
-    console.log("  byg033 Tag:", b.byg033Tagdaekningsmateriale);
-    console.log("  byg038 Samlet areal:", b.byg038SamletBygningsareal);
-    console.log("  byg041 Bebygget areal:", b.byg041BebyggetAreal);
-    console.log("  byg054 Etager:", b.byg054AntalEtager);
-    console.log("  byg056 Varmeinstallation:", b.byg056Varmeinstallation);
-    console.log("  byg057 Opvarmningsmiddel:", b.byg057Opvarmningsmiddel);
-    console.log("  byg070 Fredning:", b.byg070Fredning);
+  const nodes = data?.BBR_Bygning?.nodes ?? [];
+  console.log(ok(`${nodes.length} bygninger fundet`));
+  const primær = nodes.find((b: any) => !["910","920","930","940"].includes(b.byg021BygningensAnvendelse));
+  if (primær) {
+    bbrResult.noter.push(`Byggeår: ${primær.byg026Opfoerelsesaar}`);
+    bbrResult.noter.push(`Bebygget areal: ${primær.byg041BebyggetAreal} m²`);
+    bbrResult.noter.push(`Samlet areal: ${primær.byg038SamletBygningsareal} m²`);
+    bbrResult.noter.push(`Etager: ${primær.byg054AntalEtager}`);
+    bbrResult.noter.push(`Anvendelse: ${primær.byg021BygningensAnvendelse}`);
+    bbrResult.noter.push(`Ydervæg (byg032): ${primær.byg032YdervaeggensMateriale}`);
+    bbrResult.noter.push(`Tag (byg033): ${primær.byg033Tagdaekningsmateriale}`);
+    bbrResult.noter.push(`Varme (byg056): ${primær.byg056Varmeinstallation}`);
+    bbrResult.noter.push(`Opvarmning (byg057): ${primær.byg057Opvarmningsmiddel}`);
+    bbrResult.noter.push(`Fredet (byg070): ${primær.byg070Fredning ?? "null"}`);
+    for (const n of bbrResult.noter) console.log(ok(n));
+    bbrResult.status = "live";
   }
 } catch (e) {
-  console.error("  ❌ BBR fejl:", (e as Error).message);
+  console.log(err((e as Error).message));
+  bbrResult.noter.push((e as Error).message);
 }
+resultater.push(bbrResult);
 
 // ---------------------------------------------------------------------------
-// 2. MAT — beskyttelseslinjer (strandbeskyttelse, fredskov, klitfredning)
+// 2. MAT — grundareal + beskyttelseslinjer (korrekte IDs)
 // ---------------------------------------------------------------------------
 
-console.log("\n═══ 2. MAT — beskyttelseslinjer via ejerlavskode 173551 / matr 8a ═══");
+console.log("\n═══ 2. MAT — grundareal + beskyttelseslinjer (ejerlavskode 12352, matr 5fo) ═══");
+const matResult: ServiceResult = { navn: "MAT v2 GraphQL", status: "fejl", noter: [] };
 try {
-  // Trin 1: Ejerlav
   const ejerlavData = await gql(
     "https://graphql.datafordeler.dk/MAT/v2",
-    `query GetEjerlav($kode: Long!, $virkningstid: DafDateTime!) {
-      MAT_Ejerlav(
-        where: { ejerlavskode: { eq: $kode } }
-        virkningstid: $virkningstid
-        first: 1
-      ) {
+    `query Q($kode: Long!, $vt: DafDateTime!) {
+      MAT_Ejerlav(where: { ejerlavskode: { eq: $kode } } virkningstid: $vt first: 1) {
         nodes { id_lokalId ejerlavsnavn }
       }
     }`,
-    { kode: 173551, virkningstid },
+    { kode: EJERLAVSKODE, vt: virkningstid },
   );
-  const ejerlaver = ejerlavData?.MAT_Ejerlav?.nodes ?? [];
-  if (!ejerlaver.length) {
-    console.log("  ⚠ MAT_Ejerlav ikke fundet for ejerlavskode 173551");
-  } else {
-    const ejerlav = ejerlaver[0];
-    console.log("  Ejerlav id_lokalId:", ejerlav.id_lokalId);
-    console.log("  Ejerlavsnavn:", ejerlav.ejerlavsnavn);
+  const ejerlav = ejerlavData?.MAT_Ejerlav?.nodes?.[0];
+  if (!ejerlav) throw new Error(`MAT_Ejerlav ikke fundet for kode ${EJERLAVSKODE}`);
+  console.log(ok(`Ejerlav: ${ejerlav.ejerlavsnavn} (${ejerlav.id_lokalId})`));
 
-    // Trin 2: Jordstykke
-    const jsData = await gql(
-      "https://graphql.datafordeler.dk/MAT/v2",
-      `query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virkningstid: DafDateTime!) {
-        MAT_Jordstykke(
-          where: {
-            ejerlavLokalId: { eq: $ejerlavLokalId }
-            matrikelnummer: { eq: $matrikelnummer }
-          }
-          virkningstid: $virkningstid
-          first: 1
-        ) {
-          nodes {
-            registreretAreal
-            matrikelnummer
-            strandbeskyttelse_omfang
-            fredskov_omfang
-            klitfredning_omfang
-          }
-        }
-      }`,
-      { ejerlavLokalId: ejerlav.id_lokalId, matrikelnummer: "8a", virkningstid },
-    );
-    const jordstykker = jsData?.MAT_Jordstykke?.nodes ?? [];
-    if (!jordstykker.length) {
-      console.log("  ⚠ MAT_Jordstykke ikke fundet for matr. 8a");
-    } else {
-      const js = jordstykker[0];
-      console.log("  Registreret areal:", js.registreretAreal, "m²");
-      console.log("  Strandbeskyttelse_omfang:", js.strandbeskyttelse_omfang);
-      console.log("  Fredskov_omfang:", js.fredskov_omfang);
-      console.log("  Klitfredning_omfang:", js.klitfredning_omfang);
-    }
-  }
-} catch (e) {
-  console.error("  ❌ MAT fejl:", (e as Error).message);
-}
-
-// ---------------------------------------------------------------------------
-// 3. EBR — BFE-nummer fra adresseLokalId
-// ---------------------------------------------------------------------------
-
-console.log("\n═══ 3. EBR — BFE-nummer ═══");
-let bfeNr: string | null = null;
-try {
-  const ebrData = await gql(
-    "https://graphql.datafordeler.dk/EBR/v1",
-    `query GetEjendomsbeliggenhed($adresseLokalId: String!, $virkningstid: DafDateTime!) {
-      EBR_Ejendomsbeliggenhed(
-        where: { adresseLokalId: { eq: $adresseLokalId } }
-        virkningstid: $virkningstid
-        first: 1
+  const jsData = await gql(
+    "https://graphql.datafordeler.dk/MAT/v2",
+    `query Q($ejerlavId: String!, $matr: String!, $vt: DafDateTime!) {
+      MAT_Jordstykke(
+        where: { ejerlavLokalId: { eq: $ejerlavId } matrikelnummer: { eq: $matr } }
+        virkningstid: $vt first: 1
       ) {
         nodes {
-          bestemtFastEjendomBFENr
-          id_lokalId
+          registreretAreal matrikelnummer
+          strandbeskyttelse_omfang fredskov_omfang klitfredning_omfang
         }
       }
     }`,
-    { adresseLokalId: ADGANGSADRESSEID, virkningstid },
+    { ejerlavId: ejerlav.id_lokalId, matr: MATRIKELNUMMER, vt: virkningstid },
   );
-  const nodes = ebrData?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
-  if (!nodes.length) {
-    console.log("  ⚠ EBR_Ejendomsbeliggenhed ikke fundet for adresseLokalId:", ADGANGSADRESSEID);
-    // Prøv med adresseid som fallback
-    console.log("  Prøver med adresseid som fallback...");
-    const ebrData2 = await gql(
-      "https://graphql.datafordeler.dk/EBR/v1",
-      `query GetEjendomsbeliggenhed2($adresseLokalId: String!, $virkningstid: DafDateTime!) {
-        EBR_Ejendomsbeliggenhed(
-          where: { adresseLokalId: { eq: $adresseLokalId } }
-          virkningstid: $virkningstid
-          first: 1
-        ) {
-          nodes {
-            bestemtFastEjendomBFENr
-            id_lokalId
-          }
-        }
-      }`,
-      { adresseLokalId: ADRESSEID, virkningstid },
-    );
-    const nodes2 = ebrData2?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
-    if (!nodes2.length) {
-      console.log("  ⚠ EBR_Ejendomsbeliggenhed ikke fundet med adresseid heller");
-    } else {
-      bfeNr = nodes2[0].bestemtFastEjendomBFENr;
-      console.log("  ✅ BFE-nummer (via adresseid):", bfeNr);
-      console.log("  id_lokalId:", nodes2[0].id_lokalId);
-    }
-  } else {
-    bfeNr = nodes[0].bestemtFastEjendomBFENr;
-    console.log("  ✅ BFE-nummer:", bfeNr);
-    console.log("  id_lokalId:", nodes[0].id_lokalId);
-  }
+  const js = jsData?.MAT_Jordstykke?.nodes?.[0];
+  if (!js) throw new Error(`MAT_Jordstykke ikke fundet for matr ${MATRIKELNUMMER}`);
+
+  matResult.noter.push(`Grundareal: ${js.registreretAreal} m²`);
+  matResult.noter.push(`Strandbeskyttelse_omfang: ${js.strandbeskyttelse_omfang ?? "null"}`);
+  matResult.noter.push(`Fredskov_omfang: ${js.fredskov_omfang ?? "null"}`);
+  matResult.noter.push(`Klitfredning_omfang: ${js.klitfredning_omfang ?? "null"}`);
+  for (const n of matResult.noter) console.log(ok(n));
+  matResult.status = "live";
 } catch (e) {
-  console.error("  ❌ EBR fejl:", (e as Error).message);
+  console.log(err((e as Error).message));
+  matResult.noter.push((e as Error).message);
 }
+resultater.push(matResult);
 
 // ---------------------------------------------------------------------------
-// 4. VUR — ejendomsvurdering via BFE
+// 3. EBR — BFE-nummer
+// ---------------------------------------------------------------------------
+
+console.log("\n═══ 3. EBR — BFE-nummer ═══");
+const ebrResult: ServiceResult = { navn: "EBR v1 GraphQL", status: "fejl", noter: [] };
+let bfeNr: string | null = null;
+const ebrQuery = `query Q($id: String!, $vt: DafDateTime!) {
+  EBR_Ejendomsbeliggenhed(where: { adresseLokalId: { eq: $id } } virkningstid: $vt first: 1) {
+    nodes { bestemtFastEjendomBFENr id_lokalId }
+  }
+}`;
+try {
+  for (const [label, id] of [["adgangsadresseid", ADGANGSADRESSEID], ["adresseid", ADRESSEID]] as const) {
+    const data = await gql("https://graphql.datafordeler.dk/EBR/v1", ebrQuery, { id, vt: virkningstid });
+    const nodes = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
+    if (nodes.length) {
+      bfeNr = nodes[0].bestemtFastEjendomBFENr;
+      console.log(ok(`BFE-nummer: ${bfeNr} (via ${label})`));
+      ebrResult.noter.push(`BFE-nummer: ${bfeNr} (via ${label})`);
+      ebrResult.status = "live";
+      break;
+    } else {
+      console.log(warn(`Ingen match for ${label}: ${id}`));
+      ebrResult.noter.push(`Ingen match for ${label}`);
+    }
+  }
+  if (!bfeNr) ebrResult.noter.push("Ingen BFE-nummer fundet for rækkehusadresse");
+} catch (e) {
+  console.log(err((e as Error).message));
+  ebrResult.noter.push((e as Error).message);
+}
+if (!bfeNr) ebrResult.status = "mock"; // Implementeret men ingen match
+resultater.push(ebrResult);
+
+// ---------------------------------------------------------------------------
+// 4. VUR — ejendomsvurdering
 // ---------------------------------------------------------------------------
 
 console.log("\n═══ 4. VUR — ejendomsvurdering ═══");
+const vurResult: ServiceResult = { navn: "VUR v1 GraphQL", status: "fejl", noter: [] };
 if (!bfeNr) {
-  console.log("  ⏭ Spring over — intet BFE-nummer fra EBR");
+  console.log(warn("Spring over — intet BFE-nummer"));
+  vurResult.noter.push("Skippet: intet BFE-nummer fra EBR");
+  vurResult.status = "mock";
 } else {
   try {
     const bfe = parseInt(bfeNr, 10);
-    console.log("  BFE-nummer:", bfe);
-
-    // Trin 1: BFEKrydsreference
     const krydsData = await gql(
       "https://graphql.datafordeler.dk/VUR/v1",
-      `query GetBFEKrydsreference($bfe: Long!) {
-        VUR_BFEKrydsreference(
-          where: { BFEnummer: { eq: $bfe } }
-          first: 1
-        ) {
-          nodes {
-            fkEjendomsvurderingID
-            BFEnummer
-          }
-        }
-      }`,
+      `query Q($bfe: Long!) { VUR_BFEKrydsreference(where: { BFEnummer: { eq: $bfe } } first: 1) {
+        nodes { fkEjendomsvurderingID BFEnummer }
+      }}`,
       { bfe },
     );
-    const krydsNodes = krydsData?.VUR_BFEKrydsreference?.nodes ?? [];
-    if (!krydsNodes.length) {
-      console.log("  ⚠ VUR_BFEKrydsreference ikke fundet for BFEnummer:", bfe);
-    } else {
-      const vurderingsejendomId = krydsNodes[0].fkEjendomsvurderingID;
-      console.log("  fkEjendomsvurderingID:", vurderingsejendomId);
+    const recordId = krydsData?.VUR_BFEKrydsreference?.nodes?.[0]?.fkEjendomsvurderingID;
+    if (!recordId) throw new Error("Ingen VUR_BFEKrydsreference");
 
-      // Trin 2: Ejendomsvurdering
-      const vurData = await gql(
-        "https://graphql.datafordeler.dk/VUR/v1",
-        `query GetEjendomsvurdering($vurderingsejendomId: Long!) {
-          VUR_Ejendomsvurdering(
-            where: { fkVurderingsejendomID: { eq: $vurderingsejendomId } }
-            first: 1
-          ) {
-            nodes {
-              ejendomvaerdiBeloeb
-              grundvaerdiBeloeb
-              vurderetAreal
-              aar
-            }
-          }
-        }`,
-        { vurderingsejendomId },
-      );
-      const vurNodes = vurData?.VUR_Ejendomsvurdering?.nodes ?? [];
-      if (!vurNodes.length) {
-        console.log("  ⚠ VUR_Ejendomsvurdering ikke fundet for vurderingsejendomId:", vurderingsejendomId);
-      } else {
-        const v = vurNodes[0];
-        const fmt = (n: number | null) =>
-          n !== null
-            ? new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK", maximumFractionDigits: 0 }).format(n)
-            : "null";
-        console.log("  ✅ Vurderingsår:", v.aar);
-        console.log("  ✅ Ejendomsværdi:", fmt(v.ejendomvaerdiBeloeb));
-        console.log("  ✅ Grundværdi:", fmt(v.grundvaerdiBeloeb));
-        console.log("  ✅ Vurderet areal:", v.vurderetAreal, "m²");
-      }
-    }
+    const propData = await gql(
+      "https://graphql.datafordeler.dk/VUR/v1",
+      `query Q($id: Long!) { VUR_Ejendomsvurdering(where: { id: { eq: $id } }) { nodes { fkVurderingsejendomID } }}`,
+      { id: recordId },
+    );
+    const propId = propData?.VUR_Ejendomsvurdering?.nodes?.[0]?.fkVurderingsejendomID;
+    if (!propId) throw new Error("Ingen fkVurderingsejendomID");
+
+    const histData = await gql(
+      "https://graphql.datafordeler.dk/VUR/v1",
+      `query Q($id: Long!) { VUR_Ejendomsvurdering(where: { fkVurderingsejendomID: { eq: $id } } first: 100) {
+        nodes { ejendomvaerdiBeloeb grundvaerdiBeloeb vurderetAreal aar }
+      }}`,
+      { id: propId },
+    );
+    const vurNodes: any[] = histData?.VUR_Ejendomsvurdering?.nodes ?? [];
+    const nyeste = vurNodes.sort((a: any, b: any) => (b.aar||0)-(a.aar||0))[0];
+    const fmt = (n: number | null) => n !== null
+      ? new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK", maximumFractionDigits: 0 }).format(n)
+      : "null";
+
+    vurResult.noter.push(`Vurderingsår: ${nyeste.aar}`);
+    vurResult.noter.push(`Ejendomsværdi: ${fmt(nyeste.ejendomvaerdiBeloeb)}`);
+    vurResult.noter.push(`Grundværdi: ${fmt(nyeste.grundvaerdiBeloeb)}`);
+    vurResult.noter.push(`Vurderet areal: ${nyeste.vurderetAreal} m²`);
+    for (const n of vurResult.noter) console.log(ok(n));
+    vurResult.status = "live";
   } catch (e) {
-    console.error("  ❌ VUR fejl:", (e as Error).message);
+    console.log(err((e as Error).message));
+    vurResult.noter.push((e as Error).message);
   }
 }
+resultater.push(vurResult);
 
-console.log("\nTest afsluttet.");
+// ---------------------------------------------------------------------------
+// 5. DAI WFS — NaturbeskyttelseService (endpoint-verifikation)
+// ---------------------------------------------------------------------------
+
+console.log("\n═══ 5. DAI WFS — naturbeskyttelseslinjer (endpoint-verifikation) ═══");
+const natResult: ServiceResult = { navn: "DAI WFS (NaturbeskyttelseService)", status: "fejl", noter: [] };
+const DAI_WFS = "https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer";
+const typenames = [
+  "dmp:STRANDBESKYTTELSESLINJE",
+  "dmp:SKOVBYGGELINJE",
+  "dmp:SOEBESKYTTELSESLINJE",
+  "dmp:AABESKYTTELSESLINJE",
+  "dmp:KLITFREDNING",
+];
+let daiWorking = false;
+for (const typename of typenames) {
+  const filter = encodeURIComponent(`INTERSECTS(Shape,SRID=4326;POINT(${LNG} ${LAT}))`);
+  const url = `${DAI_WFS}?service=WFS&version=2.0.0&request=GetFeature&typename=${typename}&count=1&outputformat=application%2Fjson&CQL_FILTER=${filter}`;
+  const r = await wfsGet(url);
+  if (r.ok) {
+    let count = 0;
+    try { count = (JSON.parse(r.body) as any).totalFeatures ?? (JSON.parse(r.body) as any).features?.length ?? 0; } catch {}
+    console.log(ok(`${typename}: HTTP ${r.status}, ${count} features`));
+    natResult.noter.push(`${typename}: ✅ HTTP ${r.status} — ${count === 0 ? "ingen match (OK)" : count + " features"}`);
+    daiWorking = true;
+  } else {
+    console.log(err(`${typename}: HTTP ${r.status} — ${r.body.slice(0, 120)}`));
+    natResult.noter.push(`${typename}: ❌ HTTP ${r.status}`);
+  }
+}
+natResult.status = daiWorking ? "live" : "fejl";
+resultater.push(natResult);
+
+// ---------------------------------------------------------------------------
+// 6. DAI WFS — SaveService / fredede bygninger
+// ---------------------------------------------------------------------------
+
+console.log("\n═══ 6. DAI WFS — fredede bygninger (SAVE endpoint-verifikation) ═══");
+const saveResult: ServiceResult = { navn: "DAI WFS (SaveService / FREDEDE_BYGNINGER)", status: "fejl", noter: [] };
+const saveFilter = encodeURIComponent(`INTERSECTS(Shape,SRID=4326;POINT(${LNG} ${LAT}))`);
+const saveUrl = `${DAI_WFS}?service=WFS&version=2.0.0&request=GetFeature&typename=dmp:FREDEDE_BYGNINGER&count=1&outputformat=application%2Fjson&CQL_FILTER=${saveFilter}`;
+const saveR = await wfsGet(saveUrl);
+if (saveR.ok) {
+  let count = 0;
+  try { count = (JSON.parse(saveR.body) as any).totalFeatures ?? (JSON.parse(saveR.body) as any).features?.length ?? 0; } catch {}
+  console.log(ok(`FREDEDE_BYGNINGER: HTTP ${saveR.status}, ${count} features`));
+  saveResult.noter.push(`dmp:FREDEDE_BYGNINGER: ✅ HTTP ${saveR.status} — ${count === 0 ? "ikke fredet" : count + " features (FREDET!)"}`);
+  saveResult.status = "live";
+} else {
+  console.log(err(`FREDEDE_BYGNINGER: HTTP ${saveR.status} — ${saveR.body.slice(0, 120)}`));
+  saveResult.noter.push(`dmp:FREDEDE_BYGNINGER: ❌ HTTP ${saveR.status}`);
+}
+resultater.push(saveResult);
+
+// ---------------------------------------------------------------------------
+// 7. Fjernvarme WFS — Plandata (endpoint-verifikation)
+// ---------------------------------------------------------------------------
+
+console.log("\n═══ 7. Fjernvarme — Plandata WFS (endpoint-verifikation) ═══");
+const fjernvarmeResult: ServiceResult = { navn: "Plandata WFS (FjernvarmeService)", status: "fejl", noter: [] };
+const fjernFilter = encodeURIComponent(`INTERSECTS(geometri,SRID=4326;POINT(${LNG} ${LAT}))`);
+const fjernUrl = `https://geoserver.plandata.dk/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typename=pdk:theme_pdk_varmeforsyning_vedtaget&count=1&outputformat=application%2Fjson&CQL_FILTER=${fjernFilter}`;
+const fjernR = await wfsGet(fjernUrl);
+if (fjernR.ok) {
+  let count = 0;
+  try { count = (JSON.parse(fjernR.body) as any).totalFeatures ?? (JSON.parse(fjernR.body) as any).features?.length ?? 0; } catch {}
+  console.log(ok(`varmeforsyning_vedtaget: HTTP ${fjernR.status}, ${count} features`));
+  fjernvarmeResult.noter.push(`pdk:theme_pdk_varmeforsyning_vedtaget: ✅ HTTP ${fjernR.status} — ${count > 0 ? "fjernvarme DÆKKET" : "IKKE dækket af fjernvarme"}`);
+  fjernvarmeResult.status = "live";
+} else {
+  console.log(err(`HTTP ${fjernR.status} — ${fjernR.body.slice(0, 200)}`));
+  fjernvarmeResult.noter.push(`HTTP ${fjernR.status}: ${fjernR.body.slice(0, 120)}`);
+  // Prøv alternativt geometry-feltnavn
+  const altUrl = fjernUrl.replace("INTERSECTS(geometri,", "INTERSECTS(the_geom,");
+  const altR = await wfsGet(altUrl);
+  if (altR.ok) {
+    console.log(ok(`[the_geom] HTTP ${altR.status}`));
+    fjernvarmeResult.noter.push(`Med the_geom: ✅ HTTP ${altR.status}`);
+    fjernvarmeResult.status = "live";
+  }
+}
+resultater.push(fjernvarmeResult);
+
+// ---------------------------------------------------------------------------
+// 8. DHM WCS — GetCapabilities (endpoint-verifikation)
+// ---------------------------------------------------------------------------
+
+console.log("\n═══ 8. DHM WCS — GetCapabilities ═══");
+const dhmResult: ServiceResult = { navn: "DHM WCS (DhmService)", status: "fejl", noter: [] };
+const dhmCapsUrl = `https://services.datafordeler.dk/DHMNedboer/dhm/1.0.0/WCS?service=WCS&request=GetCapabilities&apiKey=${API_KEY}`;
+const dhmR = await wfsGet(dhmCapsUrl);
+if (dhmR.ok) {
+  const hasTerraen = dhmR.body.toLowerCase().includes("dhm_terraen") || dhmR.body.toLowerCase().includes("dhm_terr");
+  console.log(ok(`DHM WCS HTTP ${dhmR.status} — dhm_terraen i capabilities: ${hasTerraen}`));
+  dhmResult.noter.push(`GetCapabilities: ✅ HTTP ${dhmR.status}`);
+  if (hasTerraen) dhmResult.noter.push("dhm_terraen/dhm_terr coverage bekræftet i capabilities");
+  else dhmResult.noter.push(`Kendte coverage-navne ikke fundet — body (500 chars): ${dhmR.body.slice(0, 500)}`);
+  dhmResult.status = "live";
+} else {
+  console.log(err(`HTTP ${dhmR.status}`));
+  dhmResult.noter.push(`GetCapabilities: ❌ HTTP ${dhmR.status}`);
+}
+resultater.push(dhmResult);
+
+// ---------------------------------------------------------------------------
+// 9. GEUS WFS — GetCapabilities
+// ---------------------------------------------------------------------------
+
+console.log("\n═══ 9. GEUS WFS — GetCapabilities ═══");
+const geusResult: ServiceResult = { navn: "GEUS WFS (GeusService)", status: "fejl", noter: [] };
+const geusCapsUrl = "https://data.geus.dk/geusmap/ows/4258.jsp?service=WFS&request=GetCapabilities";
+const geusR = await wfsGet(geusCapsUrl);
+if (geusR.ok) {
+  const hasRadon  = geusR.body.toLowerCase().includes("radon");
+  const hasJupiter = geusR.body.toLowerCase().includes("jupiter");
+  console.log(ok(`GEUS WFS HTTP ${geusR.status} — radon: ${hasRadon}, jupiter: ${hasJupiter}`));
+  geusResult.noter.push(`GetCapabilities: ✅ HTTP ${geusR.status}`);
+  geusResult.noter.push(`radon layer: ${hasRadon ? "✅ fundet" : "❌ ikke fundet"}`);
+  geusResult.noter.push(`jupiter layer: ${hasJupiter ? "✅ fundet" : "❌ ikke fundet"}`);
+  geusResult.status = "live";
+} else {
+  console.log(err(`HTTP ${geusR.status}: ${geusR.body.slice(0, 120)}`));
+  geusResult.noter.push(`GetCapabilities: ❌ HTTP ${geusR.status}`);
+}
+resultater.push(geusResult);
+
+// ---------------------------------------------------------------------------
+// 10. DK-Jord WFS — endpoint-tilgængelighed
+// ---------------------------------------------------------------------------
+
+console.log("\n═══ 10. DK-Jord WFS — endpoint-tilgængelighed ═══");
+const dkjordResult: ServiceResult = { navn: "DK-Jord WFS (DkJordService)", status: "fejl", noter: [] };
+const dkjordUrl = "https://dkjord.mst.dk/wfs?service=WFS&request=GetCapabilities";
+const dkjordR = await wfsGet(dkjordUrl);
+if (dkjordR.ok) {
+  const hasV1V2 = dkjordR.body.toLowerCase().includes("v1") || dkjordR.body.toLowerCase().includes("kortl");
+  console.log(ok(`DK-Jord HTTP ${dkjordR.status} — V1/V2-kortlægning: ${hasV1V2}`));
+  dkjordResult.noter.push(`GetCapabilities: ✅ HTTP ${dkjordR.status}`);
+  dkjordResult.status = "live";
+} else {
+  console.log(err(`HTTP ${dkjordR.status}: ${dkjordR.body.slice(0, 120)}`));
+  dkjordResult.noter.push(`GetCapabilities: ❌ HTTP ${dkjordR.status} — ${dkjordR.body.slice(0, 100)}`);
+}
+resultater.push(dkjordResult);
+
+// ---------------------------------------------------------------------------
+// Sammenfatning
+// ---------------------------------------------------------------------------
+
+console.log("\n\n══════════════════════════════════════════════");
+console.log("SAMMENFATNING");
+console.log("══════════════════════════════════════════════");
+for (const r of resultater) {
+  const ikon = r.status === "live" ? "✅" : r.status === "mock" ? "⏳" : "❌";
+  console.log(`\n${ikon} ${r.navn}`);
+  for (const n of r.noter) console.log(`   ${n}`);
+}
+
+console.log("\n\nTest afsluttet:", new Date().toISOString());

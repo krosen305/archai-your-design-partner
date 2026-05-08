@@ -3,24 +3,17 @@
 // FjernvarmeService — afgør om en adresse er inden for et fjernvarmeforsyningsområde.
 // ARCH-111: Discovery-sprint (ARCH-103) bekræftede varmeforsyningsplaner i Plandata WFS.
 //
-// ⚠️  IS_MOCK=true — layer-navn afventer verifikation mod GetCapabilities.
+// Endpoint verificeret 2026-05-08 (ARCH-111):
+//   Typename:     pdk:theme_pdk_varmeplansomraade_vedtaget_v  (bekræftet via GetCapabilities)
+//   Geometry-felt: geometri (MultiSurface, bekræftet via DescribeFeatureType)
+//   HTTP 200 + 0 features for Hasselvej 48 (ikke fjernvarmedækket — korrekt)
 //
-// Forventet API: Plandata WFS (geoserver.plandata.dk) — samme server som lokalplaner.
-//   Endpoint:  https://geoserver.plandata.dk/geoserver/wfs
-//   Auth:      Ingen (offentlig tjeneste)
-//   Typename:  pdk:theme_pdk_varmeforsyning_vedtaget  ← verificeres mod GetCapabilities
-//   Format:    WFS 2.0, CQL_FILTER med INTERSECTS, outputFormat application/json
-//
-// GetCapabilities (bekræft typename + geometry-felt):
-//   curl "https://geoserver.plandata.dk/geoserver/wfs?service=WFS&request=GetCapabilities" \
-//        | grep -i varme
-//
-// Aktiver live API: sæt IS_MOCK = false og bekræft typename + geometry-felt ovenfor.
+// OBS: Det tidligere antagne typename `pdk:theme_pdk_varmeforsyning_vedtaget` eksisterer ikke.
 
-const IS_MOCK = true;
+const IS_MOCK = false;
 
 const WFS_BASE = "https://geoserver.plandata.dk/geoserver/wfs";
-const VARMEFORSYNING_TYPE = "pdk:theme_pdk_varmeforsyning_vedtaget";
+const VARMEFORSYNING_TYPE = "pdk:theme_pdk_varmeplansomraade_vedtaget_v";
 
 type Koordinat = { lat: number; lng: number };
 

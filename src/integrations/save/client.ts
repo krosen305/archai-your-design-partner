@@ -2,22 +2,19 @@
 //
 // SaveService — SAVE-bevaringsværdi og fredningsstatus for bygninger (ARCH-29).
 //
-// ⚠️  IS_MOCK=true — live endpoints afventer verifikation.
+// Endpoint verificeret 2026-05-08 (ARCH-29): dmp:FREDEDE_BYGNINGER returnerer HTTP 200.
 //
-// Forventet kildekæde:
+// Kildekæde:
 //   1. Fredede bygninger — DAI WFS via Miljøportalen:
 //        https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer
-//        typename: dmp:FREDEDE_BYGNINGER
+//        typename: dmp:FREDEDE_BYGNINGER — ✅ live
 //        Filter: INTERSECTS(Shape, SRID=4326;POINT({lng} {lat}))
 //
-//   2. SAVE-bevaringsværdi (1-9) — Datafordeler BBR GraphQL v2:
-//        Felt: byg032YdreRamme (Ja/Nej) angiver om SAVE-behandling er foretaget
-//        Den faktiske bevaringsværdi kræver Kulturmiljøregisteret (Slots- og Kulturstyrelsen):
-//        https://api.fredningsregistret.dk  (eller FBB via Datafordeler)
-//
-// Aktivér live API: sæt IS_MOCK = false og verificér typename + feltnavne.
+//   2. SAVE-bevaringsværdi (1-9): saveBevaringsvaerdi forbliver null.
+//      Den faktiske score kræver Kulturmiljøregisteret (Slots- og Kulturstyrelsen):
+//      https://api.fredningsregistret.dk — separat integration, ikke implementeret endnu.
 
-const IS_MOCK = true;
+const IS_MOCK = false;
 
 const DAI_WFS = "https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer";
 

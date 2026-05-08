@@ -2,13 +2,16 @@
 //
 // Tinglysning – servitutter og andre tinglyste rettigheder (ARCH-104).
 //
-// ⚠️  IS_MOCK=true — Datafordeler TingbogenV2 endpoint kræver schema-verificering
-//     mod live data for Hasselvej 48 (ejerlavskode 173551, matrikelnummer 6h).
+// ⚠️  IS_MOCK=true — TingbogenV2 kræver særskilt Datafordeler-abonnement.
 //
-// Aktivér live API (Option A — anbefalet):
-//   Endpoint: https://services.datafordeler.dk/TingbogenV2/tingbogen/1.0.0/tingbog
-//   Auth: DATAFORDELER_API_KEY som query parameter
-//   Sæt FEATURE_FLAGS.tinglysningMock = false i feature-flags.ts
+// Verificering (ARCH-30, 2026-05-08): URL-formatet
+//   https://services.datafordeler.dk/TingbogenV2/tingbogen/1.0.0/tingbog
+// returnerer HTTP 404 for alle varianter af stien med den eksisterende API-nøgle.
+// TingbogenV2 er en begrænset Datafordeler-tjeneste, der kræver særskilt tilmelding
+// til TINGBOG-servicen (ikke inkluderet i standard-abonnementet).
+//
+// Løsning: Tilmeld TINGBOG-tjenesten på Datafordeler.dk, verificér endpoint,
+// sæt FEATURE_FLAGS.tinglysningMock = false og kør integration test.
 //
 // Option B (fallback): Erhvervsstyrelsen B2B-adgang — kræver særskilt registrering.
 

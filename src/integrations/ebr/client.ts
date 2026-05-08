@@ -2,15 +2,18 @@
 // EBR (Ejendomsbeliggenhedsregistret) GraphQL via Datafordeler.
 //
 // Bruges til: opslag af BFE-nummer (Bestemt Fast Ejendom) fra adresse.
-// Kæde: DAR_Husnummer.id_lokalId → EBR_Ejendomsbeliggenhed.adresseLokalId → bestemtFastEjendomBFENr
+// Kæde: DAR_Husnummer.id_lokalId → EBR_Ejendomsbeliggenhed.husnummerLokalId → bestemtFastEjendomBFENr
 //
-// Schema: schema/EBR.graphql (gitignored, lokal kopi)
-// Feltnavne bekræftet mod schema:
-//   EBR_Ejendomsbeliggenhed: adresseLokalId (filter), bestemtFastEjendomBFENr (String!)
+// EBR har TO adresse-felter — brug husnummerLokalId (ikke adresseLokalId):
+//   adresseLokalId    → DAR_Adresse.id_lokalId  (er NULL for rækkehuse/ejerlejligheder)
+//   husnummerLokalId  → DAR_Husnummer.id_lokalId (virker altid)
+//
+// Verificeret 2026-05-08: Hasselvej 48 (rækkehus) — adresseLokalId=null,
+// husnummerLokalId match giver BFE 2073922.
 //
 // @filterRequirement: kræver enten requiresOneOfFields (id_lokalId/datafordelerRowId)
 //   ELLER requiresOneOfArguments (virkningstid/registreringstid).
-//   Vi sender virkningstid som argument → filtrerbar på adresseLokalId.
+//   Vi sender virkningstid → filtrerbar på husnummerLokalId uden indexed felt.
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -40,20 +43,19 @@ function getConfig(explicit?: EbrClientConfig) {
 }
 
 // ---------------------------------------------------------------------------
-// GraphQL query
+// GraphQL query — filtrerer på husnummerLokalId (= DAR_Husnummer.id_lokalId)
 // ---------------------------------------------------------------------------
 
-// virkningstid som argument (ikke i where) opfylder @filterRequirement.requiresOneOfArguments
-// → vi kan filtrere på adresseLokalId selv om det ikke er et indexed felt.
 const BELIGGENHED_QUERY = `
-query GetEjendomsbeliggenhed($adresseLokalId: String!, $virkningstid: DafDateTime!) {
+query GetEjendomsbeliggenhed($husnummerLokalId: String!, $virkningstid: DafDateTime!) {
   EBR_Ejendomsbeliggenhed(
-    where: { adresseLokalId: { eq: $adresseLokalId } }
+    where: { husnummerLokalId: { eq: $husnummerLokalId } }
     virkningstid: $virkningstid
     first: 1
   ) {
     nodes {
       bestemtFastEjendomBFENr
+      husnummerLokalId
       id_lokalId
     }
   }
@@ -107,13 +109,14 @@ async function gqlFetch(url: URL, query: string, variables: Record<string, unkno
 
 export class EbrService {
   /**
-   * Slår BFE-nummer op fra DAR_Husnummer.id_lokalId via EBR_Ejendomsbeliggenhed.
+   * Slår BFE-nummer op via DAR_Husnummer.id_lokalId (= adgangsadresseid).
+   * Filtrerer på husnummerLokalId — virker for alle ejendomstyper inkl. rækkehuse.
    *
-   * @param adresseLokalId  DAR_Husnummer.id_lokalId (= adgangsadresseid i vores system)
+   * @param husnummerLokalId  DAR_Husnummer.id_lokalId (= adgangsadresseid i vores system)
    */
-  static async getBfeNr(adresseLokalId: string, config?: EbrClientConfig): Promise<EbrResult> {
-    const id = adresseLokalId.trim();
-    if (!id) return { bfeNr: null, fejl: "adresseLokalId er påkrævet" };
+  static async getBfeNr(husnummerLokalId: string, config?: EbrClientConfig): Promise<EbrResult> {
+    const id = husnummerLokalId.trim();
+    if (!id) return { bfeNr: null, fejl: "husnummerLokalId er påkrævet" };
 
     try {
       const { apiKey, endpoint } = getConfig(config);
@@ -121,11 +124,11 @@ export class EbrService {
       url.searchParams.set("apiKey", apiKey);
       const virkningstid = new Date().toISOString();
 
-      const data = await gqlFetch(url, BELIGGENHED_QUERY, { adresseLokalId: id, virkningstid });
+      const data = await gqlFetch(url, BELIGGENHED_QUERY, { husnummerLokalId: id, virkningstid });
       const nodes: any[] = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
 
       if (!nodes.length) {
-        return { bfeNr: null, fejl: `EBR_Ejendomsbeliggenhed ikke fundet for adresseLokalId ${id}` };
+        return { bfeNr: null, fejl: `EBR_Ejendomsbeliggenhed ikke fundet for husnummerLokalId ${id}` };
       }
 
       const bfeNr: string | null = nodes[0].bestemtFastEjendomBFENr ?? null;
