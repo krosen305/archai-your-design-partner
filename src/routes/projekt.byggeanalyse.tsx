@@ -387,6 +387,8 @@ function ComplianceContent() {
             servitutter={servitutterLocal}
             terrain={terrainLocal}
             save={saveLocal}
+            fjernvarme={fjernvarmeLocal}
+            naboer={naboerLocal}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
