@@ -208,7 +208,7 @@ const STEPS: Step[] = [
   {
     key: "inspirationsbilleder",
     title: "Upload inspirationsbilleder",
-    subtitle: "Op til 8 billeder. Disse hjælper AI med at forstå din stil.",
+    subtitle: "Op til 4 billeder (PNG/JPG, max 5 MB). Hjælper AI med at forstå din stil.",
     type: "upload",
   },
 ];
@@ -586,6 +586,11 @@ function ToggleInput({
   );
 }
 
+const MAX_BILLEDER = 4;
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ALLOWED_MIME = ["image/jpeg", "image/png"] as const;
+
 function UploadInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -594,13 +599,29 @@ function UploadInput({ value, onChange }: { value: string[]; onChange: (v: strin
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setError(null);
+
+    const candidates = Array.from(files).slice(0, MAX_BILLEDER - value.length);
+
+    for (const file of candidates) {
+      if (!ALLOWED_MIME.includes(file.type as (typeof ALLOWED_MIME)[number])) {
+        setError(`Filtypen "${file.type}" er ikke tilladt — kun PNG og JPG.`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setError(
+          `"${file.name}" er ${(file.size / 1024 / 1024).toFixed(1)} MB — max ${MAX_FILE_SIZE_MB} MB per billede.`,
+        );
+        return;
+      }
+    }
+
     setUploading(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user.id;
 
       const uploaded: string[] = [];
-      for (const file of Array.from(files).slice(0, 8 - value.length)) {
+      for (const file of candidates) {
         if (userId) {
           const path = `${userId}/${Date.now()}-${file.name}`;
           const { error: upErr } = await supabase.storage
@@ -636,7 +657,7 @@ function UploadInput({ value, onChange }: { value: string[]; onChange: (v: strin
       <button
         type="button"
         onClick={() => fileRef.current?.click()}
-        disabled={value.length >= 8 || uploading}
+        disabled={value.length >= MAX_BILLEDER || uploading}
         className="w-full rounded-md border border-dashed border-accent/40 bg-[#111] py-10 text-center hover:border-accent/70 hover:bg-[#161616] transition-colors disabled:opacity-50"
       >
         <Upload size={28} className="mx-auto text-accent" />
@@ -644,7 +665,7 @@ function UploadInput({ value, onChange }: { value: string[]; onChange: (v: strin
           {uploading ? "Uploader..." : "Træk billeder hertil eller klik"}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
-          PNG/JPG · {value.length}/8 billeder
+          PNG/JPG · max {MAX_FILE_SIZE_MB} MB · {value.length}/{MAX_BILLEDER} billeder
         </div>
       </button>
       <input
