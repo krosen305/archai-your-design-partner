@@ -290,6 +290,8 @@ function ComplianceContent() {
             result.naturbeskyttelse,
             result.dkjord,
             result.geusRisk,
+            null,
+            result.fjernvarme,
           );
           setComplianceFlags(flags);
           setComplianceMetrics(calculateComplianceMetrics(result.bbr, result.kommuneplanramme));
@@ -340,6 +342,7 @@ function ComplianceContent() {
                       result.dkjord,
                       result.geusRisk,
                       analyse.ruleEngine,
+                      result.fjernvarme,
                     )
                   : null;
                 if (updatedFlags) setComplianceFlags(updatedFlags);

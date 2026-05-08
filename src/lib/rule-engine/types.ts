@@ -98,6 +98,8 @@ export type RuleEngineInput = {
     yearBuilt: number | null; // byggeaar (parsed to int)
     useCode: string | null; // anvendelseskode
     currentBuildingPercent: number | null; // bebyggelsesprocent
+    heatingSource: string | null; // opvarmningsmiddel (byg057) — ARCH-117
+    facadeMaterial: string | null; // ydervaegs_materiale (byg032) — ARCH-118
   } | null;
 
   /** Ny bebyggelse (fra Byggeoenske) — null når assembler køres serverside */

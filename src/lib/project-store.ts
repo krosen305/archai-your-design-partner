@@ -5,6 +5,7 @@ import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { GeusRiskData } from "@/integrations/geus/client";
+import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
@@ -270,6 +271,7 @@ export function deriveComplianceFlags(
   dkjord?: DkJordResultat | null,
   geusRisk?: GeusRiskData | null,
   ruleEngine?: RuleEngineResult | null,
+  fjernvarme?: FjernvarmeResultat | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
@@ -373,6 +375,54 @@ export function deriveComplianceFlags(
         kilde: "bbr",
         dispensationMulig: true,
         dispensationMyndighed: "Kystdirektoratet",
+      });
+    }
+  }
+
+  // ── Fredning fra BBR byg070 (ARCH-118) ────────────────────────────────────
+  // Autoritativ fredningsmarkering fra BBR — supplerer/erstatter SaveService (IS_MOCK=true)
+  if (bbr?.fredet) {
+    flags.push({
+      id: "bbr-fredet",
+      label: "Fredet bygning",
+      status: "blocker",
+      detalje:
+        "Bygningen er registreret som fredet i BBR (byg070) — alle ændringer kræver tilladelse fra Slots- og Kulturstyrelsen",
+      aktuelVærdi: "Fredet",
+      tilladt: "Ingen ændringer uden dispensation",
+      kilde: "bbr",
+      dispensationMulig: true,
+      dispensationMyndighed: "Slots- og Kulturstyrelsen",
+    });
+  }
+
+  // ── Fjernvarme-mismatch (ARCH-117) ──────────────────────────────────────
+  // Sammenligner BBR byg056 med Plandata fjernvarmedækning (IS_MOCK=true → null)
+  if (bbr && fjernvarme && fjernvarme.fjernvarmeDaekket !== null) {
+    const harFjernvarmeBbr =
+      bbr.varmeinstallation !== null &&
+      bbr.varmeinstallation.toLowerCase().includes("fjernvarme");
+    if (harFjernvarmeBbr && !fjernvarme.fjernvarmeDaekket) {
+      flags.push({
+        id: "fjernvarme-mismatch-ingen-daekning",
+        label: "Mulig fejlregistrering: fjernvarme",
+        status: "advarsel",
+        detalje:
+          "BBR registrerer fjernvarme (byg056) men Plandata viser ingen fjernvarmedækning på adressen — kontrollér med forsyningsselskabet",
+        aktuelVærdi: bbr.varmeinstallation,
+        tilladt: null,
+        kilde: "bbr",
+      });
+    } else if (!harFjernvarmeBbr && fjernvarme.fjernvarmeDaekket) {
+      flags.push({
+        id: "fjernvarme-tilslutningspligt",
+        label: "Mulig tilslutningspligt: fjernvarme",
+        status: "advarsel",
+        detalje:
+          "Adressen er dækket af fjernvarmeforsyningsområde — kommunen kan pålægge tilslutningspligt ved ny bebyggelse",
+        aktuelVærdi: bbr.varmeinstallation ?? "Ingen fjernvarme",
+        tilladt: null,
+        kilde: "bbr",
       });
     }
   }

@@ -155,8 +155,8 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
 
   // ── Heritage ─────────────────────────────────────────────────────────────
 
-  // listedBuilding og saveValue: ingen integration — ARCH-89 ikke done
-  missingFields.push("heritage.listedBuilding", "heritage.saveValue");
+  // listedBuilding: autoritativt fra BBR byg070 (ARCH-118) — saveValue afventer ARCH-89
+  missingFields.push("heritage.saveValue");
 
   const protectionLines = {
     coastal: naturbeskyttelse?.strandbeskyttelse ?? false,
@@ -255,6 +255,8 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
       yearBuilt: bbr.byggeaar !== null ? parseInt(bbr.byggeaar, 10) : null,
       useCode: bbr.anvendelseskode,
       currentBuildingPercent: bbr.bebyggelsesprocent,
+      heatingSource: bbr.opvarmningsmiddel ?? null, // ARCH-117
+      facadeMaterial: bbr.ydervaegs_materiale ?? null, // ARCH-118
     };
   } else {
     missingFields.push("existingBuilding");
@@ -338,7 +340,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
       localplanIds: lokalplaner.map((lp) => lp.planid),
     },
     heritage: {
-      listedBuilding: null, // ingen integration — ARCH-89
+      listedBuilding: bbr?.fredet ?? null, // ARCH-118: BBR byg070
       saveValue: null, // ingen integration
       preservationLocalplan: false, // ingen integration
       protectionLines,

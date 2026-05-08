@@ -185,6 +185,13 @@ function buildUserMessage(input: ByggeanalyseInput): string {
     if (bbr.bebyggelsesprocent !== null)
       bbrDele.push(`Nuv. bebyggelsesprocent: ${bbr.bebyggelsesprocent}%`);
     if (bbr.antal_etager !== null) bbrDele.push(`Nuv. etager: ${bbr.antal_etager}`);
+    // Energibaseline (ARCH-117)
+    if (bbr.varmeinstallation) bbrDele.push(`Eksist. varmeinstallation: ${bbr.varmeinstallation}`);
+    if (bbr.opvarmningsmiddel) bbrDele.push(`Eksist. opvarmningsmiddel: ${bbr.opvarmningsmiddel}`);
+    // Materialer (ARCH-118) — kontekst for tilbygnings- og ombygningsprojekter
+    if (bbr.ydervaegs_materiale) bbrDele.push(`Eksist. facademateriale: ${bbr.ydervaegs_materiale}`);
+    if (bbr.tagdaekning) bbrDele.push(`Eksist. tagdækning: ${bbr.tagdaekning}`);
+    if (bbr.fredet) bbrDele.push(`Fredning: Ja (BBR byg070)`);
     if (bbrDele.length > 0) msg += `\n\n## Ejendom (BBR)\n${bbrDele.join("\n")}`;
   }
 
