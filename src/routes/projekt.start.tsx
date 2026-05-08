@@ -84,6 +84,14 @@ function StartPage() {
 // ---------------------------------------------------------------------------
 
 function LoggedInView({ projekter }: { projekter: Projekt[] }) {
+  const navigate = useNavigate();
+  const { reset } = useProject();
+
+  const handleNytProjekt = () => {
+    reset();
+    navigate({ to: "/projekt/adresse" });
+  };
+
   return (
     <div className="space-y-4">
       {projekter.length > 0 && (
@@ -102,14 +110,14 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: projekter.length * 0.06 + 0.1 }}
       >
-        <Link
-          to="/projekt/adresse"
-          className="flex items-center gap-4 rounded-md border border-dashed border-accent/40 bg-accent/5 p-5 hover:bg-accent/10 hover:border-accent/60 transition-all group"
+        <button
+          onClick={handleNytProjekt}
+          className="flex w-full items-center gap-4 rounded-md border border-dashed border-accent/40 bg-accent/5 p-5 hover:bg-accent/10 hover:border-accent/60 transition-all group"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-accent/40 bg-accent/10">
             <Plus size={18} className="text-accent" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 text-left">
             <div className="font-mono text-[13px] text-accent">Nyt projekt</div>
             <div className="text-xs text-muted-foreground mt-0.5">
               Søg på en adresse og start analysen
@@ -119,17 +127,23 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
             size={16}
             className="text-accent/60 group-hover:text-accent transition-colors"
           />
-        </Link>
+        </button>
       </motion.div>
     </div>
   );
 }
 
+const STEP_TO_ROUTE: Record<string, string> = {
+  adresse: "/projekt/adresse",
+  boligoenske: "/projekt/boligoenske",
+  ejendom: "/projekt/ejendom",
+  byggeanalyse: "/projekt/byggeanalyse",
+  oekonomi: "/projekt/byggeanalyse",
+};
+
 function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   const navigate = useNavigate();
-  const { setByggeoenske, resetByggeoenske } = useProject();
 
-  const harByggeoenske = !!projekt.byggeoenske && Object.keys(projekt.byggeoenske).length > 0;
   const harAdresse = !!projekt.adresse_dar_id;
   const dato = new Date(projekt.updated_at).toLocaleDateString("da-DK", {
     day: "numeric",
@@ -138,32 +152,24 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   });
 
   const handleFortsaet = () => {
-    resetByggeoenske();
-    if (harByggeoenske && projekt.byggeoenske) {
-      setByggeoenske(projekt.byggeoenske as Parameters<typeof setByggeoenske>[0]);
-    }
-    // Naviger til det bedste startpunkt
-    if (harAdresse && harByggeoenske) {
-      navigate({ to: "/projekt/byggeanalyse" });
-    } else if (harByggeoenske) {
-      navigate({ to: "/projekt/boligoenske" });
-    } else {
-      navigate({ to: "/projekt/adresse" });
-    }
+    // Brug current_step fra projects-tabellen til at navigere til det rigtige sted.
+    // __root.tsx har allerede genoprettet Zustand-state fra Supabase ved mount.
+    const route =
+      (projekt.current_step && STEP_TO_ROUTE[projekt.current_step]) ??
+      (harAdresse ? "/projekt/boligoenske" : "/projekt/adresse");
+    navigate({ to: route });
   };
 
-  const fremskridt =
-    harAdresse && harByggeoenske
-      ? "Klar til analyse"
-      : harByggeoenske
-        ? "Byggeønsker udfyldt"
-        : "Adresse mangler";
-  const fremskridtColor =
-    harAdresse && harByggeoenske
-      ? "text-success border-success/40"
-      : harByggeoenske
-        ? "text-accent border-accent/40"
-        : "text-muted-foreground border-border";
+  const fremskridt = projekt.compliance_done
+    ? "Analyse gennemført"
+    : harAdresse
+      ? "Adresse valgt"
+      : "Ikke startet";
+  const fremskridtColor = projekt.compliance_done
+    ? "text-success border-success/40"
+    : harAdresse
+      ? "text-accent border-accent/40"
+      : "text-muted-foreground border-border";
 
   return (
     <motion.div

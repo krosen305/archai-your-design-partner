@@ -100,14 +100,33 @@ export async function listProjekter(): Promise<Projekt[]> {
   const userId = await getUserId();
   if (!userId) return [];
 
+  // projects-tabellen er den autoritative kilde — syncPatch() skriver hertil.
+  // projekter-tabellen bruges ikke fra wizard-flowet og er altid tom.
   const { data, error } = await supabase
-    .from("projekter")
-    .select("*")
+    .from("projects")
+    .select(
+      "id, user_id, created_at, updated_at, address_full, address_adresseid, compliance_done, current_step",
+    )
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
   if (error) throw new Error(`[ProjektService] listProjekter fejlede: ${error.message}`);
-  return (data ?? []) as unknown as Projekt[];
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    user_id: row.user_id,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    adresse: row.address_full,
+    adresse_dar_id: row.address_adresseid,
+    byggeoenske: null,
+    bbr_data: null,
+    dar_data: null,
+    mat_data: null,
+    byggeanalyse_resultat: null,
+    current_step: row.current_step,
+    compliance_done: row.compliance_done ?? false,
+  }));
 }
 
 // ---------------------------------------------------------------------------

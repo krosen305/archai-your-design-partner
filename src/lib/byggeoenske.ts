@@ -16,6 +16,8 @@ export type Projekt = {
   dar_data: unknown | null;
   mat_data: unknown | null;
   byggeanalyse_resultat: unknown | null;
+  current_step: string | null;
+  compliance_done: boolean;
 };
 
 export type ProjektInsert = {
