@@ -47,9 +47,10 @@ Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis
 
 | Fil                              | Ansvar                                                                                                          |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `project-store.ts`               | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `byggeanalyseResultat`) |
+| `project-store.ts`               | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `byggeanalyseResultat`, `adressePreCheck`, `boligoenskeValidering`) |
 | `project-sync.ts`                | Fire-and-forget Supabase-sync (`syncPatch`, `restoreProject`) — session-persistens                              |
 | `analysis-orchestrator.ts`       | Entry point for compliance pipeline — BBR+MAT+Plandata+geodata paralleliseret                                   |
+| `pre-check-adresse.ts`           | `preCheckAdresse` createServerFn — kører BBR+MAT+Plandata+Natur+Save+VUR parallelt ved adressevalg (ARCH-121) |
 | `rule-engine/`                   | Deterministisk regelkerne (stopregler, beregninger, energi) — pure functions, ingen AI                          |
 | `compliance-engine.ts`           | Beregning af `ComplianceMetrics` (bebyggelsesprocent, etager, areal)                                            |
 | `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware                                                                          |
@@ -64,25 +65,25 @@ Se `docs/INTEGRATIONS.md` for fuld tabel og Datafordeler GraphQL-constraints.
 IS_MOCK=true services (live API afventer verifikation):
 
 - `TinglysningService` — ARCH-26 (TingbogenV2 schema)
-- `NaturbeskyttelseService` — ARCH-65 (DAI WFS endpoint)
 - `DkJordService` — ARCH-66 (dkjord.mst.dk)
 - `GeusService` — ARCH-101 (GEUS WFS layer-navne)
 - `DhmService` — ARCH-102 (DHM WCS)
-- `FjernvarmeService` — ARCH-111 (Plandata WFS layer-navn)
-- `SaveService` — ARCH-29 (Kulturmiljøregisteret)
 
 **OBS:** `mat_strandbeskyttelse`, `mat_fredskov`, `mat_klitfredning` i `BbrKompliantData` er **live** data fra MAT_Jordstykke og erstatter delvist NaturbeskyttelseService for disse tre typer.
 
 ## Env vars (server-side — ingen `VITE_` prefix)
 
 ```
-DATAFORDELER_API_KEY    # Påkrævet: BBR, MAT, DAR
-ANTHROPIC_API_KEY       # Påkrævet: PdfExtractor + HusDnaGenerator
-DATAFORSYNINGEN_TOKEN   # Valgfri: GSearch (rate-limits uden)
-SENTRY_DSN              # Valgfri
-ENVIRONMENT             # Valgfri: Sentry env tag
-LINEAR_WEBHOOK_SECRET   # Valgfri: ARCH-74
-GITHUB_DISPATCH_TOKEN   # Valgfri: ARCH-74
+SUPABASE_URL                # Påkrævet: Supabase project URL
+SUPABASE_SERVICE_ROLE_KEY   # Påkrævet: Supabase service role (server-side)
+SUPABASE_PUBLISHABLE_KEY    # Påkrævet: Supabase anon key (client-side)
+DATAFORDELER_API_KEY        # Påkrævet: BBR, MAT, DAR, EBR, VUR
+ANTHROPIC_API_KEY           # Valgfri: PdfExtractor + HusDnaGenerator (mock-fallback uden)
+DATAFORSYNINGEN_TOKEN       # Valgfri: GSearch (rate-limits uden)
+SENTRY_DSN                  # Valgfri
+ENVIRONMENT                 # Valgfri: Sentry env tag
+LINEAR_WEBHOOK_SECRET       # Valgfri: ARCH-74
+GITHUB_DISPATCH_TOKEN       # Valgfri: ARCH-74
 ```
 
 Dokumentér altid nye env-variabler her.
