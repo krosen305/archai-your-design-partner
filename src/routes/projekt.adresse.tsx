@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { AlertTriangle, Search } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import { syncPatch } from "@/lib/project-sync";
 import { MOCK_ADRESSE } from "@/lib/mock-data";
+import { preCheckAdresse } from "@/lib/pre-check-adresse";
 
 // ---------------------------------------------------------------------------
 // Server functions — begge kræver credentials der kun er tilgængelige server-side.
@@ -33,7 +34,18 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const { address, setAddress, setBbrData } = useProject();
+  const {
+    address,
+    setAddress,
+    setBbrData,
+    setKommuneplanramme,
+    setLokalplaner,
+    setComplianceFlags,
+    setVurderingData,
+    setComplianceMetrics,
+    setAdressePreCheck,
+    adressePreCheck,
+  } = useProject();
 
   const [query, setQuery] = useState(address?.adresse ?? "");
   const [open, setOpen] = useState(false);
@@ -41,10 +53,16 @@ function AddressStep() {
   const [suggestions, setSuggestions] = useState<GsearchSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCheckingCompliance, setIsCheckingCompliance] = useState(false);
   const lastQueryRef = useRef<string>("");
 
   const queryTrimmed = useMemo(() => query.trim(), [query]);
   const showDropdown = open && queryTrimmed.length > 0 && !selected;
+
+  // Gate-logik: hard blockers = blockers uden dispensationsmulighed
+  const hardBlockers = adressePreCheck?.blockers.filter((f) => !f.dispensationMulig) ?? [];
+  const softBlockers = adressePreCheck?.blockers.filter((f) => f.dispensationMulig) ?? [];
+  const advarsler = adressePreCheck?.advarsler ?? [];
 
   useEffect(() => {
     if (!open || selected) return;
@@ -80,14 +98,17 @@ function AddressStep() {
   }, [open, queryTrimmed, selected]);
 
   async function handleSelectSuggestion(s: GsearchSuggestion) {
+    // Ryd tidligere pre-check ved nyt adressevalg
+    setAdressePreCheck(null);
+    setBbrData(null);
+
     // TRIN 1: Sæt straks adresse fra autocomplete-data (ingen ventetid)
-    // adgangsadresseid, koordinater, postnr er alle tilgængeligt nu.
     const immediateAddress = {
       adresseid: s.adresseid,
       adresse: s.tekst,
       postnr: s.postnr,
       postnrnavn: s.postnrnavn,
-      kommune: s.kommunekode, // midlertidigt – erstattes med navn nedenfor
+      kommune: s.kommunekode,
       kommunekode: s.kommunekode,
       matrikel: null,
       adgangsadresseid: s.adgangsadresseid,
@@ -98,16 +119,17 @@ function AddressStep() {
       grundareal: null,
     };
 
-    setBbrData(null);
     setSelected(immediateAddress);
     setAddress(immediateAddress);
     setQuery(s.tekst);
     setOpen(false);
+    setIsCheckingCompliance(true);
 
-    // TRIN 2: Hent kommunenavn + matrikel server-side (blokerer ikke flowet)
+    // TRIN 2: Hent kommunenavn + matrikel server-side
+    let fullAddress = immediateAddress;
     try {
       const details = await fetchAddressDetails({ data: { adresseid: s.adresseid } });
-      const fullAddress = {
+      fullAddress = {
         ...immediateAddress,
         adresse: details.adresse || s.tekst,
         postnr: details.postnr || s.postnr,
@@ -122,17 +144,42 @@ function AddressStep() {
         ejerlavskode: details.ejerlavskode,
         matrikelnummer: details.matrikelnummer,
         grundareal: details.grundareal ?? null,
-        // adresseid stays as s.adresseid from immediateAddress (DAR ID = DAWA ID)
       };
       setSelected(fullAddress);
       setAddress(fullAddress);
       syncPatch({ address: fullAddress, currentStep: "boligoenske" });
     } catch (err) {
       console.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
-      // Behold immediateAddress – vi har stadig adgangsadresseid til BBR
       syncPatch({ address: immediateAddress, currentStep: "boligoenske" });
     }
+
+    // TRIN 3: Kør pre-check compliance
+    try {
+      const preCheck = await preCheckAdresse({
+        data: {
+          adgangsadresseid: fullAddress.adgangsadresseid,
+          adresseid: s.adresseid,
+          ejerlavskode: fullAddress.ejerlavskode,
+          matrikelnummer: fullAddress.matrikelnummer,
+          koordinater: fullAddress.koordinater,
+          grundareal: fullAddress.grundareal,
+        },
+      });
+      setAdressePreCheck(preCheck);
+      if (preCheck.bbr) setBbrData(preCheck.bbr);
+      setKommuneplanramme(preCheck.kommuneplanramme);
+      setLokalplaner(preCheck.lokalplaner);
+      setComplianceFlags([...preCheck.blockers, ...preCheck.advarsler]);
+      if (preCheck.vurderingData) setVurderingData(preCheck.vurderingData);
+      if (preCheck.complianceMetrics) setComplianceMetrics(preCheck.complianceMetrics);
+    } catch (err) {
+      console.error("[Adresse] preCheckAdresse fejlede:", err);
+    } finally {
+      setIsCheckingCompliance(false);
+    }
   }
+
+  const canContinue = !!selected && !isCheckingCompliance && hardBlockers.length === 0;
 
   return (
     <PageTransition>
@@ -217,25 +264,91 @@ function AddressStep() {
               <DataChip label="Postnr" value={selected.postnr || "—"} testId="chip-postnr" />
               <DataChip
                 label="BBR"
-                value={selected.adgangsadresseid ? "Klar ✓" : "Ikke fundet"}
+                value={
+                  isCheckingCompliance
+                    ? "Tjekker..."
+                    : selected.adgangsadresseid
+                      ? "Klar ✓"
+                      : "Ikke fundet"
+                }
                 testId="chip-bbr"
               />
             </div>
           )}
 
+          {/* Compliance-feedback */}
+          {selected && !isCheckingCompliance && (
+            <>
+              {/* Hard blockers: ingen dispensation mulig */}
+              {hardBlockers.length > 0 && (
+                <div className="mt-5 rounded-md border border-danger/40 bg-danger/5 px-4 py-3">
+                  <div className="flex items-center gap-2 text-danger text-sm font-medium mb-1">
+                    <AlertTriangle size={15} />
+                    Byggeri ikke muligt på denne adresse
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {hardBlockers.map((f) => (
+                      <li key={f.id} className="text-xs text-danger/80">
+                        {f.label}
+                        {f.detalje ? ` — ${f.detalje}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Soft blockers: dispensation mulig → amber */}
+              {softBlockers.length > 0 && (
+                <div className="mt-5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-4 py-3">
+                  <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium mb-1">
+                    <AlertTriangle size={15} />
+                    Kræver dispensation
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {softBlockers.map((f) => (
+                      <li key={f.id} className="text-xs text-yellow-400/80">
+                        {f.label}
+                        {f.dispensationMyndighed
+                          ? ` — dispensation fra ${f.dispensationMyndighed}`
+                          : ""}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-yellow-400/60">
+                    Du kan fortsætte, men projektet kræver dispensation.
+                  </p>
+                </div>
+              )}
+
+              {/* Advarsler */}
+              {advarsler.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {advarsler.map((f) => (
+                    <span
+                      key={f.id}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/30 bg-yellow-500/5 px-2.5 py-1 text-[11px] font-mono text-yellow-400"
+                    >
+                      ⚠ {f.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
           <button
-            disabled={!selected}
+            disabled={!canContinue}
             onClick={() => navigate({ to: "/projekt/boligoenske" })}
             className="mt-6 w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Fortsæt →
+            {isCheckingCompliance ? "Tjekker adresse..." : "Fortsæt →"}
           </button>
 
           {/* Spring over: fortsæt uden adresse */}
           <button
             type="button"
             onClick={() => {
-              setAddress(null as never); // ryd evt. tidligere valgt
+              setAddress(null as never);
               navigate({ to: "/projekt/boligoenske" });
             }}
             className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"

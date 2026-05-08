@@ -9,6 +9,7 @@ import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { VurData } from "@/integrations/vur/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
+import type { AdressePreCheckResultat } from "@/lib/pre-check-adresse";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 export type { ComplianceMetrics } from "@/lib/compliance-engine";
 
@@ -119,6 +120,18 @@ export type ComplianceFlag = {
 };
 
 // ---------------------------------------------------------------------------
+// ARCH-124: Boligoensker valideringsstatus
+// ---------------------------------------------------------------------------
+
+export type BoligoenskeValidering = {
+  etagerStatus: "ok" | "dispensation" | "ingen_data";
+  arealStatus: "ok" | "dispensation" | "ingen_data";
+  beregnetBebyggelsespct: number | null;
+  etagerDispensationAcknowledged: boolean;
+  arealDispensationAcknowledged: boolean;
+};
+
+// ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
 
@@ -142,6 +155,12 @@ type State = {
   kommuneplanramme: Kommuneplanramme | null;
   vurderingData: VurData | null;
 
+  // ARCH-121: tidlig compliance-gate
+  adressePreCheck: AdressePreCheckResultat | null;
+
+  // ARCH-124: inline validering mod plangrænser i boligoensker-flow
+  boligoenskeValidering: BoligoenskeValidering | null;
+
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: BbrKompliantData | null) => void;
@@ -163,6 +182,8 @@ type State = {
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
   setKommuneplanramme: (ramme: Kommuneplanramme | null) => void;
   setVurderingData: (v: VurData | null) => void;
+  setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
+  setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
 
   reset: () => void;
 };
@@ -191,6 +212,8 @@ export const useProject = create<State>((set) => ({
   lokalplanExtract: null,
   kommuneplanramme: null,
   vurderingData: null,
+  adressePreCheck: null,
+  boligoenskeValidering: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -208,6 +231,8 @@ export const useProject = create<State>((set) => ({
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
   setKommuneplanramme: (kommuneplanramme) => set({ kommuneplanramme }),
   setVurderingData: (vurderingData) => set({ vurderingData }),
+  setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
+  setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
 
   reset: () =>
     set({
@@ -226,6 +251,8 @@ export const useProject = create<State>((set) => ({
       lokalplanExtract: null,
       kommuneplanramme: null,
       vurderingData: null,
+      adressePreCheck: null,
+      boligoenskeValidering: null,
     }),
 }));
 
@@ -351,7 +378,8 @@ export function deriveComplianceFlags(
         id: "mat-strandbeskyttelse",
         label: "Strandbeskyttelseslinje",
         status: "blocker",
-        detalje: "Jordstykket er registreret inden for strandbeskyttelseslinje i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
+        detalje:
+          "Jordstykket er registreret inden for strandbeskyttelseslinje i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
         aktuelVærdi: "Inden for zone",
         tilladt: "Ingen byggeri uden dispensation",
         kilde: "bbr",
@@ -364,7 +392,8 @@ export function deriveComplianceFlags(
         id: "mat-fredskov",
         label: "Fredskov",
         status: "blocker",
-        detalje: "Jordstykket er udlagt som fredskov i Matrikelregistret — skovlovens §28 forbyder byggeri uden dispensation fra Miljøstyrelsen",
+        detalje:
+          "Jordstykket er udlagt som fredskov i Matrikelregistret — skovlovens §28 forbyder byggeri uden dispensation fra Miljøstyrelsen",
         aktuelVærdi: "Fredskov",
         tilladt: "Ingen byggeri uden dispensation",
         kilde: "bbr",
@@ -377,7 +406,8 @@ export function deriveComplianceFlags(
         id: "mat-klitfredning",
         label: "Klitfredning",
         status: "blocker",
-        detalje: "Jordstykket er klitfredet i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
+        detalje:
+          "Jordstykket er klitfredet i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
         aktuelVærdi: "Inden for klitfredet zone",
         tilladt: "Ingen byggeri uden dispensation",
         kilde: "bbr",
@@ -408,8 +438,7 @@ export function deriveComplianceFlags(
   // Sammenligner BBR byg056 med Plandata fjernvarmedækning (IS_MOCK=true → null)
   if (bbr && fjernvarme && fjernvarme.fjernvarmeDaekket !== null) {
     const harFjernvarmeBbr =
-      bbr.varmeinstallation !== null &&
-      bbr.varmeinstallation.toLowerCase().includes("fjernvarme");
+      bbr.varmeinstallation !== null && bbr.varmeinstallation.toLowerCase().includes("fjernvarme");
     if (harFjernvarmeBbr && !fjernvarme.fjernvarmeDaekket) {
       flags.push({
         id: "fjernvarme-mismatch-ingen-daekning",
