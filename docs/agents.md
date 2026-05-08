@@ -2,11 +2,11 @@
 
 ## Model-strategi
 
-| Agent | Model |
-|---|---|
-| Orchestrator | `claude-opus-4-5` |
-| Frontend / Backend / Design | `claude-sonnet-4-5` |
-| QA | `claude-haiku-4-5-20251001` |
+| Agent                       | Model                       |
+| --------------------------- | --------------------------- |
+| Orchestrator                | `claude-opus-4-5`           |
+| Frontend / Backend / Design | `claude-sonnet-4-5`         |
+| QA                          | `claude-haiku-4-5-20251001` |
 
 ```bash
 claude --model claude-opus-4-5  # Start altid med orchestrator-modellen

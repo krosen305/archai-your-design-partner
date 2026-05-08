@@ -735,9 +735,7 @@ function FjernvarmeSektion({ data }: { data: FjernvarmeResultat }) {
       >
         {badge.label}
       </span>
-      {data.fejl && (
-        <p className="text-xs text-muted-foreground mt-2">{data.fejl}</p>
-      )}
+      {data.fejl && <p className="text-xs text-muted-foreground mt-2">{data.fejl}</p>}
       {data.fjernvarmeDaekket === true && (
         <p className="text-sm text-foreground/80 mt-3">
           Adressen ligger inden for et vedtaget fjernvarmeforsyningsområde – tilslutningspligt kan

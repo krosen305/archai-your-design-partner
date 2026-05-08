@@ -389,12 +389,8 @@ export class DarService {
 
     // Udled kommunekode + kommunenavn fra ejerlavskode (KKK × 1000 + løbenummer).
     // Ejerlavskode er primær kilde; falder tilbage til "" når ejerlavskode mangler.
-    const { kommunekodeFraEjerlavskode, kommunenavnFraKode } = await import(
-      "@/lib/kommuner"
-    );
-    const kommunekode: string = ejerlavskode
-      ? kommunekodeFraEjerlavskode(ejerlavskode)
-      : "";
+    const { kommunekodeFraEjerlavskode, kommunenavnFraKode } = await import("@/lib/kommuner");
+    const kommunekode: string = ejerlavskode ? kommunekodeFraEjerlavskode(ejerlavskode) : "";
     const kommunenavn: string = kommunekode ? kommunenavnFraKode(kommunekode) : "";
 
     return {

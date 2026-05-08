@@ -9,8 +9,9 @@ $ARGUMENTS
 Generer en komplet Linear issue i dette format. Vis den som en blok så brugeren kan læse den:
 
 ---
+
 **Titel:** [Action-orienteret, max 60 tegn — brug et aktivt verbum: "Implementér", "Tilføj", "Fix", "Integrer"]
-**Priority:** Medium *(juster til Urgent/High/Low hvis indlysende)*
+**Priority:** Medium _(juster til Urgent/High/Low hvis indlysende)_
 
 ## Baggrund
 
@@ -33,6 +34,7 @@ Generer en komplet Linear issue i dette format. Vis den som en blok så brugeren
 **Trin 2 — Opret i Linear:**
 
 Brug `mcp__plugin_linear_linear__save_issue` med:
+
 - `team`: "ARCH"
 - `title`: titlen fra ovenstående (uden "Titel:"-præfiks)
 - `description`: hele beskrivelsen fra ## Baggrund til ## Afhænger af (Markdown)

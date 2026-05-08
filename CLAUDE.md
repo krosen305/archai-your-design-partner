@@ -41,22 +41,23 @@ Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis
 
 ## src/lib — nøglefiler
 
-| Fil | Ansvar |
-|---|---|
-| `project-store.ts` | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `phases`) |
-| `analysis-orchestrator.ts` | Entry point for compliance pipeline |
-| `compliance-*.ts` | Compliance-logik og flagberegning |
-| `phase-*.ts` | Fase-styring |
-| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware |
-| `env.ts` | Zod-valideret env — brug denne |
-| `kommuner.ts` | Kommunekode → kommunenavn map (98 kommuner) |
-| `utils.ts` | `cn()` og utilities |
+| Fil                              | Ansvar                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `project-store.ts`               | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `phases`) |
+| `analysis-orchestrator.ts`       | Entry point for compliance pipeline                                                               |
+| `compliance-*.ts`                | Compliance-logik og flagberegning                                                                 |
+| `phase-*.ts`                     | Fase-styring                                                                                      |
+| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware                                                            |
+| `env.ts`                         | Zod-valideret env — brug denne                                                                    |
+| `kommuner.ts`                    | Kommunekode → kommunenavn map (98 kommuner)                                                       |
+| `utils.ts`                       | `cn()` og utilities                                                                               |
 
 ## Integrations (`src/integrations/`)
 
 Se `docs/INTEGRATIONS.md` for fuld tabel og Datafordeler GraphQL-constraints.
 
 Aktiv status:
+
 - `TinglysningService` — IS_MOCK=true (ARCH-26, API afventes)
 - Alle andre services er live
 
@@ -76,8 +77,8 @@ Dokumentér altid nye env-variabler her.
 
 ## Slash commands (Claude Code)
 
-| Kommando | Beskrivelse |
-|---|---|
+| Kommando                      | Beskrivelse                                                     |
+| ----------------------------- | --------------------------------------------------------------- |
 | `/new-issue <idébeskrivelse>` | Genererer og opretter en Linear ARCH-issue direkte fra fritekst |
 
 Filer: `.claude/commands/`

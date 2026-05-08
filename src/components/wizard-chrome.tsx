@@ -1,5 +1,14 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, Lock, AlertTriangle, Menu, LogOut, FolderOpen, LogIn } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Lock,
+  AlertTriangle,
+  Menu,
+  LogOut,
+  FolderOpen,
+  LogIn,
+} from "lucide-react";
 import { PHASES, usePhaseStates, usePhaseSubKeys, type PhaseStatus } from "@/lib/phases";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "@/lib/auth";
@@ -197,16 +206,15 @@ function MobileMenu() {
                         </span>
                       </button>
                     </SheetClose>
-                    {(status === "complete" || status === "active") &&
-                      subKeys[p.id].length > 0 && (
-                        <ul className="mt-1.5 ml-[18px] space-y-0.5 border-l border-[#222] pl-2.5">
-                          {subKeys[p.id].map((k) => (
-                            <li key={k.label} className="text-[10px] text-muted-foreground">
-                              {k.label}: <span className="text-foreground/80">{k.value}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                    {(status === "complete" || status === "active") && subKeys[p.id].length > 0 && (
+                      <ul className="mt-1.5 ml-[18px] space-y-0.5 border-l border-[#222] pl-2.5">
+                        {subKeys[p.id].map((k) => (
+                          <li key={k.label} className="text-[10px] text-muted-foreground">
+                            {k.label}: <span className="text-foreground/80">{k.value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 );
               })}

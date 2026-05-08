@@ -8,65 +8,65 @@
 
 // ─── Scoring ─────────────────────────────────────────────────────────────────
 
-export type ScoringStrategy = 'exact' | 'structural' | 'semantic'
+export type ScoringStrategy = "exact" | "structural" | "semantic";
 
 export interface ScoreResult {
-  score: number        // 0–1
-  passed: boolean
-  reason: string
-  details?: Record<string, unknown>
+  score: number; // 0–1
+  passed: boolean;
+  reason: string;
+  details?: Record<string, unknown>;
 }
 
 // ─── Eval case ───────────────────────────────────────────────────────────────
 
 export interface EvalCase<TInput = unknown, TExpected = unknown> {
   /** Unikt ID — bruges i snapshots og CI-output */
-  id: string
+  id: string;
   /** Kort beskrivelse af hvad casen tester */
-  description: string
+  description: string;
   /** Input der sendes til den evaluerede funktion */
-  input: TInput
+  input: TInput;
   /** Scoring-strategi */
-  scoring: ScoringStrategy
+  scoring: ScoringStrategy;
   /**
    * Til 'exact' og 'structural': forventet output-struktur.
    * Til 'semantic': rubrik af kriterier der evalueres af LLM-judge.
    */
-  expected?: TExpected
-  rubric?: string[]
+  expected?: TExpected;
+  rubric?: string[];
   /** Minimum score for at bestå — typisk 0.8 for semantic, 1.0 for exact */
-  threshold: number
+  threshold: number;
   /** Kør kun når EVAL_LIVE=true (kræver live API-nøgler) */
-  requiresLive?: boolean
+  requiresLive?: boolean;
 }
 
 // ─── Eval result ─────────────────────────────────────────────────────────────
 
 export interface EvalResult {
-  caseId: string
-  description: string
-  score: number
-  passed: boolean
-  reason: string
-  durationMs: number
-  timestamp: string
+  caseId: string;
+  description: string;
+  score: number;
+  passed: boolean;
+  reason: string;
+  durationMs: number;
+  timestamp: string;
 }
 
 // ─── Snapshot (regression baseline) ─────────────────────────────────────────
 
 export interface Snapshot {
-  caseId: string
-  score: number
-  timestamp: string
+  caseId: string;
+  score: number;
+  timestamp: string;
   /** SHA-256 af JSON.stringify(output) — opdages ved output-ændringer */
-  outputHash: string
+  outputHash: string;
 }
 
 // ─── Suite ───────────────────────────────────────────────────────────────────
 
 export interface EvalSuite<TInput = unknown, TExpected = unknown> {
-  name: string
+  name: string;
   /** Funktion der producerer det output der evalueres */
-  run: (input: TInput) => Promise<unknown>
-  cases: EvalCase<TInput, TExpected>[]
+  run: (input: TInput) => Promise<unknown>;
+  cases: EvalCase<TInput, TExpected>[];
 }

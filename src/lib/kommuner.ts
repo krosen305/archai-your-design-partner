@@ -117,5 +117,7 @@ export function kommunenavnFraKode(kode: string): string {
  * Eksempel: 173551 → Math.floor(173551/1000) = 173 → "0173" (Lyngby-Taarbæk)
  */
 export function kommunekodeFraEjerlavskode(ejerlavskode: number): string {
-  return Math.floor(ejerlavskode / 1000).toString().padStart(4, "0");
+  return Math.floor(ejerlavskode / 1000)
+    .toString()
+    .padStart(4, "0");
 }

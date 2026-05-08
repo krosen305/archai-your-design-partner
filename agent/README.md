@@ -4,11 +4,11 @@ Letvægts agent-tracing til ArchAI's multi-agent workflow.
 
 ## Filer
 
-| Fil | Formål |
-|---|---|
-| `contracts.ts` | Typer: `TaskContract`, `SessionManifest`, `QAVerdict` |
-| `tracer.ts` | CLI til at skrive/læse session-manifests i `agent-traces/` |
-| `ci-gate.ts` | CI deploy-gate: blokerer deploy ved `fail` QA-verdict |
+| Fil            | Formål                                                     |
+| -------------- | ---------------------------------------------------------- |
+| `contracts.ts` | Typer: `TaskContract`, `SessionManifest`, `QAVerdict`      |
+| `tracer.ts`    | CLI til at skrive/læse session-manifests i `agent-traces/` |
+| `ci-gate.ts`   | CI deploy-gate: blokerer deploy ved `fail` QA-verdict      |
 
 Trace-filer gemmes i `agent-traces/` (gitignored).
 

@@ -19,8 +19,7 @@
 
 const IS_MOCK = true;
 
-const DAI_WFS =
-  "https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer";
+const DAI_WFS = "https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer";
 
 export type SaveData = {
   fredet: boolean;

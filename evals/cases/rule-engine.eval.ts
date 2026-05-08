@@ -40,12 +40,13 @@ type EvalOutput = {
 async function run(evalInput: EvalInput): Promise<EvalOutput> {
   const result = runRuleEngine(evalInput.input, evalInput.missingFields);
   const coastalViolation = result.violations.find((v) => v.rule === "protection_line_coastal");
-  const firstCalcViolation = [
-    result.calculations.buildingPercent.violation,
-    result.calculations.height.violation,
-    result.calculations.storeys.violation,
-    result.calculations.setback.violation,
-  ].find((v) => v !== null) ?? null;
+  const firstCalcViolation =
+    [
+      result.calculations.buildingPercent.violation,
+      result.calculations.height.violation,
+      result.calculations.storeys.violation,
+      result.calculations.setback.violation,
+    ].find((v) => v !== null) ?? null;
 
   return {
     status: result.status,
@@ -114,7 +115,13 @@ function makeBase(overrides?: {
     municipalPlan:
       o.municipalPlan !== undefined
         ? o.municipalPlan
-        : { maxBuildingPercent: 30, maxHeightM: 8.5, maxStoreys: 2, usageCode: null, usageText: null },
+        : {
+            maxBuildingPercent: 30,
+            maxHeightM: 8.5,
+            maxStoreys: 2,
+            usageCode: null,
+            usageText: null,
+          },
     existingBuilding: {
       exists: true,
       floorAreaM2: o.existingFloorArea ?? 100,
@@ -261,7 +268,8 @@ export const ruleEngineSuite: EvalSuite<EvalInput, EvalOutput> = {
 
     {
       id: "stop-strandbeskyttelse",
-      description: "Strandbeskyttelseslinje → requires_dispensation, authority indeholder Kystdirektorat",
+      description:
+        "Strandbeskyttelseslinje → requires_dispensation, authority indeholder Kystdirektorat",
       scoring: "exact",
       threshold: 1.0,
       input: {
@@ -303,7 +311,13 @@ export const ruleEngineSuite: EvalSuite<EvalInput, EvalOutput> = {
             specialConditions: [],
             buildingFieldDefined: false,
           },
-          municipalPlan: { maxBuildingPercent: 30, maxHeightM: 8.5, maxStoreys: 2, usageCode: null, usageText: null },
+          municipalPlan: {
+            maxBuildingPercent: 30,
+            maxHeightM: 8.5,
+            maxStoreys: 2,
+            usageCode: null,
+            usageText: null,
+          },
         }),
         missingFields: [],
       },
@@ -331,7 +345,13 @@ export const ruleEngineSuite: EvalSuite<EvalInput, EvalOutput> = {
       input: {
         input: makeBase({
           localplan: null,
-          municipalPlan: { maxBuildingPercent: 35, maxHeightM: 8.5, maxStoreys: 2, usageCode: null, usageText: null },
+          municipalPlan: {
+            maxBuildingPercent: 35,
+            maxHeightM: 8.5,
+            maxStoreys: 2,
+            usageCode: null,
+            usageText: null,
+          },
         }),
         missingFields: [],
       },
@@ -392,7 +412,13 @@ export const ruleEngineSuite: EvalSuite<EvalInput, EvalOutput> = {
           newFootprint: 80,
           plotArea: 800,
           localplan: null,
-          municipalPlan: { maxBuildingPercent: 30, maxHeightM: 8.5, maxStoreys: 2, usageCode: null, usageText: null },
+          municipalPlan: {
+            maxBuildingPercent: 30,
+            maxHeightM: 8.5,
+            maxStoreys: 2,
+            usageCode: null,
+            usageText: null,
+          },
         }),
         missingFields: [],
       },
@@ -424,7 +450,13 @@ export const ruleEngineSuite: EvalSuite<EvalInput, EvalOutput> = {
           newFootprint: 124,
           plotArea: 800,
           localplan: null,
-          municipalPlan: { maxBuildingPercent: 30, maxHeightM: 8.5, maxStoreys: 2, usageCode: null, usageText: null },
+          municipalPlan: {
+            maxBuildingPercent: 30,
+            maxHeightM: 8.5,
+            maxStoreys: 2,
+            usageCode: null,
+            usageText: null,
+          },
         }),
         missingFields: [],
       },

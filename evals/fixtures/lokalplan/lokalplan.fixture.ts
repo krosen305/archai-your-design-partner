@@ -3,51 +3,51 @@
  * HusDna-input til generator-evals.
  */
 
-import type { Kommuneplanramme } from '@/integrations/plandata/client'
-import type { HusDnaInput } from '@/integrations/ai/hus-dna-generator'
+import type { Kommuneplanramme } from "@/integrations/plandata/client";
+import type { HusDnaInput } from "@/integrations/ai/hus-dna-generator";
 
 export const RAMME_FIXTURES = {
   /** Standard boliglokalplan — max 30% bebyggelse, max 2 etager */
   standardBolig: {
-    planid: 'test-plan-001',
-    plannavn: 'Lokalplan 42 — Boligområde',
-    plannr: '42',
-    kommunenavn: 'Testkommune',
+    planid: "test-plan-001",
+    plannavn: "Lokalplan 42 — Boligområde",
+    plannr: "42",
+    kommunenavn: "Testkommune",
     komnr: 999,
     bebygpct: 30,
     maxetager: 2,
     maxbygnhjd: 8.5,
     anvgen: 1,
-    anvendelseGenerel: 'Boligområde',
-    fremtidigzonestatus: 'byzone',
+    anvendelseGenerel: "Boligområde",
+    fremtidigzonestatus: "byzone",
     sforhold: null,
-    planstatus: 'V',
-    datoIkraft: '2018-01-01',
+    planstatus: "V",
+    datoIkraft: "2018-01-01",
     plandokumentLink: null,
   } satisfies Kommuneplanramme,
 
   /** Strammer plan — max 25% bebyggelse, max 1.5 etager */
   taetLav: {
-    planid: 'test-plan-002',
-    plannavn: 'Lokalplan 87 — Tæt-lav bebyggelse',
-    plannr: '87',
-    kommunenavn: 'Testkommune',
+    planid: "test-plan-002",
+    plannavn: "Lokalplan 87 — Tæt-lav bebyggelse",
+    plannr: "87",
+    kommunenavn: "Testkommune",
     komnr: 999,
     bebygpct: 25,
     maxetager: 1,
     maxbygnhjd: 6.0,
     anvgen: 1,
-    anvendelseGenerel: 'Boligområde, tæt-lav',
-    fremtidigzonestatus: 'byzone',
+    anvendelseGenerel: "Boligområde, tæt-lav",
+    fremtidigzonestatus: "byzone",
     sforhold: null,
-    planstatus: 'V',
-    datoIkraft: '2021-06-01',
+    planstatus: "V",
+    datoIkraft: "2021-06-01",
     plandokumentLink: null,
   } satisfies Kommuneplanramme,
 
   /** Ingen kommuneplanramme fundet */
   ingenRamme: null satisfies Kommuneplanramme | null,
-} as const
+} as const;
 
 export const HUS_DNA_FIXTURES = {
   modernMinimalistisk: {
@@ -66,4 +66,4 @@ export const HUS_DNA_FIXTURES = {
     `.trim(),
     billedUrls: [],
   } satisfies HusDnaInput,
-} as const
+} as const;

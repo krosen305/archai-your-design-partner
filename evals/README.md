@@ -20,6 +20,7 @@ EVAL_UPDATE_SNAPSHOTS=true bun run evals
 ```
 
 Tilføj til `package.json`:
+
 ```json
 "scripts": {
   "evals": "bun run evals/runner.ts",
@@ -53,13 +54,14 @@ evals/
 
 ## Scoring-strategier
 
-| Strategi | Hvornår | Signal |
-|---|---|---|
-| `exact` | Deterministic output (compliance flags, BBR-parsing) | Binær — fejler ved mindste afvigelse |
-| `structural` | Output-form skal være korrekt, værdier kan variere | % af korrekte felter |
-| `semantic` | AI-genereret output, rubrik-baseret (Haiku-judge) | 0–1 baseret på rubrik-kriterier |
+| Strategi     | Hvornår                                              | Signal                               |
+| ------------ | ---------------------------------------------------- | ------------------------------------ |
+| `exact`      | Deterministic output (compliance flags, BBR-parsing) | Binær — fejler ved mindste afvigelse |
+| `structural` | Output-form skal være korrekt, værdier kan variere   | % af korrekte felter                 |
+| `semantic`   | AI-genereret output, rubrik-baseret (Haiku-judge)    | 0–1 baseret på rubrik-kriterier      |
 
 **Threshold-konventioner:**
+
 - `exact`: `1.0` — ingen tolerance
 - `structural`: `0.85`–`1.0` — afhænger af antal felter
 - `semantic`: `0.75`–`0.8` — ~20% margin for AI-variation
@@ -83,46 +85,51 @@ git commit -m "ARCH-N: Opdatér eval snapshots efter prompt-optimering"
 ## Tilføj en ny eval
 
 **1. Opret fixture** (hvis ny input-type):
+
 ```typescript
 // evals/fixtures/min-service/min-service.fixture.ts
 export const MIN_FIXTURE = {
-  normalCase: { /* input */ },
-  edgeCase:   { /* input */ },
-}
+  normalCase: {
+    /* input */
+  },
+  edgeCase: {
+    /* input */
+  },
+};
 ```
 
 **2. Opret eval case** i eksisterende eller ny suite-fil:
+
 ```typescript
 // evals/cases/min-service.eval.ts
-import type { EvalSuite } from '../types.ts'
+import type { EvalSuite } from "../types.ts";
 
 export const minServiceSuite: EvalSuite = {
-  name: 'Min service',
+  name: "Min service",
   run: async (input) => minService.process(input),
   cases: [
     {
-      id: 'min-service-normal',
-      description: 'Hvad casen tester',
-      scoring: 'semantic',     // eller 'exact' / 'structural'
+      id: "min-service-normal",
+      description: "Hvad casen tester",
+      scoring: "semantic", // eller 'exact' / 'structural'
       threshold: 0.8,
-      requiresLive: true,      // udelad hvis mock er tilstrækkeligt
+      requiresLive: true, // udelad hvis mock er tilstrækkeligt
       input: MIN_FIXTURE.normalCase,
-      rubric: [
-        'Output er på dansk',
-        'Konkret kriterie der kan evalueres binært',
-      ],
+      rubric: ["Output er på dansk", "Konkret kriterie der kan evalueres binært"],
     },
   ],
-}
+};
 ```
 
 **3. Registrér i runner.ts:**
+
 ```typescript
 import { minServiceSuite } from './cases/min-service.eval.ts'
 const ALL_SUITES = [..., minServiceSuite]
 ```
 
 **4. Kør og gem snapshot:**
+
 ```bash
 EVAL_LIVE=true EVAL_UPDATE_SNAPSHOTS=true bun run evals --suite=min-service
 ```
@@ -131,12 +138,12 @@ EVAL_LIVE=true EVAL_UPDATE_SNAPSHOTS=true bun run evals --suite=min-service
 
 Prioriteret rækkefølge baseret på risiko og impact:
 
-| Prioritet | Suite | Begrundelse |
-|---|---|---|
-| 1 | `compliance-flags` | Deterministic, ingen API-afhængighed — kør altid |
-| 2 | `pdf-extractor` | Blokerer ARCH-25 (IS_MOCK=true) — høj risiko ved aktivering |
-| 3 | `analysis-orchestrator` | End-to-end signal — opdager integrationsfejl |
-| 4 | `hus-dna-generator` | Kreativt output — lavere kritikalitet |
+| Prioritet | Suite                   | Begrundelse                                                 |
+| --------- | ----------------------- | ----------------------------------------------------------- |
+| 1         | `compliance-flags`      | Deterministic, ingen API-afhængighed — kør altid            |
+| 2         | `pdf-extractor`         | Blokerer ARCH-25 (IS_MOCK=true) — høj risiko ved aktivering |
+| 3         | `analysis-orchestrator` | End-to-end signal — opdager integrationsfejl                |
+| 4         | `hus-dna-generator`     | Kreativt output — lavere kritikalitet                       |
 
 ## CI/CD integration
 

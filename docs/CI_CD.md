@@ -25,6 +25,7 @@ Kør `setup-branch-protection.yml` via Actions → Run workflow. Herefter kræve
 Brug Sentry's native Linear integration: Sentry → Settings → Integrations → Linear → Installer. Opret Alert Rule med "Create Linear Issue" (filter: level=error/fatal, first seen).
 
 Manuel test:
+
 ```bash
 gh workflow run sentry-to-linear.yml -f title="Test" -f environment="production"
 ```
@@ -38,6 +39,7 @@ gh workflow run sentry-to-linear.yml -f title="Test" -f environment="production"
    - Kopier signing secret → `LINEAR_WEBHOOK_SECRET` i Wrangler secret
 
 Manuel test:
+
 ```bash
 gh api repos/krosen305/archai-your-design-partner/dispatches \
   --method POST \
@@ -50,10 +52,10 @@ gh api repos/krosen305/archai-your-design-partner/dispatches \
 
 ### Hvornår kører hvad
 
-| Pipeline | Kommando | Live API-kald | Blokerer |
-|---|---|---|---|
-| `ci.yml` (alle PR + push til main) | `bun run evals` | Nej (mock) | Ja — fejl stopper CI |
-| `deploy.yml` (push til main) | `EVAL_LIVE=true bun run evals` | Ja | Ja — fejl stopper deploy |
+| Pipeline                           | Kommando                       | Live API-kald | Blokerer                 |
+| ---------------------------------- | ------------------------------ | ------------- | ------------------------ |
+| `ci.yml` (alle PR + push til main) | `bun run evals`                | Nej (mock)    | Ja — fejl stopper CI     |
+| `deploy.yml` (push til main)       | `EVAL_LIVE=true bun run evals` | Ja            | Ja — fejl stopper deploy |
 
 Mock-evals kræver ingen secrets. Live-evals kræver `ANTHROPIC_API_KEY` + `DATAFORDELER_API_KEY`.
 
@@ -98,6 +100,7 @@ supabase gen types typescript --local > src/types/supabase.ts
 ```
 
 Tilføj til `package.json`:
+
 ```json
 "db:types": "supabase gen types typescript --local > src/types/supabase.ts"
 ```

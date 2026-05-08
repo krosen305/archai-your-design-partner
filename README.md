@@ -16,15 +16,15 @@ Compliance-pipeline: `analyseAddress()` → cache i Supabase → BBR, MAT, DAR, 
 
 ## Tech Stack
 
-| Lag | Teknologi |
-|---|---|
-| Framework | TanStack Start (React SSR) |
-| Runtime | Cloudflare Workers |
-| Sprog | TypeScript, Bun |
-| Database / Auth | Supabase (PostgreSQL + RLS) |
-| AI | Anthropic Claude (Haiku / Sonnet) |
-| Styling | Tailwind CSS + shadcn/ui |
-| Tests | Vitest (unit) + Playwright (E2E) + eval-framework |
+| Lag             | Teknologi                                         |
+| --------------- | ------------------------------------------------- |
+| Framework       | TanStack Start (React SSR)                        |
+| Runtime         | Cloudflare Workers                                |
+| Sprog           | TypeScript, Bun                                   |
+| Database / Auth | Supabase (PostgreSQL + RLS)                       |
+| AI              | Anthropic Claude (Haiku / Sonnet)                 |
+| Styling         | Tailwind CSS + shadcn/ui                          |
+| Tests           | Vitest (unit) + Playwright (E2E) + eval-framework |
 
 ## Lokalt setup
 
@@ -37,6 +37,7 @@ bun dev                           # http://localhost:3000
 ```
 
 Kræver `.dev.vars`:
+
 ```
 DATAFORDELER_API_KEY=...
 ANTHROPIC_API_KEY=...
@@ -63,24 +64,24 @@ bunx prettier --write . # Format
 
 ## Integrationer
 
-| Service | Fil | Status | Beskrivelse |
-|---|---|---|---|
-| `BbrService` | `integrations/bbr/client.ts` | ✅ Live | Bygningsregister via Datafordeler GraphQL v2 |
-| `NaboService` | `integrations/bbr/neighbor-client.ts` | ✅ Live | Nabobygninger inden for 40 m via DAWA REST |
-| `CacheService` | `integrations/cache/client.ts` | ✅ Live | Supabase-cache for compliance-resultater |
-| `DarService` | `integrations/dar/client.ts` | ✅ Live | Adresseregister via Datafordeler GraphQL v1 |
-| `GeusService` | `integrations/geus/client.ts` | 🟡 IS_MOCK=true | Geoteknisk risikodata via GEUS WFS |
-| `GsearchService` | `integrations/gsearch/client.ts` | ✅ Live | Adresse-autocomplete via Dataforsyningen GSearch v2 |
-| `DkJordService` | `integrations/miljoe/dkjord.ts` | 🟡 IS_MOCK=true | Forurenede grunde via DK-Jord WFS |
-| `MatService` | `integrations/mat/client.ts` | ✅ Live | Matrikelregister (grundareal) via Datafordeler GraphQL v2 |
-| `PlandataService` | `integrations/plandata/client.ts` | ✅ Live | Lokalplaner og kommuneplanrammer via WFS |
-| `FjernvarmeService` | `integrations/plandata/fjernvarme.ts` | 🟡 IS_MOCK=true | Fjernvarmedækning via Plandata WFS |
-| `DhmService` | `integrations/sdfi/dhm-client.ts` | 🟡 IS_MOCK=true | DHM terrain-data via SDFI WCS |
-| `NaturbeskyttelseService` | `integrations/sdfi/naturbeskyttelse.ts` | 🟡 IS_MOCK=true | Naturbeskyttelseslinjer via DAI WFS |
-| `ByggeanalyseService` | `integrations/ai/byggeanalyse.ts` | ✅ Live | AI byggeanalyse med regelkerne-integration |
-| `HusDnaGeneratorService` | `integrations/ai/hus-dna-generator.ts` | ✅ Live | Billeder + tekst → Hus-DNA via Claude vision |
-| `PdfExtractorService` | `integrations/ai/pdf-extractor.ts` | ✅ Live | Lokalplan PDF → strukturerede regler via Claude |
-| `TinglysningService` | `integrations/tinglysning/client.ts` | 🟡 IS_MOCK=true | Servitutter fra TingbogenV2 (live API afventes) |
+| Service                   | Fil                                     | Status          | Beskrivelse                                               |
+| ------------------------- | --------------------------------------- | --------------- | --------------------------------------------------------- |
+| `BbrService`              | `integrations/bbr/client.ts`            | ✅ Live         | Bygningsregister via Datafordeler GraphQL v2              |
+| `NaboService`             | `integrations/bbr/neighbor-client.ts`   | ✅ Live         | Nabobygninger inden for 40 m via DAWA REST                |
+| `CacheService`            | `integrations/cache/client.ts`          | ✅ Live         | Supabase-cache for compliance-resultater                  |
+| `DarService`              | `integrations/dar/client.ts`            | ✅ Live         | Adresseregister via Datafordeler GraphQL v1               |
+| `GeusService`             | `integrations/geus/client.ts`           | 🟡 IS_MOCK=true | Geoteknisk risikodata via GEUS WFS                        |
+| `GsearchService`          | `integrations/gsearch/client.ts`        | ✅ Live         | Adresse-autocomplete via Dataforsyningen GSearch v2       |
+| `DkJordService`           | `integrations/miljoe/dkjord.ts`         | 🟡 IS_MOCK=true | Forurenede grunde via DK-Jord WFS                         |
+| `MatService`              | `integrations/mat/client.ts`            | ✅ Live         | Matrikelregister (grundareal) via Datafordeler GraphQL v2 |
+| `PlandataService`         | `integrations/plandata/client.ts`       | ✅ Live         | Lokalplaner og kommuneplanrammer via WFS                  |
+| `FjernvarmeService`       | `integrations/plandata/fjernvarme.ts`   | 🟡 IS_MOCK=true | Fjernvarmedækning via Plandata WFS                        |
+| `DhmService`              | `integrations/sdfi/dhm-client.ts`       | 🟡 IS_MOCK=true | DHM terrain-data via SDFI WCS                             |
+| `NaturbeskyttelseService` | `integrations/sdfi/naturbeskyttelse.ts` | 🟡 IS_MOCK=true | Naturbeskyttelseslinjer via DAI WFS                       |
+| `ByggeanalyseService`     | `integrations/ai/byggeanalyse.ts`       | ✅ Live         | AI byggeanalyse med regelkerne-integration                |
+| `HusDnaGeneratorService`  | `integrations/ai/hus-dna-generator.ts`  | ✅ Live         | Billeder + tekst → Hus-DNA via Claude vision              |
+| `PdfExtractorService`     | `integrations/ai/pdf-extractor.ts`      | ✅ Live         | Lokalplan PDF → strukturerede regler via Claude           |
+| `TinglysningService`      | `integrations/tinglysning/client.ts`    | 🟡 IS_MOCK=true | Servitutter fra TingbogenV2 (live API afventes)           |
 
 <!-- INTEGRATIONS-END -->
 

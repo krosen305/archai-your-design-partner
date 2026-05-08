@@ -243,16 +243,21 @@ export class PdfExtractorService {
     const rawText: string = json?.content?.[0]?.text ?? "{}";
 
     // Strip evt. markdown code fence (```json ... ```) som Claude tilføjer
-    const cleaned = rawText
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/i, "")
-      .trim() || "{}";
+    const cleaned =
+      rawText
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/i, "")
+        .trim() || "{}";
 
     try {
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
       return {
-        maxEtager: typeof parsed.maxEtager === "number" ? parsed.maxEtager : (preparse.maxEtager ?? null),
-        maxBebyggelsespct: typeof parsed.maxBebyggelsespct === "number" ? parsed.maxBebyggelsespct : (preparse.maxBebyggelsespct ?? null),
+        maxEtager:
+          typeof parsed.maxEtager === "number" ? parsed.maxEtager : (preparse.maxEtager ?? null),
+        maxBebyggelsespct:
+          typeof parsed.maxBebyggelsespct === "number"
+            ? parsed.maxBebyggelsespct
+            : (preparse.maxBebyggelsespct ?? null),
         tagform: typeof parsed.tagform === "string" ? parsed.tagform : (preparse.tagform ?? null),
         materialer: Array.isArray(parsed.materialer) ? (parsed.materialer as string[]) : [],
         byggelinjer: typeof parsed.byggelinjer === "string" ? parsed.byggelinjer : null,
