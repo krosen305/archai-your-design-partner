@@ -41,6 +41,20 @@ function StartPage() {
 
   return (
     <main className="mx-auto max-w-[720px] px-6 py-16">
+      {loggedIn && (
+        <div className="flex justify-end mb-4 -mt-8">
+          <button
+            onClick={async () => {
+              const { signOut } = await import("@/lib/auth");
+              await signOut();
+              window.location.href = "/";
+            }}
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.15em] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogOut size={11} /> LOG UD
+          </button>
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
