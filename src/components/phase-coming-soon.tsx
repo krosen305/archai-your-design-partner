@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 
