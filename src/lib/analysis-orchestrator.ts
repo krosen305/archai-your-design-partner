@@ -21,6 +21,7 @@
 //   terrain             ⏳  IS_MOCK=true — ARCH-102 (DHM WCS GetCoverage afventer verificering)
 //   naboer              ✅  live DAWA REST (ARCH-103)
 //   fjernvarme          ⏳  IS_MOCK=true — ARCH-111 (layer-navn afventer GetCapabilities-verifikation)
+//   save                ⏳  IS_MOCK=true — ARCH-29 (DAI WFS + Kulturmiljøregisteret afventer verifikation)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
 import { validateEnv } from "@/lib/env";
@@ -36,6 +37,7 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
+import type { SaveData } from "@/integrations/save/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { Json } from "@/integrations/supabase/types";
 import {
@@ -64,6 +66,7 @@ export type ComplianceResult = {
   terrain: TerrainData | null;
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
+  save: SaveData | null;
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
 };
 
@@ -119,6 +122,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     | "terrain"
     | "naboer"
     | "fjernvarme"
+    | "save"
   >;
   let complianceBase: ComplianceBase | null = null;
   try {
@@ -161,6 +165,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         terrain: null,
         naboer: null,
         fjernvarme: null,
+        save: null,
       });
     } catch (e) {
       console.warn(
@@ -221,9 +226,10 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
       let terrain: TerrainData | null = null;
       let naboer: NeighborBuildingData | null = null;
       let fjernvarme: FjernvarmeResultat | null = null;
+      let save: SaveData | null = null;
 
       if (koordinater) {
-        const [natur, jord, geus, terr, nabo, varme] = await Promise.all([
+        const [natur, jord, geus, terr, nabo, varme, saveResult] = await Promise.all([
           import("@/integrations/sdfi/naturbeskyttelse")
             .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
             .catch((e: Error) => {
@@ -265,6 +271,12 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
               console.warn("[Orchestrator] FjernvarmeService fejlede:", e.message);
               return null;
             }),
+          import("@/integrations/save/client")
+            .then(({ SaveService }) => SaveService.getBevaringsdata(koordinater))
+            .catch((e: Error) => {
+              console.warn("[Orchestrator] SaveService fejlede:", e.message);
+              return null;
+            }),
         ]);
         naturbeskyttelse = natur;
         dkjord = jord;
@@ -272,13 +284,14 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         terrain = terr;
         naboer = nabo;
         fjernvarme = varme;
+        save = saveResult;
       }
 
-      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme };
+      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save };
     })(),
   ]);
 
-  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme } = layer4;
+  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save } = layer4;
 
   return {
     ...complianceBase,
@@ -290,6 +303,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     terrain,
     naboer,
     fjernvarme,
+    save,
   };
 }
 

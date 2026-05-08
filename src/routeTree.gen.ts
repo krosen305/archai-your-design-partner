@@ -15,6 +15,7 @@ import { Route as ProjektTeknikRouteImport } from './routes/projekt.teknik'
 import { Route as ProjektStartRouteImport } from './routes/projekt.start'
 import { Route as ProjektOekonomiRouteImport } from './routes/projekt.oekonomi'
 import { Route as ProjektEjendomRouteImport } from './routes/projekt.ejendom'
+import { Route as ProjektDatacheckRouteImport } from './routes/projekt.datacheck'
 import { Route as ProjektByggeanalyseRouteImport } from './routes/projekt.byggeanalyse'
 import { Route as ProjektBoligoenskeRouteImport } from './routes/projekt.boligoenske'
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
@@ -49,6 +50,11 @@ const ProjektEjendomRoute = ProjektEjendomRouteImport.update({
   path: '/projekt/ejendom',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjektDatacheckRoute = ProjektDatacheckRouteImport.update({
+  id: '/projekt/datacheck',
+  path: '/projekt/datacheck',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjektByggeanalyseRoute = ProjektByggeanalyseRouteImport.update({
   id: '/projekt/byggeanalyse',
   path: '/projekt/byggeanalyse',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
+  '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/ejendom': typeof ProjektEjendomRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
+  '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/ejendom': typeof ProjektEjendomRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
   '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
+  '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/ejendom': typeof ProjektEjendomRoute
   '/projekt/oekonomi': typeof ProjektOekonomiRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/projekt/adresse'
     | '/projekt/boligoenske'
     | '/projekt/byggeanalyse'
+    | '/projekt/datacheck'
     | '/projekt/ejendom'
     | '/projekt/oekonomi'
     | '/projekt/start'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/projekt/adresse'
     | '/projekt/boligoenske'
     | '/projekt/byggeanalyse'
+    | '/projekt/datacheck'
     | '/projekt/ejendom'
     | '/projekt/oekonomi'
     | '/projekt/start'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/projekt/adresse'
     | '/projekt/boligoenske'
     | '/projekt/byggeanalyse'
+    | '/projekt/datacheck'
     | '/projekt/ejendom'
     | '/projekt/oekonomi'
     | '/projekt/start'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   ProjektAdresseRoute: typeof ProjektAdresseRoute
   ProjektBoligoenskeRoute: typeof ProjektBoligoenskeRoute
   ProjektByggeanalyseRoute: typeof ProjektByggeanalyseRoute
+  ProjektDatacheckRoute: typeof ProjektDatacheckRoute
   ProjektEjendomRoute: typeof ProjektEjendomRoute
   ProjektOekonomiRoute: typeof ProjektOekonomiRoute
   ProjektStartRoute: typeof ProjektStartRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjektEjendomRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projekt/datacheck': {
+      id: '/projekt/datacheck'
+      path: '/projekt/datacheck'
+      fullPath: '/projekt/datacheck'
+      preLoaderRoute: typeof ProjektDatacheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projekt/byggeanalyse': {
       id: '/projekt/byggeanalyse'
       path: '/projekt/byggeanalyse'
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjektAdresseRoute: ProjektAdresseRoute,
   ProjektBoligoenskeRoute: ProjektBoligoenskeRoute,
   ProjektByggeanalyseRoute: ProjektByggeanalyseRoute,
+  ProjektDatacheckRoute: ProjektDatacheckRoute,
   ProjektEjendomRoute: ProjektEjendomRoute,
   ProjektOekonomiRoute: ProjektOekonomiRoute,
   ProjektStartRoute: ProjektStartRoute,

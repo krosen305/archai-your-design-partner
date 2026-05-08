@@ -80,8 +80,7 @@ const saveDatacheck = createServerFn({ method: "POST" })
 // Route
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute("/projekt/datacheck" as any)({
+export const Route = createFileRoute("/projekt/datacheck")({
   component: DatacheckPage,
 });
 

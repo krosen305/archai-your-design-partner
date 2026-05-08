@@ -26,6 +26,7 @@ import type { ByggeanalyseInput, ByggeanalyseResultat } from "@/integrations/ai/
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { SaveData } from "@/integrations/save/client";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
@@ -213,6 +214,7 @@ function ComplianceContent() {
   const [geusRiskLocal, setGeusRiskLocal] = useState<GeusRiskData | null>(null);
   const [servitutterLocal, setServitutterLocal] = useState<TinglysningResult | null>(null);
   const [terrainLocal, setTerrainLocal] = useState<TerrainData | null>(null);
+  const [saveLocal, setSaveLocal] = useState<SaveData | null>(null);
 
   useEffect(() => {
     if (bbrData) {
@@ -262,6 +264,7 @@ function ComplianceContent() {
           setGeusRiskLocal(result.geusRisk ?? null);
           setServitutterLocal(result.servitutter ?? null);
           setTerrainLocal(result.terrain ?? null);
+          setSaveLocal(result.save ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
             result.kommuneplanramme,
@@ -374,6 +377,7 @@ function ComplianceContent() {
             geusRisk={geusRiskLocal}
             servitutter={servitutterLocal}
             terrain={terrainLocal}
+            save={saveLocal}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -448,6 +452,7 @@ function ResultView({
   geusRisk,
   servitutter,
   terrain,
+  save,
   onContinue,
 }: {
   adresse: string;
@@ -458,6 +463,7 @@ function ResultView({
   geusRisk: GeusRiskData | null;
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
+  save: SaveData | null;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -653,6 +659,8 @@ function ResultView({
         </div>
       )}
 
+      {save && <SaveSektion data={save} />}
+
       {geusRisk && <GeusRisikoSektion data={geusRisk} />}
 
       {terrain && <TerrainSektion data={terrain} />}
@@ -811,6 +819,56 @@ function TerrainSektion({ data }: { data: TerrainData }) {
           <div className="text-xs text-muted-foreground mt-0.5">Primær facade</div>
         </div>
       </div>
+    </Card>
+  );
+}
+
+function SaveSektion({ data }: { data: SaveData }) {
+  return (
+    <Card className="mb-4">
+      <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
+        FREDNING & BEVARELSE
+        {data.kilde === "mock" && (
+          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
+            MOCK
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {data.fredet ? (
+          <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-danger border-danger/40 bg-danger/10">
+            FREDET BYGNING
+          </span>
+        ) : (
+          <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-success border-success/40 bg-success/10">
+            IKKE FREDET
+          </span>
+        )}
+        {data.saveBevaringsvaerdi !== null && (
+          <span
+            className={`inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 ${
+              data.saveBevaringsvaerdi <= 3
+                ? "text-danger border-danger/40 bg-danger/10"
+                : data.saveBevaringsvaerdi <= 6
+                  ? "text-warning border-warning/40 bg-warning/10"
+                  : "text-muted-foreground border-border bg-[#1a1a1a]"
+            }`}
+          >
+            SAVE {data.saveBevaringsvaerdi}
+          </span>
+        )}
+      </div>
+      {data.fredet && (
+        <p className="text-sm text-danger mt-2">
+          Bygningen er fredet — nedrivning kræver dispensation fra Slots- og Kulturstyrelsen.
+        </p>
+      )}
+      {data.saveBevaringsvaerdi !== null && data.saveBevaringsvaerdi <= 3 && (
+        <p className="text-sm text-warning mt-2">
+          Høj bevaringsværdi (SAVE {data.saveBevaringsvaerdi}) — nedrivning eller facadeændring kan
+          kræve kommunal dispensation.
+        </p>
+      )}
     </Card>
   );
 }
