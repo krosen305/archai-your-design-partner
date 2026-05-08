@@ -138,7 +138,7 @@ function AddressStep() {
     <PageTransition>
       <div className="mx-auto max-w-[720px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/" />
+          <BackLink to="/projekt/start" />
         </div>
         <StepHeader
           step={1}
