@@ -7,11 +7,14 @@
 //   - Kun ét root-felt pr. query (DAF-GQL-0010)
 //   → BBR_Bygning og grundareal kræver separate kald
 //
-// Schema-kilde: https://graphql.datafordeler.dk/BBR/v2/schema
+// Schema-kilde: https://graphql.datafordeler.dk/BBR/v2/schema (lokal kopi: schema/BBR.graphql)
 // Feltnavne bekræftet mod schema:
-//   BBR_Bygning:   byg021, byg026, byg032, byg033, byg038, byg041, byg054, byg056, byg057, byg070
+//   BBR_Bygning:   byg021 (anvendelse), byg026 (opførelsesår), byg032 (ydervæg), byg033 (tag),
+//                  byg038 (samlet areal), byg041 (bebygget areal), byg054 (etager),
+//                  byg056 (varmeinstallation), byg057 (opvarmningsmiddel), byg070 (fredning)
 //   BBR_Grund:     Indeholder IKKE grundareal – grundareal hentes fra MAT/DAR
 //   Filter-felt:   husnummer (ikke husnummerIdentificerer)
+//   mat_*-felter:  Sættes af analysis-orchestrator.ts via MatService (strandbeskyttelse/fredskov/klitfredning)
 
 // ---------------------------------------------------------------------------
 // Konfiguration

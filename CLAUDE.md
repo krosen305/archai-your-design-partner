@@ -17,14 +17,18 @@ bunx prettier --write .                        # Format
 
 ```
 /                        → index.tsx
-/projekt/adresse         → projekt.adresse.tsx      (GSearch autocomplete)
-/projekt/hus-dna         → projekt.hus-dna.tsx      (Phase 1: AI drømmehus)
-/projekt/compliance      → projekt.compliance.tsx    (BBR + Plandata pipeline)
-/projekt/match           → projekt.match.tsx         (Phase 2: compliance matrix)
-/projekt/finans          → projekt.finans.tsx        (Phase 3+: placeholders)
+/projekt/start           → projekt.start.tsx
+/projekt/adresse         → projekt.adresse.tsx       (GSearch autocomplete)
+/projekt/boligoenske     → projekt.boligoenske.tsx   (22-trins byggeønsker + billedupload)
+/projekt/ejendom         → projekt.ejendom.tsx       (ejendomsdata)
+/projekt/byggeanalyse    → projekt.byggeanalyse.tsx  (BBR+Plandata pipeline + AI analyse)
+/projekt/datacheck       → projekt.datacheck.tsx     (projektparathed — manuelle datapunkter)
+/projekt/oekonomi        → projekt.oekonomi.tsx
+/projekt/teknik          → projekt.teknik.tsx
+/projekt/udbud           → projekt.udbud.tsx
 ```
 
-Flow: adresse → hus-dna → compliance (auto-kører BBR+Plandata) → match → …
+Flow: adresse → boligoenske → ejendom → byggeanalyse (auto-kører BBR+Plandata+AI) → …
 Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis-orchestrator.ts` → cache i Supabase `address_analysis` (key: `adresseid`).
 
 ## Kritiske regler
@@ -41,25 +45,33 @@ Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis
 
 ## src/lib — nøglefiler
 
-| Fil                              | Ansvar                                                                                            |
-| -------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `project-store.ts`               | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `phases`) |
-| `analysis-orchestrator.ts`       | Entry point for compliance pipeline                                                               |
-| `compliance-*.ts`                | Compliance-logik og flagberegning                                                                 |
-| `phase-*.ts`                     | Fase-styring                                                                                      |
-| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware                                                            |
-| `env.ts`                         | Zod-valideret env — brug denne                                                                    |
-| `kommuner.ts`                    | Kommunekode → kommunenavn map (98 kommuner)                                                       |
-| `utils.ts`                       | `cn()` og utilities                                                                               |
+| Fil                              | Ansvar                                                                                                          |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `project-store.ts`               | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `byggeanalyseResultat`) |
+| `project-sync.ts`                | Fire-and-forget Supabase-sync (`syncPatch`, `restoreProject`) — session-persistens                              |
+| `analysis-orchestrator.ts`       | Entry point for compliance pipeline — BBR+MAT+Plandata+geodata paralleliseret                                   |
+| `rule-engine/`                   | Deterministisk regelkerne (stopregler, beregninger, energi) — pure functions, ingen AI                          |
+| `compliance-engine.ts`           | Beregning af `ComplianceMetrics` (bebyggelsesprocent, etager, areal)                                            |
+| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware                                                                          |
+| `env.ts`                         | Zod-valideret env — brug denne                                                                                  |
+| `kommuner.ts`                    | Kommunekode → kommunenavn map (98 kommuner)                                                                     |
+| `utils.ts`                       | `cn()` og utilities                                                                                             |
 
 ## Integrations (`src/integrations/`)
 
 Se `docs/INTEGRATIONS.md` for fuld tabel og Datafordeler GraphQL-constraints.
 
-Aktiv status:
+IS_MOCK=true services (live API afventer verifikation):
 
-- `TinglysningService` — IS_MOCK=true (ARCH-26, API afventes)
-- Alle andre services er live
+- `TinglysningService` — ARCH-26 (TingbogenV2 schema)
+- `NaturbeskyttelseService` — ARCH-65 (DAI WFS endpoint)
+- `DkJordService` — ARCH-66 (dkjord.mst.dk)
+- `GeusService` — ARCH-101 (GEUS WFS layer-navne)
+- `DhmService` — ARCH-102 (DHM WCS)
+- `FjernvarmeService` — ARCH-111 (Plandata WFS layer-navn)
+- `SaveService` — ARCH-29 (Kulturmiljøregisteret)
+
+**OBS:** `mat_strandbeskyttelse`, `mat_fredskov`, `mat_klitfredning` i `BbrKompliantData` er **live** data fra MAT_Jordstykke og erstatter delvist NaturbeskyttelseService for disse tre typer.
 
 ## Env vars (server-side — ingen `VITE_` prefix)
 
@@ -74,6 +86,20 @@ GITHUB_DISPATCH_TOKEN   # Valgfri: ARCH-74
 ```
 
 Dokumentér altid nye env-variabler her.
+
+## GraphQL-skemaer (`schema/`)
+
+Datafordeler introspektionsfiler — **gitignored** (for store til repo, regenererbare).
+
+```
+schema/BBR.graphql   # BBR v2 — bygning, enhed, grund, etage
+schema/DAR.graphql   # DAR v1 — adresse, husnummer, vejnavn
+schema/EBR.graphql   # EBR — ejendomsbeliggenhed (BFE-nøgle)
+schema/MAT.graphql   # MAT v2 — jordstykke, ejerlav, matrikel
+schema/VUR.graphql   # VUR — ejendomsvurdering (ejendoms- og grundværdi)
+```
+
+Regenerér: `curl -s "https://graphql.datafordeler.dk/{REGISTER}/v2/schema?apiKey=..." > schema/{REGISTER}.graphql`
 
 ## Slash commands (Claude Code)
 

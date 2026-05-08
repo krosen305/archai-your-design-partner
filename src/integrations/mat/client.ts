@@ -11,14 +11,17 @@
 //   - virkningstid PÅKRÆVET (DAF-GQL-0009)
 //   → MAT_Ejerlav og MAT_Jordstykke kræver separate kald
 //
-// Schema-kilde: https://graphql.datafordeler.dk/MAT/v2/schema
+// Schema-kilde: https://graphql.datafordeler.dk/MAT/v2/schema (lokal kopi: schema/MAT.graphql)
 // Feltnavne bekræftet mod schema:
 //   MAT_Ejerlav:    ejerlavskode (Long!), id_lokalId (String!)
-//   MAT_Jordstykke: ejerlavLokalId (String!), matrikelnummer (String), registreretAreal (Long!)
+//   MAT_Jordstykke: ejerlavLokalId, matrikelnummer, registreretAreal,
+//                   strandbeskyttelse_omfang, fredskov_omfang, klitfredning_omfang
 //
 // Opslag-kæde:
-//   ejerlavskode (fra DAWA/DAR) → MAT_Ejerlav.id_lokalId
-//                                → MAT_Jordstykke.registreretAreal
+//   ejerlavskode (fra DAWA/DAR) → MAT_Ejerlav.id_lokalId → MAT_Jordstykke
+//
+// Beskyttelseslinjer hentes gratis i samme kald som grundareal og merges ind i
+// BbrKompliantData.mat_* af analysis-orchestrator.ts.
 
 // ---------------------------------------------------------------------------
 // Konfiguration
