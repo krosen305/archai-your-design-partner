@@ -272,6 +272,8 @@ function ComplianceContent() {
           setServitutterLocal(result.servitutter ?? null);
           setTerrainLocal(result.terrain ?? null);
           setSaveLocal(result.save ?? null);
+          setFjernvarmeLocal(result.fjernvarme ?? null);
+          setNaboerLocal(result.naboer ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
             result.kommuneplanramme,
