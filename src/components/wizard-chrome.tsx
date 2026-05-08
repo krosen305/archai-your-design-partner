@@ -112,19 +112,145 @@ export function MobilePhaseBar() {
 }
 
 export function TopBar() {
+  const { user } = useAuth();
+  const logoTo = user ? "/projekt/start" : "/";
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-6 gap-4">
-        <Link to="/" className="font-mono text-sm tracking-[0.2em] text-accent shrink-0">
-          ARCHAI
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <MobileMenu />
+          <Link to={logoTo} className="font-mono text-sm tracking-[0.2em] text-accent">
+            ARCHAI
+          </Link>
+        </div>
         <div className="flex-1 flex justify-center min-w-0">
           <PhaseBar />
           <MobilePhaseBar />
         </div>
-        <div className="w-[72px] hidden md:block shrink-0" />
+        <div className="shrink-0 flex items-center justify-end min-w-[72px]">
+          <UserMenu />
+        </div>
       </div>
     </header>
+  );
+}
+
+function MobileMenu() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const states = usePhaseStates(pathname);
+  const subKeys = usePhaseSubKeys();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate({ to: "/" });
+  };
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <button
+          aria-label="Åbn menu"
+          className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-accent/40 transition-colors"
+        >
+          <Menu size={16} />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[280px] bg-[#0c0c0c] border-r border-[#222]">
+        <SheetHeader>
+          <SheetTitle className="font-mono text-[11px] tracking-[0.2em] text-accent text-left">
+            ARCHAI
+          </SheetTitle>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-5">
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-3">
+              FASEOVERSIGT
+            </div>
+            <nav className="space-y-3">
+              {PHASES.map((p) => {
+                const status = states[p.id];
+                const clickable = status === "complete" || status === "active";
+                return (
+                  <div key={p.id}>
+                    <SheetClose asChild>
+                      <button
+                        disabled={!clickable}
+                        onClick={() => clickable && navigate({ to: p.route })}
+                        className="flex w-full items-center gap-2 text-left disabled:cursor-not-allowed"
+                      >
+                        {status === "complete" ? (
+                          <Check size={12} className="text-accent" />
+                        ) : status === "active" ? (
+                          <span className="inline-flex h-2 w-2 rounded-full bg-accent" />
+                        ) : (
+                          <Lock size={10} className="text-[#555]" />
+                        )}
+                        <span
+                          className={`font-mono text-[11px] tracking-[0.1em] ${
+                            status === "locked" ? "text-[#555]" : "text-foreground"
+                          }`}
+                        >
+                          FASE {p.id} · {p.label}
+                        </span>
+                      </button>
+                    </SheetClose>
+                    {(status === "complete" || status === "active") &&
+                      subKeys[p.id].length > 0 && (
+                        <ul className="mt-1.5 ml-[18px] space-y-0.5 border-l border-[#222] pl-2.5">
+                          {subKeys[p.id].map((k) => (
+                            <li key={k.label} className="text-[10px] text-muted-foreground">
+                              {k.label}: <span className="text-foreground/80">{k.value}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="border-t border-[#222] pt-4 space-y-1">
+            {!loading && user && (
+              <>
+                <SheetClose asChild>
+                  <Link
+                    to="/projekt/start"
+                    className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <FolderOpen size={14} />
+                    Mine projekter
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <LogOut size={14} />
+                    Log ud
+                  </button>
+                </SheetClose>
+              </>
+            )}
+            {!loading && !user && (
+              <SheetClose asChild>
+                <Link
+                  to="/"
+                  className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground hover:bg-[#1a1a1a] transition-colors"
+                >
+                  <LogIn size={14} />
+                  Log ind
+                </Link>
+              </SheetClose>
+            )}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
