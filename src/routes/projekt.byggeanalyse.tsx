@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -11,6 +11,8 @@ import {
   ExternalLink,
   Map,
   Sparkles,
+  Flame,
+  Home as HomeIcon,
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -27,6 +29,9 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { SaveData } from "@/integrations/save/client";
+import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
+import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch } from "@/lib/project-sync";
 
 // ---------------------------------------------------------------------------
