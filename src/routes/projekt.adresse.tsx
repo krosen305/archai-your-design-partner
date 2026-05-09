@@ -1,14 +1,30 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Search } from "lucide-react";
-import { useProject } from "@/lib/project-store";
+import { Search, Loader2, AlertTriangle, CheckCircle2, ChevronDown } from "lucide-react";
+import { useProject, type ComplianceFlag, type Address } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import { syncPatch } from "@/lib/project-sync";
 import { MOCK_ADRESSE } from "@/lib/mock-data";
 import { preCheckAdresse } from "@/lib/pre-check-adresse";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+function flagIcon(id: string): string {
+  if (id.includes("fredet")) return "🏛️";
+  if (id.includes("strandbeskyttelse")) return "🌊";
+  if (id.includes("fredskov")) return "🌲";
+  if (id.includes("skovbyggelinje")) return "🌳";
+  if (id.includes("soebeskyttelse")) return "💧";
+  return "⚠️";
+}
 
 // ---------------------------------------------------------------------------
 // Server functions — begge kræver credentials der kun er tilgængelige server-side.
@@ -47,6 +63,11 @@ function AddressStep() {
     adressePreCheck,
   } = useProject();
 
+  // Compliance gate UI state (ARCH-125)
+  const [overrideContinue, setOverrideContinue] = useState(false);
+  const [showBlockerDialog, setShowBlockerDialog] = useState(false);
+  const [softOpen, setSoftOpen] = useState(false);
+
   const [query, setQuery] = useState(address?.adresse ?? "");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(address);
@@ -63,6 +84,11 @@ function AddressStep() {
   const hardBlockers = adressePreCheck?.blockers.filter((f) => !f.dispensationMulig) ?? [];
   const softBlockers = adressePreCheck?.blockers.filter((f) => f.dispensationMulig) ?? [];
   const advarsler = adressePreCheck?.advarsler ?? [];
+  const hasHard = hardBlockers.length > 0;
+  const hasSoft = softBlockers.length > 0 || advarsler.length > 0;
+  const allChecksDone = adressePreCheck !== null && !isCheckingCompliance;
+  const isClean = allChecksDone && !hasHard && !hasSoft;
+  const anyDispensationPossible = hardBlockers.some((b) => b.dispensationMulig);
 
   useEffect(() => {
     if (!open || selected) return;
@@ -103,7 +129,7 @@ function AddressStep() {
     setBbrData(null);
 
     // TRIN 1: Sæt straks adresse fra autocomplete-data (ingen ventetid)
-    const immediateAddress = {
+    const immediateAddress: Address = {
       adresseid: s.adresseid,
       adresse: s.tekst,
       postnr: s.postnr,
@@ -178,8 +204,6 @@ function AddressStep() {
       setIsCheckingCompliance(false);
     }
   }
-
-  const canContinue = !!selected && !isCheckingCompliance && hardBlockers.length === 0;
 
   return (
     <PageTransition>
@@ -276,73 +300,139 @@ function AddressStep() {
             </div>
           )}
 
-          {/* Compliance-feedback */}
-          {selected && !isCheckingCompliance && (
-            <>
-              {/* Hard blockers: ingen dispensation mulig */}
-              {hardBlockers.length > 0 && (
-                <div className="mt-5 rounded-md border border-danger/40 bg-danger/5 px-4 py-3">
-                  <div className="flex items-center gap-2 text-danger text-sm font-medium mb-1">
-                    <AlertTriangle size={15} />
-                    Byggeri ikke muligt på denne adresse
-                  </div>
-                  <ul className="list-disc list-inside space-y-0.5">
-                    {hardBlockers.map((f) => (
-                      <li key={f.id} className="text-xs text-danger/80">
-                        {f.label}
-                        {f.detalje ? ` — ${f.detalje}` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Soft blockers: dispensation mulig → amber */}
-              {softBlockers.length > 0 && (
-                <div className="mt-5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-4 py-3">
-                  <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium mb-1">
-                    <AlertTriangle size={15} />
-                    Kræver dispensation
-                  </div>
-                  <ul className="list-disc list-inside space-y-0.5">
-                    {softBlockers.map((f) => (
-                      <li key={f.id} className="text-xs text-yellow-400/80">
-                        {f.label}
-                        {f.dispensationMyndighed
-                          ? ` — dispensation fra ${f.dispensationMyndighed}`
-                          : ""}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-2 text-xs text-yellow-400/60">
-                    Du kan fortsætte, men projektet kræver dispensation.
-                  </p>
-                </div>
-              )}
-
-              {/* Advarsler */}
-              {advarsler.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {advarsler.map((f) => (
-                    <span
-                      key={f.id}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/30 bg-yellow-500/5 px-2.5 py-1 text-[11px] font-mono text-yellow-400"
-                    >
-                      ⚠ {f.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </>
+          {/* Compliance gate UI (ARCH-125) */}
+          {selected && isCheckingCompliance && (
+            <div className="mt-5">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+                <Loader2 size={12} className="animate-spin text-accent" />
+                Vi checker byggevilkår for adressen...
+              </div>
+              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#1a1a1a]">
+                <div className="h-full w-1/3 bg-accent animate-pulse" />
+              </div>
+            </div>
           )}
 
-          <button
-            disabled={!canContinue}
-            onClick={() => navigate({ to: "/projekt/boligoenske" })}
-            className="mt-6 w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {isCheckingCompliance ? "Tjekker adresse..." : "Fortsæt →"}
-          </button>
+          {selected && hasHard && (
+            <div className="mt-5 flex items-start gap-3 rounded-md border border-danger/40 bg-danger/5 px-4 py-3">
+              <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
+              <div className="text-sm text-danger">Byggeri kan ikke anbefales her</div>
+            </div>
+          )}
+
+          {selected && !hasHard && hasSoft && (
+            <div className="mt-5 rounded-md border border-yellow-500/40 bg-yellow-500/5">
+              <button
+                type="button"
+                onClick={() => setSoftOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm text-yellow-400"
+              >
+                <span className="flex items-center gap-2">
+                  <AlertTriangle size={16} />
+                  {softBlockers.length + advarsler.length} forhold kræver opmærksomhed
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${softOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {softOpen && (
+                <ul className="border-t border-yellow-500/20 divide-y divide-yellow-500/10">
+                  {[...softBlockers, ...advarsler].map((f) => (
+                    <li key={f.id} className="flex items-start gap-2 px-4 py-2.5 text-xs">
+                      <span>{flagIcon(f.id)}</span>
+                      <div>
+                        <div className="text-foreground">{f.label}</div>
+                        {f.detalje && <div className="text-muted-foreground">{f.detalje}</div>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {selected && isClean && (
+            <div className="mt-5 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/5 px-2.5 py-1.5 font-mono text-[12px] text-emerald-400">
+              <CheckCircle2 size={13} /> Ingen kendte byggehindringer ✓
+            </div>
+          )}
+
+          {/* Fortsæt-knap — varianter */}
+          {hasHard && !overrideContinue ? (
+            <button
+              onClick={() => setShowBlockerDialog(true)}
+              className="mt-6 w-full inline-flex items-center justify-center rounded-md bg-danger px-6 py-3 font-mono text-sm text-white transition-all hover:brightness-110"
+            >
+              Se årsag →
+            </button>
+          ) : (
+            <button
+              disabled={!selected || isCheckingCompliance}
+              onClick={() => navigate({ to: "/projekt/boligoenske" })}
+              className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-md px-6 py-3 font-mono text-sm transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                hasSoft && !overrideContinue
+                  ? "bg-yellow-500 text-black"
+                  : "bg-accent text-accent-foreground"
+              }`}
+            >
+              {isCheckingCompliance && <Loader2 size={14} className="animate-spin" />}
+              {hasSoft && !overrideContinue ? "Fortsæt med forbehold →" : "Fortsæt →"}
+            </button>
+          )}
+
+          {/* Blocker dialog */}
+          <Dialog open={showBlockerDialog} onOpenChange={setShowBlockerDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Byggeri kan ikke anbefales her</DialogTitle>
+              </DialogHeader>
+              <ul className="space-y-3 max-h-[50vh] overflow-y-auto">
+                {hardBlockers.map((b: ComplianceFlag) => (
+                  <li
+                    key={b.id}
+                    className="rounded-md border border-danger/40 bg-danger/5 px-3 py-2.5"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span>{flagIcon(b.id)}</span>
+                      <div className="flex-1">
+                        <div className="text-sm text-foreground font-medium">{b.label}</div>
+                        {b.detalje && (
+                          <div className="text-xs text-muted-foreground mt-0.5">{b.detalje}</div>
+                        )}
+                        {b.dispensationMulig && (
+                          <div className="mt-1.5 text-[11px] font-mono text-yellow-400">
+                            Dispensation mulig — kontakt {b.dispensationMyndighed ?? "kommunen"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <DialogFooter className="flex-col gap-2 sm:flex-col">
+                <button
+                  onClick={() => setShowBlockerDialog(false)}
+                  className="w-full rounded-md bg-accent px-4 py-2.5 font-mono text-sm text-accent-foreground hover:brightness-110"
+                >
+                  Gå tilbage og vælg anden adresse
+                </button>
+                {anyDispensationPossible && (
+                  <button
+                    onClick={() => {
+                      setOverrideContinue(true);
+                      setShowBlockerDialog(false);
+                    }}
+                    className="w-full rounded-md border border-danger/40 bg-transparent px-4 py-2.5 font-mono text-xs text-danger hover:bg-danger/5"
+                  >
+                    Fortsæt alligevel — jeg kender risikoen
+                  </button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+
 
           {/* Spring over: fortsæt uden adresse */}
           <button

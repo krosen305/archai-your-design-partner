@@ -1,14 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   MapPin,
-  Ruler,
-  Building2,
-  Trees,
-  AlertTriangle,
-  FileWarning,
   CheckCircle2,
+  AlertTriangle,
   HelpCircle,
+  ChevronDown,
   Zap,
 } from "lucide-react";
 import { useProject, type ComplianceFlag } from "@/lib/project-store";
@@ -19,156 +17,58 @@ export const Route = createFileRoute("/projekt/ejendom")({
   component: EjendomStep,
 });
 
-// ---------------------------------------------------------------------------
-// Afled indikatorer fra compliance-flags (dkjord + sdfi allerede i storen)
-// ---------------------------------------------------------------------------
-
-type IndicatorStatus = "ok" | "advarsel" | "blocker" | "ukendt";
-
-type Indicator = {
-  id: string;
-  label: string;
-  status: IndicatorStatus;
-  detail: string;
-};
-
-function deriveIndicators(flags: ComplianceFlag[], complianceDone: boolean): Indicator[] {
-  const harDkjordData = flags.some((f) => f.kilde === "dkjord");
-  const harNaturData = flags.some((f) => f.kilde === "sdfi");
-
-  // Olietank
-  const olietankFlag = flags.find((f) => f.id === "dkjord-olietank");
-  const olietank: Indicator = olietankFlag
-    ? {
-        id: "olietank",
-        label: "Olietank",
-        status: "advarsel",
-        detail: olietankFlag.detalje ?? "Gammel olietank registreret",
-      }
-    : {
-        id: "olietank",
-        label: "Olietank",
-        status: harDkjordData ? "ok" : "ukendt",
-        detail: harDkjordData ? "Ingen registreret olietank" : "Afventer data",
-      };
-
-  // Jordforurening (V1 + V2 + områdeklassificering)
-  const v2Flag = flags.find((f) => f.id === "dkjord-v2");
-  const v1Flag = flags.find((f) => f.id === "dkjord-v1");
-  const omraadeFlag = flags.find((f) => f.id === "dkjord-omraade");
-  const forurening: Indicator = v2Flag
-    ? {
-        id: "forurening",
-        label: "Jordforurening",
-        status: "blocker",
-        detail: v2Flag.detalje ?? "V2-kortlagt grund",
-      }
-    : v1Flag
-      ? {
-          id: "forurening",
-          label: "Jordforurening",
-          status: "advarsel",
-          detail: v1Flag.detalje ?? "V1-kortlagt grund",
-        }
-      : omraadeFlag
-        ? {
-            id: "forurening",
-            label: "Jordforurening",
-            status: "advarsel",
-            detail: omraadeFlag.detalje ?? "Områdeklassificering",
-          }
-        : {
-            id: "forurening",
-            label: "Jordforurening",
-            status: harDkjordData ? "ok" : "ukendt",
-            detail: harDkjordData ? "Ingen kortlagt forurening" : "Afventer data",
-          };
-
-  // Naturbeskyttelseslinjer (strandbeskyttelse, skovbyggelinje, mv.)
-  const naturFlags = flags.filter((f) => f.kilde === "sdfi");
-  const natur: Indicator =
-    naturFlags.length > 0
-      ? {
-          id: "natur",
-          label: "Naturbeskyttelse",
-          status: "blocker",
-          detail: naturFlags.map((f) => f.label).join(" · "),
-        }
-      : {
-          id: "natur",
-          label: "Naturbeskyttelse",
-          status: harNaturData || complianceDone ? "ok" : "ukendt",
-          detail: harNaturData || complianceDone ? "Ingen beskyttelseslinjer" : "Afventer analyse",
-        };
-
-  // Servitutter — Tinglysning ikke implementeret endnu
-  const servitutter: Indicator = {
-    id: "servitutter",
-    label: "Servitutter",
-    status: "ukendt",
-    detail: "Afventer Tinglysning-integration",
-  };
-
-  return [olietank, forurening, natur, servitutter];
+function formatMio(v: number | null | undefined): string {
+  if (v == null) return "—";
+  return `${(v / 1_000_000).toFixed(2).replace(".", ",")} mio. kr.`;
 }
-
-// ---------------------------------------------------------------------------
-// Komponent
-// ---------------------------------------------------------------------------
 
 function EjendomStep() {
   const navigate = useNavigate();
-  const { address, bbrData, complianceFlags, complianceDone } = useProject();
+  const { complianceMetrics, bbrData, vurderingData, complianceFlags, address } = useProject();
+  const [showFlags, setShowFlags] = useState(false);
 
-  const indicators = deriveIndicators(complianceFlags, complianceDone);
+  const grundareal = complianceMetrics?.grundareal ?? null;
+  const remaining = complianceMetrics?.remainingBygningsareal ?? null;
+  const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
+  const currentPct = complianceMetrics?.currentBebyggelsesprocent ?? null;
+  const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? null;
+  const currentEtager = complianceMetrics?.currentEtager ?? null;
+  const maxEtager = complianceMetrics?.maxEtager ?? null;
+  const maxHoejde = complianceMetrics?.maxBygningshoejde ?? null;
 
-  const metrics = [
+  const noegletal = [
     {
-      icon: Ruler,
-      label: "Grundareal",
-      value: bbrData?.grundareal != null ? `${bbrData.grundareal} m²` : "—",
+      label: "GRUNDAREAL",
+      value: grundareal != null ? `${grundareal} m²` : "—",
+      sub: currentPct != null ? `Bebygget: ${currentPct}%` : "—",
+    },
+    {
+      label: "BYGGEPOTENTIALE",
+      value: remaining != null ? `${remaining} m²` : "—",
+      sub: maxBygningsareal != null ? `Max ${maxBygningsareal} m² tilladt` : "Ingen ramme",
+    },
+    {
+      label: "EJENDOMSVÆRDI",
+      value: formatMio(vurderingData?.ejendomsvaerdi),
       sub:
-        bbrData?.bebyggelsesprocent != null
-          ? `${bbrData.bebyggelsesprocent}% bebygget`
-          : "Grundareal fra MAT",
-    },
-    {
-      icon: Building2,
-      label: "Bebyggelse",
-      value: bbrData?.bebygget_areal != null ? `${bbrData.bebygget_areal} m²` : "—",
-      sub: bbrData?.antal_etager != null ? `${bbrData.antal_etager} etage(r)` : "Bebygget areal",
-    },
-    {
-      icon: MapPin,
-      label: "Kommune",
-      value: address?.kommune ?? "—",
-      sub: address?.postnr ? `${address.postnr} ${address.postnrnavn}` : "—",
-    },
-    {
-      icon: Trees,
-      label: "Matrikel",
-      value: address?.matrikel ?? "—",
-      sub: "Matr. nr. fra DAR",
+        vurderingData?.vurderingsaar != null
+          ? `Vurderet ${vurderingData.vurderingsaar}`
+          : "Ingen vurdering",
     },
   ];
-
-  const warningCount = indicators.filter(
-    (i) => i.status === "advarsel" || i.status === "blocker",
-  ).length;
 
   return (
     <PageTransition>
       <div className="mx-auto max-w-[920px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/projekt/boligoenske" />
+          <BackLink to="/projekt/adresse" />
         </div>
         <StepHeader
           step={2}
           title="Din ejendom"
-          subtitle="Her er hvad vi ved om grunden — tjek for advarsler før byggeanalysen."
+          subtitle="Sådan ser grundens byggepotentiale ud i dag."
         />
 
-        {/* Adresse-header */}
         {address && (
           <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin size={13} />
@@ -176,52 +76,117 @@ function EjendomStep() {
           </div>
         )}
 
-        {/* 2×2 metrics */}
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-          {metrics.map((m, i) => (
+        {/* Sektion 1 — nøgletal */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+          {noegletal.map((n, i) => (
             <motion.div
-              key={m.label}
+              key={n.label}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
             >
               <Card>
-                <div className="flex items-start gap-3">
-                  <div className="rounded-md border border-border bg-[#111] p-2 shrink-0">
-                    <m.icon size={16} className="text-accent" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
-                      {m.label.toUpperCase()}
-                    </div>
-                    <div className="mt-1 text-lg text-foreground truncate">{m.value}</div>
-                    <div className="text-xs text-muted-foreground">{m.sub}</div>
-                  </div>
+                <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+                  {n.label}
                 </div>
+                <div className="mt-1.5 text-2xl text-foreground">{n.value}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{n.sub}</div>
               </Card>
             </motion.div>
           ))}
         </div>
 
-        {/* Indikatorer */}
-        <div className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
-              INDIKATORER
-            </div>
-            {warningCount > 0 && (
-              <span className="font-mono text-[10px] text-warning border border-warning/40 rounded px-2 py-0.5">
-                {warningCount} advarsel{warningCount !== 1 ? "er" : ""}
-              </span>
-            )}
+        {/* Sektion 2 — Eksisterende bygning */}
+        <SectionHeader title="Eksisterende bygning" />
+        <Card>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <Field label="Byggeår" value={bbrData?.byggeaar ?? "—"} />
+            <Field
+              label="Samlet areal"
+              value={bbrData?.bebygget_areal != null ? `${bbrData.bebygget_areal} m²` : "—"}
+            />
+            <Field
+              label="Bebygget"
+              value={bbrData?.bebygget_areal != null ? `${bbrData.bebygget_areal} m²` : "—"}
+            />
+            <Field
+              label="Etager"
+              value={bbrData?.antal_etager != null ? `${bbrData.antal_etager}` : "—"}
+            />
+            <Field label="Anvendelse" value={bbrData?.anvendelse_tekst ?? "—"} />
           </div>
-          <Card>
-            <div className="divide-y divide-border">
-              {indicators.map((ind) => (
-                <IndicatorRow key={ind.id} {...ind} />
-              ))}
+        </Card>
+
+        {/* Sektion 3 — Plangrænser */}
+        <SectionHeader title="Plangrænser" />
+        <Card>
+          <div className="divide-y divide-border">
+            <PlanRow
+              label="Bebyggelsesprocent"
+              tilladt={maxPct != null ? `${maxPct}%` : "—"}
+              nuvaerende={currentPct != null ? `${currentPct}%` : "—"}
+              ok={maxPct != null && currentPct != null ? currentPct <= maxPct : null}
+            />
+            <PlanRow
+              label="Antal etager"
+              tilladt={maxEtager != null ? `${maxEtager}` : "—"}
+              nuvaerende={currentEtager != null ? `${currentEtager}` : "—"}
+              ok={maxEtager != null && currentEtager != null ? currentEtager <= maxEtager : null}
+            />
+            <PlanRow
+              label="Bygningshøjde"
+              tilladt={maxHoejde != null ? `${maxHoejde} m` : "Ikke defineret"}
+              nuvaerende="—"
+              ok={null}
+            />
+          </div>
+        </Card>
+
+        {/* Sektion 4 — Kendte begrænsninger */}
+        {complianceFlags.length > 0 && (
+          <>
+            <SectionHeader title="Kendte begrænsninger" />
+            <Card>
+              <button
+                type="button"
+                onClick={() => setShowFlags((v) => !v)}
+                className="w-full flex items-center justify-between text-sm text-foreground"
+              >
+                <span>
+                  {complianceFlags.length} forhold registreret på grunden
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${showFlags ? "rotate-180" : ""}`}
+                />
+              </button>
+              {showFlags && (
+                <ul className="mt-3 divide-y divide-border">
+                  {complianceFlags.map((f) => (
+                    <FlagRow key={f.id} flag={f} />
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </>
+        )}
+
+        {/* Sektion 5 — footer */}
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground font-mono">
+          <div>
+            <span className="text-[10px] tracking-[0.15em]">MATRIKEL</span>
+            <div className="text-foreground mt-0.5">{address?.matrikel ?? "—"}</div>
+          </div>
+          <div>
+            <span className="text-[10px] tracking-[0.15em]">GRUNDVÆRDI</span>
+            <div className="text-foreground mt-0.5">{formatMio(vurderingData?.grundvaerdi)}</div>
+          </div>
+          <div>
+            <span className="text-[10px] tracking-[0.15em]">ADGANGSADRESSE</span>
+            <div className="text-foreground mt-0.5 truncate">
+              {address?.adgangsadresseid ?? "—"}
             </div>
-          </Card>
+          </div>
         </div>
 
         <button
@@ -246,42 +211,73 @@ function EjendomStep() {
   );
 }
 
-function IndicatorRow({ label, status, detail }: Indicator) {
-  const cfg = {
-    ok: {
-      Icon: CheckCircle2,
-      colors: "text-success border-success/40",
-      text: "OK",
-    },
-    advarsel: {
-      Icon: AlertTriangle,
-      colors: "text-warning border-warning/40",
-      text: "ADVARSEL",
-    },
-    blocker: {
-      Icon: AlertTriangle,
-      colors: "text-danger border-danger/40",
-      text: "BLOCKER",
-    },
-    ukendt: {
-      Icon: HelpCircle,
-      colors: "text-muted-foreground border-border",
-      text: "AFVENTER",
-    },
-  }[status];
-
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="flex items-center justify-between py-3">
-      <div>
-        <div className="text-sm text-foreground">{label}</div>
-        <div className="text-xs text-muted-foreground">{detail}</div>
+    <div className="mt-8 mb-3 font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
+      {title.toUpperCase()}
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+        {label.toUpperCase()}
+      </div>
+      <div className="mt-0.5 text-sm text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function PlanRow({
+  label,
+  tilladt,
+  nuvaerende,
+  ok,
+}: {
+  label: string;
+  tilladt: string;
+  nuvaerende: string;
+  ok: boolean | null;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3 text-sm">
+      <div className="text-foreground">{label}</div>
+      <div className="flex items-center gap-3 text-xs">
+        <span className="text-muted-foreground">Tilladt: {tilladt}</span>
+        <span className="text-muted-foreground">Nu: {nuvaerende}</span>
+        {ok === true && <CheckCircle2 size={14} className="text-emerald-400" />}
+        {ok === false && <AlertTriangle size={14} className="text-danger" />}
+      </div>
+    </div>
+  );
+}
+
+function FlagRow({ flag }: { flag: ComplianceFlag }) {
+  const cfg = {
+    ok: { Icon: CheckCircle2, color: "text-emerald-400 border-emerald-500/40", text: "OK" },
+    advarsel: { Icon: AlertTriangle, color: "text-yellow-400 border-yellow-500/40", text: "ADVARSEL" },
+    blocker: { Icon: AlertTriangle, color: "text-danger border-danger/40", text: "BLOCKER" },
+  }[flag.status] ?? {
+    Icon: HelpCircle,
+    color: "text-muted-foreground border-border",
+    text: "—",
+  };
+  return (
+    <li className="flex items-center justify-between py-2.5">
+      <div className="min-w-0">
+        <div className="text-sm text-foreground">{flag.label}</div>
+        {flag.detalje && (
+          <div className="text-xs text-muted-foreground truncate">{flag.detalje}</div>
+        )}
       </div>
       <div
-        className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 shrink-0 ml-3 ${cfg.colors}`}
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 shrink-0 ml-3 ${cfg.color}`}
       >
         <cfg.Icon size={12} />
         <span className="font-mono text-[10px] tracking-[0.1em]">{cfg.text}</span>
       </div>
-    </div>
+    </li>
   );
 }

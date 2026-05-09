@@ -15,6 +15,39 @@ import { BackLink } from "@/components/wizard-chrome";
 import { syncPatch } from "@/lib/project-sync";
 import { supabase } from "@/integrations/supabase/client";
 import { MOCK_BYGGEOENSKE } from "@/lib/mock-data";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// ---------------------------------------------------------------------------
+// Validering (ARCH-124)
+// ---------------------------------------------------------------------------
+
+function validateEtager(
+  valgt: number | undefined,
+  maxEtager: number | null,
+): BoligoenskeValidering["etagerStatus"] {
+  if (!valgt || maxEtager === null) return "ingen_data";
+  return valgt <= maxEtager ? "ok" : "dispensation";
+}
+
+function validateAreal(
+  oensket: number | undefined,
+  grundareal: number | null,
+  maxPct: number | null,
+  eksisterende: number | null,
+): { status: BoligoenskeValidering["arealStatus"]; pct: number | null } {
+  if (!oensket || !grundareal || !maxPct) return { status: "ingen_data", pct: null };
+  const samlet = (eksisterende ?? 0) + oensket;
+  const pct = (samlet / grundareal) * 100;
+  return { status: pct <= maxPct ? "ok" : "dispensation", pct };
+}
 
 export const Route = createFileRoute("/projekt/boligoenske")({
   component: ByggeoenskeStep,
@@ -295,39 +328,6 @@ function getDynamicSubtitle(
   }
 }
 
-// ---------------------------------------------------------------------------
-// ARCH-124: Valideringsfunktioner mod plangrænser
-// ---------------------------------------------------------------------------
-
-function validateEtager(
-  valgt: number | undefined,
-  maxEtager: number | null,
-): BoligoenskeValidering["etagerStatus"] {
-  if (!valgt || maxEtager === null) return "ingen_data";
-  return valgt <= maxEtager ? "ok" : "dispensation";
-}
-
-function validateAreal(
-  oensketAreal: number | undefined,
-  grundareal: number | null,
-  maxBebyggelsespct: number | null,
-  eksisterendeAreal: number | null,
-): BoligoenskeValidering["arealStatus"] {
-  if (!oensketAreal || !grundareal || !maxBebyggelsespct) return "ingen_data";
-  const eksist = eksisterendeAreal ?? 0;
-  const beregnetPct = ((eksist + oensketAreal) / grundareal) * 100;
-  return beregnetPct <= maxBebyggelsespct ? "ok" : "dispensation";
-}
-
-function beregnBebyggelsespct(
-  oensketAreal: number | undefined,
-  grundareal: number | null,
-  eksisterendeAreal: number | null,
-): number | null {
-  if (!oensketAreal || !grundareal) return null;
-  return Math.round((((eksisterendeAreal ?? 0) + oensketAreal) / grundareal) * 100 * 10) / 10;
-}
-
 // Number of non-upload fields answered — used for skip-flow threshold
 function filledFieldCount(b: Byggeoenske): number {
   return STEPS.filter((s) => s.type !== "upload" && b[s.key] !== undefined).length;
@@ -422,11 +422,23 @@ function ByggeoenskeStep() {
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showSummary, setShowSummary] = useState(() => filledFieldCount(byggeoenske) >= 20);
+  const [dispensationOpen, setDispensationOpen] = useState<null | "etager" | "areal">(null);
+  const [dispensationAcknowledged, setDispensationAcknowledged] = useState<{
+    etager: boolean;
+    areal: boolean;
+  }>({ etager: false, areal: false });
 
   const step = STEPS[currentStep];
   const value = byggeoenske[step.key];
   const isLast = currentStep === STEPS.length - 1;
   const progress = ((currentStep + 1) / STEPS.length) * 100;
+
+  const maxEtager = complianceMetrics?.maxEtager ?? null;
+  const grundareal = complianceMetrics?.grundareal ?? null;
+  const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? null;
+  const eksisterende = complianceMetrics?.currentBygningsareal ?? null;
+  const remaining = complianceMetrics?.remainingBygningsareal ?? null;
+  const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
 
   // Apply smart defaults when arriving at a step (ARCH-87)
   // Re-run validation when arriving at etager/areal steps med eksisterende værdier (ARCH-124)
@@ -439,37 +451,44 @@ function ByggeoenskeStep() {
       }
     }
     if (key === "antalEtager" && byggeoenske.antalEtager !== undefined) {
+      const arealRes = validateAreal(byggeoenske.oensketAreal, grundareal, maxPct, eksisterende);
       setBoligoenskeValidering({
-        etagerStatus: validateEtager(byggeoenske.antalEtager, complianceMetrics?.maxEtager ?? null),
-        arealStatus: boligoenskeValidering?.arealStatus ?? "ingen_data",
-        beregnetBebyggelsespct: boligoenskeValidering?.beregnetBebyggelsespct ?? null,
+        etagerStatus: validateEtager(byggeoenske.antalEtager, maxEtager),
+        arealStatus: arealRes.status,
+        beregnetBebyggelsespct: arealRes.pct,
         etagerDispensationAcknowledged: false,
-        arealDispensationAcknowledged:
-          boligoenskeValidering?.arealDispensationAcknowledged ?? false,
+        arealDispensationAcknowledged: boligoenskeValidering?.arealDispensationAcknowledged ?? false,
       });
     }
     if (key === "oensketAreal" && byggeoenske.oensketAreal !== undefined) {
+      const arealRes = validateAreal(byggeoenske.oensketAreal, grundareal, maxPct, eksisterende);
       setBoligoenskeValidering({
         etagerStatus: boligoenskeValidering?.etagerStatus ?? "ingen_data",
-        arealStatus: validateAreal(
-          byggeoenske.oensketAreal,
-          complianceMetrics?.grundareal ?? null,
-          complianceMetrics?.maxBebyggelsesprocent ?? null,
-          complianceMetrics?.currentBygningsareal ?? null,
-        ),
-        beregnetBebyggelsespct: beregnBebyggelsespct(
-          byggeoenske.oensketAreal,
-          complianceMetrics?.grundareal ?? null,
-          complianceMetrics?.currentBygningsareal ?? null,
-        ),
-        etagerDispensationAcknowledged:
-          boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
+        arealStatus: arealRes.status,
+        beregnetBebyggelsespct: arealRes.pct,
+        etagerDispensationAcknowledged: boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
         arealDispensationAcknowledged: false,
       });
     }
   }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goNext = () => {
+    // Validation gate (ARCH-124) — etager + areal
+    if (step.key === "antalEtager") {
+      const status = validateEtager(byggeoenske.antalEtager as number | undefined, maxEtager);
+      if (status === "dispensation" && !dispensationAcknowledged.etager) {
+        setDispensationOpen("etager");
+        return;
+      }
+    }
+    if (step.key === "oensketAreal") {
+      const { status } = validateAreal(byggeoenske.oensketAreal, grundareal, maxPct, eksisterende);
+      if (status === "dispensation" && !dispensationAcknowledged.areal) {
+        setDispensationOpen("areal");
+        return;
+      }
+    }
+
     if (isLast) {
       syncPatch({ byggeoenske, currentStep: "ejendom" });
       navigate({ to: "/projekt/ejendom" });
@@ -491,33 +510,25 @@ function ByggeoenskeStep() {
   const setValue = (v: unknown) => {
     setByggeoenske({ [step.key]: v } as Partial<Byggeoenske>);
 
-    // ARCH-124: kør validering live ved etager og areal-steps
+    // Live valideringsstatus i store (ARCH-124)
     if (step.key === "antalEtager") {
+      const etagerStatus = validateEtager(v as number, maxEtager);
+      const arealRes = validateAreal(byggeoenske.oensketAreal, grundareal, maxPct, eksisterende);
       setBoligoenskeValidering({
-        etagerStatus: validateEtager(v as number, complianceMetrics?.maxEtager ?? null),
-        arealStatus: boligoenskeValidering?.arealStatus ?? "ingen_data",
-        beregnetBebyggelsespct: boligoenskeValidering?.beregnetBebyggelsespct ?? null,
+        etagerStatus,
+        arealStatus: arealRes.status,
+        beregnetBebyggelsespct: arealRes.pct,
         etagerDispensationAcknowledged: false,
-        arealDispensationAcknowledged:
-          boligoenskeValidering?.arealDispensationAcknowledged ?? false,
+        arealDispensationAcknowledged: boligoenskeValidering?.arealDispensationAcknowledged ?? false,
       });
-    }
-    if (step.key === "oensketAreal") {
+    } else if (step.key === "oensketAreal") {
+      const arealRes = validateAreal(v as number, grundareal, maxPct, eksisterende);
+      const etagerStatus = validateEtager(byggeoenske.antalEtager as number, maxEtager);
       setBoligoenskeValidering({
-        etagerStatus: boligoenskeValidering?.etagerStatus ?? "ingen_data",
-        arealStatus: validateAreal(
-          v as number,
-          complianceMetrics?.grundareal ?? null,
-          complianceMetrics?.maxBebyggelsesprocent ?? null,
-          complianceMetrics?.currentBygningsareal ?? null,
-        ),
-        beregnetBebyggelsespct: beregnBebyggelsespct(
-          v as number,
-          complianceMetrics?.grundareal ?? null,
-          complianceMetrics?.currentBygningsareal ?? null,
-        ),
-        etagerDispensationAcknowledged:
-          boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
+        etagerStatus,
+        arealStatus: arealRes.status,
+        beregnetBebyggelsespct: arealRes.pct,
+        etagerDispensationAcknowledged: boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
         arealDispensationAcknowledged: false,
       });
     }
@@ -557,6 +568,42 @@ function ByggeoenskeStep() {
       />
     );
   }
+
+  // ── Per-step UI hints (ARCH-127) ──────────────────────────────────────
+  const stepHint = renderStepHint({
+    key: step.key,
+    value,
+    maxEtager,
+    grundareal,
+    maxPct,
+    eksisterende,
+    remaining,
+    maxBygningsareal,
+    lokalplanExtract,
+    complianceFlags,
+  });
+
+  // Dispensation modal text
+  const dispensationContent =
+    dispensationOpen === "etager"
+      ? {
+          title: "Dette kræver dispensation",
+          body: `Du ønsker ${byggeoenske.antalEtager ?? "?"} etager — kommuneplanen tillader maks ${maxEtager ?? "?"}. Det kræver dispensation fra kommunen.`,
+        }
+      : dispensationOpen === "areal"
+        ? (() => {
+            const { pct } = validateAreal(
+              byggeoenske.oensketAreal,
+              grundareal,
+              maxPct,
+              eksisterende,
+            );
+            return {
+              title: "Dette kræver dispensation",
+              body: `Samlet bebyggelsesprocent bliver ${pct?.toFixed(0) ?? "?"}% — maks tilladt er ${maxPct ?? "?"}%. Det kræver dispensation fra kommunen.`,
+            };
+          })()
+        : { title: "", body: "" };
 
   return (
     <PageTransition>
@@ -617,24 +664,7 @@ function ByggeoenskeStep() {
               )}
             </div>
 
-            {/* ARCH-124: dispensations-advarsel — erstattes af modal i ARCH-128 */}
-            {(etagerBlocked || arealBlocked) && (
-              <div className="mt-4 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-4 py-3 text-xs text-yellow-400">
-                {etagerBlocked && (
-                  <>
-                    Du ønsker {value} etager — kommuneplanen tillader maks{" "}
-                    {complianceMetrics?.maxEtager}. Det kræver dispensation fra kommunen.
-                  </>
-                )}
-                {arealBlocked && (
-                  <>
-                    Samlet bebyggelsesprocent bliver {boligoenskeValidering?.beregnetBebyggelsespct}
-                    % — maks tilladt er {complianceMetrics?.maxBebyggelsesprocent}%. Det kræver
-                    dispensation fra kommunen.
-                  </>
-                )}
-              </div>
-            )}
+            {stepHint && <div className="mt-4">{stepHint}</div>}
           </motion.div>
         </AnimatePresence>
 
@@ -664,9 +694,153 @@ function ByggeoenskeStep() {
             </button>
           </div>
         )}
+
+        {/* Dispensations-modal (ARCH-124) */}
+        <Dialog
+          open={dispensationOpen !== null}
+          onOpenChange={(o) => !o && setDispensationOpen(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{dispensationContent.title}</DialogTitle>
+              <DialogDescription>{dispensationContent.body}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <button
+                onClick={() => setDispensationOpen(null)}
+                className="w-full rounded-md bg-accent px-4 py-2.5 font-mono text-sm text-accent-foreground hover:brightness-110"
+              >
+                Gå tilbage og juster
+              </button>
+              <button
+                onClick={() => {
+                  if (dispensationOpen) {
+                    setDispensationAcknowledged((s) => ({ ...s, [dispensationOpen]: true }));
+                  }
+                  setDispensationOpen(null);
+                  setDirection(1);
+                  setCurrentStep((s) => s + 1);
+                }}
+                className="w-full rounded-md border border-yellow-500/40 bg-transparent px-4 py-2.5 font-mono text-xs text-yellow-400 hover:bg-yellow-500/5"
+              >
+                Jeg accepterer — fortsæt alligevel
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </PageTransition>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Per-step hint UI (ARCH-127)
+// ---------------------------------------------------------------------------
+
+function renderStepHint(args: {
+  key: keyof Byggeoenske;
+  value: unknown;
+  maxEtager: number | null;
+  grundareal: number | null;
+  maxPct: number | null;
+  eksisterende: number | null;
+  remaining: number | null;
+  maxBygningsareal: number | null;
+  lokalplanExtract: import("@/integrations/ai/pdf-extractor").LokalplanExtract | null;
+  complianceFlags: import("@/lib/project-store").ComplianceFlag[];
+}): React.ReactNode {
+  const {
+    key,
+    value,
+    maxEtager,
+    grundareal,
+    maxPct,
+    eksisterende,
+    remaining,
+    maxBygningsareal,
+    lokalplanExtract,
+    complianceFlags,
+  } = args;
+
+  if (key === "antalEtager" && maxEtager !== null) {
+    const valgt = value as number | undefined;
+    const status: "ok" | "over" | "neutral" =
+      valgt == null ? "neutral" : valgt <= maxEtager ? "ok" : "over";
+    const cls =
+      status === "ok"
+        ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-400"
+        : status === "over"
+          ? "border-danger/40 bg-danger/5 text-danger"
+          : "border-border bg-[#111] text-muted-foreground";
+    return (
+      <div
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-[12px] ${cls}`}
+      >
+        Kommuneplanen tillader: maks {maxEtager} etager
+      </div>
+    );
+  }
+
+  if (key === "oensketAreal" && remaining !== null && maxBygningsareal && grundareal && maxPct) {
+    const valgt = (value as number | undefined) ?? 0;
+    const samlet = (eksisterende ?? 0) + valgt;
+    const pctOfMax = Math.min(200, (samlet / maxBygningsareal) * 100);
+    const samletPct = (samlet / grundareal) * 100;
+    const over = samlet > maxBygningsareal;
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs font-mono">
+          <span className="text-muted-foreground">Byggepotentiale: {remaining} m²</span>
+          <span className={over ? "text-danger" : "text-emerald-400"}>
+            Du ønsker: {valgt} m²
+          </span>
+        </div>
+        <Progress
+          value={Math.min(100, pctOfMax)}
+          className={`h-2 ${over ? "[&>div]:bg-danger" : "[&>div]:bg-emerald-500"}`}
+        />
+        <div className="text-[11px] font-mono text-muted-foreground">
+          Samlet bebyggelsesprocent: {samletPct.toFixed(0)}% af maks {maxPct}%
+        </div>
+      </div>
+    );
+  }
+
+  if (key === "tagform" && lokalplanExtract?.tagform) {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-2.5 py-1.5 font-mono text-[12px] text-yellow-400">
+        📋 Lokalplanen specificerer: {lokalplanExtract.tagform}
+      </div>
+    );
+  }
+
+  if (
+    key === "facademateriale" &&
+    lokalplanExtract?.materialer &&
+    lokalplanExtract.materialer.length > 0
+  ) {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-2.5 py-1.5 font-mono text-[12px] text-yellow-400">
+        📋 Lokalplanen anbefaler: {lokalplanExtract.materialer.join(", ")}
+      </div>
+    );
+  }
+
+  if (key === "varmekilde") {
+    const flag = complianceFlags.find(
+      (f) =>
+        f.id === "fjernvarme-tilslutningspligt" || f.id === "fjernvarme-mismatch-ingen-daekning",
+    );
+    if (flag?.detalje) {
+      return (
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-2.5 py-1.5 font-mono text-[12px] text-yellow-400">
+          {flag.detalje}
+        </div>
+      );
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
