@@ -648,8 +648,8 @@ function renderStepHint(args: {
   eksisterende: number | null;
   remaining: number | null;
   maxBygningsareal: number | null;
-  lokalplanExtract: ReturnType<typeof useProject>["lokalplanExtract"];
-  complianceFlags: ReturnType<typeof useProject>["complianceFlags"];
+  lokalplanExtract: import("@/integrations/ai/pdf-extractor").LokalplanExtract | null;
+  complianceFlags: import("@/lib/project-store").ComplianceFlag[];
 }): React.ReactNode {
   const {
     key,
