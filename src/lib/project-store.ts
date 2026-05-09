@@ -117,6 +117,30 @@ export type ComplianceFlag = {
 };
 
 // ---------------------------------------------------------------------------
+// Adresse pre-check (ARCH-125) — beregnes server-side, populeres senere
+// ---------------------------------------------------------------------------
+
+export type AdressePreCheck = {
+  hardBlockers: ComplianceFlag[]; // fredning, strandbeskyttelse, fredskov — ingen dispensation
+  softBlockers: ComplianceFlag[]; // dispensation mulig
+  advarsler: ComplianceFlag[];
+};
+
+// Ejendomsvurdering (ARCH-126) — fra Vurderingsstyrelsen, populeres senere
+export type VurderingData = {
+  ejendomsvaerdi: number | null;
+  grundvaerdi: number | null;
+  vurderingsaar: number | null;
+};
+
+// Boligønske-validering (ARCH-124)
+export type BoligoenskeValidering = {
+  etagerStatus: "ok" | "dispensation" | "ingen_data";
+  arealStatus: "ok" | "dispensation" | "ingen_data";
+  beregnetBebyggelsespct: number | null;
+};
+
+// ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
 
@@ -138,6 +162,9 @@ type State = {
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
   kommuneplanramme: Kommuneplanramme | null;
+  adressePreCheck: AdressePreCheck | null;
+  vurderingData: VurderingData | null;
+  boligoenskeValidering: BoligoenskeValidering | null;
 
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
@@ -159,6 +186,9 @@ type State = {
   setLokalplaner: (lp: Lokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
   setKommuneplanramme: (ramme: Kommuneplanramme | null) => void;
+  setAdressePreCheck: (p: AdressePreCheck | null) => void;
+  setVurderingData: (v: VurderingData | null) => void;
+  setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
 
   reset: () => void;
 };
@@ -186,6 +216,9 @@ export const useProject = create<State>((set) => ({
   lokalplaner: [],
   lokalplanExtract: null,
   kommuneplanramme: null,
+  adressePreCheck: null,
+  vurderingData: null,
+  boligoenskeValidering: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -202,6 +235,9 @@ export const useProject = create<State>((set) => ({
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
   setKommuneplanramme: (kommuneplanramme) => set({ kommuneplanramme }),
+  setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
+  setVurderingData: (vurderingData) => set({ vurderingData }),
+  setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
 
   reset: () =>
     set({
@@ -219,6 +255,9 @@ export const useProject = create<State>((set) => ({
       lokalplaner: [],
       lokalplanExtract: null,
       kommuneplanramme: null,
+      adressePreCheck: null,
+      vurderingData: null,
+      boligoenskeValidering: null,
     }),
 }));
 

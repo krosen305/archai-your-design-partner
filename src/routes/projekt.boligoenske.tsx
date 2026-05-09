@@ -2,12 +2,49 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, X, ChevronLeft, ChevronRight, Zap, Check } from "lucide-react";
-import { useProject, type Byggeoenske } from "@/lib/project-store";
+import {
+  useProject,
+  type Byggeoenske,
+  type BoligoenskeValidering,
+} from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { syncPatch } from "@/lib/project-sync";
 import { supabase } from "@/integrations/supabase/client";
 import { MOCK_BYGGEOENSKE } from "@/lib/mock-data";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// ---------------------------------------------------------------------------
+// Validering (ARCH-124)
+// ---------------------------------------------------------------------------
+
+function validateEtager(
+  valgt: number | undefined,
+  maxEtager: number | null,
+): BoligoenskeValidering["etagerStatus"] {
+  if (!valgt || maxEtager === null) return "ingen_data";
+  return valgt <= maxEtager ? "ok" : "dispensation";
+}
+
+function validateAreal(
+  oensket: number | undefined,
+  grundareal: number | null,
+  maxPct: number | null,
+  eksisterende: number | null,
+): { status: BoligoenskeValidering["arealStatus"]; pct: number | null } {
+  if (!oensket || !grundareal || !maxPct) return { status: "ingen_data", pct: null };
+  const samlet = (eksisterende ?? 0) + oensket;
+  const pct = (samlet / grundareal) * 100;
+  return { status: pct <= maxPct ? "ok" : "dispensation", pct };
+}
 
 export const Route = createFileRoute("/projekt/boligoenske")({
   component: ByggeoenskeStep,
@@ -320,15 +357,34 @@ function SummaryView({
 
 function ByggeoenskeStep() {
   const navigate = useNavigate();
-  const { byggeoenske, setByggeoenske } = useProject();
+  const {
+    byggeoenske,
+    setByggeoenske,
+    complianceMetrics,
+    lokalplanExtract,
+    complianceFlags,
+    setBoligoenskeValidering,
+  } = useProject();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showSummary, setShowSummary] = useState(() => filledFieldCount(byggeoenske) >= 20);
+  const [dispensationOpen, setDispensationOpen] = useState<null | "etager" | "areal">(null);
+  const [dispensationAcknowledged, setDispensationAcknowledged] = useState<{
+    etager: boolean;
+    areal: boolean;
+  }>({ etager: false, areal: false });
 
   const step = STEPS[currentStep];
   const value = byggeoenske[step.key];
   const isLast = currentStep === STEPS.length - 1;
   const progress = ((currentStep + 1) / STEPS.length) * 100;
+
+  const maxEtager = complianceMetrics?.maxEtager ?? null;
+  const grundareal = complianceMetrics?.grundareal ?? null;
+  const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? null;
+  const eksisterende = complianceMetrics?.currentBygningsareal ?? null;
+  const remaining = complianceMetrics?.remainingBygningsareal ?? null;
+  const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
 
   // Apply smart defaults when arriving at a step (ARCH-87)
   useEffect(() => {
@@ -342,6 +398,22 @@ function ByggeoenskeStep() {
   }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goNext = () => {
+    // Validation gate (ARCH-124) — etager + areal
+    if (step.key === "antalEtager") {
+      const status = validateEtager(byggeoenske.antalEtager as number | undefined, maxEtager);
+      if (status === "dispensation" && !dispensationAcknowledged.etager) {
+        setDispensationOpen("etager");
+        return;
+      }
+    }
+    if (step.key === "oensketAreal") {
+      const { status } = validateAreal(byggeoenske.oensketAreal, grundareal, maxPct, eksisterende);
+      if (status === "dispensation" && !dispensationAcknowledged.areal) {
+        setDispensationOpen("areal");
+        return;
+      }
+    }
+
     if (isLast) {
       syncPatch({ byggeoenske, currentStep: "ejendom" });
       navigate({ to: "/projekt/ejendom" });
@@ -362,6 +434,24 @@ function ByggeoenskeStep() {
 
   const setValue = (v: unknown) => {
     setByggeoenske({ [step.key]: v } as Partial<Byggeoenske>);
+    // Live valideringsstatus i store (ARCH-124)
+    if (step.key === "antalEtager") {
+      const etagerStatus = validateEtager(v as number, maxEtager);
+      const arealRes = validateAreal(byggeoenske.oensketAreal, grundareal, maxPct, eksisterende);
+      setBoligoenskeValidering({
+        etagerStatus,
+        arealStatus: arealRes.status,
+        beregnetBebyggelsespct: arealRes.pct,
+      });
+    } else if (step.key === "oensketAreal") {
+      const arealRes = validateAreal(v as number, grundareal, maxPct, eksisterende);
+      const etagerStatus = validateEtager(byggeoenske.antalEtager as number, maxEtager);
+      setBoligoenskeValidering({
+        etagerStatus,
+        arealStatus: arealRes.status,
+        beregnetBebyggelsespct: arealRes.pct,
+      });
+    }
   };
 
   const canContinue =
@@ -385,6 +475,42 @@ function ByggeoenskeStep() {
       />
     );
   }
+
+  // ── Per-step UI hints (ARCH-127) ──────────────────────────────────────
+  const stepHint = renderStepHint({
+    key: step.key,
+    value,
+    maxEtager,
+    grundareal,
+    maxPct,
+    eksisterende,
+    remaining,
+    maxBygningsareal,
+    lokalplanExtract,
+    complianceFlags,
+  });
+
+  // Dispensation modal text
+  const dispensationContent =
+    dispensationOpen === "etager"
+      ? {
+          title: "Dette kræver dispensation",
+          body: `Du ønsker ${byggeoenske.antalEtager ?? "?"} etager — kommuneplanen tillader maks ${maxEtager ?? "?"}. Det kræver dispensation fra kommunen.`,
+        }
+      : dispensationOpen === "areal"
+        ? (() => {
+            const { pct } = validateAreal(
+              byggeoenske.oensketAreal,
+              grundareal,
+              maxPct,
+              eksisterende,
+            );
+            return {
+              title: "Dette kræver dispensation",
+              body: `Samlet bebyggelsesprocent bliver ${pct?.toFixed(0) ?? "?"}% — maks tilladt er ${maxPct ?? "?"}%. Det kræver dispensation fra kommunen.`,
+            };
+          })()
+        : { title: "", body: "" };
 
   return (
     <PageTransition>
@@ -439,6 +565,8 @@ function ByggeoenskeStep() {
                 />
               )}
             </div>
+
+            {stepHint && <div className="mt-4">{stepHint}</div>}
           </motion.div>
         </AnimatePresence>
 
@@ -468,9 +596,153 @@ function ByggeoenskeStep() {
             </button>
           </div>
         )}
+
+        {/* Dispensations-modal (ARCH-124) */}
+        <Dialog
+          open={dispensationOpen !== null}
+          onOpenChange={(o) => !o && setDispensationOpen(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{dispensationContent.title}</DialogTitle>
+              <DialogDescription>{dispensationContent.body}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <button
+                onClick={() => setDispensationOpen(null)}
+                className="w-full rounded-md bg-accent px-4 py-2.5 font-mono text-sm text-accent-foreground hover:brightness-110"
+              >
+                Gå tilbage og juster
+              </button>
+              <button
+                onClick={() => {
+                  if (dispensationOpen) {
+                    setDispensationAcknowledged((s) => ({ ...s, [dispensationOpen]: true }));
+                  }
+                  setDispensationOpen(null);
+                  setDirection(1);
+                  setCurrentStep((s) => s + 1);
+                }}
+                className="w-full rounded-md border border-yellow-500/40 bg-transparent px-4 py-2.5 font-mono text-xs text-yellow-400 hover:bg-yellow-500/5"
+              >
+                Jeg accepterer — fortsæt alligevel
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </PageTransition>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Per-step hint UI (ARCH-127)
+// ---------------------------------------------------------------------------
+
+function renderStepHint(args: {
+  key: keyof Byggeoenske;
+  value: unknown;
+  maxEtager: number | null;
+  grundareal: number | null;
+  maxPct: number | null;
+  eksisterende: number | null;
+  remaining: number | null;
+  maxBygningsareal: number | null;
+  lokalplanExtract: import("@/integrations/ai/pdf-extractor").LokalplanExtract | null;
+  complianceFlags: import("@/lib/project-store").ComplianceFlag[];
+}): React.ReactNode {
+  const {
+    key,
+    value,
+    maxEtager,
+    grundareal,
+    maxPct,
+    eksisterende,
+    remaining,
+    maxBygningsareal,
+    lokalplanExtract,
+    complianceFlags,
+  } = args;
+
+  if (key === "antalEtager" && maxEtager !== null) {
+    const valgt = value as number | undefined;
+    const status: "ok" | "over" | "neutral" =
+      valgt == null ? "neutral" : valgt <= maxEtager ? "ok" : "over";
+    const cls =
+      status === "ok"
+        ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-400"
+        : status === "over"
+          ? "border-danger/40 bg-danger/5 text-danger"
+          : "border-border bg-[#111] text-muted-foreground";
+    return (
+      <div
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-[12px] ${cls}`}
+      >
+        Kommuneplanen tillader: maks {maxEtager} etager
+      </div>
+    );
+  }
+
+  if (key === "oensketAreal" && remaining !== null && maxBygningsareal && grundareal && maxPct) {
+    const valgt = (value as number | undefined) ?? 0;
+    const samlet = (eksisterende ?? 0) + valgt;
+    const pctOfMax = Math.min(200, (samlet / maxBygningsareal) * 100);
+    const samletPct = (samlet / grundareal) * 100;
+    const over = samlet > maxBygningsareal;
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs font-mono">
+          <span className="text-muted-foreground">Byggepotentiale: {remaining} m²</span>
+          <span className={over ? "text-danger" : "text-emerald-400"}>
+            Du ønsker: {valgt} m²
+          </span>
+        </div>
+        <Progress
+          value={Math.min(100, pctOfMax)}
+          className={`h-2 ${over ? "[&>div]:bg-danger" : "[&>div]:bg-emerald-500"}`}
+        />
+        <div className="text-[11px] font-mono text-muted-foreground">
+          Samlet bebyggelsesprocent: {samletPct.toFixed(0)}% af maks {maxPct}%
+        </div>
+      </div>
+    );
+  }
+
+  if (key === "tagform" && lokalplanExtract?.tagform) {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-2.5 py-1.5 font-mono text-[12px] text-yellow-400">
+        📋 Lokalplanen specificerer: {lokalplanExtract.tagform}
+      </div>
+    );
+  }
+
+  if (
+    key === "facademateriale" &&
+    lokalplanExtract?.materialer &&
+    lokalplanExtract.materialer.length > 0
+  ) {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-2.5 py-1.5 font-mono text-[12px] text-yellow-400">
+        📋 Lokalplanen anbefaler: {lokalplanExtract.materialer.join(", ")}
+      </div>
+    );
+  }
+
+  if (key === "varmekilde") {
+    const flag = complianceFlags.find(
+      (f) =>
+        f.id === "fjernvarme-tilslutningspligt" || f.id === "fjernvarme-mismatch-ingen-daekning",
+    );
+    if (flag?.detalje) {
+      return (
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-yellow-500/40 bg-yellow-500/5 px-2.5 py-1.5 font-mono text-[12px] text-yellow-400">
+          {flag.detalje}
+        </div>
+      );
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
