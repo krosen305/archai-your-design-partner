@@ -49,7 +49,22 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const { address, setAddress, setBbrData } = useProject();
+  const { address, setAddress, setBbrData, adressePreCheck } = useProject();
+
+  // Compliance gate (ARCH-125)
+  const [isCheckingCompliance] = useState(false);
+  const [overrideContinue, setOverrideContinue] = useState(false);
+  const [showBlockerDialog, setShowBlockerDialog] = useState(false);
+  const [softOpen, setSoftOpen] = useState(false);
+
+  const hardBlockers = adressePreCheck?.hardBlockers ?? [];
+  const softBlockers = adressePreCheck?.softBlockers ?? [];
+  const advarsler = adressePreCheck?.advarsler ?? [];
+  const hasHard = hardBlockers.length > 0;
+  const hasSoft = softBlockers.length > 0 || advarsler.length > 0;
+  const allChecksDone = adressePreCheck !== null && !isCheckingCompliance;
+  const isClean = allChecksDone && !hasHard && !hasSoft;
+  const anyDispensationPossible = hardBlockers.some((b) => b.dispensationMulig);
 
   const [query, setQuery] = useState(address?.adresse ?? "");
   const [open, setOpen] = useState(false);
