@@ -216,6 +216,9 @@ export const useProject = create<State>((set) => ({
   lokalplaner: [],
   lokalplanExtract: null,
   kommuneplanramme: null,
+  adressePreCheck: null,
+  vurderingData: null,
+  boligoenskeValidering: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
