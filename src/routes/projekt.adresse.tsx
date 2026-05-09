@@ -1,13 +1,29 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
-import { useProject } from "@/lib/project-store";
+import { Search, Loader2, AlertTriangle, CheckCircle2, ChevronDown } from "lucide-react";
+import { useProject, type ComplianceFlag } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import { syncPatch } from "@/lib/project-sync";
 import { MOCK_ADRESSE } from "@/lib/mock-data";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+function flagIcon(id: string): string {
+  if (id.includes("fredet")) return "🏛️";
+  if (id.includes("strandbeskyttelse")) return "🌊";
+  if (id.includes("fredskov")) return "🌲";
+  if (id.includes("skovbyggelinje")) return "🌳";
+  if (id.includes("soebeskyttelse")) return "💧";
+  return "⚠️";
+}
 
 // ---------------------------------------------------------------------------
 // Server functions — begge kræver credentials der kun er tilgængelige server-side.
