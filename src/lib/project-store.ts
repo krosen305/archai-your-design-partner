@@ -186,6 +186,9 @@ type State = {
   setLokalplaner: (lp: Lokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
   setKommuneplanramme: (ramme: Kommuneplanramme | null) => void;
+  setAdressePreCheck: (p: AdressePreCheck | null) => void;
+  setVurderingData: (v: VurderingData | null) => void;
+  setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
 
   reset: () => void;
 };
