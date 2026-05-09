@@ -162,6 +162,9 @@ type State = {
   lokalplaner: Lokalplan[];
   lokalplanExtract: LokalplanExtract | null;
   kommuneplanramme: Kommuneplanramme | null;
+  adressePreCheck: AdressePreCheck | null;
+  vurderingData: VurderingData | null;
+  boligoenskeValidering: BoligoenskeValidering | null;
 
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
