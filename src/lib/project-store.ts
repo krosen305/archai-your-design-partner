@@ -235,6 +235,9 @@ export const useProject = create<State>((set) => ({
   setLokalplaner: (lokalplaner) => set({ lokalplaner }),
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
   setKommuneplanramme: (kommuneplanramme) => set({ kommuneplanramme }),
+  setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
+  setVurderingData: (vurderingData) => set({ vurderingData }),
+  setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
 
   reset: () =>
     set({
