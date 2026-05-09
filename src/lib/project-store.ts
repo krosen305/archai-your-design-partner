@@ -117,6 +117,30 @@ export type ComplianceFlag = {
 };
 
 // ---------------------------------------------------------------------------
+// Adresse pre-check (ARCH-125) — beregnes server-side, populeres senere
+// ---------------------------------------------------------------------------
+
+export type AdressePreCheck = {
+  hardBlockers: ComplianceFlag[]; // fredning, strandbeskyttelse, fredskov — ingen dispensation
+  softBlockers: ComplianceFlag[]; // dispensation mulig
+  advarsler: ComplianceFlag[];
+};
+
+// Ejendomsvurdering (ARCH-126) — fra Vurderingsstyrelsen, populeres senere
+export type VurderingData = {
+  ejendomsvaerdi: number | null;
+  grundvaerdi: number | null;
+  vurderingsaar: number | null;
+};
+
+// Boligønske-validering (ARCH-124)
+export type BoligoenskeValidering = {
+  etagerStatus: "ok" | "dispensation" | "ingen_data";
+  arealStatus: "ok" | "dispensation" | "ingen_data";
+  beregnetBebyggelsespct: number | null;
+};
+
+// ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
 
