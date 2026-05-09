@@ -2,12 +2,49 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, X, ChevronLeft, ChevronRight, Zap, Check } from "lucide-react";
-import { useProject, type Byggeoenske } from "@/lib/project-store";
+import {
+  useProject,
+  type Byggeoenske,
+  type BoligoenskeValidering,
+} from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { syncPatch } from "@/lib/project-sync";
 import { supabase } from "@/integrations/supabase/client";
 import { MOCK_BYGGEOENSKE } from "@/lib/mock-data";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// ---------------------------------------------------------------------------
+// Validering (ARCH-124)
+// ---------------------------------------------------------------------------
+
+function validateEtager(
+  valgt: number | undefined,
+  maxEtager: number | null,
+): BoligoenskeValidering["etagerStatus"] {
+  if (!valgt || maxEtager === null) return "ingen_data";
+  return valgt <= maxEtager ? "ok" : "dispensation";
+}
+
+function validateAreal(
+  oensket: number | undefined,
+  grundareal: number | null,
+  maxPct: number | null,
+  eksisterende: number | null,
+): { status: BoligoenskeValidering["arealStatus"]; pct: number | null } {
+  if (!oensket || !grundareal || !maxPct) return { status: "ingen_data", pct: null };
+  const samlet = (eksisterende ?? 0) + oensket;
+  const pct = (samlet / grundareal) * 100;
+  return { status: pct <= maxPct ? "ok" : "dispensation", pct };
+}
 
 export const Route = createFileRoute("/projekt/boligoenske")({
   component: ByggeoenskeStep,
