@@ -401,7 +401,7 @@ function ComplianceContent() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-[720px] px-6 py-10">
+      <div className={`mx-auto px-6 py-10 ${status === "done" ? "max-w-[1400px]" : "max-w-[720px]"}`}>
         <div className="mb-6">
           <BackLink to="/projekt/boligoenske" />
         </div>
@@ -430,6 +430,8 @@ function ComplianceContent() {
             save={saveLocal}
             fjernvarme={fjernvarmeLocal}
             naboer={naboerLocal}
+            isRecomputing={isRecomputing}
+            onPatched={triggerReanalyse}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
