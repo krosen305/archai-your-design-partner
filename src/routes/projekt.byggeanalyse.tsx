@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -34,7 +34,6 @@ import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch } from "@/lib/project-sync";
 import { Cockpit } from "@/components/byggeanalyse/cockpit";
-import { useRef, useCallback } from "react";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
