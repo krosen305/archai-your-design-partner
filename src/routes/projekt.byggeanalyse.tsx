@@ -509,6 +509,8 @@ function ResultView({
   save,
   fjernvarme,
   naboer,
+  isRecomputing,
+  onPatched,
   onContinue,
 }: {
   adresse: string;
@@ -522,6 +524,8 @@ function ResultView({
   save: SaveData | null;
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
+  isRecomputing: boolean;
+  onPatched: () => void;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -551,6 +555,17 @@ function ResultView({
       transition={{ duration: 0.4 }}
     >
       <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
+
+      {/* Cockpit — 3-kolonne dashboard */}
+      <div className="mb-8">
+        <Cockpit
+          bbr={data}
+          metrics={metrics}
+          byggeanalyse={byggeanalyse}
+          isRecomputing={isRecomputing}
+          onPatched={onPatched}
+        />
+      </div>
 
       <div className="flex justify-center my-6">
         {harData ? (
