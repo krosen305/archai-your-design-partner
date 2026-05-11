@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -33,6 +33,7 @@ import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch } from "@/lib/project-sync";
+import { Cockpit } from "@/components/byggeanalyse/cockpit";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
@@ -222,6 +223,46 @@ function ComplianceContent() {
   const [saveLocal, setSaveLocal] = useState<SaveData | null>(null);
   const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
   const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
+  const [isRecomputing, setIsRecomputing] = useState(false);
+  const reanalyseDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced re-run af AI byggeanalyse — kaldes når brugeren ændrer byggeønsker i Cockpit
+  const triggerReanalyse = useCallback(() => {
+    if (!bbrData || !address) return;
+    if (reanalyseDebounce.current) clearTimeout(reanalyseDebounce.current);
+    setIsRecomputing(true);
+    reanalyseDebounce.current = setTimeout(async () => {
+      try {
+        const { getSession } = await import("@/lib/auth");
+        const session = await getSession();
+        if (!session) {
+          setIsRecomputing(false);
+          return;
+        }
+        const state = useProject.getState();
+        const lpNavn =
+          state.lokalplaner[0]?.plannavn ?? state.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
+        const analyse = await runByggeanalyse({
+          data: {
+            token: session.access_token,
+            byggeoenske: state.byggeoenske,
+            lokalplanExtract: state.lokalplanExtract,
+            bbr: bbrData,
+            lokalplanNavn: lpNavn,
+            kommuneplanramme: state.kommuneplanramme,
+            lokalplaner: state.lokalplaner,
+            municipality: address.kommune ?? "",
+            kommunekode: address.kommunekode ?? "",
+          },
+        });
+        setByggeanalyseResultat(analyse);
+      } catch (e) {
+        console.warn("[Byggeanalyse] re-analyse fejlede:", e);
+      } finally {
+        setIsRecomputing(false);
+      }
+    }, 500);
+  }, [bbrData, address, setByggeanalyseResultat]);
 
   useEffect(() => {
     if (bbrData) {
@@ -360,7 +401,7 @@ function ComplianceContent() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-[720px] px-6 py-10">
+      <div className={`mx-auto px-6 py-10 ${status === "done" ? "max-w-[1400px]" : "max-w-[720px]"}`}>
         <div className="mb-6">
           <BackLink to="/projekt/boligoenske" />
         </div>
@@ -389,6 +430,8 @@ function ComplianceContent() {
             save={saveLocal}
             fjernvarme={fjernvarmeLocal}
             naboer={naboerLocal}
+            isRecomputing={isRecomputing}
+            onPatched={triggerReanalyse}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -466,6 +509,8 @@ function ResultView({
   save,
   fjernvarme,
   naboer,
+  isRecomputing,
+  onPatched,
   onContinue,
 }: {
   adresse: string;
@@ -479,6 +524,8 @@ function ResultView({
   save: SaveData | null;
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
+  isRecomputing: boolean;
+  onPatched: () => void;
   onContinue: () => void;
 }) {
   const harData = data.beregning_mulig;
@@ -508,6 +555,17 @@ function ResultView({
       transition={{ duration: 0.4 }}
     >
       <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
+
+      {/* Cockpit — 3-kolonne dashboard */}
+      <div className="mb-8">
+        <Cockpit
+          bbr={data}
+          metrics={metrics}
+          byggeanalyse={byggeanalyse}
+          isRecomputing={isRecomputing}
+          onPatched={onPatched}
+        />
+      </div>
 
       <div className="flex justify-center my-6">
         {harData ? (
