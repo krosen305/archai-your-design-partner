@@ -33,6 +33,8 @@ import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch } from "@/lib/project-sync";
+import { Cockpit } from "@/components/byggeanalyse/cockpit";
+import { useRef, useCallback } from "react";
 
 // ---------------------------------------------------------------------------
 // Server function – cache-first orchestration (ARCH-46).
