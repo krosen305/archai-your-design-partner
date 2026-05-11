@@ -223,6 +223,46 @@ function ComplianceContent() {
   const [saveLocal, setSaveLocal] = useState<SaveData | null>(null);
   const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
   const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
+  const [isRecomputing, setIsRecomputing] = useState(false);
+  const reanalyseDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced re-run af AI byggeanalyse — kaldes når brugeren ændrer byggeønsker i Cockpit
+  const triggerReanalyse = useCallback(() => {
+    if (!bbrData || !address) return;
+    if (reanalyseDebounce.current) clearTimeout(reanalyseDebounce.current);
+    setIsRecomputing(true);
+    reanalyseDebounce.current = setTimeout(async () => {
+      try {
+        const { getSession } = await import("@/lib/auth");
+        const session = await getSession();
+        if (!session) {
+          setIsRecomputing(false);
+          return;
+        }
+        const state = useProject.getState();
+        const lpNavn =
+          state.lokalplaner[0]?.plannavn ?? state.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
+        const analyse = await runByggeanalyse({
+          data: {
+            token: session.access_token,
+            byggeoenske: state.byggeoenske,
+            lokalplanExtract: state.lokalplanExtract,
+            bbr: bbrData,
+            lokalplanNavn: lpNavn,
+            kommuneplanramme: state.kommuneplanramme,
+            lokalplaner: state.lokalplaner,
+            municipality: address.kommune ?? "",
+            kommunekode: address.kommunekode ?? "",
+          },
+        });
+        setByggeanalyseResultat(analyse);
+      } catch (e) {
+        console.warn("[Byggeanalyse] re-analyse fejlede:", e);
+      } finally {
+        setIsRecomputing(false);
+      }
+    }, 500);
+  }, [bbrData, address, setByggeanalyseResultat]);
 
   useEffect(() => {
     if (bbrData) {
