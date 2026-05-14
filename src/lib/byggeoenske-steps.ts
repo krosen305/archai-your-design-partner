@@ -35,44 +35,6 @@ export const STEPS: Step[] = [
       { value: "ombyg", label: "Ombyg", hint: "Renovér indvendigt" },
     ],
   },
-  {
-    key: "husstandsstoerrelse",
-    title: "Hvor mange skal bo i huset?",
-    type: "number",
-    min: 1,
-    max: 12,
-    unit: "personer",
-    group: "Grundlæggende",
-  },
-  {
-    key: "voksne",
-    title: "Hvor mange voksne?",
-    type: "number",
-    min: 1,
-    max: 8,
-    unit: "voksne",
-    group: "Grundlæggende",
-  },
-  {
-    key: "boern",
-    title: "Hvor mange børn?",
-    type: "number",
-    min: 0,
-    max: 8,
-    unit: "børn",
-    group: "Grundlæggende",
-  },
-  {
-    key: "livsfase",
-    title: "Hvor er I i livet?",
-    type: "choice",
-    group: "Grundlæggende",
-    options: [
-      { value: "ung", label: "Ung familie", hint: "Børn på vej eller små børn" },
-      { value: "etableret", label: "Etableret familie", hint: "Børn i skolealderen" },
-      { value: "senior", label: "Senior", hint: "Voksne børn flyttet hjemmefra" },
-    ],
-  },
   // Areal & rum
   {
     key: "oensketAreal",
@@ -114,7 +76,7 @@ export const STEPS: Step[] = [
     unit: "stk.",
     group: "Areal & rum",
   },
-  { key: "hjemmekontor", title: "Hjemmekontor?", type: "toggle", group: "Areal & rum" },
+  
   // Stil
   {
     key: "arkitektoniskStil",
