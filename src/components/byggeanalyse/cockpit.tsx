@@ -11,7 +11,13 @@ import { Card } from "@/components/wizard-ui";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProject, type Byggeoenske } from "@/lib/project-store";
-import { STEPS, STEP_GROUPS, estimerTotalpris, type Step, type Option } from "@/lib/byggeoenske-steps";
+import {
+  STEPS,
+  STEP_GROUPS,
+  estimerTotalpris,
+  type Step,
+  type Option,
+} from "@/lib/byggeoenske-steps";
 import { syncPatch } from "@/lib/project-sync";
 import { supabase } from "@/integrations/supabase/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
@@ -110,9 +116,12 @@ function ByggeoenskeAccordion({ onPatched }: { onPatched: () => void }) {
     }, 500);
   };
 
-  useEffect(() => () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
 
   const filledCount = STEPS.filter((s) => byggeoenske[s.key] !== undefined).length;
 
@@ -234,9 +243,7 @@ function ChoiceField({
         size={12}
         className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"
       />
-      {selected?.hint && (
-        <p className="mt-1 text-[10px] text-muted-foreground">{selected.hint}</p>
-      )}
+      {selected?.hint && <p className="mt-1 text-[10px] text-muted-foreground">{selected.hint}</p>}
     </div>
   );
 }
@@ -404,7 +411,10 @@ function MatrikelCanvas({
   const eksisterende = bbr?.bebygget_areal ?? null;
   const oensket = byggeoenske.oensketAreal ?? null;
   const samlet = (eksisterende ?? 0) + (byggeoenske.byggetype === "tilbyg" ? (oensket ?? 0) : 0);
-  const husAreal = byggeoenske.byggetype === "nybyg" ? (oensket ?? eksisterende ?? 0) : (samlet || eksisterende || 0);
+  const husAreal =
+    byggeoenske.byggetype === "nybyg"
+      ? (oensket ?? eksisterende ?? 0)
+      : samlet || eksisterende || 0;
 
   // Antag kvadratisk grund for visualisering
   const grundSide = grundareal ? Math.sqrt(grundareal) : 0;
@@ -413,7 +423,8 @@ function MatrikelCanvas({
   const canvasW = 480;
   const canvasH = 360;
   const padding = 40;
-  const scale = grundSide > 0 ? Math.min(canvasW - padding * 2, canvasH - padding * 2) / grundSide : 1;
+  const scale =
+    grundSide > 0 ? Math.min(canvasW - padding * 2, canvasH - padding * 2) / grundSide : 1;
 
   const grundPx = grundSide * scale;
   const husPx = husSide * scale;
@@ -455,7 +466,13 @@ function MatrikelCanvas({
               <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
                 <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1f1f1f" strokeWidth="0.5" />
               </pattern>
-              <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <pattern
+                id="hatch"
+                width="6"
+                height="6"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(45)"
+              >
                 <line x1="0" y1="0" x2="0" y2="6" stroke="currentColor" strokeWidth="1" />
               </pattern>
             </defs>
@@ -513,25 +530,27 @@ function MatrikelCanvas({
             )}
 
             {/* Byggeret-zone (max bebyggelsesprocent ramme) */}
-            {maxPct !== null && grundareal && (() => {
-              const maxHusAreal = grundareal * (maxPct / 100);
-              const maxHusSide = Math.sqrt(maxHusAreal);
-              const maxHusPx = maxHusSide * scale;
-              const mhX = grundX + (grundPx - maxHusPx) / 2;
-              const mhY = grundY + (grundPx - maxHusPx) / 2;
-              return (
-                <rect
-                  x={mhX}
-                  y={mhY}
-                  width={maxHusPx}
-                  height={maxHusPx}
-                  fill="none"
-                  stroke="hsl(var(--warning) / 0.5)"
-                  strokeWidth="1"
-                  strokeDasharray="2 3"
-                />
-              );
-            })()}
+            {maxPct !== null &&
+              grundareal &&
+              (() => {
+                const maxHusAreal = grundareal * (maxPct / 100);
+                const maxHusSide = Math.sqrt(maxHusAreal);
+                const maxHusPx = maxHusSide * scale;
+                const mhX = grundX + (grundPx - maxHusPx) / 2;
+                const mhY = grundY + (grundPx - maxHusPx) / 2;
+                return (
+                  <rect
+                    x={mhX}
+                    y={mhY}
+                    width={maxHusPx}
+                    height={maxHusPx}
+                    fill="none"
+                    stroke="hsl(var(--warning) / 0.5)"
+                    strokeWidth="1"
+                    strokeDasharray="2 3"
+                  />
+                );
+              })()}
           </svg>
         )}
       </div>
@@ -582,13 +601,14 @@ function CompliancePanel({
   const eksisterende = bbr?.bebygget_areal ?? 0;
   const oensket = byggeoenske.oensketAreal ?? 0;
   const samlet =
-    byggeoenske.byggetype === "nybyg" ? oensket : eksisterende + (byggeoenske.byggetype === "tilbyg" ? oensket : 0);
+    byggeoenske.byggetype === "nybyg"
+      ? oensket
+      : eksisterende + (byggeoenske.byggetype === "tilbyg" ? oensket : 0);
   const beregnetPct = grundareal && samlet > 0 ? (samlet / grundareal) * 100 : null;
   const maxPct = metrics?.maxBebyggelsesprocent ?? null;
   const pctOver = maxPct !== null && beregnetPct !== null && beregnetPct > maxPct;
-  const pctValue = beregnetPct !== null && maxPct !== null
-    ? Math.min(100, (beregnetPct / maxPct) * 100)
-    : 0;
+  const pctValue =
+    beregnetPct !== null && maxPct !== null ? Math.min(100, (beregnetPct / maxPct) * 100) : 0;
 
   // Etager
   const etager = (byggeoenske.antalEtager as number | undefined) ?? null;
@@ -600,9 +620,8 @@ function CompliancePanel({
   const estHoejde = etager ? etager * 3 : null;
   const maxHoejde = metrics?.maxBygningshoejde ?? null;
   const hoejdeOver = maxHoejde !== null && estHoejde !== null && estHoejde > maxHoejde;
-  const hoejdeValue = estHoejde !== null && maxHoejde !== null
-    ? Math.min(100, (estHoejde / maxHoejde) * 100)
-    : 0;
+  const hoejdeValue =
+    estHoejde !== null && maxHoejde !== null ? Math.min(100, (estHoejde / maxHoejde) * 100) : 0;
 
   // Animeret total-pris-tæller
   const totalpris = useMemo(() => estimerTotalpris(byggeoenske), [byggeoenske]);
@@ -633,11 +652,13 @@ function CompliancePanel({
               🏛️ Fredet bygning — kræver dispensation fra Slots- og Kulturstyrelsen
             </div>
           )}
-          {fbbData?.fbb_bedste_bygning && fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 && fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3 && (
-            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
-              🏛️ SAVE {fbbData.fbb_bedste_bygning.bevaringsvaerdi}/9 — Høj bevaringsværdi
-            </div>
-          )}
+          {fbbData?.fbb_bedste_bygning &&
+            fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 &&
+            fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3 && (
+              <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                🏛️ SAVE {fbbData.fbb_bedste_bygning.bevaringsvaerdi}/9 — Høj bevaringsværdi
+              </div>
+            )}
 
           <Gauge
             label="Bebyggelsesprocent"
@@ -713,8 +734,8 @@ function CompliancePanel({
                 {formatDKK(animatedPris)}
               </div>
               <div className="mt-1 text-[11px] text-muted-foreground">
-                ~{Math.round(totalpris / (byggeoenske.oensketAreal ?? 1)).toLocaleString("da-DK")} kr/m²
-                · ekskl. grundkøb
+                ~{Math.round(totalpris / (byggeoenske.oensketAreal ?? 1)).toLocaleString("da-DK")}{" "}
+                kr/m² · ekskl. grundkøb
               </div>
               <BudgetBreakdown />
             </>
@@ -751,7 +772,132 @@ function CompliancePanel({
           </div>
         </Card>
       )}
+
+      <BudgetRisikoPanel bbr={bbr} metrics={metrics} fbbData={fbbData} />
     </div>
+  );
+}
+
+// ===========================================================================
+// Budget-risici — skjulte poster der glemmes i budgettet (Phase 2.5 i kunderejsen)
+// ===========================================================================
+
+type BudgetRisiko = {
+  label: string;
+  range: string;
+  type: "blocker" | "advarsel" | "info";
+};
+
+function computeBudgetRisici(
+  bbr: BbrKompliantData | null,
+  metrics: ComplianceMetrics | null,
+  fbbData: FbbResultat | null,
+): BudgetRisiko[] {
+  const risici: BudgetRisiko[] = [];
+
+  // Altid synlige baseline-poster som oftest glemmes
+  risici.push({
+    label: "Forsyningsafkobling (el, vand, kloak)",
+    range: "50–150k kr",
+    type: "info",
+  });
+  risici.push({ label: "Geoteknik & jordbundsundersøgelse", range: "0–500k kr+", type: "info" });
+
+  // FBB bevaringsværdi 1–3 → nedrivningstilladelse kræves
+  const bv = fbbData?.fbb_bedste_bygning?.bevaringsvaerdi;
+  if (bv !== undefined && bv !== null && bv >= 1 && bv <= 3) {
+    risici.push({
+      label: `Nedrivningstilladelse kræves (SAVE ${bv}/9)`,
+      range: "Ukendt — kræver Slots- og Kulturstyrelsen",
+      type: "blocker",
+    });
+  }
+
+  // MAT strandbeskyttelse → absolut byggestop
+  if (bbr?.mat_strandbeskyttelse) {
+    risici.push({
+      label: "Strandbeskyttelseslinje — dispensation kræves",
+      range: "Juridisk usikkerhed",
+      type: "blocker",
+    });
+  }
+
+  // MAT fredskov
+  if (bbr?.mat_fredskov) {
+    risici.push({
+      label: "Fredskov — skovbyggelinje",
+      range: "Dispensation svær at opnå",
+      type: "blocker",
+    });
+  }
+
+  // Høj bebyggelsesprocent kan indikere pælfundering-risiko
+  const curPct = metrics?.currentBebyggelsesprocent;
+  const maxPct = metrics?.maxBebyggelsesprocent;
+  if (
+    curPct !== null &&
+    curPct !== undefined &&
+    maxPct !== null &&
+    maxPct !== undefined &&
+    curPct / maxPct > 0.85
+  ) {
+    risici.push({
+      label: "Tæt bebygget grund — øget geoteknikrisiko",
+      range: "50–500k kr ekstra",
+      type: "advarsel",
+    });
+  }
+
+  return risici;
+}
+
+function BudgetRisikoPanel({
+  bbr,
+  metrics,
+  fbbData,
+}: {
+  bbr: BbrKompliantData | null;
+  metrics: ComplianceMetrics | null;
+  fbbData: FbbResultat | null;
+}) {
+  const risici = computeBudgetRisici(bbr, metrics, fbbData);
+  const harBlockere = risici.some((r) => r.type === "blocker");
+
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div
+        className={cn(
+          "px-4 py-3 border-b border-border/40 font-mono text-[11px] tracking-[0.15em]",
+          harBlockere ? "text-amber-400" : "text-muted-foreground",
+        )}
+      >
+        USYNLIGE BUDGETRISICI
+      </div>
+      <div className="p-4 space-y-2.5">
+        {risici.map((r) => (
+          <div key={r.label} className="flex items-start gap-2">
+            <span className="shrink-0 mt-0.5 text-[11px]">
+              {r.type === "blocker" ? "🔴" : r.type === "advarsel" ? "🟡" : "⚪"}
+            </span>
+            <div className="min-w-0">
+              <div
+                className={cn(
+                  "text-[11px] leading-snug",
+                  r.type === "blocker"
+                    ? "text-danger"
+                    : r.type === "advarsel"
+                      ? "text-warning"
+                      : "text-foreground/80",
+                )}
+              >
+                {r.label}
+              </div>
+              <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{r.range}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
