@@ -864,6 +864,10 @@ function AnalyseTab({
       transition={{ duration: 0.4 }}
     >
       <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
+
+      {/* AI-design hero — øverst i cockpittet */}
+      <AiDesignHero />
+
       <div className="mb-4 flex justify-end">
         <button
           type="button"
