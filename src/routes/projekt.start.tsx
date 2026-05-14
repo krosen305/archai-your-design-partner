@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Plus, ChevronRight, LogIn, Clock, LogOut } from "lucide-react";
 import { useProject } from "@/lib/project-store";
+import { serverCreateProject } from "@/lib/project-sync";
 import { Card } from "@/components/wizard-ui";
 import type { Projekt } from "@/lib/byggeoenske";
 
@@ -85,10 +86,21 @@ function StartPage() {
 
 function LoggedInView({ projekter }: { projekter: Projekt[] }) {
   const navigate = useNavigate();
-  const { reset } = useProject();
+  const { reset, setCurrentProjectId } = useProject();
 
-  const handleNytProjekt = () => {
+  const handleNytProjekt = async () => {
+    let newId: string | null = null;
+    try {
+      const { getSession } = await import("@/lib/auth");
+      const session = await getSession();
+      if (session?.access_token) {
+        newId = await serverCreateProject({ data: { accessToken: session.access_token } });
+      }
+    } catch {
+      // fail-open — første syncPatch opretter et nyt projekt via getOrCreateProject
+    }
     reset();
+    if (newId) setCurrentProjectId(newId);
     navigate({ to: "/projekt/adresse" });
   };
 
@@ -143,6 +155,7 @@ const STEP_TO_ROUTE: Record<string, string> = {
 
 function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   const navigate = useNavigate();
+  const { setCurrentProjectId } = useProject();
 
   const harAdresse = !!projekt.adresse_dar_id;
   const dato = new Date(projekt.updated_at).toLocaleDateString("da-DK", {
@@ -152,8 +165,7 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   });
 
   const handleFortsaet = () => {
-    // Brug current_step fra projects-tabellen til at navigere til det rigtige sted.
-    // __root.tsx har allerede genoprettet Zustand-state fra Supabase ved mount.
+    setCurrentProjectId(projekt.id);
     const route =
       (projekt.current_step && STEP_TO_ROUTE[projekt.current_step]) ??
       (harAdresse ? "/projekt/boligoenske" : "/projekt/adresse");

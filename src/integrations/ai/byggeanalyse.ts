@@ -3,6 +3,7 @@
 // IS_MOCK = false: live Anthropic-kald (ARCH-83).
 // ARCH-109: modtager RuleEngineResult som kontekst — AI genberegner ikke.
 
+import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import type { Byggeoenske } from "@/lib/project-store";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
@@ -63,10 +64,30 @@ export type ByggeanalyseInput = {
   geusRisk?: GeusRiskData | null;
   servitutter?: TinglysningResult | null;
   terrain?: TerrainData | null;
+  fbbData?: import("@/integrations/fbb/client").FbbResultat | null; // ARCH-131
   municipality?: string;
   kommunekode?: string;
   ruleEngineResult?: RuleEngineResult; // sendt fra runByggeanalyse-handleren
 };
+
+const ByggeanalyseSchema = z.object({
+  tilladt: z.array(z.object({ emne: z.string(), begrundelse: z.string() })).default([]),
+  kraever_dispensation: z
+    .array(z.object({ emne: z.string(), begrundelse: z.string(), lovhjemmel: z.string() }))
+    .default([]),
+  konflikt: z
+    .array(
+      z.object({
+        emne: z.string(),
+        konflikt: z.string(),
+        lokalplan_krav: z.string(),
+        bruger_oenske: z.string(),
+      }),
+    )
+    .default([]),
+  mangler_data: z.array(z.object({ emne: z.string(), hvad_mangler: z.string() })).default([]),
+  stilOpsummering: z.string().nullable().default(null),
+});
 
 // ---------------------------------------------------------------------------
 // Mock-data
@@ -189,7 +210,8 @@ function buildUserMessage(input: ByggeanalyseInput): string {
     if (bbr.varmeinstallation) bbrDele.push(`Eksist. varmeinstallation: ${bbr.varmeinstallation}`);
     if (bbr.opvarmningsmiddel) bbrDele.push(`Eksist. opvarmningsmiddel: ${bbr.opvarmningsmiddel}`);
     // Materialer (ARCH-118) — kontekst for tilbygnings- og ombygningsprojekter
-    if (bbr.ydervaegs_materiale) bbrDele.push(`Eksist. facademateriale: ${bbr.ydervaegs_materiale}`);
+    if (bbr.ydervaegs_materiale)
+      bbrDele.push(`Eksist. facademateriale: ${bbr.ydervaegs_materiale}`);
     if (bbr.tagdaekning) bbrDele.push(`Eksist. tagdækning: ${bbr.tagdaekning}`);
     if (bbr.fredet) bbrDele.push(`Fredning: Ja (BBR byg070)`);
     if (bbrDele.length > 0) msg += `\n\n## Ejendom (BBR)\n${bbrDele.join("\n")}`;
@@ -347,18 +369,8 @@ export class ByggeanalyseService {
       .trim();
 
     try {
-      const parsed = JSON.parse(cleaned);
-      return {
-        tilladt: Array.isArray(parsed.tilladt) ? parsed.tilladt : [],
-        kraever_dispensation: Array.isArray(parsed.kraever_dispensation)
-          ? parsed.kraever_dispensation
-          : [],
-        konflikt: Array.isArray(parsed.konflikt) ? parsed.konflikt : [],
-        mangler_data: Array.isArray(parsed.mangler_data) ? parsed.mangler_data : [],
-        stilOpsummering: typeof parsed.stilOpsummering === "string" ? parsed.stilOpsummering : null,
-        kilde: "anthropic",
-        ruleEngine: input.ruleEngineResult,
-      };
+      const parsed = ByggeanalyseSchema.parse(JSON.parse(cleaned));
+      return { ...parsed, kilde: "anthropic" as const, ruleEngine: input.ruleEngineResult };
     } catch {
       throw new Error(
         `ByggeanalyseService: kunne ikke parse Anthropic-svar: ${cleaned.slice(0, 200)}`,

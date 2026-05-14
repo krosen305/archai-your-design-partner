@@ -42,7 +42,12 @@ async function erFredet(koordinat: Koordinat): Promise<boolean> {
 
   if (!res.ok) throw new Error(`DAI WFS HTTP ${res.status} for FREDEDE_BYGNINGER`);
 
-  const data = (await res.json()) as { totalFeatures?: number; features?: unknown[] };
+  const bodyText = await res.text();
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("json") && bodyText.trimStart().startsWith("<")) {
+    throw new Error(`DAI WFS returnerede HTML i stedet for JSON (Content-Type: ${ct || "ukendt"})`);
+  }
+  const data = JSON.parse(bodyText) as { totalFeatures?: number; features?: unknown[] };
   return (data.totalFeatures ?? data.features?.length ?? 0) > 0;
 }
 

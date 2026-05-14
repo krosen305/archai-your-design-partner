@@ -15,6 +15,8 @@ import type { VurData } from "@/integrations/vur/client";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { SaveData } from "@/integrations/save/client";
+import type { FbbResultat } from "@/integrations/fbb/client";
+import { fetchLayer1 } from "@/lib/compliance-layer1";
 
 // ---------------------------------------------------------------------------
 // Input / Output typer
@@ -60,113 +62,66 @@ export const preCheckAdresse = createServerFn({ method: "POST" })
   .inputValidator((data: AdressePreCheckInput) => data)
   .handler(async ({ data }): Promise<AdressePreCheckResultat> => {
     const { adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = data;
-    const grundareal = data.grundareal ?? null;
 
-    // ── 5 parallelle kald — én fejl stopper ikke resten ──────────────────────
-    const [bbrSettled, plandataSettled, naturSettled, saveSettled, vurSettled] =
-      await Promise.allSettled([
-        // 1. BBR + MAT (grundareal, beskyttelseslinjer, fredning)
-        (async (): Promise<BbrKompliantData | null> => {
-          let resolvedGrundareal = grundareal;
-          let mat_strandbeskyttelse: boolean | null = null;
-          let mat_fredskov: boolean | null = null;
-          let mat_klitfredning: boolean | null = null;
+    const [layer1Settled, naturSettled, saveSettled] = await Promise.allSettled([
+      fetchLayer1({
+        adgangsadresseid,
+        ejerlavskode,
+        matrikelnummer,
+        koordinater,
+        grundareal: data.grundareal ?? null,
+      }),
+      koordinater
+        ? import("@/integrations/sdfi/naturbeskyttelse")
+            .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
+            .catch(() => null as NaturbeskyttelsesResultat | null)
+        : Promise.resolve(null as NaturbeskyttelsesResultat | null),
+      koordinater
+        ? import("@/integrations/save/client")
+            .then(({ SaveService }) => SaveService.getBevaringsdata(koordinater))
+            .catch(() => null as SaveData | null)
+        : Promise.resolve(null as SaveData | null),
+    ]);
 
-          if (ejerlavskode && matrikelnummer) {
-            const { MatService } = await import("@/integrations/mat/client");
-            const mat = await MatService.getGrundareal(ejerlavskode, matrikelnummer);
-            if (resolvedGrundareal === null && mat.registreretAreal !== null) {
-              resolvedGrundareal = mat.registreretAreal;
-            }
-            mat_strandbeskyttelse = mat.strandbeskyttelse;
-            mat_fredskov = mat.fredskov;
-            mat_klitfredning = mat.klitfredning;
-          }
-
-          const { BbrService } = await import("@/integrations/bbr/client");
-          const bbr = await BbrService.getKompliantData(adgangsadresseid, resolvedGrundareal);
-          if (bbr) {
-            bbr.mat_strandbeskyttelse = mat_strandbeskyttelse;
-            bbr.mat_fredskov = mat_fredskov;
-            bbr.mat_klitfredning = mat_klitfredning;
-          }
-          return bbr;
-        })(),
-
-        // 2. Plandata (lokalplan + kommuneplanramme)
-        koordinater
-          ? (async (): Promise<{
-              lokalplaner: Lokalplan[];
-              kommuneplanramme: Kommuneplanramme | null;
-            }> => {
-              const { PlandataService } = await import("@/integrations/plandata/client");
-              const [lpResult, rammeResult] = await Promise.all([
-                PlandataService.getLokalplanerForKoordinat(
-                  koordinater.lng,
-                  koordinater.lat,
-                  true,
-                ).catch(() => ({ lokalplaner: [], fejl: null, rawCount: 0 })),
-                PlandataService.getKommuneplanrammeForKoordinat(
-                  koordinater.lng,
-                  koordinater.lat,
-                ).catch(() => ({ ramme: null, fejl: null })),
-              ]);
-              return {
-                lokalplaner: lpResult.lokalplaner,
-                kommuneplanramme: rammeResult.ramme,
-              };
-            })()
-          : Promise.resolve({ lokalplaner: [] as Lokalplan[], kommuneplanramme: null }),
-
-        // 3. NaturbeskyttelseService (strandbeskyttelse, skovbyggelinje, søbeskyttelse, åbeskyttelse)
-        koordinater
-          ? import("@/integrations/sdfi/naturbeskyttelse")
-              .then(({ NaturbeskyttelseService }) =>
-                NaturbeskyttelseService.getTilstand(koordinater),
-              )
-              .catch(() => null as NaturbeskyttelsesResultat | null)
-          : Promise.resolve(null as NaturbeskyttelsesResultat | null),
-
-        // 4. SaveService (spatial fredning — dmp:FREDEDE_BYGNINGER)
-        koordinater
-          ? import("@/integrations/save/client")
-              .then(({ SaveService }) => SaveService.getBevaringsdata(koordinater))
-              .catch(() => null as SaveData | null)
-          : Promise.resolve(null as SaveData | null),
-
-        // 5. EBR → VUR (ejendomsværdi + grundværdi)
-        (async (): Promise<VurData | null> => {
-          const { EbrService } = await import("@/integrations/ebr/client");
-          const ebr = await EbrService.getBfeNr(adgangsadresseid);
-          if (ebr.fejl || !ebr.bfeNr) return null;
-          const { VurService } = await import("@/integrations/vur/client");
-          return VurService.getVurdering(ebr.bfeNr);
-        })(),
-      ]);
-
-    // Log eventuelle fejl uden at blokere
-    const labels = ["BBR+MAT", "Plandata", "Naturbeskyttelse", "SaveService", "EBR+VUR"];
-    [bbrSettled, plandataSettled, naturSettled, saveSettled, vurSettled].forEach((r, i) => {
-      if (r.status === "rejected") {
+    const labels = ["Layer1", "Naturbeskyttelse", "SaveService"];
+    [layer1Settled, naturSettled, saveSettled].forEach((r, i) => {
+      if (r.status === "rejected")
         console.warn(`[preCheckAdresse] ${labels[i]} fejlede:`, r.reason);
-      }
     });
 
-    const bbr = bbrSettled.status === "fulfilled" ? bbrSettled.value : null;
-    const plandata =
-      plandataSettled.status === "fulfilled"
-        ? plandataSettled.value
-        : { lokalplaner: [] as Lokalplan[], kommuneplanramme: null };
+    const layer1 =
+      layer1Settled.status === "fulfilled"
+        ? layer1Settled.value
+        : {
+            bbr: null,
+            lokalplaner: [] as Lokalplan[],
+            kommuneplanramme: null,
+            vurderingData: null,
+          };
+
+    const bbr = layer1.bbr;
     const naturbeskyttelse = naturSettled.status === "fulfilled" ? naturSettled.value : null;
     const save = saveSettled.status === "fulfilled" ? saveSettled.value : null;
-    const vurdering = vurSettled.status === "fulfilled" ? vurSettled.value : null;
+    const vurdering = layer1.vurderingData;
+
+    // FBB: kræver integer BBR building IDs fra BBR Public Service — køres separat efter BBR-fasen (ARCH-131)
+    let fbbData: FbbResultat | null = null;
+    const bygningIds = bbr?.alle_bbr_public_ids ?? [];
+    if (bygningIds.length) {
+      fbbData = await import("@/integrations/fbb/client")
+        .then(({ FbbService }) => FbbService.getSaveData(bygningIds))
+        .catch((e: Error) => {
+          console.warn("[preCheckAdresse] FBB fejlede:", e.message);
+          return null;
+        });
+    }
 
     // ── Compliance metrics ────────────────────────────────────────────────────
     const { calculateComplianceMetrics } = await import("@/lib/compliance-engine");
-    const complianceMetrics = calculateComplianceMetrics(bbr, plandata.kommuneplanramme);
+    const complianceMetrics = calculateComplianceMetrics(bbr, layer1.kommuneplanramme);
 
     // ── Compliance flags ──────────────────────────────────────────────────────
-    const flags = buildPreCheckFlags(bbr, plandata.kommuneplanramme, naturbeskyttelse, save);
+    const flags = buildPreCheckFlags(bbr, layer1.kommuneplanramme, naturbeskyttelse, save, fbbData);
 
     return {
       blockers: flags.filter((f) => f.status === "blocker"),
@@ -176,16 +131,16 @@ export const preCheckAdresse = createServerFn({ method: "POST" })
         bebyggetAreal: bbr?.bebygget_areal ?? null,
         bebyggelsesprocent: bbr?.bebyggelsesprocent ?? null,
         antalEtager: bbr?.antal_etager ?? null,
-        maxBebyggelsesprocent: plandata.kommuneplanramme?.bebygpct ?? null,
-        maxEtager: plandata.kommuneplanramme?.maxetager ?? null,
-        maxBygningshoejde: plandata.kommuneplanramme?.maxbygnhjd ?? null,
+        maxBebyggelsesprocent: layer1.kommuneplanramme?.bebygpct ?? null,
+        maxEtager: layer1.kommuneplanramme?.maxetager ?? null,
+        maxBygningshoejde: layer1.kommuneplanramme?.maxbygnhjd ?? null,
         restBygningsareal: complianceMetrics.remainingBygningsareal,
         ejendomsvaerdi: vurdering?.ejendomsvaerdi ?? null,
         grundvaerdi: vurdering?.grundvaerdi ?? null,
       },
       bbr,
-      lokalplaner: plandata.lokalplaner,
-      kommuneplanramme: plandata.kommuneplanramme,
+      lokalplaner: layer1.lokalplaner,
+      kommuneplanramme: layer1.kommuneplanramme,
       vurderingData: vurdering,
       complianceMetrics,
     };
@@ -200,6 +155,7 @@ function buildPreCheckFlags(
   ramme: Kommuneplanramme | null,
   naturbeskyttelse: NaturbeskyttelsesResultat | null,
   save: SaveData | null,
+  fbbData: FbbResultat | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
@@ -218,6 +174,22 @@ function buildPreCheckFlags(
       kilde: bbr.fredet ? "bbr" : "sdfi",
       dispensationMulig: true,
       dispensationMyndighed: "Slots- og Kulturstyrelsen",
+    });
+  }
+
+  // SAVE-bevaringsværdi 1-3: stor advarsel ved alle byggetyper (ARCH-131)
+  const saveScore = fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
+  if (saveScore !== null && saveScore !== undefined && saveScore <= 3) {
+    flags.push({
+      id: "save-bevaringsvaerdi",
+      label: `Høj bevaringsværdi (SAVE ${saveScore})`,
+      status: "advarsel",
+      detalje: `Bygningen er registreret med høj bevaringsværdi (SAVE ${saveScore}/9) i Kulturmiljøregisteret — nedrivning og væsentlig ombygning kræver særlig kommunal tilladelse (Planlovens §14).`,
+      aktuelVærdi: `SAVE ${saveScore}`,
+      tilladt: null,
+      kilde: "bbr",
+      dispensationMulig: true,
+      dispensationMyndighed: "Kommunen",
     });
   }
 

@@ -94,6 +94,7 @@ function RootComponent() {
     setByggeoenske,
     setByggeanalyseResultat,
     setVurderingData,
+    setCurrentProjectId,
   } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
@@ -101,6 +102,7 @@ function RootComponent() {
     if (address) return; // State allerede sat — spring over
     restoreProject().then((project) => {
       if (!project) return;
+      setCurrentProjectId(project.id);
       if (project.address_full && project.address_bbr) {
         setAddress({
           adresseid: project.address_adresseid ?? project.address_bbr,

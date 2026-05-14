@@ -15,6 +15,7 @@ import { z } from "zod";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
+import type { Json } from "@/integrations/supabase/types";
 import {
   DATA_POINT_DEFS,
   SECTIONS,
@@ -41,13 +42,15 @@ const loadDatacheck = createServerFn({ method: "POST" })
     if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
 
     const { data: row } = await supabaseAdmin
-      .from("projekter")
+      .from("projects")
       .select("project_data_status")
       .eq("user_id", authData.user.id)
-      .eq("adresse_dar_id", data.addressId)
+      .eq("address_adresseid", data.addressId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    return (row?.project_data_status as DataStatusMap) ?? {};
+    return ((row?.project_data_status as unknown as DataStatusMap) ?? {}) as DataStatusMap;
   });
 
 const saveDatacheckSchema = z.object({
@@ -59,21 +62,11 @@ const saveDatacheckSchema = z.object({
 const saveDatacheck = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => saveDatacheckSchema.parse(data))
   .handler(async ({ data }): Promise<void> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
-    if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
-
-    const userId = authData.user.id;
-
-    await supabaseAdmin.from("projekter").upsert(
-      {
-        user_id: userId,
-        adresse_dar_id: data.addressId,
-        project_data_status:
-          data.statusMap as unknown as import("@/integrations/supabase/types").Json,
-      },
-      { onConflict: "user_id,adresse_dar_id" },
-    );
+    const { saveProject } = await import("@/integrations/supabase/project-persistence");
+    await saveProject(data.token, {
+      projectDataStatus: data.statusMap as unknown as Json,
+      currentStep: "datacheck",
+    });
   });
 
 // ---------------------------------------------------------------------------

@@ -13,11 +13,18 @@ import type { ProjectPatch, PersistedProject } from "@/integrations/supabase/pro
 // Server functions
 // ---------------------------------------------------------------------------
 
+export const serverCreateProject = createServerFn({ method: "POST" })
+  .inputValidator((data: { accessToken: string }) => data)
+  .handler(async ({ data }): Promise<string | null> => {
+    const { createProject } = await import("@/integrations/supabase/project-persistence");
+    return createProject(data.accessToken);
+  });
+
 export const serverSaveProject = createServerFn({ method: "POST" })
-  .inputValidator((data: { accessToken: string; patch: ProjectPatch }) => data)
+  .inputValidator((data: { accessToken: string; patch: ProjectPatch; projectId?: string | null }) => data)
   .handler(async ({ data }): Promise<void> => {
     const { saveProject } = await import("@/integrations/supabase/project-persistence");
-    await saveProject(data.accessToken, data.patch);
+    await saveProject(data.accessToken, data.patch, data.projectId);
   });
 
 export const serverLoadProject = createServerFn({ method: "POST" })
@@ -44,8 +51,11 @@ async function getAccessToken(): Promise<string | null> {
 export async function syncPatch(patch: ProjectPatch): Promise<void> {
   const accessToken = await getAccessToken();
   if (!accessToken) return; // Gæst — no-op
+  // Læs currentProjectId fra Zustand-store (singleton — safe udenfor React)
+  const { useProject } = await import("@/lib/project-store");
+  const projectId = useProject.getState().currentProjectId;
   try {
-    await serverSaveProject({ data: { accessToken, patch } });
+    await serverSaveProject({ data: { accessToken, patch, projectId } });
   } catch (e) {
     console.warn("[ProjectSync] gem fejlede (ikke kritisk):", (e as Error).message);
   }

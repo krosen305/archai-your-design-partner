@@ -10,6 +10,7 @@ import {
 } from "@/lib/project-store";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
+import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { syncPatch } from "@/lib/project-sync";
@@ -414,10 +415,16 @@ function ByggeoenskeStep() {
     byggeoenske,
     setByggeoenske,
     complianceMetrics,
+    setComplianceMetrics,
     lokalplanExtract,
+    lokalplaner,
+    kommuneplanramme,
     complianceFlags,
     boligoenskeValidering,
     setBoligoenskeValidering,
+    bbrData,
+    address,
+    adressePreCheck,
   } = useProject();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -440,6 +447,32 @@ function ByggeoenskeStep() {
   const remaining = complianceMetrics?.remainingBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
 
+  // Reaktiv compliance-compute — kør compliance-metrics client-side
+  // når Byggeoenske ændres, uden at kalde Datafordeler (BBR + plandata allerede i store).
+  // Kun complianceMetrics opdateres her — complianceFlags bevares fra preCheck/byggeanalyse
+  // for at undgå tab af naturbeskyttelse/dkjord-flags (disse har ikke klient-side data).
+  useEffect(() => {
+    if (!bbrData || !address) return;
+    const timer = setTimeout(() => {
+      const { complianceMetrics: cm } = computePartialUpdate({
+        bbr: bbrData,
+        ramme: kommuneplanramme,
+        lokalplanExtract,
+        lokalplaner,
+        naturbeskyttelse: null,
+        geusRisk: null,
+        servitutter: null,
+        terrain: null,
+        fbbData: null,
+        byggeoenske,
+        municipality: address.kommune ?? "",
+        kommunekode: address.kommunekode ?? "",
+      });
+      setComplianceMetrics(cm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [byggeoenske, bbrData, kommuneplanramme, lokalplanExtract, lokalplaner]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Apply smart defaults when arriving at a step (ARCH-87)
   // Re-run validation when arriving at etager/areal steps med eksisterende værdier (ARCH-124)
   useEffect(() => {
@@ -457,7 +490,8 @@ function ByggeoenskeStep() {
         arealStatus: arealRes.status,
         beregnetBebyggelsespct: arealRes.pct,
         etagerDispensationAcknowledged: false,
-        arealDispensationAcknowledged: boligoenskeValidering?.arealDispensationAcknowledged ?? false,
+        arealDispensationAcknowledged:
+          boligoenskeValidering?.arealDispensationAcknowledged ?? false,
       });
     }
     if (key === "oensketAreal" && byggeoenske.oensketAreal !== undefined) {
@@ -466,7 +500,8 @@ function ByggeoenskeStep() {
         etagerStatus: boligoenskeValidering?.etagerStatus ?? "ingen_data",
         arealStatus: arealRes.status,
         beregnetBebyggelsespct: arealRes.pct,
-        etagerDispensationAcknowledged: boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
+        etagerDispensationAcknowledged:
+          boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
         arealDispensationAcknowledged: false,
       });
     }
@@ -519,7 +554,8 @@ function ByggeoenskeStep() {
         arealStatus: arealRes.status,
         beregnetBebyggelsespct: arealRes.pct,
         etagerDispensationAcknowledged: false,
-        arealDispensationAcknowledged: boligoenskeValidering?.arealDispensationAcknowledged ?? false,
+        arealDispensationAcknowledged:
+          boligoenskeValidering?.arealDispensationAcknowledged ?? false,
       });
     } else if (step.key === "oensketAreal") {
       const arealRes = validateAreal(v as number, grundareal, maxPct, eksisterende);
@@ -528,7 +564,8 @@ function ByggeoenskeStep() {
         etagerStatus,
         arealStatus: arealRes.status,
         beregnetBebyggelsespct: arealRes.pct,
-        etagerDispensationAcknowledged: boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
+        etagerDispensationAcknowledged:
+          boligoenskeValidering?.etagerDispensationAcknowledged ?? false,
         arealDispensationAcknowledged: false,
       });
     }
@@ -791,9 +828,7 @@ function renderStepHint(args: {
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs font-mono">
           <span className="text-muted-foreground">Byggepotentiale: {remaining} m²</span>
-          <span className={over ? "text-danger" : "text-emerald-400"}>
-            Du ønsker: {valgt} m²
-          </span>
+          <span className={over ? "text-danger" : "text-emerald-400"}>Du ønsker: {valgt} m²</span>
         </div>
         <Progress
           value={Math.min(100, pctOfMax)}

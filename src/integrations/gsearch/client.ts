@@ -9,6 +9,8 @@
 //
 // adgangsadresseid is not returned — enriched by DarService.getAddressDetails().
 
+import { getEnvOptional } from "@/lib/env";
+
 const GSEARCH_BASE = "https://api.dataforsyningen.dk/rest/gsearch/v2.0";
 
 export type GsearchSuggestion = {
@@ -75,7 +77,7 @@ export class GsearchService {
     const q = query.trim();
     if (!q || q.length < 2) return [];
 
-    const token = (process as any)?.env?.DATAFORSYNINGEN_TOKEN ?? "";
+    const token = getEnvOptional("DATAFORSYNINGEN_TOKEN") ?? "";
     const params = new URLSearchParams({ q, limit: "5" });
     if (token) params.set("token", token);
 

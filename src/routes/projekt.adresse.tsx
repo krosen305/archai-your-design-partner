@@ -88,7 +88,7 @@ function AddressStep() {
   const hasSoft = softBlockers.length > 0 || advarsler.length > 0;
   const allChecksDone = adressePreCheck !== null && !isCheckingCompliance;
   const isClean = allChecksDone && !hasHard && !hasSoft;
-  const anyDispensationPossible = hardBlockers.some((b) => b.dispensationMulig);
+  const anyDispensationPossible = softBlockers.length > 0;
 
   useEffect(() => {
     if (!open || selected) return;

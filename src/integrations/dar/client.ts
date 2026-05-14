@@ -22,6 +22,9 @@
 //   - kommunenavn: IKKE i DAR direkte – kommuneinddeling er FK udenfor DAR
 //   - Koordinater: EPSG:25832 WKT på DAR_Adressepunkt.position.wkt – kræver UTM→WGS84 konvertering
 
+import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+
 // ---------------------------------------------------------------------------
 // Konfiguration
 // ---------------------------------------------------------------------------
@@ -32,11 +35,11 @@ type DarClientConfig = {
 };
 
 function getConfig(explicit?: DarClientConfig) {
-  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
+  const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
   const endpoint =
     explicit?.endpoint ??
-    (process as any)?.env?.DATAFORDELER_DAR_ENDPOINT ??
+    getEnvOptional("DATAFORDELER_DAR_ENDPOINT") ??
     "https://graphql.datafordeler.dk/DAR/v1";
 
   if (!apiKey) {
@@ -253,11 +256,15 @@ function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: n
 // ---------------------------------------------------------------------------
 
 async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
+  const response = await fetchWithRetry(
+    url.toString(),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    },
+    { timeoutMs: 12_000 },
+  );
 
   const bodyText = await response.text();
 
@@ -280,7 +287,7 @@ async function gqlFetch(url: URL, query: string, variables: Record<string, unkno
 
 function getMatUrl(apiKey: string): URL {
   const matEndpoint =
-    (process as any)?.env?.DATAFORDELER_MAT_ENDPOINT ?? "https://graphql.datafordeler.dk/MAT/v2";
+    getEnvOptional("DATAFORDELER_MAT_ENDPOINT") ?? "https://graphql.datafordeler.dk/MAT/v2";
   const url = new URL(matEndpoint);
   url.searchParams.set("apiKey", apiKey);
   return url;

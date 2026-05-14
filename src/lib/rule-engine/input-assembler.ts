@@ -6,6 +6,7 @@
 // routes kan efterfølgende kalde med Byggeoenske.
 
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { FbbResultat } from "@/integrations/fbb/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
@@ -33,6 +34,7 @@ export type AssemblerParams = {
   geusRisk: GeusRiskData | null;
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
+  fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi fra FBB
   byggeoenske: Byggeoenske | null; // null = serverside kørslen (Option A)
   municipality: string;
   kommunekode: string;
@@ -133,6 +135,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     geusRisk,
     servitutter,
     terrain,
+    fbbData,
     byggeoenske,
     municipality,
     kommunekode,
@@ -155,8 +158,10 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
 
   // ── Heritage ─────────────────────────────────────────────────────────────
 
-  // listedBuilding: autoritativt fra BBR byg070 (ARCH-118) — saveValue afventer ARCH-89
-  missingFields.push("heritage.saveValue");
+  // saveValue: laveste bevaringskarakter fra FBB (ARCH-131)
+  // Laveste tal = højest bevaringsværdi (SAVE 1-3 = høj, 7-9 = lav)
+  const saveValue = fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
+  if (saveValue === null) missingFields.push("heritage.saveValue");
 
   const protectionLines = {
     coastal: naturbeskyttelse?.strandbeskyttelse ?? false,
@@ -341,7 +346,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     },
     heritage: {
       listedBuilding: bbr?.fredet ?? null, // ARCH-118: BBR byg070
-      saveValue: null, // ingen integration
+      saveValue, // ARCH-131: FBB bevaringskarakter (null hvis ikke registreret i FBB)
       preservationLocalplan: false, // ingen integration
       protectionLines,
     },

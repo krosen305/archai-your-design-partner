@@ -161,6 +161,12 @@ type State = {
   // ARCH-124: inline validering mod plangrænser i boligoensker-flow
   boligoenskeValidering: BoligoenskeValidering | null;
 
+  // ARCH-130: aktiv Supabase-projekt-id — sørger for korrekt dataadskillelse ved flere projekter
+  currentProjectId: string | null;
+
+  // AI-gatekeeper: HusDnaGeneratorService genkaldes kun hvis disse felter ændres
+  _lastHusDnaInput: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null;
+
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: BbrKompliantData | null) => void;
@@ -184,6 +190,10 @@ type State = {
   setVurderingData: (v: VurData | null) => void;
   setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
   setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
+  setCurrentProjectId: (id: string | null) => void;
+  setLastHusDnaInput: (
+    v: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null,
+  ) => void;
 
   reset: () => void;
 };
@@ -214,6 +224,8 @@ export const useProject = create<State>((set) => ({
   vurderingData: null,
   adressePreCheck: null,
   boligoenskeValidering: null,
+  currentProjectId: null,
+  _lastHusDnaInput: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -233,6 +245,8 @@ export const useProject = create<State>((set) => ({
   setVurderingData: (vurderingData) => set({ vurderingData }),
   setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
   setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
+  setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
+  setLastHusDnaInput: (_lastHusDnaInput) => set({ _lastHusDnaInput }),
 
   reset: () =>
     set({
@@ -253,6 +267,8 @@ export const useProject = create<State>((set) => ({
       vurderingData: null,
       adressePreCheck: null,
       boligoenskeValidering: null,
+      currentProjectId: null,
+      _lastHusDnaInput: null,
     }),
 }));
 

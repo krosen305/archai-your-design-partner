@@ -16,6 +16,7 @@
 // Option B (fallback): Erhvervsstyrelsen B2B-adgang — kræver særskilt registrering.
 
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
+import { getEnvOptional, getEnvRequired } from "@/lib/env";
 
 const IS_MOCK = FEATURE_FLAGS.tinglysningMock;
 
@@ -81,7 +82,7 @@ const MOCK_RESULT: TinglysningResult = {
 async function classifyServitutter(servitutter: Omit<Servitut, "kritisk">[]): Promise<Servitut[]> {
   if (servitutter.length === 0) return [];
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getEnvOptional("ANTHROPIC_API_KEY");
   if (!apiKey) {
     console.warn("[Tinglysning] ANTHROPIC_API_KEY mangler — kritisk=false for alle servitutter");
     return servitutter.map((s) => ({ ...s, kritisk: false }));
@@ -160,8 +161,7 @@ async function fetchLiveTinglysning(
   ejerlavskode: number,
   matrikelnummer: string,
 ): Promise<TinglysningResult> {
-  const apiKey = process.env.DATAFORDELER_API_KEY;
-  if (!apiKey) throw new Error("DATAFORDELER_API_KEY mangler");
+  const apiKey = getEnvRequired("DATAFORDELER_API_KEY");
 
   const url =
     `${TINGBOGEN_BASE}/tingbog?apiKey=${apiKey}` +

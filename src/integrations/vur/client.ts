@@ -6,6 +6,9 @@
 //   VUR_Ejendomsvurdering(id=recordId) → fkVurderingsejendomID (ejendoms-ID)
 //   VUR_Ejendomsvurdering(fkVurderingsejendomID) → hent historik, vælg nyeste
 
+import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+
 // ---------------------------------------------------------------------------
 // Typer
 // ---------------------------------------------------------------------------
@@ -131,27 +134,24 @@ export class VurService {
   // -------------------------------------------------------------------------
 
   private static getConfig(explicit?: VurClientConfig) {
-    const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
+    const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
     const endpoint =
       explicit?.endpoint ??
-      (process as any)?.env?.DATAFORDELER_VUR_ENDPOINT ??
+      getEnvOptional("DATAFORDELER_VUR_ENDPOINT") ??
       "https://graphql.datafordeler.dk/VUR/v1";
-
-    if (!apiKey) {
-      throw new Error(
-        "VUR GraphQL: Manglende DATAFORDELER_API_KEY. " +
-          "Sæt denne som environment variable (uden VITE_ prefix).",
-      );
-    }
     return { apiKey, endpoint };
   }
 
   private static async gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
-    const response = await fetch(url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables }),
-    });
+    const response = await fetchWithRetry(
+      url.toString(),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, variables }),
+      },
+      { timeoutMs: 12_000 },
+    );
 
     const bodyText = await response.text();
 

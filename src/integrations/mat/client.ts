@@ -23,6 +23,9 @@
 // Beskyttelseslinjer hentes gratis i samme kald som grundareal og merges ind i
 // BbrKompliantData.mat_* af analysis-orchestrator.ts.
 
+import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+
 // ---------------------------------------------------------------------------
 // Konfiguration
 // ---------------------------------------------------------------------------
@@ -33,11 +36,11 @@ type MatClientConfig = {
 };
 
 function getConfig(explicit?: MatClientConfig) {
-  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
+  const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
   const endpoint =
     explicit?.endpoint ??
-    (process as any)?.env?.DATAFORDELER_MAT_ENDPOINT ??
+    getEnvOptional("DATAFORDELER_MAT_ENDPOINT") ??
     "https://graphql.datafordeler.dk/MAT/v2";
 
   if (!apiKey) {
@@ -99,11 +102,15 @@ query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virknin
 // ---------------------------------------------------------------------------
 
 async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
+  const response = await fetchWithRetry(
+    url.toString(),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    },
+    { timeoutMs: 12_000 },
+  );
 
   const bodyText = await response.text();
 

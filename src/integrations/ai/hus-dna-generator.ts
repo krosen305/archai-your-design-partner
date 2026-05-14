@@ -10,7 +10,9 @@
 // Mock flag
 // ---------------------------------------------------------------------------
 
+import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
+import { getEnvOptional } from "@/lib/env";
 const IS_MOCK = FEATURE_FLAGS.husDnaMock;
 
 // ---------------------------------------------------------------------------
@@ -26,6 +28,16 @@ export type HusDnaInput = {
 
 // HusDna er den kanoniske type — HusDnaResult er et alias for bagudkompatibilitet.
 export type HusDnaResult = HusDna;
+
+const HusDnaSchema = z.object({
+  stil: z.string().default("Ukendt stil"),
+  bruttoareal: z.string().default("—"),
+  etager: z.string().default("—"),
+  tagform: z.string().default("—"),
+  energiklasse: z.string().default("A2020"),
+  saerligeKrav: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(100).default(70),
+});
 
 // ---------------------------------------------------------------------------
 // Mock data — deterministisk fallback til development uden API-nøgle
@@ -80,7 +92,7 @@ export class HusDnaGeneratorService {
       return { ...MOCK_RESULT };
     }
 
-    const apiKey = (process as any)?.env?.ANTHROPIC_API_KEY ?? "";
+    const apiKey = getEnvOptional("ANTHROPIC_API_KEY") ?? "";
     if (!apiKey) {
       console.warn("[HusDna] ANTHROPIC_API_KEY mangler — returnerer mock");
       return { ...MOCK_RESULT };
@@ -150,16 +162,6 @@ async function callAnthropic(apiKey: string, input: HusDnaInput): Promise<HusDna
     .replace(/\s*```$/, "")
     .trim();
 
-  const parsed = JSON.parse(cleaned);
-  return {
-    stil: parsed.stil ?? "Ukendt stil",
-    bruttoareal: parsed.bruttoareal ?? "—",
-    etager: parsed.etager ?? "—",
-    tagform: parsed.tagform ?? "—",
-    energiklasse: parsed.energiklasse ?? "A2020",
-    saerligeKrav: Array.isArray(parsed.saerligeKrav) ? parsed.saerligeKrav : [],
-    confidence:
-      typeof parsed.confidence === "number" ? Math.min(100, Math.max(0, parsed.confidence)) : 70,
-    kilde: "anthropic",
-  };
+  const parsed = HusDnaSchema.parse(JSON.parse(cleaned));
+  return { ...parsed, kilde: "anthropic" as const };
 }

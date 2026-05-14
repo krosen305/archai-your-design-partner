@@ -20,17 +20,20 @@
 // Konfiguration
 // ---------------------------------------------------------------------------
 
+import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+
 type BbrClientConfig = {
   apiKey?: string;
   endpoint?: string;
 };
 
 function getConfig(explicit?: BbrClientConfig) {
-  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
+  const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
   const endpoint =
     explicit?.endpoint ??
-    (process as any)?.env?.DATAFORDELER_BBR_ENDPOINT ??
+    getEnvOptional("DATAFORDELER_BBR_ENDPOINT") ??
     "https://graphql.datafordeler.dk/BBR/v2";
 
   if (!apiKey) {
@@ -146,6 +149,11 @@ export type BbrKompliantData = {
   mat_strandbeskyttelse: boolean | null;
   mat_fredskov: boolean | null;
   mat_klitfredning: boolean | null;
+  // FBB-opslag (ARCH-131) — sættes af BbrService, bruges af FbbService
+  bygning_lokal_id: string | null; // BBR UUID for primær bygning (= FBB bygningLokalId)
+  fbb_reference: string | null; // byg071 — URI-link til FBB-registrering (null = ikke i FBB)
+  alle_bygning_lokal_ids: string[]; // UUIDs for alle bygninger på adressen (inkl. sekundære)
+  alle_bbr_public_ids: number[]; // Integer BBR IDs fra BBR Public Service — bruges til FBB GeoServer WFS
 };
 
 // ---------------------------------------------------------------------------
@@ -155,6 +163,7 @@ export type BbrKompliantData = {
 
 // virkningstid er obligatorisk (DAF-GQL-0009) – Datafordeler er bitemporal.
 // Vi sender aktuel tid for at få den nuværende aktive version af data.
+// byg071BevaringsvaerdighedReference: direkte link til FBB-registrering (ARCH-131)
 const BYGNING_QUERY = `
 query GetBygning($id: String!, $virkningstid: DafDateTime!) {
   BBR_Bygning(
@@ -162,6 +171,7 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!) {
     virkningstid: $virkningstid
   ) {
     nodes {
+      id_lokalId
       byg021BygningensAnvendelse
       byg026Opfoerelsesaar
       byg032YdervaeggensMateriale
@@ -172,6 +182,7 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!) {
       byg056Varmeinstallation
       byg057Opvarmningsmiddel
       byg070Fredning
+      byg071BevaringsvaerdighedReference
     }
   }
 }`;
@@ -181,11 +192,15 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!) {
 // ---------------------------------------------------------------------------
 
 async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
+  const response = await fetchWithRetry(
+    url.toString(),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    },
+    { timeoutMs: 12_000 },
+  );
 
   const bodyText = await response.text();
 
@@ -238,7 +253,10 @@ export class BbrService {
 
     try {
       const virkningstid = new Date().toISOString();
-      const data = await gqlFetch(url, BYGNING_QUERY, { id, virkningstid });
+      const [data, alleBbrPublicIds] = await Promise.all([
+        gqlFetch(url, BYGNING_QUERY, { id, virkningstid }),
+        fetchBbrPublicIds(id),
+      ]);
 
       // 1. Find primær bygning (prioritér bolig over garage/carport/udhus)
       const bygninger: any[] = data?.BBR_Bygning?.nodes ?? [];
@@ -268,6 +286,11 @@ export class BbrService {
       const tag_kode: string | null = primærBygning.byg033Tagdaekningsmateriale?.toString() ?? null;
       const fredning_raw: string | null = primærBygning.byg070Fredning ?? null;
 
+      // FBB: saml alle bygnings-UUIDs — bruges til SAVE-opslag (ARCH-131)
+      const alle_bygning_lokal_ids: string[] = bygninger
+        .map((b: any) => b.id_lokalId as string | null)
+        .filter((id): id is string => !!id);
+
       return {
         byggeaar: primærBygning.byg026Opfoerelsesaar?.toString() ?? null,
         bebygget_areal,
@@ -281,14 +304,22 @@ export class BbrService {
         fejl: grundareal
           ? null
           : "Grundareal ikke tilgængeligt – bebyggelsesprocent kan ikke beregnes",
-        varmeinstallation: varme_kode ? (VARMEINSTALLATION_KODER[varme_kode] ?? `Kode ${varme_kode}`) : null,
-        opvarmningsmiddel: opv_kode ? (OPVARMNINGSMIDDEL_KODER[opv_kode] ?? `Kode ${opv_kode}`) : null,
+        varmeinstallation: varme_kode
+          ? (VARMEINSTALLATION_KODER[varme_kode] ?? `Kode ${varme_kode}`)
+          : null,
+        opvarmningsmiddel: opv_kode
+          ? (OPVARMNINGSMIDDEL_KODER[opv_kode] ?? `Kode ${opv_kode}`)
+          : null,
         ydervaegs_materiale: yv_kode ? (YDERVAEGS_KODER[yv_kode] ?? `Kode ${yv_kode}`) : null,
         tagdaekning: tag_kode ? (TAGDAEKNING_KODER[tag_kode] ?? `Kode ${tag_kode}`) : null,
         fredet: fredning_raw !== null ? fredning_raw !== "0" && fredning_raw !== "" : null,
         mat_strandbeskyttelse: null,
         mat_fredskov: null,
         mat_klitfredning: null,
+        bygning_lokal_id: primærBygning.id_lokalId ?? null,
+        fbb_reference: primærBygning.byg071BevaringsvaerdighedReference ?? null,
+        alle_bygning_lokal_ids,
+        alle_bbr_public_ids: alleBbrPublicIds,
       };
     } catch (e) {
       console.error("[BBR] Service fejl:", e);
@@ -316,6 +347,35 @@ export class BbrService {
       mat_strandbeskyttelse: null,
       mat_fredskov: null,
       mat_klitfredning: null,
+      bygning_lokal_id: null,
+      fbb_reference: null,
+      alle_bygning_lokal_ids: [],
+      alle_bbr_public_ids: [],
     };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BBR Public Service — integer building IDs til FBB WFS
+// ---------------------------------------------------------------------------
+
+async function fetchBbrPublicIds(adgangsadresseid: string): Promise<number[]> {
+  try {
+    const url = new URL("https://api.dataforsyningen.dk/bbr/bygning");
+    url.searchParams.set("adgangsadresseid", adgangsadresseid);
+
+    const res = await fetchWithRetry(url.toString(), {}, { timeoutMs: 8_000, retries: 1 });
+    if (!res.ok) return [];
+
+    const bygninger = (await res.json()) as Array<Record<string, unknown>>;
+    return bygninger
+      .map((b) => {
+        const raw = b["id_lokalId"] ?? b["id"];
+        const num = Number(raw);
+        return Number.isFinite(num) && num > 0 ? num : null;
+      })
+      .filter((id): id is number => id !== null);
+  } catch {
+    return [];
   }
 }

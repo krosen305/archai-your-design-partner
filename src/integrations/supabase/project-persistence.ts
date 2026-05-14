@@ -28,6 +28,7 @@ export type ProjectPatch = {
   kommuneplanramme?: Kommuneplanramme | null;
   byggeanalyseResultat?: ByggeanalyseResultat | null;
   vurderingData?: VurData | null;
+  projectDataStatus?: Json | null;
   complianceDone?: boolean;
   currentStep?: string;
 };
@@ -48,6 +49,7 @@ export type PersistedProject = {
   brief_data: Json | null;
   compliance_done: boolean;
   current_step: string;
+  project_data_status: Json | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -95,14 +97,38 @@ async function getOrCreateProject(userId: string): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// createProject: opret tomt nyt projekt (bruges ved "Nyt projekt")
+// ---------------------------------------------------------------------------
+
+export async function createProject(accessToken: string): Promise<string | null> {
+  const userId = await getUserId(accessToken);
+  if (!userId) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from("projects")
+    .insert({ user_id: userId, current_step: "adresse" })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    throw new Error(`[Persistence] createProject fejlede: ${error?.message}`);
+  }
+  return data.id;
+}
+
+// ---------------------------------------------------------------------------
 // saveProject: gem state-patch til Supabase
 // ---------------------------------------------------------------------------
 
-export async function saveProject(accessToken: string, patch: ProjectPatch): Promise<void> {
+export async function saveProject(
+  accessToken: string,
+  patch: ProjectPatch,
+  projectId?: string | null,
+): Promise<void> {
   const userId = await getUserId(accessToken);
   if (!userId) return; // Gæst — no-op
 
-  const projectId = await getOrCreateProject(userId);
+  const id = projectId?.trim() ? projectId : await getOrCreateProject(userId);
 
   const update: ProjectUpdate = {};
 
@@ -143,6 +169,10 @@ export async function saveProject(accessToken: string, patch: ProjectPatch): Pro
     };
   }
 
+  if (patch.projectDataStatus !== undefined) {
+    update.project_data_status = patch.projectDataStatus;
+  }
+
   if (patch.complianceDone !== undefined) {
     update.compliance_done = patch.complianceDone;
   }
@@ -153,7 +183,7 @@ export async function saveProject(accessToken: string, patch: ProjectPatch): Pro
 
   if (Object.keys(update).length === 0) return;
 
-  const { error } = await supabaseAdmin.from("projects").update(update).eq("id", projectId);
+  const { error } = await supabaseAdmin.from("projects").update(update).eq("id", id);
 
   if (error) {
     throw new Error(`[Persistence] update fejlede: ${error.message}`);
@@ -171,7 +201,7 @@ export async function loadProject(accessToken: string): Promise<PersistedProject
   const { data, error } = await supabaseAdmin
     .from("projects")
     .select(
-      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step",
+      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status",
     )
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })

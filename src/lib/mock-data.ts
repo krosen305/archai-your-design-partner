@@ -51,6 +51,10 @@ export const MOCK_BBR: BbrKompliantData = {
   mat_strandbeskyttelse: false,
   mat_fredskov: false,
   mat_klitfredning: false,
+  bygning_lokal_id: null,
+  fbb_reference: null,
+  alle_bygning_lokal_ids: [],
+  alle_bbr_public_ids: [],
 };
 
 // ---------------------------------------------------------------------------

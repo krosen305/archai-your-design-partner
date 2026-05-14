@@ -4,10 +4,12 @@ import { SaveService } from "./client";
 // DAI WFS er live (IS_MOCK=false) — tests mocker fetch-kaldet
 
 function mockFetch(features: unknown[] = []) {
+  const body = JSON.stringify({ totalFeatures: features.length, features });
   globalThis.fetch = mock(async () => ({
     ok: true,
     status: 200,
-    json: async () => ({ totalFeatures: features.length, features }),
+    headers: { get: (_: string) => "application/json" },
+    text: async () => body,
   })) as any;
 }
 

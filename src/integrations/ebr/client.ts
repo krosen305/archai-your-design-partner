@@ -19,25 +19,20 @@
 // Konfiguration
 // ---------------------------------------------------------------------------
 
+import { getEnvOptional, getEnvRequired } from "@/lib/env";
+
 type EbrClientConfig = {
   apiKey?: string;
   endpoint?: string;
 };
 
 function getConfig(explicit?: EbrClientConfig) {
-  const apiKey = explicit?.apiKey ?? (process as any)?.env?.DATAFORDELER_API_KEY ?? "";
+  const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
   const endpoint =
     explicit?.endpoint ??
-    (process as any)?.env?.DATAFORDELER_EBR_ENDPOINT ??
+    getEnvOptional("DATAFORDELER_EBR_ENDPOINT") ??
     "https://graphql.datafordeler.dk/EBR/v1";
-
-  if (!apiKey) {
-    throw new Error(
-      "EBR GraphQL: Manglende DATAFORDELER_API_KEY. " +
-        "Sæt denne som environment variable (uden VITE_ prefix).",
-    );
-  }
 
   return { apiKey, endpoint };
 }
@@ -74,12 +69,18 @@ export type EbrResult = {
 // Hjælpefunktion: GraphQL-kald
 // ---------------------------------------------------------------------------
 
+import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+
 async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
+  const response = await fetchWithRetry(
+    url.toString(),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    },
+    { timeoutMs: 12_000 },
+  );
 
   const bodyText = await response.text();
 

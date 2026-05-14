@@ -156,6 +156,7 @@ export type Database = {
           id: string
           inspirations: Json | null
           name: string | null
+          project_data_status: Json | null
           timeline: string | null
           updated_at: string
           user_id: string
@@ -184,6 +185,7 @@ export type Database = {
           id?: string
           inspirations?: Json | null
           name?: string | null
+          project_data_status?: Json | null
           timeline?: string | null
           updated_at?: string
           user_id: string
@@ -212,6 +214,7 @@ export type Database = {
           id?: string
           inspirations?: Json | null
           name?: string | null
+          project_data_status?: Json | null
           timeline?: string | null
           updated_at?: string
           user_id?: string

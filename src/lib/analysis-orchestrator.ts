@@ -38,9 +38,11 @@ import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { SaveData } from "@/integrations/save/client";
+import type { FbbResultat } from "@/integrations/fbb/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { VurData } from "@/integrations/vur/client";
 import type { Json } from "@/integrations/supabase/types";
+import { fetchBbrWithMat, fetchPlandata, fetchVurViaEbr } from "@/lib/compliance-layer1";
 import {
   getCachedCompliance,
   setCachedCompliance,
@@ -68,6 +70,7 @@ export type ComplianceResult = {
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
   save: SaveData | null;
+  fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi (1-9) fra FBB
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
 };
@@ -125,6 +128,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     | "naboer"
     | "fjernvarme"
     | "save"
+    | "fbbData"
     | "ruleEngine"
   >;
   let complianceBase: ComplianceBase | null = null;
@@ -148,9 +152,14 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
 
   if (!complianceBase) {
     const [bbrResult, plandataResult, vurderingResult] = await Promise.all([
-      fetchBbr(adgangsadresseid, ejerlavskode, matrikelnummer, preFetchedGrundareal),
+      fetchBbrWithMat({
+        adgangsadresseid,
+        ejerlavskode,
+        matrikelnummer,
+        grundareal: preFetchedGrundareal,
+      }),
       fetchPlandata(koordinater),
-      fetchVur(adgangsadresseid),
+      fetchVurViaEbr(adgangsadresseid),
     ]);
     complianceBase = {
       bbr: bbrResult,
@@ -171,6 +180,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         naboer: null,
         fjernvarme: null,
         save: null,
+        fbbData: null,
         vurderingData: complianceBase.vurderingData,
       });
     } catch (e) {
@@ -224,7 +234,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
       }
     })(),
 
-    // ── Layer 4: naturbeskyttelse + dkjord + geus + terrain + naboer + fjernvarme ─
+    // ── Layer 4: naturbeskyttelse + dkjord + geus + terrain + naboer + fjernvarme + FBB ─
     (async () => {
       let naturbeskyttelse: NaturbeskyttelsesResultat | null = null;
       let dkjord: DkJordResultat | null = null;
@@ -233,6 +243,18 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
       let naboer: NeighborBuildingData | null = null;
       let fjernvarme: FjernvarmeResultat | null = null;
       let save: SaveData | null = null;
+      let fbbData: FbbResultat | null = null;
+
+      // FBB: kræver integer BBR building IDs fra BBR Public Service — uafhængig af koordinater
+      const bygningIds = complianceBase.bbr?.alle_bbr_public_ids ?? [];
+      if (bygningIds.length) {
+        fbbData = await import("@/integrations/fbb/client")
+          .then(({ FbbService }) => FbbService.getSaveData(bygningIds))
+          .catch((e: Error) => {
+            console.warn("[Orchestrator] FBB fejlede:", e.message);
+            return null;
+          });
+      }
 
       if (koordinater) {
         const [natur, jord, geus, terr, nabo, varme, saveResult] = await Promise.all([
@@ -293,11 +315,11 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         save = saveResult;
       }
 
-      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save };
+      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save, fbbData };
     })(),
   ]);
 
-  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save } = layer4;
+  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save, fbbData } = layer4;
 
   return {
     ...complianceBase,
@@ -310,98 +332,7 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     naboer,
     fjernvarme,
     save,
+    fbbData,
     vurderingData: complianceBase.vurderingData,
   };
-}
-
-// ---------------------------------------------------------------------------
-// Internal fetchers (mirrors the existing compliance server function logic)
-// ---------------------------------------------------------------------------
-
-async function fetchBbr(
-  adgangsadresseid: string,
-  ejerlavskode: number | null,
-  matrikelnummer: string | null,
-  preFetchedGrundareal: number | null = null,
-): Promise<BbrKompliantData | null> {
-  try {
-    let grundareal: number | null = preFetchedGrundareal;
-    let mat_strandbeskyttelse: boolean | null = null;
-    let mat_fredskov: boolean | null = null;
-    let mat_klitfredning: boolean | null = null;
-
-    // Kald altid MAT hvis ejerlavskode + matrikelnummer er tilgængeligt:
-    //   1. Grundareal (fallback når DAR-opslaget fejlede)
-    //   2. Beskyttelseslinjer (strandbeskyttelse, fredskov, klitfredning) — nul ekstra kost
-    if (ejerlavskode && matrikelnummer) {
-      const { MatService } = await import("@/integrations/mat/client");
-      const mat = await MatService.getGrundareal(ejerlavskode, matrikelnummer);
-      if (grundareal === null && mat.registreretAreal !== null) {
-        grundareal = mat.registreretAreal;
-      }
-      if (mat.fejl) {
-        console.warn("[Orchestrator] MAT fejl:", mat.fejl);
-      }
-      mat_strandbeskyttelse = mat.strandbeskyttelse;
-      mat_fredskov = mat.fredskov;
-      mat_klitfredning = mat.klitfredning;
-    } else if (grundareal === null) {
-      console.warn(
-        "[Orchestrator] Grundareal ikke tilgængeligt — ejerlavskode/matrikelnummer mangler.",
-        { ejerlavskode, matrikelnummer },
-      );
-    }
-
-    const { BbrService } = await import("@/integrations/bbr/client");
-    const bbrResult = await BbrService.getKompliantData(adgangsadresseid, grundareal);
-    if (bbrResult) {
-      bbrResult.mat_strandbeskyttelse = mat_strandbeskyttelse;
-      bbrResult.mat_fredskov = mat_fredskov;
-      bbrResult.mat_klitfredning = mat_klitfredning;
-    }
-    return bbrResult;
-  } catch (e) {
-    console.error("[Orchestrator] BBR fejlede:", (e as Error).message);
-    return null;
-  }
-}
-
-async function fetchPlandata(
-  koordinater: { lat: number; lng: number } | null,
-): Promise<{ lokalplaner: Lokalplan[]; kommuneplanramme: Kommuneplanramme | null }> {
-  if (!koordinater) return { lokalplaner: [], kommuneplanramme: null };
-
-  const { PlandataService } = await import("@/integrations/plandata/client");
-
-  const [lokalplanerResult, kommuneplanrammeResult] = await Promise.all([
-    PlandataService.getLokalplanerForKoordinat(koordinater.lng, koordinater.lat, true).catch(
-      () => ({ lokalplaner: [], fejl: null, rawCount: 0 }),
-    ),
-    PlandataService.getKommuneplanrammeForKoordinat(koordinater.lng, koordinater.lat).catch(() => ({
-      ramme: null,
-      fejl: null,
-    })),
-  ]);
-
-  return {
-    lokalplaner: lokalplanerResult.lokalplaner,
-    kommuneplanramme: kommuneplanrammeResult.ramme,
-  };
-}
-
-async function fetchVur(adgangsadresseid: string): Promise<VurData | null> {
-  if (!adgangsadresseid) return null;
-  try {
-    const { EbrService } = await import("@/integrations/ebr/client");
-    const ebr = await EbrService.getBfeNr(adgangsadresseid);
-    if (ebr.fejl || !ebr.bfeNr) {
-      console.warn("[Orchestrator] EBR fejl — VUR springes over:", ebr.fejl);
-      return null;
-    }
-    const { VurService } = await import("@/integrations/vur/client");
-    return await VurService.getVurdering(ebr.bfeNr);
-  } catch (e) {
-    console.warn("[Orchestrator] VUR fejlede:", (e as Error).message);
-    return null;
-  }
 }
