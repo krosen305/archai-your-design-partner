@@ -3,8 +3,8 @@
 // FBB (Fredede og Bevaringsværdige Bygninger) via Kulturarvsstyrelsens GeoServer WFS.
 //
 // Endpoint: https://www.kulturarv.dk/geoserver/wfs
-// typename: fbb:bygningslag
-// viewparams: ids:{comma-separated integer BBR building ids}
+// typename: fbb:view_bygningslag
+// CQL_FILTER: bygningsid IN ({comma-separated integer BBR building ids})
 //
 // SAVE-skala 1-9: lavere tal = højere bevaringsværdi.
 //   1-3: Høj bevaringsværdi — nedrivning/ombygning kræver kommunal tilladelse (PL §14)
@@ -46,9 +46,9 @@ async function fetchWfs(ids: number[]): Promise<FbbBygning[]> {
     service: "WFS",
     version: "2.0.0",
     request: "GetFeature",
-    typename: "fbb:bygningslag",
+    typename: "fbb:view_bygningslag",
     outputFormat: "application/json",
-    viewparams: `ids:${ids.join(",")}`,
+    CQL_FILTER: `bygningsid IN (${ids.join(",")})`,
   });
   const url = `${FBB_WFS}?${params}`;
 
@@ -85,19 +85,27 @@ function parseJson(body: string): FbbBygning[] {
   return (geojson.features ?? []).flatMap((f) => {
     const props = f.properties ?? {};
     const bevaringsvaerdi = Number(props["bevaringsvaerdi"] ?? props["BEVARINGSVAERDI"] ?? NaN);
-    const bygningsnummer = Number(props["bygningsnummer"] ?? props["BYGNINGSNUMMER"] ?? NaN);
-    const fredningsstatus = (props["fredningsstatus"] ?? props["FREDNINGSSTATUS"] ?? null) as
-      | string
-      | null;
+    const bbrnummer = props["bbrnummer"] ?? props["BBRNUMMER"] ?? null;
+    const bygningsnummerRaw =
+      props["bygningsnummer"] ??
+      props["BYGNINGSNUMMER"] ??
+      (typeof bbrnummer === "string" ? bbrnummer.split("-").at(-1) : NaN);
+    const bygningsnummer = Number(bygningsnummerRaw);
+    const fredningsstatusRaw = props["fredningsstatus"] ?? props["FREDNINGSSTATUS"] ?? null;
+    const fredningsstatus = fredningsstatusRaw === null ? null : String(fredningsstatusRaw);
 
     if (isNaN(bevaringsvaerdi) || isNaN(bygningsnummer)) return [];
 
-    // bygningsid: udled fra GeoJSON feature-id (typisk "bygningslag.4600919")
+    const propBygningsid = Number(props["bygningsid"] ?? props["BYGNINGSID"] ?? NaN);
+
+    // bygningsid: primært fra view_bygningslag.bygningsid, fallback fra feature-id.
     const featureIdStr = typeof f.id === "string" ? f.id : "";
     const idMatch = featureIdStr.match(/\.(\d+)$/);
-    const bygningsid = idMatch
-      ? Number(idMatch[1])
-      : Number(props["id"] ?? props["ID"] ?? bygningsnummer);
+    const bygningsid = Number.isFinite(propBygningsid)
+      ? propBygningsid
+      : idMatch
+        ? Number(idMatch[1])
+        : Number(props["id"] ?? props["ID"] ?? bygningsnummer);
 
     return [{ bygningsid, bygningsnummer, bevaringsvaerdi, fredningsstatus }];
   });
