@@ -576,6 +576,8 @@ function ResultView({
           byggeanalyse={byggeanalyse}
           fbbData={fbbData}
           vurderingData={vurderingData}
+          geusRisk={geusRisk}
+          naboer={naboer}
           isRecomputing={isRecomputing}
           onPatched={onPatched}
         />
