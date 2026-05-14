@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Upload, X } from "lucide-react";
+import { ChevronDown, Upload, X, ShoppingCart, Home, AlertTriangle } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -19,6 +19,8 @@ import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import type { VurData } from "@/integrations/vur/client";
+import type { GeusRiskData } from "@/integrations/geus/client";
+import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +34,8 @@ export type CockpitProps = {
   byggeanalyse: ByggeanalyseResultat | null;
   fbbData: FbbResultat | null;
   vurderingData: VurData | null;
+  geusRisk: GeusRiskData | null;
+  naboer: NeighborBuildingData | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
   /** Trigger debounced re-analyse efter en patch */
@@ -44,16 +48,18 @@ export function Cockpit({
   byggeanalyse,
   fbbData,
   vurderingData,
+  geusRisk,
+  naboer,
   isRecomputing,
   onPatched,
 }: CockpitProps) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(280px,340px)_1fr_minmax(280px,340px)]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr_minmax(300px,360px)]">
       <div className="min-w-0">
-        <ByggeoenskeAccordion onPatched={onPatched} />
+        <ProjektDnaPanel onPatched={onPatched} />
       </div>
       <div className="min-w-0">
-        <MatrikelCanvas bbr={bbr} metrics={metrics} />
+        <MatrikelCanvas bbr={bbr} metrics={metrics} naboer={naboer} />
       </div>
       <div className="min-w-0">
         <CompliancePanel
@@ -62,10 +68,63 @@ export function Cockpit({
           byggeanalyse={byggeanalyse}
           fbbData={fbbData}
           vurderingData={vurderingData}
+          geusRisk={geusRisk}
           isRecomputing={isRecomputing}
         />
       </div>
     </div>
+  );
+}
+
+// ===========================================================================
+// LEFT — Projekt DNA: Mode-toggle + 22 byggeønsker accordion
+// ===========================================================================
+
+function ProjektDnaPanel({ onPatched }: { onPatched: () => void }) {
+  return (
+    <div className="space-y-3">
+      <ModeToggle />
+      <ByggeoenskeAccordion onPatched={onPatched} />
+    </div>
+  );
+}
+
+function ModeToggle() {
+  const { cockpitMode, setCockpitMode } = useProject();
+  const modes: Array<{ value: "kob" | "design"; label: string; icon: typeof ShoppingCart; hint: string }> = [
+    { value: "kob", label: "Overvejer køb", icon: ShoppingCart, hint: "Fremhæv risici" },
+    { value: "design", label: "Designer hjem", icon: Home, hint: "Fremhæv muligheder" },
+  ];
+  return (
+    <Card className="p-2">
+      <div className="grid grid-cols-2 gap-1">
+        {modes.map((m) => {
+          const sel = cockpitMode === m.value;
+          const Icon = m.icon;
+          return (
+            <button
+              key={m.value}
+              onClick={() => setCockpitMode(m.value)}
+              className={cn(
+                "flex flex-col items-center gap-0.5 rounded-md px-2 py-2 transition-all",
+                sel
+                  ? m.value === "kob"
+                    ? "bg-yellow-500/15 border border-yellow-500/50 text-yellow-300"
+                    : "bg-emerald-500/15 border border-emerald-500/50 text-emerald-300"
+                  : "border border-border/40 text-muted-foreground hover:text-foreground hover:border-border",
+              )}
+              aria-pressed={sel}
+            >
+              <div className="flex items-center gap-1.5">
+                <Icon size={12} />
+                <span className="font-mono text-[10px] tracking-[0.1em] uppercase">{m.label}</span>
+              </div>
+              <span className="text-[9px] opacity-70">{m.hint}</span>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
@@ -394,9 +453,11 @@ function UploadField({ value, onChange }: { value: string[]; onChange: (v: strin
 function MatrikelCanvas({
   bbr,
   metrics,
+  naboer,
 }: {
   bbr: BbrKompliantData | null;
   metrics: ComplianceMetrics | null;
+  naboer: NeighborBuildingData | null;
 }) {
   const { byggeoenske, address } = useProject();
 
@@ -566,6 +627,7 @@ function CompliancePanel({
   byggeanalyse,
   fbbData,
   vurderingData,
+  geusRisk,
   isRecomputing,
 }: {
   bbr: BbrKompliantData | null;
@@ -573,11 +635,11 @@ function CompliancePanel({
   byggeanalyse: ByggeanalyseResultat | null;
   fbbData: FbbResultat | null;
   vurderingData: VurData | null;
+  geusRisk: GeusRiskData | null;
   isRecomputing: boolean;
 }) {
-  const { byggeoenske, complianceFlags } = useProject();
+  const { byggeoenske, complianceFlags, cockpitMode } = useProject();
 
-  // Bebyggelsesprocent (live: eksisterende + ønsket areal)
   const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
   const eksisterende = bbr?.bebygget_areal ?? 0;
   const oensket = byggeoenske.oensketAreal ?? 0;
@@ -590,13 +652,11 @@ function CompliancePanel({
     ? Math.min(100, (beregnetPct / maxPct) * 100)
     : 0;
 
-  // Etager
   const etager = (byggeoenske.antalEtager as number | undefined) ?? null;
   const maxEtager = metrics?.maxEtager ?? null;
   const etagerOver = etager !== null && maxEtager !== null && etager > maxEtager;
   const etagerValue = etager !== null && maxEtager ? Math.min(100, (etager / maxEtager) * 100) : 0;
 
-  // Højdegrænse: estimeret højde = etager * 3m
   const estHoejde = etager ? etager * 3 : null;
   const maxHoejde = metrics?.maxBygningshoejde ?? null;
   const hoejdeOver = maxHoejde !== null && estHoejde !== null && estHoejde > maxHoejde;
@@ -604,18 +664,132 @@ function CompliancePanel({
     ? Math.min(100, (estHoejde / maxHoejde) * 100)
     : 0;
 
-  // Animeret total-pris-tæller
   const totalpris = useMemo(() => estimerTotalpris(byggeoenske), [byggeoenske]);
   const animatedPris = useAnimatedNumber(totalpris ?? 0, 600);
 
-  // Konflikt-tæller fra byggeanalyse
   const konflikter = byggeanalyse?.konflikt.length ?? 0;
   const dispensationer = byggeanalyse?.kraever_dispensation.length ?? 0;
 
+  // Usynlige Budgetrisici (ARCH cockpit) — fremhæves særligt i "Overvejer køb"-mode
+  const risici: Array<{ key: string; label: string; severity: "high" | "med" | "low"; detalje: string }> = [];
+  if (fbbData?.fbb_bedste_bygning && fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 && fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3) {
+    risici.push({
+      key: "save",
+      label: `SAVE ${fbbData.fbb_bedste_bygning.bevaringsvaerdi}/9 — Nedrivning kræver tilladelse`,
+      severity: "high",
+      detalje: "Høj bevaringsværdi (PL §14) — kommunen kan nedlægge forbud mod nedrivning",
+    });
+  }
+  if (bbr?.fredet) {
+    risici.push({
+      key: "fredet",
+      label: "Fredet bygning",
+      severity: "high",
+      detalje: "Slots- og Kulturstyrelsen skal godkende ændringer",
+    });
+  }
+  if (geusRisk?.radonRisk === "high") {
+    risici.push({
+      key: "radon-h",
+      label: "Høj radonrisiko",
+      severity: "high",
+      detalje: "Kræver radonsikring (~30-80.000 kr ekstra)",
+    });
+  } else if (geusRisk?.radonRisk === "medium") {
+    risici.push({
+      key: "radon-m",
+      label: "Mellem radonrisiko",
+      severity: "med",
+      detalje: "Anbefalet radonsikring (~15-30.000 kr ekstra)",
+    });
+  }
+  if (bbr?.mat_fredskov) {
+    risici.push({
+      key: "fredskov",
+      label: "Fredskov på matrikel",
+      severity: "high",
+      detalje: "Naturstyrelsens dispensation kræves — rydning normalt udelukket",
+    });
+  }
+  if (bbr?.mat_strandbeskyttelse) {
+    risici.push({
+      key: "strand",
+      label: "Strandbeskyttelseslinje",
+      severity: "high",
+      detalje: "Kystdirektoratet — byggestop uden dispensation",
+    });
+  }
+
+  const inKobMode = cockpitMode === "kob";
+
   return (
     <div className="space-y-4">
+      {/* TOTALPRIS — øverst, store fede typer */}
+      <Card className={cn("p-0 overflow-hidden", inKobMode ? "" : "ring-1 ring-emerald-500/20")}>
+        <div className="px-4 py-2.5 border-b border-border/40 font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
+          ESTIMERET TOTALPRIS
+        </div>
+        <div className="p-4">
+          {totalpris === null ? (
+            <div className="text-sm text-muted-foreground">Vælg areal for at estimere</div>
+          ) : (
+            <>
+              <div className="font-mono text-[34px] leading-none font-bold text-accent tabular-nums">
+                {formatDKK(animatedPris)}
+              </div>
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                ~{Math.round(totalpris / (byggeoenske.oensketAreal ?? 1)).toLocaleString("da-DK")} kr/m²
+                · ekskl. grundkøb
+              </div>
+              <BudgetBreakdown />
+            </>
+          )}
+        </div>
+      </Card>
+
+      {/* USYNLIGE BUDGETRISICI */}
+      <Card className={cn("p-0 overflow-hidden", inKobMode ? "ring-1 ring-yellow-500/40" : "")}>
+        <div className="px-4 py-2.5 border-b border-border/40 flex items-center justify-between">
+          <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
+            USYNLIGE BUDGETRISICI
+          </div>
+          {inKobMode && risici.length > 0 && (
+            <span className="font-mono text-[10px] text-yellow-400">{risici.length} fundet</span>
+          )}
+        </div>
+        <div className="p-4 space-y-2">
+          {risici.length === 0 ? (
+            <div className="text-xs text-emerald-400 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Ingen kendte skjulte risici
+            </div>
+          ) : (
+            risici.map((r) => (
+              <div
+                key={r.key}
+                className={cn(
+                  "rounded-md border px-3 py-2 text-xs",
+                  r.severity === "high"
+                    ? "border-danger/40 bg-danger/5 text-danger"
+                    : "border-yellow-500/40 bg-yellow-500/5 text-yellow-300",
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-medium">{r.label}</div>
+                    <div className="opacity-80 mt-0.5">{r.detalje}</div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+
+      {/* COMPLIANCE GAUGES */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+        <div className="px-4 py-2.5 border-b border-border/40 flex items-center justify-between">
           <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
             COMPLIANCE
           </div>
@@ -627,18 +801,6 @@ function CompliancePanel({
           )}
         </div>
         <div className="p-4 space-y-5">
-          {/* Frednings- og SAVE-badges */}
-          {bbr?.fredet && (
-            <div className="flex items-center gap-2 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-              🏛️ Fredet bygning — kræver dispensation fra Slots- og Kulturstyrelsen
-            </div>
-          )}
-          {fbbData?.fbb_bedste_bygning && fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 && fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3 && (
-            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
-              🏛️ SAVE {fbbData.fbb_bedste_bygning.bevaringsvaerdi}/9 — Høj bevaringsværdi
-            </div>
-          )}
-
           <Gauge
             label="Bebyggelsesprocent"
             current={beregnetPct !== null ? `${beregnetPct.toFixed(0)}%` : "—"}
@@ -661,7 +823,6 @@ function CompliancePanel({
             danger={hoejdeOver}
           />
 
-          {/* Compliance flags fra preCheck + regelkerne */}
           {complianceFlags.length > 0 && (
             <div className="border-t border-border/40 pt-3 space-y-1.5">
               {complianceFlags
@@ -700,31 +861,9 @@ function CompliancePanel({
         </div>
       </Card>
 
-      <Card className="p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border/40 font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
-          ESTIMERET TOTALPRIS
-        </div>
-        <div className="p-4">
-          {totalpris === null ? (
-            <div className="text-xs text-muted-foreground">Vælg areal for at estimere</div>
-          ) : (
-            <>
-              <div className="font-mono text-3xl text-accent tabular-nums">
-                {formatDKK(animatedPris)}
-              </div>
-              <div className="mt-1 text-[11px] text-muted-foreground">
-                ~{Math.round(totalpris / (byggeoenske.oensketAreal ?? 1)).toLocaleString("da-DK")} kr/m²
-                · ekskl. grundkøb
-              </div>
-              <BudgetBreakdown />
-            </>
-          )}
-        </div>
-      </Card>
-
       {vurderingData && (
         <Card className="p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/40 font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
+          <div className="px-4 py-2.5 border-b border-border/40 font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
             EJENDOMSVURDERING
           </div>
           <div className="p-4 grid grid-cols-2 gap-3">

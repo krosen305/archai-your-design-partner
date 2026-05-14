@@ -86,51 +86,6 @@ export type Database = {
         }
         Relationships: []
       }
-      projekter: {
-        Row: {
-          adresse: string | null
-          adresse_dar_id: string | null
-          bbr_data: Json | null
-          byggeanalyse_resultat: Json | null
-          byggeoenske: Json | null
-          created_at: string
-          dar_data: Json | null
-          id: string
-          mat_data: Json | null
-          project_data_status: Json | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          adresse?: string | null
-          adresse_dar_id?: string | null
-          bbr_data?: Json | null
-          byggeanalyse_resultat?: Json | null
-          byggeoenske?: Json | null
-          created_at?: string
-          dar_data?: Json | null
-          id?: string
-          mat_data?: Json | null
-          project_data_status?: Json | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          adresse?: string | null
-          adresse_dar_id?: string | null
-          bbr_data?: Json | null
-          byggeanalyse_resultat?: Json | null
-          byggeoenske?: Json | null
-          created_at?: string
-          dar_data?: Json | null
-          id?: string
-          mat_data?: Json | null
-          project_data_status?: Json | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       projects: {
         Row: {
           address_adresseid: string | null
@@ -156,7 +111,6 @@ export type Database = {
           id: string
           inspirations: Json | null
           name: string | null
-          project_data_status: Json | null
           timeline: string | null
           updated_at: string
           user_id: string
@@ -185,7 +139,6 @@ export type Database = {
           id?: string
           inspirations?: Json | null
           name?: string | null
-          project_data_status?: Json | null
           timeline?: string | null
           updated_at?: string
           user_id: string
@@ -214,7 +167,6 @@ export type Database = {
           id?: string
           inspirations?: Json | null
           name?: string | null
-          project_data_status?: Json | null
           timeline?: string | null
           updated_at?: string
           user_id?: string
