@@ -15,7 +15,6 @@ import { z } from "zod";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
-import type { Json } from "@/integrations/supabase/types";
 import {
   DATA_POINT_DEFS,
   SECTIONS,
@@ -41,16 +40,10 @@ const loadDatacheck = createServerFn({ method: "POST" })
     const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
     if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
 
-    const { data: row } = await supabaseAdmin
-      .from("projects")
-      .select("project_data_status")
-      .eq("user_id", authData.user.id)
-      .eq("address_adresseid", data.addressId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return ((row?.project_data_status as unknown as DataStatusMap) ?? {}) as DataStatusMap;
+    // project_data_status-kolonnen er ikke i Supabase-skemaet endnu.
+    // Datacheckstatus lever session-only indtil kolonnen tilføjes via migration.
+    void data.addressId;
+    return {} as DataStatusMap;
   });
 
 const saveDatacheckSchema = z.object({
@@ -63,10 +56,9 @@ const saveDatacheck = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => saveDatacheckSchema.parse(data))
   .handler(async ({ data }): Promise<void> => {
     const { saveProject } = await import("@/integrations/supabase/project-persistence");
-    await saveProject(data.token, {
-      projectDataStatus: data.statusMap as unknown as Json,
-      currentStep: "datacheck",
-    });
+    // project_data_status-kolonnen mangler i skemaet — gem kun currentStep.
+    void data.statusMap;
+    await saveProject(data.token, { currentStep: "datacheck" });
   });
 
 // ---------------------------------------------------------------------------

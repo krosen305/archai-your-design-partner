@@ -28,7 +28,6 @@ export type ProjectPatch = {
   kommuneplanramme?: Kommuneplanramme | null;
   byggeanalyseResultat?: ByggeanalyseResultat | null;
   vurderingData?: VurData | null;
-  projectDataStatus?: Json | null;
   complianceDone?: boolean;
   currentStep?: string;
 };
@@ -49,7 +48,6 @@ export type PersistedProject = {
   brief_data: Json | null;
   compliance_done: boolean;
   current_step: string;
-  project_data_status: Json | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -169,10 +167,6 @@ export async function saveProject(
     };
   }
 
-  if (patch.projectDataStatus !== undefined) {
-    update.project_data_status = patch.projectDataStatus;
-  }
-
   if (patch.complianceDone !== undefined) {
     update.compliance_done = patch.complianceDone;
   }
@@ -201,7 +195,7 @@ export async function loadProject(accessToken: string): Promise<PersistedProject
   const { data, error } = await supabaseAdmin
     .from("projects")
     .select(
-      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status",
+      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step",
     )
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
