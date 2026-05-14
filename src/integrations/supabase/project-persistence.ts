@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY — bruger supabaseAdmin (service role).
+﻿// SERVER-SIDE ONLY — bruger supabaseAdmin (service role).
 // Gem og gendan wizard-state i `projects`-tabellen.
 //
 // Kun for indloggede brugere — gæster returnerer null/no-op uden fejl.
@@ -13,6 +13,14 @@ import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { VurData } from "@/integrations/vur/client";
+import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
+import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import type { GeusRiskData } from "@/integrations/geus/client";
+import type { TinglysningResult } from "@/integrations/tinglysning/client";
+import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
+import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
+import type { SaveData } from "@/integrations/save/client";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -28,8 +36,18 @@ export type ProjectPatch = {
   kommuneplanramme?: Kommuneplanramme | null;
   byggeanalyseResultat?: ByggeanalyseResultat | null;
   vurderingData?: VurData | null;
+  naturbeskyttelse?: NaturbeskyttelsesResultat | null;
+  dkjord?: DkJordResultat | null;
+  geusRisk?: GeusRiskData | null;
+  servitutter?: TinglysningResult | null;
+  terrain?: TerrainData | null;
+  naboer?: NeighborBuildingData | null;
+  fjernvarme?: FjernvarmeResultat | null;
+  save?: SaveData | null;
+  fbbData?: import("@/integrations/fbb/client").FbbResultat | null;
   complianceDone?: boolean;
   currentStep?: string;
+  projectDataStatus?: Json | null;
 };
 
 export type PersistedProject = {
@@ -48,6 +66,7 @@ export type PersistedProject = {
   brief_data: Json | null;
   compliance_done: boolean;
   current_step: string;
+  project_data_status: Json | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -155,7 +174,16 @@ export async function saveProject(
     patch.lokalplaner !== undefined ||
     patch.kommuneplanramme !== undefined ||
     patch.byggeanalyseResultat !== undefined ||
-    patch.vurderingData !== undefined
+    patch.vurderingData !== undefined ||
+    patch.naturbeskyttelse !== undefined ||
+    patch.dkjord !== undefined ||
+    patch.geusRisk !== undefined ||
+    patch.servitutter !== undefined ||
+    patch.terrain !== undefined ||
+    patch.naboer !== undefined ||
+    patch.fjernvarme !== undefined ||
+    patch.save !== undefined ||
+    patch.fbbData !== undefined
   ) {
     update.compliance_data = {
       bbr: patch.bbrData ?? null,
@@ -164,6 +192,15 @@ export async function saveProject(
       kommuneplanramme: patch.kommuneplanramme ?? null,
       byggeanalyseResultat: patch.byggeanalyseResultat ?? null,
       vurderingData: patch.vurderingData ?? null,
+      naturbeskyttelse: patch.naturbeskyttelse ?? null,
+      dkjord: patch.dkjord ?? null,
+      geusRisk: patch.geusRisk ?? null,
+      servitutter: patch.servitutter ?? null,
+      terrain: patch.terrain ?? null,
+      naboer: patch.naboer ?? null,
+      fjernvarme: patch.fjernvarme ?? null,
+      save: patch.save ?? null,
+      fbbData: patch.fbbData ?? null,
     };
   }
 
@@ -173,6 +210,10 @@ export async function saveProject(
 
   if (patch.currentStep !== undefined) {
     update.current_step = patch.currentStep;
+  }
+
+  if (patch.projectDataStatus !== undefined) {
+    update.project_data_status = patch.projectDataStatus;
   }
 
   if (Object.keys(update).length === 0) return;
@@ -188,19 +229,27 @@ export async function saveProject(
 // loadProject: hent seneste projekt for bruger
 // ---------------------------------------------------------------------------
 
-export async function loadProject(accessToken: string): Promise<PersistedProject | null> {
+export async function loadProject(
+  accessToken: string,
+  projectId?: string | null,
+): Promise<PersistedProject | null> {
   const userId = await getUserId(accessToken);
   if (!userId) return null;
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("projects")
     .select(
-      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step",
+      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status",
     )
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("user_id", userId);
+
+  if (projectId?.trim()) {
+    query = query.eq("id", projectId);
+  } else {
+    query = query.order("updated_at", { ascending: false }).limit(1);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     console.warn("[Persistence] loadProject fejlede:", error.message);

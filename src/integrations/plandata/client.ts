@@ -1,4 +1,4 @@
-// PLANDATA – Danmarks officielle planregister
+﻿// PLANDATA – Danmarks officielle planregister
 // WFS (Web Feature Service) via geoserver.plandata.dk
 //
 // Plandata WFS er OFFENTLIGT TILGÆNGELIGT – ingen registrering eller API-nøgle kræves.

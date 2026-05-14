@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – never import this from browser code.
+﻿// SERVER-SIDE ONLY – never import this from browser code.
 //
 // Cache-first orchestrator for address analysis (ARCH-32: fuldt paralleliseret).
 // Checks Supabase before making any AI or data API calls.

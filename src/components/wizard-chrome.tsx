@@ -9,7 +9,13 @@ import {
   FolderOpen,
   LogIn,
 } from "lucide-react";
-import { PHASES, usePhaseStates, usePhaseSubKeys, usePhaseClickable, type PhaseStatus } from "@/lib/phases";
+import {
+  PHASES,
+  usePhaseStates,
+  usePhaseSubKeys,
+  usePhaseClickable,
+  type PhaseStatus,
+} from "@/lib/phases";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";

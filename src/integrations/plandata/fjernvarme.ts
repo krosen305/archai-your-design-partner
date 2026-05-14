@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY — never import from browser code.
+﻿// SERVER-SIDE ONLY — never import from browser code.
 //
 // FjernvarmeService — afgør om en adresse er inden for et fjernvarmeforsyningsområde.
 // ARCH-111: Discovery-sprint (ARCH-103) bekræftede varmeforsyningsplaner i Plandata WFS.

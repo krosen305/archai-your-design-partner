@@ -20,6 +20,7 @@ import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import { syncPatch } from "@/lib/project-sync";
 import { MOCK_ADRESSE } from "@/lib/mock-data";
 import { preCheckAdresse } from "@/lib/pre-check-adresse";
+import { logger } from "@/lib/logger";
 import {
   Dialog,
   DialogContent,
@@ -193,7 +194,7 @@ function AddressStep() {
       setAddress(fullAddress);
       syncPatch({ address: fullAddress, currentStep: "boligoenske" });
     } catch (err) {
-      console.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
+      logger.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
       syncPatch({ address: immediateAddress, currentStep: "boligoenske" });
     }
 
@@ -217,7 +218,7 @@ function AddressStep() {
       if (preCheck.vurderingData) setVurderingData(preCheck.vurderingData);
       if (preCheck.complianceMetrics) setComplianceMetrics(preCheck.complianceMetrics);
     } catch (err) {
-      console.error("[Adresse] preCheckAdresse fejlede:", err);
+      logger.error("[Adresse] preCheckAdresse fejlede:", err);
     } finally {
       setIsCheckingCompliance(false);
     }

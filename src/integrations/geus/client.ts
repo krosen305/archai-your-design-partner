@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY — never import from browser code.
+﻿// SERVER-SIDE ONLY — never import from browser code.
 //
 // GEUS (Danmarks og Grønlands Geologiske Undersøgelse) — geoteknisk risikoprofil.
 // Dækker radonrisiko og grundvandsdybde — ARCH-101.

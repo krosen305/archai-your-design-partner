@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { Json } from "@/integrations/supabase/types";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
@@ -31,34 +32,37 @@ import {
 const loadDatacheckSchema = z.object({
   addressId: z.string().min(1).max(64),
   token: z.string().min(1),
+  projectId: z.string().uuid().optional().nullable(),
 });
 
 const loadDatacheck = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => loadDatacheckSchema.parse(data))
   .handler(async ({ data }): Promise<DataStatusMap> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
-    if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
+    const { loadProject } = await import("@/integrations/supabase/project-persistence");
+    const project = await loadProject(data.token, data.projectId ?? null);
+    if (!project?.project_data_status || typeof project.project_data_status !== "object") {
+      return {} as DataStatusMap;
+    }
 
-    // project_data_status-kolonnen er ikke i Supabase-skemaet endnu.
-    // Datacheckstatus lever session-only indtil kolonnen tilføjes via migration.
-    void data.addressId;
-    return {} as DataStatusMap;
+    return project.project_data_status as DataStatusMap;
   });
 
 const saveDatacheckSchema = z.object({
   addressId: z.string().min(1).max(64),
   statusMap: z.record(z.string(), z.unknown()),
   token: z.string().min(1),
+  projectId: z.string().uuid().optional().nullable(),
 });
 
 const saveDatacheck = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => saveDatacheckSchema.parse(data))
   .handler(async ({ data }): Promise<void> => {
     const { saveProject } = await import("@/integrations/supabase/project-persistence");
-    // project_data_status-kolonnen mangler i skemaet — gem kun currentStep.
-    void data.statusMap;
-    await saveProject(data.token, { currentStep: "datacheck" });
+    await saveProject(
+      data.token,
+      { currentStep: "datacheck", projectDataStatus: data.statusMap as Json },
+      data.projectId ?? null,
+    );
   });
 
 // ---------------------------------------------------------------------------
@@ -70,7 +74,7 @@ export const Route = createFileRoute("/projekt/datacheck")({
 });
 
 function DatacheckPage() {
-  const { address } = useProject();
+  const { address, currentProjectId } = useProject();
   const [statusMap, setStatusMap] = useState<DataStatusMap>({});
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -89,7 +93,11 @@ function DatacheckPage() {
         const session = await getSession();
         if (!session) return;
         const map = await loadDatacheck({
-          data: { addressId: address.adresseid, token: session.access_token },
+          data: {
+            addressId: address.adresseid,
+            token: session.access_token,
+            projectId: currentProjectId,
+          },
         });
         setStatusMap(map);
       } catch {
@@ -107,7 +115,12 @@ function DatacheckPage() {
       const session = await getSession();
       if (!session) return;
       await saveDatacheck({
-        data: { addressId: address.adresseid, statusMap: map, token: session.access_token },
+        data: {
+          addressId: address.adresseid,
+          statusMap: map,
+          token: session.access_token,
+          projectId: currentProjectId,
+        },
       });
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2000);

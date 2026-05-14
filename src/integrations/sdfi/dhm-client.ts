@@ -19,6 +19,8 @@
 //   adressen er typisk på vejsiden, dvs. modsat facades orientering.
 //   Live-implementering kræver vejgeometri fra DAR vejnavngivning.
 
+import { getEnvRequired } from "@/lib/env";
+
 const IS_MOCK = true;
 
 const DHM_WCS = "https://services.datafordeler.dk/DHMNedboer/dhm/1.0.0/WCS";
@@ -158,8 +160,7 @@ function parseTiff(
 }
 
 async function fetchLiveTerrain(bbox: BoundingBox, lat: number, lng: number): Promise<TerrainData> {
-  const apiKey = process.env.DATAFORDELER_API_KEY;
-  if (!apiKey) throw new Error("DATAFORDELER_API_KEY mangler");
+  const apiKey = getEnvRequired("DATAFORDELER_API_KEY");
 
   const width = bbox.maxX - bbox.minX;
   const height = bbox.maxY - bbox.minY;

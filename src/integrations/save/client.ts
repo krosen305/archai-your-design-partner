@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY — never import from browser code.
+﻿// SERVER-SIDE ONLY — never import from browser code.
 //
 // SaveService — SAVE-bevaringsværdi og fredningsstatus for bygninger (ARCH-29).
 //

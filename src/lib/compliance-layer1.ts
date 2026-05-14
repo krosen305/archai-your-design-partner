@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY — shared Layer-1 fetchers for pre-check + full analysis.
+﻿// SERVER-SIDE ONLY — shared Layer-1 fetchers for pre-check + full analysis.
 
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";

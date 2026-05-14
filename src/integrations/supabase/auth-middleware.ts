@@ -3,18 +3,12 @@ import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
+import { getEnvRequired } from "@/lib/env";
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
-
-    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      throw new Response(
-        "Missing Supabase environment variables. Ensure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are set.",
-        { status: 500 },
-      );
-    }
+    const SUPABASE_URL = getEnvRequired("SUPABASE_URL");
+    const SUPABASE_PUBLISHABLE_KEY = getEnvRequired("SUPABASE_PUBLISHABLE_KEY");
 
     const request = getRequest();
 
@@ -37,7 +31,7 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       throw new Response("Unauthorized: No token provided", { status: 401 });
     }
 
-    const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
+    const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       global: {
         headers: {
           Authorization: `Bearer ${token}`,

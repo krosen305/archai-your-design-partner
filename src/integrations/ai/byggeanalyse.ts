@@ -14,6 +14,8 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
+import { getEnvOptional } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Output-typer
@@ -317,9 +319,9 @@ export class ByggeanalyseService {
 
     if (FEATURE_FLAGS.byggeanalyseMock) return MOCK_RESULTAT;
 
-    const apiKey = ((process as any)?.env?.ANTHROPIC_API_KEY as string) ?? "";
+    const apiKey = getEnvOptional("ANTHROPIC_API_KEY") ?? "";
     if (!apiKey) {
-      console.warn("[ByggeanalyseService] ANTHROPIC_API_KEY mangler — returnerer mock");
+      logger.warn("[ByggeanalyseService] ANTHROPIC_API_KEY mangler — returnerer mock");
       return MOCK_RESULTAT;
     }
 
@@ -348,7 +350,7 @@ export class ByggeanalyseService {
 
       if (res.status !== 429) break;
       const delayMs = 10_000 * Math.pow(2, attempt);
-      console.warn(
+      logger.warn(
         `[ByggeanalyseService] Rate limit — venter ${delayMs / 1000}s (forsøg ${attempt + 1}/3)`,
       );
       await new Promise((r) => setTimeout(r, delayMs));

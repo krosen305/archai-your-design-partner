@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – Anthropic API-nøgle må aldrig nå browseren.
+﻿// SERVER-SIDE ONLY – Anthropic API-nøgle må aldrig nå browseren.
 // PdfExtractorService — udtræk strukturerede regler fra lokalplan-PDFer via Claude.
 // IS_MOCK = false: live Anthropic-kald aktivt (ARCH-53).
 // Fallback til mock-data hvis ANTHROPIC_API_KEY mangler eller PDF ikke kan hentes.

@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – Anthropic API-nøgle må aldrig nå browseren.
+﻿// SERVER-SIDE ONLY – Anthropic API-nøgle må aldrig nå browseren.
 // HusDnaGeneratorService — analysér inspirationsbilleder og fritekst
 // og returnér et struktureret Hus-DNA objekt via Claude vision API.
 //

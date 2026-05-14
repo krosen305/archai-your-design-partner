@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
+﻿// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 // DAR (Danmarks Adresseregister) GraphQL v1 via Datafordeler.
 //
 // Schema verificeret mod https://graphql.datafordeler.dk/DAR/v1/schema (ARCH-21, 2026-04-30).

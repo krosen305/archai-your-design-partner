@@ -100,7 +100,16 @@ function RootComponent() {
   // Gendan projekt-state for indloggede brugere ved første sideopload
   useEffect(() => {
     if (address) return; // State allerede sat — spring over
-    restoreProject().then((project) => {
+    const selectedProjectId =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("projectId")
+        : null;
+
+    if (selectedProjectId) {
+      setCurrentProjectId(selectedProjectId);
+    }
+
+    restoreProject(selectedProjectId).then((project) => {
       if (!project) return;
       setCurrentProjectId(project.id);
       if (project.address_full && project.address_bbr) {

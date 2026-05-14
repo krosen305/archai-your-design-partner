@@ -160,12 +160,17 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
 
   const handleFortsaet = () => {
     setCurrentProjectId(projekt.id);
-    if (harAdresse && projekt.adresse_dar_id && (COCKPIT_STEPS.has(projekt.current_step ?? "") || projekt.compliance_done)) {
-      navigate({ to: `/projekt/${projekt.adresse_dar_id}/cockpit` as never });
+    const search = { projectId: projekt.id } as never;
+    if (
+      harAdresse &&
+      projekt.adresse_dar_id &&
+      (COCKPIT_STEPS.has(projekt.current_step ?? "") || projekt.compliance_done)
+    ) {
+      navigate({ to: `/projekt/${projekt.adresse_dar_id}/cockpit` as never, search });
     } else if (harAdresse) {
-      navigate({ to: "/projekt/adresse" });
+      navigate({ to: "/projekt/adresse", search });
     } else {
-      navigate({ to: "/projekt/adresse" });
+      navigate({ to: "/projekt/adresse", search });
     }
   };
 

@@ -192,7 +192,9 @@ describe("GsearchService.getSuggestions", () => {
       ok: true,
       status: 200,
       text: async () => "ikke json {{{{",
-      json: async () => { throw new SyntaxError("Unexpected token"); },
+      json: async () => {
+        throw new SyntaxError("Unexpected token");
+      },
     })) as any;
 
     await expect(GsearchService.getSuggestions("Hasselvej 48")).rejects.toThrow(

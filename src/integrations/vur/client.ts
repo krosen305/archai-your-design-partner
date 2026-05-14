@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
+﻿// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 // VUR (Vurdering) GraphQL via Datafordeler.
 //
 // Opslag-kæde (3 kald):

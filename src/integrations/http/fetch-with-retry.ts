@@ -52,4 +52,3 @@ export async function fetchWithRetry(
 
   throw lastErr ?? new Error("fetchWithRetry: ukendt fejl");
 }
-

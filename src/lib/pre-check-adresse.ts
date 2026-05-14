@@ -1,4 +1,4 @@
-// ARCH-121: preCheckAdresse — hurtig Layer-1-fetch umiddelbart efter adressevalg.
+﻿// ARCH-121: preCheckAdresse — hurtig Layer-1-fetch umiddelbart efter adressevalg.
 //
 // Kører BBR+MAT, Plandata, NaturbeskyttelseService, SaveService og EBR+VUR
 // parallelt (Promise.allSettled) og returnerer compliance-flags + kontekstdata

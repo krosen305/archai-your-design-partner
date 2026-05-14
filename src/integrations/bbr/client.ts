@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
+﻿// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 // GraphQL integration til BBR via Datafordeleren (v2).
 //
 // Datafordeler GraphQL-begrænsninger (bekræftet via API-svar):

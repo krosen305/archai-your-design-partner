@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
+﻿// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 // EBR (Ejendomsbeliggenhedsregistret) GraphQL via Datafordeler.
 //
 // Bruges til: opslag af BFE-nummer (Bestemt Fast Ejendom) fra adresse.

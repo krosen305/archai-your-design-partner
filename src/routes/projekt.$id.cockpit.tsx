@@ -32,11 +32,12 @@ import type { SaveData } from "@/integrations/save/client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
-import { syncPatch } from "@/lib/project-sync";
+import { syncPatch, restoreProject } from "@/lib/project-sync";
 import { Cockpit } from "@/components/cockpit";
 import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Server functions
@@ -101,10 +102,7 @@ const runByggeanalyse = createServerFn({ method: "POST" })
       });
       ruleEngineResult = runRuleEngine(ruleInput, missingFields);
     } catch (e) {
-      console.warn(
-        "[ByggeanalyseService] Regelkerne fejlede (ikke kritisk):",
-        (e as Error).message,
-      );
+      logger.warn("[ByggeanalyseService] Regelkerne fejlede (ikke kritisk):", (e as Error).message);
     }
 
     const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
@@ -147,10 +145,10 @@ function CockpitPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { getSession } = await import("@/lib/auth");
+      const { getSession, isGuest } = await import("@/lib/auth");
       const session = await getSession();
       if (cancelled) return;
-      setNeedsLogin(!session);
+      setNeedsLogin(!session && !isGuest());
       setAuthChecked(true);
     })();
     return () => {
@@ -217,7 +215,10 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   const [mode, setMode] = useState<"due-diligence" | "design">("design");
 
   useEffect(() => {
-    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("projectMode") === "due-diligence") {
+    if (
+      typeof sessionStorage !== "undefined" &&
+      sessionStorage.getItem("projectMode") === "due-diligence"
+    ) {
       setMode("due-diligence");
     }
   }, []);
@@ -256,6 +257,50 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   const [isRecomputing, setIsRecomputing] = useState(false);
   const reanalyseDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    if (!bbrData) return;
+    if (
+      geusRiskLocal ||
+      servitutterLocal ||
+      terrainLocal ||
+      saveLocal ||
+      fjernvarmeLocal ||
+      naboerLocal ||
+      fbbDataLocal
+    ) {
+      return;
+    }
+
+    (async () => {
+      const currentProjectId = useProject.getState().currentProjectId;
+      const persisted = await restoreProject(currentProjectId);
+      const complianceData =
+        persisted?.compliance_data && typeof persisted.compliance_data === "object"
+          ? (persisted.compliance_data as Record<string, unknown>)
+          : null;
+      if (!complianceData) return;
+
+      setGeusRiskLocal((complianceData.geusRisk as GeusRiskData | null) ?? null);
+      setServitutterLocal((complianceData.servitutter as TinglysningResult | null) ?? null);
+      setTerrainLocal((complianceData.terrain as TerrainData | null) ?? null);
+      setSaveLocal((complianceData.save as SaveData | null) ?? null);
+      setFjernvarmeLocal((complianceData.fjernvarme as FjernvarmeResultat | null) ?? null);
+      setNaboerLocal((complianceData.naboer as NeighborBuildingData | null) ?? null);
+      setFbbDataLocal(
+        (complianceData.fbbData as import("@/integrations/fbb/client").FbbResultat | null) ?? null,
+      );
+    })();
+  }, [
+    bbrData,
+    geusRiskLocal,
+    servitutterLocal,
+    terrainLocal,
+    saveLocal,
+    fjernvarmeLocal,
+    naboerLocal,
+    fbbDataLocal,
+  ]);
+
   const triggerReanalyse = useCallback(() => {
     if (!bbrData || !address) return;
     if (reanalyseDebounce.current) clearTimeout(reanalyseDebounce.current);
@@ -285,8 +330,9 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           },
         });
         setByggeanalyseResultat(analyse);
+        syncPatch({ byggeanalyseResultat: analyse });
       } catch (e) {
-        console.warn("[Cockpit] re-analyse fejlede:", e);
+        logger.warn("[Cockpit] re-analyse fejlede:", e);
       } finally {
         setIsRecomputing(false);
       }
@@ -308,13 +354,18 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     const startTime = Date.now();
 
     (async () => {
-      const { getSession } = await import("@/lib/auth");
+      const { getSession, isGuest } = await import("@/lib/auth");
       const session = await getSession();
 
       if (!session) {
+        const guest = isGuest();
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => {
-          setFetchError("Login krævet – log ind for at hente analyse.");
+          setFetchError(
+            guest
+              ? "Start fra adresse-trinnet som gæst for at hente grunddata."
+              : "Login krævet - log ind for at hente analyse.",
+          );
           setStatus("error");
         }, remaining);
         return;
@@ -362,6 +413,17 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             complianceFlags: flags,
             lokalplaner: result.lokalplaner,
             kommuneplanramme: result.kommuneplanramme,
+            naturbeskyttelse: result.naturbeskyttelse,
+            dkjord: result.dkjord,
+            geusRisk: result.geusRisk,
+            servitutter: result.servitutter,
+            terrain: result.terrain,
+            naboer: result.naboer,
+            fjernvarme: result.fjernvarme,
+            save: result.save,
+            fbbData: result.fbbData,
+            byggeanalyseResultat: byggeanalyseResultat,
+            vurderingData: result.vurderingData,
             complianceDone: true,
             currentStep: "byggeanalyse",
           });
@@ -391,6 +453,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             })
               .then((analyse) => {
                 setByggeanalyseResultat(analyse);
+                syncPatch({ byggeanalyseResultat: analyse });
                 if (analyse.ruleEngine) {
                   const updatedFlags = deriveComplianceFlags(
                     result.bbr,
@@ -404,7 +467,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                 }
               })
               .catch((e: unknown) =>
-                console.warn("[Cockpit] AI analyse fejlede (ikke kritisk):", e),
+                logger.warn("[Cockpit] AI analyse fejlede (ikke kritisk):", e),
               );
           }
 
@@ -413,13 +476,11 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
         })
         .catch((e: unknown) => {
           const msg = e instanceof Error ? e.message : String(e);
-          console.error("[Compliance] pipeline fejlede:", msg);
+          logger.error("[Compliance] pipeline fejlede:", msg);
           const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
           setTimeout(() => {
             setFetchError(
-              msg.startsWith("ArchAI: manglende")
-                ? msg
-                : "BBR-data kunne ikke hentes. Prøv igen.",
+              msg.startsWith("ArchAI: manglende") ? msg : "BBR-data kunne ikke hentes. Prøv igen.",
             );
             setStatus("error");
           }, remaining);
@@ -671,6 +732,8 @@ function AnalyseTab({
           fbbData={fbbData}
           vurderingData={vurderingData}
           geusRisk={geusRisk}
+          servitutter={servitutter}
+          terrain={terrain}
           naboer={naboer}
           isRecomputing={isRecomputing}
           onPatched={onPatched}

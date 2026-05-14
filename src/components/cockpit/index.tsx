@@ -11,9 +11,16 @@ import { Card } from "@/components/wizard-ui";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProject, type Byggeoenske } from "@/lib/project-store";
-import { STEPS, STEP_GROUPS, estimerTotalpris, type Step, type Option } from "@/lib/byggeoenske-steps";
+import {
+  STEPS,
+  STEP_GROUPS,
+  estimerTotalpris,
+  type Step,
+  type Option,
+} from "@/lib/byggeoenske-steps";
 import { syncPatch } from "@/lib/project-sync";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadInspirationsbillede } from "@/lib/projekt-service";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
@@ -21,6 +28,8 @@ import type { FbbResultat } from "@/integrations/fbb/client";
 import type { VurData } from "@/integrations/vur/client";
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
+import type { TinglysningResult } from "@/integrations/tinglysning/client";
+import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +45,8 @@ export type CockpitProps = {
   vurderingData: VurData | null;
   geusRisk: GeusRiskData | null;
   naboer: NeighborBuildingData | null;
+  servitutter: TinglysningResult | null;
+  terrain: TerrainData | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
   /** Trigger debounced re-analyse efter en patch */
@@ -50,13 +61,20 @@ export function Cockpit({
   vurderingData,
   geusRisk,
   naboer,
+  servitutter,
+  terrain,
   isRecomputing,
   onPatched,
 }: CockpitProps) {
+  const reactiveContext = useMemo(
+    () => ({ geusRisk, servitutter, terrain, fbbData }),
+    [geusRisk, servitutter, terrain, fbbData],
+  );
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr_minmax(300px,360px)]">
       <div className="min-w-0">
-        <ProjektDnaPanel onPatched={onPatched} />
+        <ProjektDnaPanel onPatched={onPatched} reactiveContext={reactiveContext} />
       </div>
       <div className="min-w-0">
         <MatrikelCanvas bbr={bbr} metrics={metrics} naboer={naboer} />
@@ -80,18 +98,34 @@ export function Cockpit({
 // LEFT — Projekt DNA: Mode-toggle + 22 byggeønsker accordion
 // ===========================================================================
 
-function ProjektDnaPanel({ onPatched }: { onPatched: () => void }) {
+function ProjektDnaPanel({
+  onPatched,
+  reactiveContext,
+}: {
+  onPatched: () => void;
+  reactiveContext: {
+    geusRisk: GeusRiskData | null;
+    servitutter: TinglysningResult | null;
+    terrain: TerrainData | null;
+    fbbData: FbbResultat | null;
+  };
+}) {
   return (
     <div className="space-y-3">
       <ModeToggle />
-      <ByggeoenskeAccordion onPatched={onPatched} />
+      <ByggeoenskeAccordion onPatched={onPatched} reactiveContext={reactiveContext} />
     </div>
   );
 }
 
 function ModeToggle() {
   const { cockpitMode, setCockpitMode } = useProject();
-  const modes: Array<{ value: "kob" | "design"; label: string; icon: typeof ShoppingCart; hint: string }> = [
+  const modes: Array<{
+    value: "kob" | "design";
+    label: string;
+    icon: typeof ShoppingCart;
+    hint: string;
+  }> = [
     { value: "kob", label: "Overvejer køb", icon: ShoppingCart, hint: "Fremhæv risici" },
     { value: "design", label: "Designer hjem", icon: Home, hint: "Fremhæv muligheder" },
   ];
@@ -132,7 +166,18 @@ function ModeToggle() {
 // LEFT — Accordion med 22 byggeønsker + debounced patch
 // ===========================================================================
 
-function ByggeoenskeAccordion({ onPatched }: { onPatched: () => void }) {
+function ByggeoenskeAccordion({
+  onPatched,
+  reactiveContext,
+}: {
+  onPatched: () => void;
+  reactiveContext: {
+    geusRisk: GeusRiskData | null;
+    servitutter: TinglysningResult | null;
+    terrain: TerrainData | null;
+    fbbData: FbbResultat | null;
+  };
+}) {
   const { byggeoenske, setByggeoenske } = useProject();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -150,10 +195,10 @@ function ByggeoenskeAccordion({ onPatched }: { onPatched: () => void }) {
         lokalplanExtract: state.lokalplanExtract,
         lokalplaner: state.lokalplaner,
         naturbeskyttelse: null,
-        geusRisk: null,
-        servitutter: null,
-        terrain: null,
-        fbbData: null,
+        geusRisk: reactiveContext.geusRisk,
+        servitutter: reactiveContext.servitutter,
+        terrain: reactiveContext.terrain,
+        fbbData: reactiveContext.fbbData,
         byggeoenske: { ...state.byggeoenske, ...partial },
         municipality: state.address?.kommune ?? "",
         kommunekode: state.address?.kommunekode ?? "",
@@ -169,9 +214,12 @@ function ByggeoenskeAccordion({ onPatched }: { onPatched: () => void }) {
     }, 500);
   };
 
-  useEffect(() => () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
 
   const filledCount = STEPS.filter((s) => byggeoenske[s.key] !== undefined).length;
 
@@ -293,9 +341,7 @@ function ChoiceField({
         size={12}
         className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"
       />
-      {selected?.hint && (
-        <p className="mt-1 text-[10px] text-muted-foreground">{selected.hint}</p>
-      )}
+      {selected?.hint && <p className="mt-1 text-[10px] text-muted-foreground">{selected.hint}</p>}
     </div>
   );
 }
@@ -368,6 +414,7 @@ function ToggleField({
 function UploadField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { currentProjectId } = useProject();
 
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -378,13 +425,13 @@ function UploadField({ value, onChange }: { value: string[]; onChange: (v: strin
       const uploaded: string[] = [];
       for (const file of Array.from(files).slice(0, 8 - value.length)) {
         if (userId) {
-          const path = `${userId}/${Date.now()}-${file.name}`;
-          const { error } = await supabase.storage.from("inspiration-images").upload(path, file);
-          if (error) continue;
-          const { data: signed } = await supabase.storage
-            .from("inspiration-images")
-            .createSignedUrl(path, 60 * 60 * 24 * 7);
-          if (signed?.signedUrl) uploaded.push(signed.signedUrl);
+          if (!currentProjectId) continue;
+          try {
+            const signedUrl = await uploadInspirationsbillede(currentProjectId, file);
+            uploaded.push(signedUrl);
+          } catch {
+            continue;
+          }
         } else {
           const reader = new FileReader();
           const b64 = await new Promise<string>((resolve, reject) => {
@@ -465,7 +512,10 @@ function MatrikelCanvas({
   const eksisterende = bbr?.bebygget_areal ?? null;
   const oensket = byggeoenske.oensketAreal ?? null;
   const samlet = (eksisterende ?? 0) + (byggeoenske.byggetype === "tilbyg" ? (oensket ?? 0) : 0);
-  const husAreal = byggeoenske.byggetype === "nybyg" ? (oensket ?? eksisterende ?? 0) : (samlet || eksisterende || 0);
+  const husAreal =
+    byggeoenske.byggetype === "nybyg"
+      ? (oensket ?? eksisterende ?? 0)
+      : samlet || eksisterende || 0;
 
   // Antag kvadratisk grund for visualisering
   const grundSide = grundareal ? Math.sqrt(grundareal) : 0;
@@ -474,7 +524,8 @@ function MatrikelCanvas({
   const canvasW = 480;
   const canvasH = 360;
   const padding = 40;
-  const scale = grundSide > 0 ? Math.min(canvasW - padding * 2, canvasH - padding * 2) / grundSide : 1;
+  const scale =
+    grundSide > 0 ? Math.min(canvasW - padding * 2, canvasH - padding * 2) / grundSide : 1;
 
   const grundPx = grundSide * scale;
   const husPx = husSide * scale;
@@ -516,7 +567,13 @@ function MatrikelCanvas({
               <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
                 <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1f1f1f" strokeWidth="0.5" />
               </pattern>
-              <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <pattern
+                id="hatch"
+                width="6"
+                height="6"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(45)"
+              >
                 <line x1="0" y1="0" x2="0" y2="6" stroke="currentColor" strokeWidth="1" />
               </pattern>
             </defs>
@@ -574,25 +631,27 @@ function MatrikelCanvas({
             )}
 
             {/* Byggeret-zone (max bebyggelsesprocent ramme) */}
-            {maxPct !== null && grundareal && (() => {
-              const maxHusAreal = grundareal * (maxPct / 100);
-              const maxHusSide = Math.sqrt(maxHusAreal);
-              const maxHusPx = maxHusSide * scale;
-              const mhX = grundX + (grundPx - maxHusPx) / 2;
-              const mhY = grundY + (grundPx - maxHusPx) / 2;
-              return (
-                <rect
-                  x={mhX}
-                  y={mhY}
-                  width={maxHusPx}
-                  height={maxHusPx}
-                  fill="none"
-                  stroke="hsl(var(--warning) / 0.5)"
-                  strokeWidth="1"
-                  strokeDasharray="2 3"
-                />
-              );
-            })()}
+            {maxPct !== null &&
+              grundareal &&
+              (() => {
+                const maxHusAreal = grundareal * (maxPct / 100);
+                const maxHusSide = Math.sqrt(maxHusAreal);
+                const maxHusPx = maxHusSide * scale;
+                const mhX = grundX + (grundPx - maxHusPx) / 2;
+                const mhY = grundY + (grundPx - maxHusPx) / 2;
+                return (
+                  <rect
+                    x={mhX}
+                    y={mhY}
+                    width={maxHusPx}
+                    height={maxHusPx}
+                    fill="none"
+                    stroke="hsl(var(--warning) / 0.5)"
+                    strokeWidth="1"
+                    strokeDasharray="2 3"
+                  />
+                );
+              })()}
           </svg>
         )}
       </div>
@@ -644,13 +703,14 @@ function CompliancePanel({
   const eksisterende = bbr?.bebygget_areal ?? 0;
   const oensket = byggeoenske.oensketAreal ?? 0;
   const samlet =
-    byggeoenske.byggetype === "nybyg" ? oensket : eksisterende + (byggeoenske.byggetype === "tilbyg" ? oensket : 0);
+    byggeoenske.byggetype === "nybyg"
+      ? oensket
+      : eksisterende + (byggeoenske.byggetype === "tilbyg" ? oensket : 0);
   const beregnetPct = grundareal && samlet > 0 ? (samlet / grundareal) * 100 : null;
   const maxPct = metrics?.maxBebyggelsesprocent ?? null;
   const pctOver = maxPct !== null && beregnetPct !== null && beregnetPct > maxPct;
-  const pctValue = beregnetPct !== null && maxPct !== null
-    ? Math.min(100, (beregnetPct / maxPct) * 100)
-    : 0;
+  const pctValue =
+    beregnetPct !== null && maxPct !== null ? Math.min(100, (beregnetPct / maxPct) * 100) : 0;
 
   const etager = (byggeoenske.antalEtager as number | undefined) ?? null;
   const maxEtager = metrics?.maxEtager ?? null;
@@ -660,9 +720,8 @@ function CompliancePanel({
   const estHoejde = etager ? etager * 3 : null;
   const maxHoejde = metrics?.maxBygningshoejde ?? null;
   const hoejdeOver = maxHoejde !== null && estHoejde !== null && estHoejde > maxHoejde;
-  const hoejdeValue = estHoejde !== null && maxHoejde !== null
-    ? Math.min(100, (estHoejde / maxHoejde) * 100)
-    : 0;
+  const hoejdeValue =
+    estHoejde !== null && maxHoejde !== null ? Math.min(100, (estHoejde / maxHoejde) * 100) : 0;
 
   const totalpris = useMemo(() => estimerTotalpris(byggeoenske), [byggeoenske]);
   const animatedPris = useAnimatedNumber(totalpris ?? 0, 600);
@@ -671,8 +730,17 @@ function CompliancePanel({
   const dispensationer = byggeanalyse?.kraever_dispensation.length ?? 0;
 
   // Usynlige Budgetrisici (ARCH cockpit) — fremhæves særligt i "Overvejer køb"-mode
-  const risici: Array<{ key: string; label: string; severity: "high" | "med" | "low"; detalje: string }> = [];
-  if (fbbData?.fbb_bedste_bygning && fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 && fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3) {
+  const risici: Array<{
+    key: string;
+    label: string;
+    severity: "high" | "med" | "low";
+    detalje: string;
+  }> = [];
+  if (
+    fbbData?.fbb_bedste_bygning &&
+    fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 &&
+    fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3
+  ) {
     risici.push({
       key: "save",
       label: `SAVE ${fbbData.fbb_bedste_bygning.bevaringsvaerdi}/9 — Nedrivning kræver tilladelse`,
@@ -738,8 +806,8 @@ function CompliancePanel({
                 {formatDKK(animatedPris)}
               </div>
               <div className="mt-2 text-[11px] text-muted-foreground">
-                ~{Math.round(totalpris / (byggeoenske.oensketAreal ?? 1)).toLocaleString("da-DK")} kr/m²
-                · ekskl. grundkøb
+                ~{Math.round(totalpris / (byggeoenske.oensketAreal ?? 1)).toLocaleString("da-DK")}{" "}
+                kr/m² · ekskl. grundkøb
               </div>
               <BudgetBreakdown />
             </>

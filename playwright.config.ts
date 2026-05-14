@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: "./tests",
   timeout: 60_000,
   expect: { timeout: 10_000 },
+  outputDir: "test-results/artifacts",
 
   use: {
     baseURL: "http://127.0.0.1:8080",
@@ -26,5 +27,5 @@ export default defineConfig({
     },
   ],
 
-  reporter: [["list"], ["html", { open: "never", outputFolder: "test-results/html" }]],
+  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
 });

@@ -73,15 +73,16 @@ export function usePhaseStates(currentPath: string): PhaseStateMap {
 
   const statuses: Record<PhaseId, PhaseStatus> = {
     1: address ? (husDna ? "complete" : "warning") : "missing",
-    2: complianceDone && bbrData
-      ? hasBlockers
-        ? "warning"
-        : hasWarnings
+    2:
+      complianceDone && bbrData
+        ? hasBlockers
           ? "warning"
-          : "complete"
-      : address
-        ? "missing"
-        : "missing",
+          : hasWarnings
+            ? "warning"
+            : "complete"
+        : address
+          ? "missing"
+          : "missing",
     3: "missing",
     4: "missing",
   };

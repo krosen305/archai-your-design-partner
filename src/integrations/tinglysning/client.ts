@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
+﻿// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 //
 // Tinglysning – servitutter og andre tinglyste rettigheder (ARCH-104).
 //

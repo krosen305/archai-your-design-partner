@@ -14,7 +14,12 @@ export type Step = {
   min?: number;
   max?: number;
   unit?: string;
-  group: "Grundlæggende" | "Areal & rum" | "Stil & arkitektur" | "Bæredygtighed & teknik" | "Budget & inspiration";
+  group:
+    | "Grundlæggende"
+    | "Areal & rum"
+    | "Stil & arkitektur"
+    | "Bæredygtighed & teknik"
+    | "Budget & inspiration";
 };
 
 export const STEPS: Step[] = [
@@ -30,9 +35,33 @@ export const STEPS: Step[] = [
       { value: "ombyg", label: "Ombyg", hint: "Renovér indvendigt" },
     ],
   },
-  { key: "husstandsstoerrelse", title: "Hvor mange skal bo i huset?", type: "number", min: 1, max: 12, unit: "personer", group: "Grundlæggende" },
-  { key: "voksne", title: "Hvor mange voksne?", type: "number", min: 1, max: 8, unit: "voksne", group: "Grundlæggende" },
-  { key: "boern", title: "Hvor mange børn?", type: "number", min: 0, max: 8, unit: "børn", group: "Grundlæggende" },
+  {
+    key: "husstandsstoerrelse",
+    title: "Hvor mange skal bo i huset?",
+    type: "number",
+    min: 1,
+    max: 12,
+    unit: "personer",
+    group: "Grundlæggende",
+  },
+  {
+    key: "voksne",
+    title: "Hvor mange voksne?",
+    type: "number",
+    min: 1,
+    max: 8,
+    unit: "voksne",
+    group: "Grundlæggende",
+  },
+  {
+    key: "boern",
+    title: "Hvor mange børn?",
+    type: "number",
+    min: 0,
+    max: 8,
+    unit: "børn",
+    group: "Grundlæggende",
+  },
   {
     key: "livsfase",
     title: "Hvor er I i livet?",
@@ -45,7 +74,16 @@ export const STEPS: Step[] = [
     ],
   },
   // Areal & rum
-  { key: "oensketAreal", title: "Boligareal", subtitle: "m²", type: "number", min: 60, max: 500, unit: "m²", group: "Areal & rum" },
+  {
+    key: "oensketAreal",
+    title: "Boligareal",
+    subtitle: "m²",
+    type: "number",
+    min: 60,
+    max: 500,
+    unit: "m²",
+    group: "Areal & rum",
+  },
   {
     key: "antalEtager",
     title: "Antal etager",
@@ -58,8 +96,24 @@ export const STEPS: Step[] = [
       { value: 3, label: "3 etager" },
     ],
   },
-  { key: "antalSovevaerelser", title: "Soveværelser", type: "number", min: 1, max: 8, unit: "stk.", group: "Areal & rum" },
-  { key: "antalBadevaerelser", title: "Badeværelser", type: "number", min: 1, max: 5, unit: "stk.", group: "Areal & rum" },
+  {
+    key: "antalSovevaerelser",
+    title: "Soveværelser",
+    type: "number",
+    min: 1,
+    max: 8,
+    unit: "stk.",
+    group: "Areal & rum",
+  },
+  {
+    key: "antalBadevaerelser",
+    title: "Badeværelser",
+    type: "number",
+    min: 1,
+    max: 5,
+    unit: "stk.",
+    group: "Areal & rum",
+  },
   { key: "hjemmekontor", title: "Hjemmekontor?", type: "toggle", group: "Areal & rum" },
   // Stil
   {
@@ -160,7 +214,12 @@ export const STEPS: Step[] = [
       { value: "balanceret", label: "Balanceret m. varmegenvinding" },
     ],
   },
-  { key: "ladestander", title: "Ladestander til bil?", type: "toggle", group: "Bæredygtighed & teknik" },
+  {
+    key: "ladestander",
+    title: "Ladestander til bil?",
+    type: "toggle",
+    group: "Bæredygtighed & teknik",
+  },
   // Budget & inspiration
   {
     key: "budget",
@@ -197,15 +256,29 @@ export function estimerTotalpris(b: Partial<Byggeoenske>): number | null {
   if (!b.oensketAreal) return null;
   let prisPrM2 = 28000; // baseline 2025
   switch (b.energiklasse) {
-    case "lavenergi": prisPrM2 += 2500; break;
-    case "passiv": prisPrM2 += 5000; break;
-    case "plusenergi": prisPrM2 += 7000; break;
+    case "lavenergi":
+      prisPrM2 += 2500;
+      break;
+    case "passiv":
+      prisPrM2 += 5000;
+      break;
+    case "plusenergi":
+      prisPrM2 += 7000;
+      break;
   }
   switch (b.facademateriale) {
-    case "tegl": prisPrM2 += 1500; break;
-    case "trae": prisPrM2 += 800; break;
-    case "metal": prisPrM2 += 2000; break;
-    case "kombineret": prisPrM2 += 1200; break;
+    case "tegl":
+      prisPrM2 += 1500;
+      break;
+    case "trae":
+      prisPrM2 += 800;
+      break;
+    case "metal":
+      prisPrM2 += 2000;
+      break;
+    case "kombineret":
+      prisPrM2 += 1200;
+      break;
   }
   if (b.solceller) prisPrM2 += 800;
   if (b.varmekilde === "jordvarme") prisPrM2 += 1500;

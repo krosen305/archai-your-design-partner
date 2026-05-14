@@ -147,9 +147,7 @@ export function EjendomPanel() {
         </div>
         <div>
           <span className="text-[10px] tracking-[0.15em]">ADGANGSADRESSE</span>
-          <div className="text-foreground mt-0.5 truncate">
-            {address?.adgangsadresseid ?? "—"}
-          </div>
+          <div className="text-foreground mt-0.5 truncate">{address?.adgangsadresseid ?? "—"}</div>
         </div>
       </div>
     </div>

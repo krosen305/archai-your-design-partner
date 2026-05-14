@@ -1,9 +1,10 @@
-// ARCH-74: Linear webhook bridge — receives Linear Issue webhooks and fires
+﻿// ARCH-74: Linear webhook bridge — receives Linear Issue webhooks and fires
 // a GitHub repository_dispatch to trigger branch auto-creation.
 //
 // ARCH-92: Fail closed — rejects all requests when LINEAR_WEBHOOK_SECRET is
 // not configured. The secret must always be present; the handler never
 // accepts unsigned payloads.
+import { logger } from "@/lib/logger";
 
 export interface LinearWebhookEnv {
   LINEAR_WEBHOOK_SECRET?: string; // HMAC signing secret from Linear webhook config
@@ -20,7 +21,7 @@ export async function handleLinearWebhook(
   // ARCH-92: Fail closed — require signing secret to be configured.
   // Never accept unsigned payloads even in development.
   if (!env.LINEAR_WEBHOOK_SECRET) {
-    console.error("[LinearWebhook] LINEAR_WEBHOOK_SECRET ikke konfigureret — afviser request");
+    logger.error("[LinearWebhook] LINEAR_WEBHOOK_SECRET ikke konfigureret — afviser request");
     return new Response("Webhook ikke konfigureret", { status: 503 });
   }
 
@@ -76,9 +77,7 @@ export async function handleLinearWebhook(
   const token = env.GITHUB_DISPATCH_TOKEN;
 
   if (!token) {
-    console.warn(
-      "[LinearWebhook] GITHUB_DISPATCH_TOKEN ikke sat — springer branch-oprettelse over",
-    );
+    logger.warn("[LinearWebhook] GITHUB_DISPATCH_TOKEN ikke sat — springer branch-oprettelse over");
     return new Response("OK (ingen GitHub token)", { status: 200 });
   }
 
@@ -98,10 +97,10 @@ export async function handleLinearWebhook(
 
   if (!dispatchRes.ok) {
     const text = await dispatchRes.text();
-    console.error("[LinearWebhook] GitHub dispatch fejlede:", dispatchRes.status, text);
+    logger.error("[LinearWebhook] GitHub dispatch fejlede:", dispatchRes.status, text);
     return new Response("GitHub dispatch fejlede", { status: 502 });
   }
 
-  console.log(`[LinearWebhook] Branch-oprettelse udløst for ${issueId}`);
+  logger.info(`[LinearWebhook] Branch-oprettelse udløst for ${issueId}`);
   return new Response("OK", { status: 200 });
 }

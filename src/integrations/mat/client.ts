@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
+﻿// SERVER-SIDE ONLY – credentials must never be exposed to the browser.
 // MAT (Matrikelregistret) GraphQL v2 via Datafordeler.
 //
 // Bruges til: grundareal (registreretAreal) på et jordstykke.

@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY – uses DAWA's open REST API.
+﻿// SERVER-SIDE ONLY – uses DAWA's open REST API.
 // NaboService — find nabobygninger via DAWA adresser-i-cirkel.
 //
 // Kilde: https://dawa.aws.dk/adgangsadresser?cirkel={lon},{lat},{radius_m}

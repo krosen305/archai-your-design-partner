@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY — credentials must never be exposed to the browser.
+﻿// SERVER-SIDE ONLY — credentials must never be exposed to the browser.
 //
 // FBB (Fredede og Bevaringsværdige Bygninger) via Kulturarvsstyrelsens GeoServer WFS.
 //
