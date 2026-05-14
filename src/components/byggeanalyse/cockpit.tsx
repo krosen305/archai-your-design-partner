@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Upload, X } from "lucide-react";
+import { ChevronDown, Upload, X, ShoppingCart, Home, AlertTriangle } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -19,6 +19,8 @@ import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import type { VurData } from "@/integrations/vur/client";
+import type { GeusRiskData } from "@/integrations/geus/client";
+import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +34,8 @@ export type CockpitProps = {
   byggeanalyse: ByggeanalyseResultat | null;
   fbbData: FbbResultat | null;
   vurderingData: VurData | null;
+  geusRisk: GeusRiskData | null;
+  naboer: NeighborBuildingData | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
   /** Trigger debounced re-analyse efter en patch */
@@ -44,16 +48,18 @@ export function Cockpit({
   byggeanalyse,
   fbbData,
   vurderingData,
+  geusRisk,
+  naboer,
   isRecomputing,
   onPatched,
 }: CockpitProps) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(280px,340px)_1fr_minmax(280px,340px)]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr_minmax(300px,360px)]">
       <div className="min-w-0">
-        <ByggeoenskeAccordion onPatched={onPatched} />
+        <ProjektDnaPanel onPatched={onPatched} />
       </div>
       <div className="min-w-0">
-        <MatrikelCanvas bbr={bbr} metrics={metrics} />
+        <MatrikelCanvas bbr={bbr} metrics={metrics} naboer={naboer} />
       </div>
       <div className="min-w-0">
         <CompliancePanel
@@ -62,10 +68,63 @@ export function Cockpit({
           byggeanalyse={byggeanalyse}
           fbbData={fbbData}
           vurderingData={vurderingData}
+          geusRisk={geusRisk}
           isRecomputing={isRecomputing}
         />
       </div>
     </div>
+  );
+}
+
+// ===========================================================================
+// LEFT — Projekt DNA: Mode-toggle + 22 byggeønsker accordion
+// ===========================================================================
+
+function ProjektDnaPanel({ onPatched }: { onPatched: () => void }) {
+  return (
+    <div className="space-y-3">
+      <ModeToggle />
+      <ByggeoenskeAccordion onPatched={onPatched} />
+    </div>
+  );
+}
+
+function ModeToggle() {
+  const { cockpitMode, setCockpitMode } = useProject();
+  const modes: Array<{ value: "kob" | "design"; label: string; icon: typeof ShoppingCart; hint: string }> = [
+    { value: "kob", label: "Overvejer køb", icon: ShoppingCart, hint: "Fremhæv risici" },
+    { value: "design", label: "Designer hjem", icon: Home, hint: "Fremhæv muligheder" },
+  ];
+  return (
+    <Card className="p-2">
+      <div className="grid grid-cols-2 gap-1">
+        {modes.map((m) => {
+          const sel = cockpitMode === m.value;
+          const Icon = m.icon;
+          return (
+            <button
+              key={m.value}
+              onClick={() => setCockpitMode(m.value)}
+              className={cn(
+                "flex flex-col items-center gap-0.5 rounded-md px-2 py-2 transition-all",
+                sel
+                  ? m.value === "kob"
+                    ? "bg-yellow-500/15 border border-yellow-500/50 text-yellow-300"
+                    : "bg-emerald-500/15 border border-emerald-500/50 text-emerald-300"
+                  : "border border-border/40 text-muted-foreground hover:text-foreground hover:border-border",
+              )}
+              aria-pressed={sel}
+            >
+              <div className="flex items-center gap-1.5">
+                <Icon size={12} />
+                <span className="font-mono text-[10px] tracking-[0.1em] uppercase">{m.label}</span>
+              </div>
+              <span className="text-[9px] opacity-70">{m.hint}</span>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
