@@ -5,11 +5,27 @@ import type { Database } from "./types";
 function createSupabaseClient() {
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     throw new Error(
       "Missing Supabase environment variables. Ensure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or VITE_ prefixed versions) are set in your .env file.",
     );
+  }
+
+  if (SUPABASE_PROJECT_ID) {
+    const urlProjectRef = (() => {
+      try {
+        return new URL(SUPABASE_URL).hostname.split(".")[0] ?? "";
+      } catch {
+        return "";
+      }
+    })();
+    if (urlProjectRef && urlProjectRef !== SUPABASE_PROJECT_ID) {
+      throw new Error(
+        `Supabase project mismatch: VITE_SUPABASE_URL points to "${urlProjectRef}" but VITE_SUPABASE_PROJECT_ID is "${SUPABASE_PROJECT_ID}".`,
+      );
+    }
   }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

@@ -12,13 +12,17 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signUp(email: string, password: string) {
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { emailRedirectTo: window.location.origin + "/projekt/start" },
   });
   if (error) throw error;
   clearGuest();
+  return {
+    session: data.session,
+    needsEmailConfirmation: !data.session,
+  };
 }
 
 export async function signOut() {
