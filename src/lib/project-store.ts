@@ -164,6 +164,9 @@ type State = {
   // ARCH-130: aktiv Supabase-projekt-id — sørger for korrekt dataadskillelse ved flere projekter
   currentProjectId: string | null;
 
+  // Cockpit mode — styrer fremhævning i højre panel: risici vs muligheder
+  cockpitMode: "kob" | "design";
+
   // AI-gatekeeper: HusDnaGeneratorService genkaldes kun hvis disse felter ændres
   _lastHusDnaInput: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null;
 
