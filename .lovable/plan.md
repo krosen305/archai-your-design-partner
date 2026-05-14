@@ -1,131 +1,104 @@
-## Mål
 
-Opgradér UI'en fra et 4-trins wizard til et 5-fase flow (Discovery → Match → Finans → Engineering → Udbud) med tydeligere navigation, fase-gating og status-feedback. Backend (`src/integrations/`) og `projekt.compliance.tsx` rør vi ikke ved.
+# Cockpit-redesign: Fra guidet wizard til frit dashboard
 
----
+Vi sletter hele fase-paradigmet og gør cockpittet til den primære arbejdsflade. Brugeren rammer cockpittet umiddelbart efter projektoprettelse — enten med adresse-data trukket fra Datafordeler, eller helt uden grund (frit design). Et nyt AI-hero panel øverst genererer 3 visuelle forslag fra inspirationsbilleder + fritekst-drøm. Personrelaterede byggeønsker fjernes.
 
-## Ny faseopdeling
+## 1. Faseoverblik fjernes helt
 
-| Fase            | Rute(r)                                 | Beskrivelse                                                        |
-| --------------- | --------------------------------------- | ------------------------------------------------------------------ |
-| 1 — Discovery   | `/projekt/adresse` + `/projekt/hus-dna` | Adresse + AI-genereret Hus-DNA (erstatter `beskrivelse` + `brief`) |
-| 2 — Match       | `/projekt/match`                        | Konflikt-matrix (genbruger `bbrData` fra compliance)               |
-| 3 — Finans      | `/projekt/finans`                       | Placeholder                                                        |
-| 4 — Engineering | `/projekt/engineering`                  | Placeholder                                                        |
-| 5 — Udbud       | `/projekt/udbud`                        | Placeholder                                                        |
+**Filer:** `src/components/wizard-chrome.tsx`, `src/lib/phases.ts`, `src/components/phase-sidebar.tsx`, `src/components/phase-coming-soon.tsx`, `src/routes/__root.tsx`
 
-`projekt.compliance.tsx` bevares som intern "datahentnings"-rute (kaldes som mellemtrin før Match), men ændres ikke i adfærd. `projekt.beskrivelse.tsx` og `projekt.brief.tsx` bliver liggende uden links fra navigation.
+- Slet `PhaseBar`, `MobilePhaseBar`, `PhaseChip` fra `wizard-chrome.tsx`. `TopBar` reduceres til: logo (venstre) · evt. kort projektkontekst (midten) · `UserMenu` (højre). `MobileMenu` beholdes men uden faseoversigt — kun "Mine projekter" + "Log ud".
+- Fjern `PhaseSidebar` overalt (sletter både komponenten og evt. brug i `__root.tsx` / cockpit).
+- Behold `BackLink`-helper.
+- `src/lib/phases.ts`: behold kun `setPhase`-relaterede typer hvis project-store stadig refererer dem internt; fjern `PHASES`, `usePhaseStates`, `usePhaseSubKeys`, `usePhaseClickable`. Fjern alle imports af disse fra øvrige filer.
+- Slet stub-routes der kun gav mening i fase-flowet: `projekt.datacheck.tsx`, `projekt.teknik.tsx`, `projekt.udbud.tsx` (alt funktionalitet flyttes ind i cockpit-tabs senere efter behov).
 
----
+## 2. Ny indgang: Adresse er default, "design frit" som toggle
 
-## Filer der oprettes
+**Fil:** `src/routes/projekt.start.tsx` (mindre justering) + `src/routes/projekt.adresse.tsx` (tilføjelse) + ny route `src/routes/projekt.frit.tsx` ELLER hash i cockpit.
 
-- `src/lib/phases.ts` — central definition af de 5 faser (id, label, route, status-selector). Brugt af PhaseBar, sidebar og phase-gate.
-- `src/components/phase-sidebar.tsx` — venstre sticky sidebar (kun ≥1280px).
-- `src/routes/projekt.hus-dna.tsx` — 2-kolonne layout, upload + Hus-DNA output card.
-- `src/routes/projekt.match.tsx` — konflikt-matrix (læser `bbrData` + `address` fra store).
-- `src/routes/projekt.finans.tsx` — placeholder.
-- `src/routes/projekt.engineering.tsx` — placeholder.
-- `src/routes/projekt.udbud.tsx` — placeholder.
+**Beslutning:** Vi tilføjer en lille toggle i `projekt.adresse.tsx`-skærmen ("Indtast adresse" / "Design uden grund"). Vælges "design uden grund":
+- Opret projekt uden adresse via `serverCreateProject` (allerede understøttet — `address` forbliver null)
+- Naviger til `/projekt/frit/cockpit` (en speciel rute der mounter `Cockpit` med `bbr=null`, `metrics=null` osv.)
+- Cockpittet skjuler matrikel-canvas og compliance-gauges når der ikke er adresse-data — viser i stedet kun AI-hero + design-input + grov estimat.
 
-## Filer der opdateres
+I `projekt.start.tsx` ændres "Nyt projekt"-knappens undertekst til "Indtast adresse eller design frit".
 
-- `src/components/wizard-chrome.tsx` — erstat `StepDots` med ny `PhaseBar` (TopBar bevares).
-- `src/routes/__root.tsx` — wrap routes (alle ud over `/`) i layout med `PhaseSidebar` + main content.
-- `src/routes/index.tsx` — tilføj 5-kolonners fase-oversigt under CTA med stagger fade-in.
-- `src/lib/project-store.ts` — tilføj `husDna` (mock genereret data) til store.
-- `src/routes/projekt.adresse.tsx` — uændret destination (stadig `/projekt/compliance`), men compliance redirecter videre til `/projekt/match`. **Alle `data-testid` attributter bevares.**
-- `src/routes/projekt.compliance.tsx` — **kun** ændring: `onContinue` peger på `/projekt/match` i stedet for `/projekt/beskrivelse`. Ingen UI-ændring.
+## 3. Cockpit-omstrukturering: AI-hero øverst, slankere paneler
 
----
+**Fil:** `src/components/cockpit/index.tsx`, `src/routes/projekt.$id.cockpit.tsx`
 
-## Komponentdetaljer
+Ny vertikal struktur i cockpittet (oppefra og ned):
 
-### PhaseBar (`wizard-chrome.tsx`)
+```text
+┌────────────────────────────────────────────────────────┐
+│ AI-HERO: "Drøm dit hjem"                              │
+│ [Upload billeder] [Fritekst-felt] [Generér 3 forslag] │
+│ → 3 generede billed-kort vises horisontalt herunder    │
+└────────────────────────────────────────────────────────┘
+┌──────────┬──────────────┬──────────────┐
+│ Byggeønsker │ Matrikel/  │ Compliance & │
+│ (accordion) │ placering  │ budget       │
+│             │ + visuel   │ (gauges)     │
+└──────────┴──────────────┴──────────────┘
+```
 
-- 5 chips i en horisontal stack, centreret i TopBar.
-- Status pr. chip afledt af store via `phases.ts`: `complete | active | locked | error`.
-- Styling pr. status (matcher spec):
-  - complete → `bg-accent text-accent-foreground` + Check-ikon
-  - active → `border border-accent text-foreground` + lille pulserende dot (`animate-pulse bg-accent`)
-  - locked → `border border-[#333] text-[#555]` + Lock-ikon
-  - error → `border border-danger text-danger` + AlertTriangle-ikon
-- Klikbar kun på `complete`-faser (navigerer til faseroden).
-- Mobil (<768px): collapser til "FASE N AF 5 · NAVN" + tynd progress-bar (accent fill, % = completed/5).
-- Sticky i toppen via eksisterende `TopBar` wrapper.
+Center-panel splittes i to faner: **"Matrikel & placering"** (eksisterende `MatrikelCanvas`) og **"Visuelt udseende"** (de genererede AI-billeder + valgt facade/materiale-preview).
 
-### PhaseSidebar
+Når `bbr === null` (frit design): vis kun AI-hero + venstre input-panel + et budget-estimat. Skjul matrikel-canvas og compliance-gauges med placeholder "Tilføj adresse for at se grunddata".
 
-- 240px bred, `bg-[#111111]`, `border-r border-[#222]`, sticky `top-14`.
-- Kun synlig ≥1280px (`hidden xl:flex`).
-- Vertikal liste over 5 faser:
-  - Status-ikon (filled circle complete / pulserende ring active / outline circle locked).
-  - Mono-label "FASE N · NAVN".
-  - Sub-keys (adresse, Hus-DNA, BBR, lokalplan…) trukket fra store, prefixed med `└` og `text-muted-foreground`.
+## 4. Slankere byggeønsker — fjern personrelaterede felter
 
-### Hus-DNA side (`/projekt/hus-dna`)
+**Fil:** `src/lib/byggeoenske-steps.ts` (+ `src/lib/project-store.ts` typen `Byggeoenske` — beskyttet fil; markeres med `🔒` i PR)
 
-- Venstre kolonne (input):
-  - StepHeader "Hvad drømmer du om?" + undertitel.
-  - Drag-and-drop upload-zone (genbruger mønster fra `beskrivelse.tsx`, max 8 billeder, mock `picsum.photos`).
-  - Tekstfelt 4 rækker.
-  - CTA "Generér Hus-DNA →".
-- Højre kolonne (output):
-  - Før klik: tom illustration / hint.
-  - Under generering (~2s setTimeout): skeleton + `.typing-caret` på "Analyserer billeder...".
-  - Efter generering: HUS-DNA card med "AI" badge, sektioner ARKITEKTONISK STIL / NØGLETAL (key-value rows) / SÆRLIGE KRAV (chips med `border-accent/40 bg-accent/5 text-accent`) / CONFIDENCE bar (`bg-accent` fill).
-- Mock-data hardcodet i komponenten (samme stil som nuværende `brief.tsx`).
-- Ved klik på "Fortsæt" → `/projekt/compliance` (som så redirecter til `/projekt/match`).
-- Mobil: kolonner stackes; output vises under input.
+Fjern fra `STEPS`-arrayet:
+- `husstandsstoerrelse`, `voksne`, `boern`, `livsfase` (gruppe "Grundlæggende")
+- `hjemmekontor` (toggle, gruppe "Areal & rum")
 
-### Match side (`/projekt/match`)
+Bevar: `byggetype`, `oensketAreal`, `antalEtager`, `antalSovevaerelser`, `antalBadevaerelser`, alle stil/arkitektur-felter, alle bæredygtighed-felter, `budget`, `inspirationsbilleder`.
 
-- StepHeader "The Match" + undertitel.
-- Compliance matrix card med 5 rækker; hver række har `border-l-[3px]` farvet (success/warning/danger):
-  - Bebyggelsesprocent (success hvis ≤30, warning hvis ukendt, danger hvis >30) — værdier fra `bbrData.bebyggelsesprocent`.
-  - Antal etager (success ≤2) — `bbrData.antal_etager`.
-  - Bygningshøjde (warning, "Ukendt / max 8.5m" — ikke i BBR-data).
-  - Servitutter (success, "Ingen kritiske" — mock).
-  - Lokalplan (success, hardcoded LP-mock indtil videre + PDF-knap).
-- Under matrix: 2-kolonne grid med "AI-VURDERING" card (kort fritekst + disclaimer) og "LOKALPLAN" card (navn, dato, kommune, PDF-knap med accent-border).
-- Hvis `bbrData` mangler i store → vis tom-tilstand med knap "Hent BBR-data" der navigerer til `/projekt/compliance`.
-- Bund-CTA: "Fortsæt til Finans →".
+`Byggeoenske`-typen i `project-store.ts` beholder felterne som optional for bagudkompatibilitet med eksisterende projekter, men de bruges ikke længere i UI. Gruppen "Grundlæggende" reduceres til kun `byggetype`.
 
-### Placeholder-sider (Finans / Engineering / Udbud)
+## 5. AI-design hero komponent (ny)
 
-- Ens layout via en lille intern komponent i hver fil (eller fælles `phase-coming-soon.tsx`):
-  - StepHeader med fase-nummer + titel + undertitel.
-  - Centreret card med `[KOMMER SNART]` badge (font-mono, border-accent/40, text-accent).
-  - 2-3 sætningers beskrivelse + bullet-liste med konkrete features.
-  - "Gå tilbage" knap + disabled "Fortsæt →" knap.
+**Ny fil:** `src/components/cockpit/AiDesignHero.tsx`
+**Ny server-fn:** Tilføjes i `src/routes/projekt.$id.cockpit.tsx` (eller egen `src/lib/ai-design.functions.ts`)
 
-### Landing page (`/`)
+UI:
+- Stort kort øverst i cockpittet
+- Venstre: drag-and-drop upload (genbrug logik fra `UploadField` i `cockpit/index.tsx`) + textarea til "Beskriv dit drømmehus" (gemmes i en ny `byggeoenske.designDroem: string` i store)
+- Højre: knap "Generér 3 forslag" → kalder server-fn `generateDesignProposals`
+- Resultat: 3 billeder rendres som klikbare kort. Valgt forslag persisteres i `byggeoenske.valgteDesignforslag` (string url)
 
-- Bevar eksisterende hero + CTA.
-- Tilføj under CTA: 5-kolonners grid (`grid-cols-2 md:grid-cols-5`):
-  - Lille lucide-ikon (Search / GitMerge / Wallet / Hammer / FileSignature).
-  - Mono-label.
-  - `text-xs text-muted-foreground` beskrivelse.
-  - Stagger fade-in via framer-motion (`delay: 0.1 * i`).
+Server-fn:
+- `createServerFn({ method: "POST" })` med auth-middleware
+- Bruger Lovable AI Gateway (`google/gemini-3.1-flash-image-preview`) til billed-generering
+- System-prompt baseret på inspirationsbilleder + fritekst + valgte stil/materialer fra `byggeoenske`
+- Returnerer `{ images: string[] }` (3 stk., gemt i Supabase Storage eller som data-URLs)
 
----
+State-tilføjelser i `project-store.ts` (beskyttet fil — kræver review):
+- `byggeoenske.designDroem?: string`
+- `byggeoenske.valgteDesignforslag?: string`
+- `byggeoenske.genererededDesignforslag?: string[]`
 
-## Tekniske detaljer
+## 6. Routing-konsekvenser
 
-- **Phase-gating logik** i `phases.ts`:
-  - Fase 1 complete når `address && husDna` er sat i store.
-  - Fase 2 complete når `complianceDone && bbrData`.
-  - Fase 3-5 altid `locked` indtil videre.
-  - Active = current route's fase.
-- **Routing**: `__root.tsx` bruger ny layout-funktion der wrapper `Outlet` i `<div className="flex">` med `PhaseSidebar` + `<main className="flex-1">`. Welcome (`/`) bruger ingen sidebar — beholder fullscreen-struktur.
-- **Compliance som mellemtrin**: når bruger klikker "Fortsæt" på Hus-DNA → naviger til `/projekt/compliance`, som ved success-state redirecter til `/projekt/match` i stedet for `/projekt/beskrivelse`. Ingen anden UI-ændring i compliance-siden.
-- **Eksisterende `beskrivelse`/`brief` ruter**: efterlades urørt for at undgå brudte direkte links, men fjernes fra al synlig navigation. `StepDots` komponenten slettes (erstattes af PhaseBar).
-- **Tests**: `tests/address-flow.spec.ts` forventer redirect til `/projekt/compliance` efter "Analysér adresse" — det bevares. Alle `data-testid`-attributter på adresse- og compliance-siden bevares uændret.
-- **Design tokens**: alt holdes inden for eksisterende Tailwind-klasser og CSS-variabler (`bg-accent`, `text-accent`, `border-success/warning/danger`, `bg-[#1A1A1A]`, `border-[#222]`). Ingen nye CSS-filer.
+- Fjern logikken i `projekt.start.tsx` `ProjektKort.handleFortsaet` der tjekker `current_step` mod `COCKPIT_STEPS` — alle projekter med adresse går direkte til `/projekt/{adresseid}/cockpit`. Projekter uden adresse går til `/projekt/adresse?projectId=...`.
+- `routeTree.gen.ts` regenereres automatisk af Vite-pluginet når `projekt.frit.tsx` tilføjes / stub-routes slettes.
 
-## Out of scope
+## 7. Verifikation
 
-- Reelle AI-kald (alt er mock med setTimeout).
-- Backend-ændringer i `src/integrations/`.
-- Persistering af Hus-DNA i Supabase (kun in-memory i Zustand).
-- Implementering af reel funktionalitet i fase 3-5.
+- `bunx tsc --noEmit` skal være ren — fjern alle imports af de slettede phase-helpers i: `wizard-chrome.tsx`, `phase-sidebar.tsx`, `phase-coming-soon.tsx`, evt. cockpit-fil hvis den kalder `setPhase`.
+- `bun test` skal forblive grøn — tjek `tests/wizard-flow.spec.ts` og `tests/address-flow.spec.ts`; opdatér selectors hvis de leder efter "FASE X"-chips.
+- Manuel rundtur: opret projekt → vælg "design frit" → cockpit uden grund → tilføj adresse senere via tilbage-link → cockpit med grund.
+
+## Tekniske noter
+
+- Ingen nye dependencies; AI-billedgenerering bruger eksisterende Lovable AI Gateway-mønster (se `connecting-to-ai-models-tanstack`).
+- Beskyttede filer rørt: `src/lib/project-store.ts` — markeres `🔒` i PR.
+- AGENTS.md/CLAUDE.md opdateres ikke automatisk (Codex må ikke).
+- Slettede stub-routes (`datacheck`, `teknik`, `udbud`) kan reintroduceres senere som cockpit-tabs hvis behov opstår.
+
+## Åbne spørgsmål inden implementering
+
+Ingen blokerende — alle 4 designvalg er afklaret. Implementering kan starte når denne plan er godkendt.
