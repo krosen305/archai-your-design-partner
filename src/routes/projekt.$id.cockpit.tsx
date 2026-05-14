@@ -210,8 +210,8 @@ function CockpitPage() {
     );
   }
 
-  if (adresseId === "frit") return <FreeDesignCockpit />;
-  return <CockpitContent adresseId={adresseId} />;
+  if (id === "frit") return <FreeDesignCockpit />;
+  return <CockpitContent adresseId={id} />;
 }
 
 // ---------------------------------------------------------------------------
