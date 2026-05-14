@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -255,7 +255,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     import("@/integrations/fbb/client").FbbResultat | null
   >(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
-  const reanalyseDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!bbrData) return;
@@ -301,42 +300,39 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     fbbDataLocal,
   ]);
 
-  const triggerReanalyse = useCallback(() => {
+  const runManualAnalyse = useCallback(async () => {
     if (!bbrData || !address) return;
-    if (reanalyseDebounce.current) clearTimeout(reanalyseDebounce.current);
     setIsRecomputing(true);
-    reanalyseDebounce.current = setTimeout(async () => {
-      try {
-        const { getSession } = await import("@/lib/auth");
-        const session = await getSession();
-        if (!session) {
-          setIsRecomputing(false);
-          return;
-        }
-        const state = useProject.getState();
-        const lpNavn =
-          state.lokalplaner[0]?.plannavn ?? state.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
-        const analyse = await runByggeanalyse({
-          data: {
-            token: session.access_token,
-            byggeoenske: state.byggeoenske,
-            lokalplanExtract: state.lokalplanExtract,
-            bbr: bbrData,
-            lokalplanNavn: lpNavn,
-            kommuneplanramme: state.kommuneplanramme,
-            lokalplaner: state.lokalplaner,
-            municipality: address.kommune ?? "",
-            kommunekode: address.kommunekode ?? "",
-          },
-        });
-        setByggeanalyseResultat(analyse);
-        syncPatch({ byggeanalyseResultat: analyse });
-      } catch (e) {
-        logger.warn("[Cockpit] re-analyse fejlede:", e);
-      } finally {
+    try {
+      const { getSession } = await import("@/lib/auth");
+      const session = await getSession();
+      if (!session) {
         setIsRecomputing(false);
+        return;
       }
-    }, 500);
+      const state = useProject.getState();
+      const lpNavn =
+        state.lokalplaner[0]?.plannavn ?? state.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
+      const analyse = await runByggeanalyse({
+        data: {
+          token: session.access_token,
+          byggeoenske: state.byggeoenske,
+          lokalplanExtract: state.lokalplanExtract,
+          bbr: bbrData,
+          lokalplanNavn: lpNavn,
+          kommuneplanramme: state.kommuneplanramme,
+          lokalplaner: state.lokalplaner,
+          municipality: address.kommune ?? "",
+          kommunekode: address.kommunekode ?? "",
+        },
+      });
+      setByggeanalyseResultat(analyse);
+      syncPatch({ byggeanalyseResultat: analyse });
+    } catch (e) {
+      logger.warn("[Cockpit] manuel AI-analyse fejlede:", e);
+    } finally {
+      setIsRecomputing(false);
+    }
   }, [bbrData, address, setByggeanalyseResultat]);
 
   useEffect(() => {
@@ -427,49 +423,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             complianceDone: true,
             currentStep: "byggeanalyse",
           });
-
-          const harByggeoenskeData = Object.values(byggeoenske).some((v) => v !== undefined);
-          if (harByggeoenskeData) {
-            const lokalplanNavn =
-              result.lokalplaner[0]?.plannavn ??
-              result.lokalplaner[0]?.plannr ??
-              "Ukendt lokalplan";
-            runByggeanalyse({
-              data: {
-                token: session.access_token,
-                byggeoenske,
-                lokalplanExtract: result.lokalplanExtract,
-                bbr: result.bbr,
-                lokalplanNavn,
-                kommuneplanramme: result.kommuneplanramme,
-                lokalplaner: result.lokalplaner,
-                naturbeskyttelse: result.naturbeskyttelse,
-                geusRisk: result.geusRisk,
-                servitutter: result.servitutter,
-                terrain: result.terrain,
-                municipality: address?.kommune ?? "",
-                kommunekode: address?.kommunekode ?? "",
-              },
-            })
-              .then((analyse) => {
-                setByggeanalyseResultat(analyse);
-                syncPatch({ byggeanalyseResultat: analyse });
-                if (analyse.ruleEngine) {
-                  const updatedFlags = deriveComplianceFlags(
-                    result.bbr,
-                    result.kommuneplanramme,
-                    result.naturbeskyttelse,
-                    result.dkjord,
-                    result.geusRisk,
-                    analyse.ruleEngine,
-                  );
-                  setComplianceFlags(updatedFlags);
-                }
-              })
-              .catch((e: unknown) =>
-                logger.warn("[Cockpit] AI analyse fejlede (ikke kritisk):", e),
-              );
-          }
 
           const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
           setTimeout(() => setStatus("done"), remaining);
@@ -578,7 +531,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                 fjernvarme={fjernvarmeLocal}
                 naboer={naboerLocal}
                 isRecomputing={isRecomputing}
-                onPatched={triggerReanalyse}
+                onRunAnalyse={runManualAnalyse}
                 onShowEjendom={() => setActiveTab("ejendom")}
                 onShowOekonomi={() => setActiveTab("oekonomi")}
               />
@@ -674,7 +627,7 @@ function AnalyseTab({
   fjernvarme,
   naboer,
   isRecomputing,
-  onPatched,
+  onRunAnalyse,
   onShowEjendom,
   onShowOekonomi,
 }: {
@@ -692,7 +645,7 @@ function AnalyseTab({
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
   isRecomputing: boolean;
-  onPatched: () => void;
+  onRunAnalyse: () => void;
   onShowEjendom: () => void;
   onShowOekonomi: () => void;
 }) {
@@ -722,6 +675,17 @@ function AnalyseTab({
       transition={{ duration: 0.4 }}
     >
       <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
+      <div className="mb-4 flex justify-end">
+        <button
+          type="button"
+          onClick={onRunAnalyse}
+          disabled={isRecomputing}
+          className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-4 py-2 font-mono text-[11px] tracking-[0.12em] text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Sparkles size={14} />
+          {isRecomputing ? "KØRER AI-ANALYSE..." : "KØR AI-ANALYSE"}
+        </button>
+      </div>
 
       {/* Cockpit — 3-kolonne dashboard */}
       <div className="mb-8">
@@ -736,7 +700,6 @@ function AnalyseTab({
           terrain={terrain}
           naboer={naboer}
           isRecomputing={isRecomputing}
-          onPatched={onPatched}
         />
       </div>
 

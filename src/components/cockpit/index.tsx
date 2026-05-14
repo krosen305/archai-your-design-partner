@@ -49,8 +49,6 @@ export type CockpitProps = {
   terrain: TerrainData | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
-  /** Trigger debounced re-analyse efter en patch */
-  onPatched: () => void;
 };
 
 export function Cockpit({
@@ -64,7 +62,6 @@ export function Cockpit({
   servitutter,
   terrain,
   isRecomputing,
-  onPatched,
 }: CockpitProps) {
   const reactiveContext = useMemo(
     () => ({ geusRisk, servitutter, terrain, fbbData }),
@@ -74,7 +71,7 @@ export function Cockpit({
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr_minmax(300px,360px)]">
       <div className="min-w-0">
-        <ProjektDnaPanel onPatched={onPatched} reactiveContext={reactiveContext} />
+        <ProjektDnaPanel reactiveContext={reactiveContext} />
       </div>
       <div className="min-w-0">
         <MatrikelCanvas bbr={bbr} metrics={metrics} naboer={naboer} />
@@ -99,10 +96,8 @@ export function Cockpit({
 // ===========================================================================
 
 function ProjektDnaPanel({
-  onPatched,
   reactiveContext,
 }: {
-  onPatched: () => void;
   reactiveContext: {
     geusRisk: GeusRiskData | null;
     servitutter: TinglysningResult | null;
@@ -113,7 +108,7 @@ function ProjektDnaPanel({
   return (
     <div className="space-y-3">
       <ModeToggle />
-      <ByggeoenskeAccordion onPatched={onPatched} reactiveContext={reactiveContext} />
+      <ByggeoenskeAccordion reactiveContext={reactiveContext} />
     </div>
   );
 }
@@ -167,10 +162,8 @@ function ModeToggle() {
 // ===========================================================================
 
 function ByggeoenskeAccordion({
-  onPatched,
   reactiveContext,
 }: {
-  onPatched: () => void;
   reactiveContext: {
     geusRisk: GeusRiskData | null;
     servitutter: TinglysningResult | null;
@@ -210,7 +203,6 @@ function ByggeoenskeAccordion({
     debounceRef.current = setTimeout(() => {
       const next = { ...useProject.getState().byggeoenske };
       syncPatch({ byggeoenske: next });
-      onPatched();
     }, 500);
   };
 
