@@ -203,6 +203,7 @@ function ComplianceContent() {
     bbrData,
     byggeoenske,
     complianceMetrics,
+    vurderingData,
     setBbrData,
     setComplianceDone,
     setComplianceFlags,
@@ -211,6 +212,7 @@ function ComplianceContent() {
     setLokalplanExtract,
     setPhase,
     setKommuneplanramme,
+    setVurderingData,
     setByggeanalyseResultat,
     byggeanalyseResultat,
   } = useProject();
@@ -224,6 +226,7 @@ function ComplianceContent() {
   const [saveLocal, setSaveLocal] = useState<SaveData | null>(null);
   const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
   const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
+  const [fbbDataLocal, setFbbDataLocal] = useState<import("@/integrations/fbb/client").FbbResultat | null>(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const reanalyseDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -316,6 +319,8 @@ function ComplianceContent() {
           setSaveLocal(result.save ?? null);
           setFjernvarmeLocal(result.fjernvarme ?? null);
           setNaboerLocal(result.naboer ?? null);
+          setFbbDataLocal(result.fbbData ?? null);
+          setVurderingData(result.vurderingData ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
             result.kommuneplanramme,
@@ -425,6 +430,8 @@ function ComplianceContent() {
             lokalplaner={lokalplanerLocal}
             byggeanalyse={byggeanalyseResultat}
             metrics={complianceMetrics}
+            fbbData={fbbDataLocal}
+            vurderingData={vurderingData}
             geusRisk={geusRiskLocal}
             servitutter={servitutterLocal}
             terrain={terrainLocal}
@@ -504,6 +511,8 @@ function ResultView({
   lokalplaner,
   byggeanalyse,
   metrics,
+  fbbData,
+  vurderingData,
   geusRisk,
   servitutter,
   terrain,
@@ -519,6 +528,8 @@ function ResultView({
   lokalplaner: Lokalplan[];
   byggeanalyse: ByggeanalyseResultat | null;
   metrics: ComplianceMetrics | null;
+  fbbData: import("@/integrations/fbb/client").FbbResultat | null;
+  vurderingData: import("@/integrations/vur/client").VurData | null;
   geusRisk: GeusRiskData | null;
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
@@ -563,6 +574,8 @@ function ResultView({
           bbr={data}
           metrics={metrics}
           byggeanalyse={byggeanalyse}
+          fbbData={fbbData}
+          vurderingData={vurderingData}
           isRecomputing={isRecomputing}
           onPatched={onPatched}
         />

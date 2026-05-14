@@ -17,6 +17,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { FbbResultat } from "@/integrations/fbb/client";
+import type { VurData } from "@/integrations/vur/client";
+import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -27,13 +30,23 @@ export type CockpitProps = {
   bbr: BbrKompliantData | null;
   metrics: ComplianceMetrics | null;
   byggeanalyse: ByggeanalyseResultat | null;
+  fbbData: FbbResultat | null;
+  vurderingData: VurData | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
   /** Trigger debounced re-analyse efter en patch */
   onPatched: () => void;
 };
 
-export function Cockpit({ bbr, metrics, byggeanalyse, isRecomputing, onPatched }: CockpitProps) {
+export function Cockpit({
+  bbr,
+  metrics,
+  byggeanalyse,
+  fbbData,
+  vurderingData,
+  isRecomputing,
+  onPatched,
+}: CockpitProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(280px,340px)_1fr_minmax(280px,340px)]">
       <div className="min-w-0">
@@ -47,6 +60,8 @@ export function Cockpit({ bbr, metrics, byggeanalyse, isRecomputing, onPatched }
           bbr={bbr}
           metrics={metrics}
           byggeanalyse={byggeanalyse}
+          fbbData={fbbData}
+          vurderingData={vurderingData}
           isRecomputing={isRecomputing}
         />
       </div>
@@ -62,9 +77,31 @@ function ByggeoenskeAccordion({ onPatched }: { onPatched: () => void }) {
   const { byggeoenske, setByggeoenske } = useProject();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounced patch: opdater store straks (UI reaktiv) — vent 500ms før sync + re-analyse
+  // Debounced patch: opdater store straks (UI reaktiv) — vent 500ms før sync + re-analyse.
+  // computePartialUpdate kører øjeblikkeligt client-side (ingen API-kald) så Gauge-felterne
+  // opdateres i realtid mens brugeren justerer byggeønsker.
   const patch = (partial: Partial<Byggeoenske>) => {
     setByggeoenske(partial);
+
+    const state = useProject.getState();
+    if (state.bbrData) {
+      const { complianceMetrics: cm } = computePartialUpdate({
+        bbr: state.bbrData,
+        ramme: state.kommuneplanramme,
+        lokalplanExtract: state.lokalplanExtract,
+        lokalplaner: state.lokalplaner,
+        naturbeskyttelse: null,
+        geusRisk: null,
+        servitutter: null,
+        terrain: null,
+        fbbData: null,
+        byggeoenske: { ...state.byggeoenske, ...partial },
+        municipality: state.address?.kommune ?? "",
+        kommunekode: state.address?.kommunekode ?? "",
+      });
+      state.setComplianceMetrics(cm);
+    }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const next = { ...useProject.getState().byggeoenske };
@@ -527,14 +564,18 @@ function CompliancePanel({
   bbr,
   metrics,
   byggeanalyse,
+  fbbData,
+  vurderingData,
   isRecomputing,
 }: {
   bbr: BbrKompliantData | null;
   metrics: ComplianceMetrics | null;
   byggeanalyse: ByggeanalyseResultat | null;
+  fbbData: FbbResultat | null;
+  vurderingData: VurData | null;
   isRecomputing: boolean;
 }) {
-  const { byggeoenske } = useProject();
+  const { byggeoenske, complianceFlags } = useProject();
 
   // Bebyggelsesprocent (live: eksisterende + ønsket areal)
   const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
@@ -549,8 +590,13 @@ function CompliancePanel({
     ? Math.min(100, (beregnetPct / maxPct) * 100)
     : 0;
 
-  // Højdegrænseplan: estimeret højde = etager * 3m
+  // Etager
   const etager = (byggeoenske.antalEtager as number | undefined) ?? null;
+  const maxEtager = metrics?.maxEtager ?? null;
+  const etagerOver = etager !== null && maxEtager !== null && etager > maxEtager;
+  const etagerValue = etager !== null && maxEtager ? Math.min(100, (etager / maxEtager) * 100) : 0;
+
+  // Højdegrænse: estimeret højde = etager * 3m
   const estHoejde = etager ? etager * 3 : null;
   const maxHoejde = metrics?.maxBygningshoejde ?? null;
   const hoejdeOver = maxHoejde !== null && estHoejde !== null && estHoejde > maxHoejde;
@@ -581,6 +627,18 @@ function CompliancePanel({
           )}
         </div>
         <div className="p-4 space-y-5">
+          {/* Frednings- og SAVE-badges */}
+          {bbr?.fredet && (
+            <div className="flex items-center gap-2 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+              🏛️ Fredet bygning — kræver dispensation fra Slots- og Kulturstyrelsen
+            </div>
+          )}
+          {fbbData?.fbb_bedste_bygning && fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 && fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3 && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+              🏛️ SAVE {fbbData.fbb_bedste_bygning.bevaringsvaerdi}/9 — Høj bevaringsværdi
+            </div>
+          )}
+
           <Gauge
             label="Bebyggelsesprocent"
             current={beregnetPct !== null ? `${beregnetPct.toFixed(0)}%` : "—"}
@@ -589,12 +647,40 @@ function CompliancePanel({
             danger={pctOver}
           />
           <Gauge
+            label="Etager"
+            current={etager !== null ? `${etager}` : "—"}
+            limit={maxEtager !== null ? `Maks ${maxEtager} etager` : "Ingen ramme"}
+            value={etagerValue}
+            danger={etagerOver}
+          />
+          <Gauge
             label="Bygningshøjde (est.)"
             current={estHoejde !== null ? `${estHoejde.toFixed(1)} m` : "—"}
             limit={maxHoejde !== null ? `Maks ${maxHoejde} m` : "Ingen ramme"}
             value={hoejdeValue}
             danger={hoejdeOver}
           />
+
+          {/* Compliance flags fra preCheck + regelkerne */}
+          {complianceFlags.length > 0 && (
+            <div className="border-t border-border/40 pt-3 space-y-1.5">
+              {complianceFlags
+                .filter((f) => f.status === "blocker" || f.status === "advarsel")
+                .map((f) => (
+                  <div
+                    key={f.id}
+                    className={cn(
+                      "flex items-start gap-2 text-xs",
+                      f.status === "blocker" ? "text-danger" : "text-warning",
+                    )}
+                  >
+                    <span>{f.status === "blocker" ? "🔴" : "🟡"}</span>
+                    <span>{f.label}</span>
+                  </div>
+                ))}
+            </div>
+          )}
+
           {isRecomputing ? (
             <ConflictSkeleton />
           ) : (
@@ -635,6 +721,36 @@ function CompliancePanel({
           )}
         </div>
       </Card>
+
+      {vurderingData && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/40 font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
+            EJENDOMSVURDERING
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                Ejendomsværdi
+              </div>
+              <div className="font-mono text-lg text-foreground tabular-nums">
+                {vurderingData.ejendomsvaerdi != null
+                  ? `${(vurderingData.ejendomsvaerdi / 1_000_000).toFixed(1)} mio.`
+                  : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                Grundværdi
+              </div>
+              <div className="font-mono text-lg text-foreground tabular-nums">
+                {vurderingData.grundvaerdi != null
+                  ? `${(vurderingData.grundvaerdi / 1_000_000).toFixed(1)} mio.`
+                  : "—"}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
