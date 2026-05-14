@@ -1,14 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Check,
-  Lock,
-  AlertTriangle,
-  Menu,
-  LogOut,
-  FolderOpen,
-  LogIn,
-} from "lucide-react";
+import { ArrowLeft, Check, AlertTriangle, Menu, LogOut, FolderOpen, LogIn } from "lucide-react";
 import { PHASES, usePhaseStates, usePhaseSubKeys, type PhaseStatus } from "@/lib/phases";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "@/lib/auth";
@@ -35,11 +26,7 @@ export function PhaseBar() {
             id={p.id}
             label={p.label}
             status={states[p.id]}
-            onClick={() => {
-              if (states[p.id] === "complete" || states[p.id] === "active") {
-                navigate({ to: p.route });
-              }
-            }}
+            onClick={() => navigate({ to: p.route })}
           />
           {i < PHASES.length - 1 && <span className="text-[10px] text-[#444]">→</span>}
         </div>
@@ -59,7 +46,6 @@ function PhaseChip({
   status: PhaseStatus;
   onClick: () => void;
 }) {
-  const clickable = status === "complete" || status === "active";
   const base =
     "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-[10px] tracking-[0.1em] transition-colors";
 
@@ -81,17 +67,11 @@ function PhaseChip({
     cls = "border border-danger text-danger";
     icon = <AlertTriangle size={11} />;
   } else {
-    cls = "border border-[#333] text-[#555] cursor-not-allowed";
-    icon = <Lock size={10} />;
+    cls = "border border-[#2a2a2a] text-[#555] hover:border-[#444] hover:text-[#888]";
   }
 
   return (
-    <button
-      disabled={!clickable}
-      onClick={onClick}
-      aria-label={`Fase ${id}: ${label}`}
-      className={`${base} ${cls}`}
-    >
+    <button onClick={onClick} aria-label={`Fase ${id}: ${label}`} className={`${base} ${cls}`}>
       {icon}
       <span>
         FASE {id}: {label}
@@ -181,21 +161,19 @@ function MobileMenu() {
             <nav className="space-y-3">
               {PHASES.map((p) => {
                 const status = states[p.id];
-                const clickable = status === "complete" || status === "active";
                 return (
                   <div key={p.id}>
                     <SheetClose asChild>
                       <button
-                        disabled={!clickable}
-                        onClick={() => clickable && navigate({ to: p.route })}
-                        className="flex w-full items-center gap-2 text-left disabled:cursor-not-allowed"
+                        onClick={() => navigate({ to: p.route })}
+                        className="flex w-full items-center gap-2 text-left"
                       >
                         {status === "complete" ? (
                           <Check size={12} className="text-accent" />
                         ) : status === "active" ? (
                           <span className="inline-flex h-2 w-2 rounded-full bg-accent" />
                         ) : (
-                          <Lock size={10} className="text-[#555]" />
+                          <span className="inline-flex h-2 w-2 rounded-full border border-[#444]" />
                         )}
                         <span
                           className={`font-mono text-[11px] tracking-[0.1em] ${

@@ -50,12 +50,7 @@ export const PHASES: Phase[] = [
   },
 ];
 
-const PHASE_1_ROUTES = [
-  "/projekt/start",
-  "/projekt/adresse",
-  "/projekt/boligoenske",
-  "/projekt/ejendom",
-];
+const PHASE_1_ROUTES = ["/projekt/start", "/projekt/adresse", "/projekt/boligoenske"];
 
 /** Hvilken fase en given route hører til (null hvis ingen). */
 export function phaseForRoute(pathname: string): PhaseId | null {

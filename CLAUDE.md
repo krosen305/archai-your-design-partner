@@ -28,7 +28,7 @@ bunx prettier --write .                        # Format
 /projekt/udbud           → projekt.udbud.tsx
 ```
 
-Flow: adresse → boligoenske → ejendom → byggeanalyse (auto-kører BBR+Plandata+AI) → …
+Flow: adresse → boligoenske → byggeanalyse (auto-kører BBR+Plandata+AI) → … (`/projekt/ejendom` er optional detail-panel nået fra cockpit)
 Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis-orchestrator.ts` → cache i Supabase `address_analysis` (key: `adresseid`).
 
 ## Kritiske regler
@@ -45,19 +45,19 @@ Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis
 
 ## src/lib — nøglefiler
 
-| Fil                              | Ansvar                                                                                                          |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Fil                              | Ansvar                                                                                                                                                      |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `project-store.ts`               | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `byggeanalyseResultat`, `adressePreCheck`, `boligoenskeValidering`) |
-| `project-sync.ts`                | Fire-and-forget Supabase-sync (`syncPatch`, `restoreProject`) — session-persistens                              |
-| `analysis-orchestrator.ts`       | Entry point for compliance pipeline — BBR+MAT+Plandata+geodata paralleliseret                                   |
-| `pre-check-adresse.ts`           | `preCheckAdresse` createServerFn — kører BBR+MAT+Plandata+Natur+Save+VUR parallelt ved adressevalg (ARCH-121) |
-| `reactive-compliance.ts`         | `computePartialUpdate()` — client-safe wrapper: compliance-metrics + regel-engine + flags uden API-kald          |
-| `rule-engine/`                   | Deterministisk regelkerne (stopregler, beregninger, energi) — pure functions, ingen AI                          |
-| `compliance-engine.ts`           | Beregning af `ComplianceMetrics` (bebyggelsesprocent, etager, areal)                                            |
-| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware                                                                          |
-| `env.ts`                         | Zod-valideret env — brug denne                                                                                  |
-| `kommuner.ts`                    | Kommunekode → kommunenavn map (98 kommuner)                                                                     |
-| `utils.ts`                       | `cn()` og utilities                                                                                             |
+| `project-sync.ts`                | Fire-and-forget Supabase-sync (`syncPatch`, `restoreProject`) — session-persistens                                                                          |
+| `analysis-orchestrator.ts`       | Entry point for compliance pipeline — BBR+MAT+Plandata+geodata paralleliseret                                                                               |
+| `pre-check-adresse.ts`           | `preCheckAdresse` createServerFn — kører BBR+MAT+Plandata+Natur+Save+VUR parallelt ved adressevalg (ARCH-121)                                               |
+| `reactive-compliance.ts`         | `computePartialUpdate()` — client-safe wrapper: compliance-metrics + regel-engine + flags uden API-kald                                                     |
+| `rule-engine/`                   | Deterministisk regelkerne (stopregler, beregninger, energi) — pure functions, ingen AI                                                                      |
+| `compliance-engine.ts`           | Beregning af `ComplianceMetrics` (bebyggelsesprocent, etager, areal)                                                                                        |
+| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware                                                                                                                      |
+| `env.ts`                         | Zod-valideret env — brug denne                                                                                                                              |
+| `kommuner.ts`                    | Kommunekode → kommunenavn map (98 kommuner)                                                                                                                 |
+| `utils.ts`                       | `cn()` og utilities                                                                                                                                         |
 
 ## Integrations (`src/integrations/`)
 
@@ -121,6 +121,7 @@ Journeyen er ikke-lineær, risiko-drevet og iterativ. Den består af tre overlap
 **Pre-purchase use case:** ArchAI bruges til at vurdere ejendomme FØR køb (Phase 4–6 i journeyen) — ikke kun til projektering af en allerede ejet ejendom. Compliance-data er due diligence, ikke kun byggesagsrådgivning.
 
 **Kritiske risikokategorier (domænekendskab):**
+
 - Geoteknik: 0 kr (god grund) til 500.000 kr+ (pælfundering) — største enkeltrisiko
 - Forsyningsafkobling: 50.000–150.000 kr (el, vand, gas, kloak) — ofte glemt i budget
 - Nabosager: nabopartshøring kan forsinke 4–12 uger — tidlig screening vigtig
@@ -128,6 +129,7 @@ Journeyen er ikke-lineær, risiko-drevet og iterativ. Den består af tre overlap
 - Strandbeskyttelse/fredskov: absolut byggestop uden dispensation
 
 **Arkitekturkonsekvenser:**
+
 - Flow skal understøtte spring og iteration, ikke kun lineær wizard-progression
 - Reaktiv compute: `src/lib/reactive-compliance.ts` beregner ComplianceMetrics + RuleEngineResult client-side ved Byggeoenske-ændringer — ingen Datafordeler-kald
 - Statiske data (BBR, plandata) caches i Supabase `address_analysis` og project-store; dynamiske data (Byggeoenske) beregnes lokalt
@@ -140,14 +142,17 @@ Claude Code har arkitektonisk opsyn. Codex implementerer.
 **Codex læser:** `AGENTS.md` — kilde til sandhed for Codex-constraints. Claude Code ejer begge filer. Codex opdaterer dem IKKE autonomt.
 
 **Arbejdsdeling:**
+
 - **Codex**: vel-scoped Linear-issues med klar spec, tests, UI-komponenter, stub-routes, IS_MOCK→live
 - **Claude Code**: arkitekturændringer, nye dataflow-mønstre, state-shape-beslutninger, ændringer i orchestrator/pre-check/reactive-compliance, nye env-vars, CLAUDE.md/AGENTS.md
 
 **Linear-labels:**
+
 - `codex-safe` — Codex kan implementere autonomt (kræver klar spec i issue)
 - `needs-architecture` — kun Claude Code (arkitekturimplikationer)
 
 **Konfliktforebyggelse:**
+
 - Codex rører aldrig beskyttede filer uden `🔒 Rører beskyttet fil — kræver review` i PR
 - Begge agenter kører `bunx tsc --noEmit && bun test` inden de erklærer sig færdige
 - Beskyttede filer: `project-store.ts`, `analysis-orchestrator.ts`, `pre-check-adresse.ts`, `reactive-compliance.ts`, `AGENTS.md`, `CLAUDE.md`, `package.json`, `wrangler.toml`

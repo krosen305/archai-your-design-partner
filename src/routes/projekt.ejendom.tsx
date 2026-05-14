@@ -1,14 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  MapPin,
-  CheckCircle2,
-  AlertTriangle,
-  HelpCircle,
-  ChevronDown,
-  Zap,
-} from "lucide-react";
+import { MapPin, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown, Zap } from "lucide-react";
 import { useProject, type ComplianceFlag } from "@/lib/project-store";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
@@ -61,7 +54,7 @@ function EjendomStep() {
     <PageTransition>
       <div className="mx-auto max-w-[920px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/projekt/adresse" />
+          <BackLink to="/projekt/byggeanalyse" />
         </div>
         <StepHeader
           step={2}
@@ -152,9 +145,7 @@ function EjendomStep() {
                 onClick={() => setShowFlags((v) => !v)}
                 className="w-full flex items-center justify-between text-sm text-foreground"
               >
-                <span>
-                  {complianceFlags.length} forhold registreret på grunden
-                </span>
+                <span>{complianceFlags.length} forhold registreret på grunden</span>
                 <ChevronDown
                   size={14}
                   className={`transition-transform ${showFlags ? "rotate-180" : ""}`}
@@ -257,7 +248,11 @@ function PlanRow({
 function FlagRow({ flag }: { flag: ComplianceFlag }) {
   const cfg = {
     ok: { Icon: CheckCircle2, color: "text-emerald-400 border-emerald-500/40", text: "OK" },
-    advarsel: { Icon: AlertTriangle, color: "text-yellow-400 border-yellow-500/40", text: "ADVARSEL" },
+    advarsel: {
+      Icon: AlertTriangle,
+      color: "text-yellow-400 border-yellow-500/40",
+      text: "ADVARSEL",
+    },
     blocker: { Icon: AlertTriangle, color: "text-danger border-danger/40", text: "BLOCKER" },
   }[flag.status] ?? {
     Icon: HelpCircle,

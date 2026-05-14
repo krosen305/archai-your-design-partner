@@ -451,7 +451,7 @@ export function deriveComplianceFlags(
   }
 
   // ── Fjernvarme-mismatch (ARCH-117) ──────────────────────────────────────
-  // Sammenligner BBR byg056 med Plandata fjernvarmedækning (IS_MOCK=true → null)
+  // Sammenligner BBR byg056 med Plandata fjernvarmedækning (live data)
   if (bbr && fjernvarme && fjernvarme.fjernvarmeDaekket !== null) {
     const harFjernvarmeBbr =
       bbr.varmeinstallation !== null && bbr.varmeinstallation.toLowerCase().includes("fjernvarme");

@@ -148,9 +148,9 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
 const STEP_TO_ROUTE: Record<string, string> = {
   adresse: "/projekt/adresse",
   boligoenske: "/projekt/boligoenske",
-  ejendom: "/projekt/ejendom",
+  ejendom: "/projekt/byggeanalyse",
   byggeanalyse: "/projekt/byggeanalyse",
-  oekonomi: "/projekt/byggeanalyse",
+  oekonomi: "/projekt/oekonomi",
 };
 
 function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {

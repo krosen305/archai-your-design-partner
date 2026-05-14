@@ -3,6 +3,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Loader2, AlertTriangle, CheckCircle2, ChevronDown } from "lucide-react";
 import { useProject, type ComplianceFlag, type Address } from "@/lib/project-store";
+
+type ProjectMode = "due-diligence" | "design";
+
+function getProjectMode(): ProjectMode {
+  return sessionStorage.getItem("projectMode") === "due-diligence" ? "due-diligence" : "design";
+}
+
+function saveProjectMode(m: ProjectMode) {
+  sessionStorage.setItem("projectMode", m);
+}
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
@@ -50,6 +60,13 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
+  const [mode, setModeState] = useState<ProjectMode>(getProjectMode);
+
+  const setMode = (m: ProjectMode) => {
+    saveProjectMode(m);
+    setModeState(m);
+  };
+
   const {
     address,
     setAddress,
@@ -217,6 +234,43 @@ function AddressStep() {
           subtitle="Vi henter automatisk bygningsdata og lokalplan."
         />
 
+        {/* Mode selector */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {(
+            [
+              {
+                key: "due-diligence",
+                fase: "FASE 4–5",
+                title: "Overvejer køb",
+                desc: "Vurder risici inden du køber",
+              },
+              {
+                key: "design",
+                fase: "FASE 7–8",
+                title: "Designer mit hjem",
+                desc: "Jeg ejer allerede grunden",
+              },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setMode(opt.key)}
+              className={`rounded-md border p-4 text-left transition-colors ${
+                mode === opt.key
+                  ? "border-accent bg-accent/5"
+                  : "border-border bg-[#111] hover:border-border/80"
+              }`}
+            >
+              <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-1">
+                {opt.fase}
+              </div>
+              <div className="text-sm font-medium text-foreground">{opt.title}</div>
+              <div className="text-xs text-muted-foreground mt-1">{opt.desc}</div>
+            </button>
+          ))}
+        </div>
+
         <Card>
           <div className="relative">
             <Search
@@ -316,7 +370,11 @@ function AddressStep() {
           {selected && hasHard && (
             <div className="mt-5 flex items-start gap-3 rounded-md border border-danger/40 bg-danger/5 px-4 py-3">
               <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
-              <div className="text-sm text-danger">Byggeri kan ikke anbefales her</div>
+              <div className="text-sm text-danger">
+                {mode === "due-diligence"
+                  ? "Væsentlige risikofaktorer ved køb af denne ejendom"
+                  : "Byggeri kan ikke anbefales her"}
+              </div>
             </div>
           )}
 
@@ -385,7 +443,11 @@ function AddressStep() {
           <Dialog open={showBlockerDialog} onOpenChange={setShowBlockerDialog}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Byggeri kan ikke anbefales her</DialogTitle>
+                <DialogTitle>
+                  {mode === "due-diligence"
+                    ? "Risikofaktorer ved køb"
+                    : "Byggeri kan ikke anbefales her"}
+                </DialogTitle>
               </DialogHeader>
               <ul className="space-y-3 max-h-[50vh] overflow-y-auto">
                 {hardBlockers.map((b: ComplianceFlag) => (
@@ -415,7 +477,9 @@ function AddressStep() {
                   onClick={() => setShowBlockerDialog(false)}
                   className="w-full rounded-md bg-accent px-4 py-2.5 font-mono text-sm text-accent-foreground hover:brightness-110"
                 >
-                  Gå tilbage og vælg anden adresse
+                  {mode === "due-diligence"
+                    ? "Gå tilbage og vælg anden ejendom"
+                    : "Gå tilbage og vælg anden adresse"}
                 </button>
                 {anyDispensationPossible && (
                   <button
@@ -432,13 +496,11 @@ function AddressStep() {
             </DialogContent>
           </Dialog>
 
-
-
           {/* Spring over: fortsæt uden adresse */}
           <button
             type="button"
             onClick={() => {
-              setAddress(null as never);
+              setAddress(null);
               navigate({ to: "/projekt/boligoenske" });
             }}
             className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"

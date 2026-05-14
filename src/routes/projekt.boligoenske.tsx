@@ -525,8 +525,8 @@ function ByggeoenskeStep() {
     }
 
     if (isLast) {
-      syncPatch({ byggeoenske, currentStep: "ejendom" });
-      navigate({ to: "/projekt/ejendom" });
+      syncPatch({ byggeoenske, currentStep: "byggeanalyse" });
+      navigate({ to: "/projekt/byggeanalyse" });
       return;
     }
     setDirection(1);
@@ -589,8 +589,8 @@ function ByggeoenskeStep() {
 
   const devBypass = () => {
     setByggeoenske(MOCK_BYGGEOENSKE);
-    syncPatch({ byggeoenske: MOCK_BYGGEOENSKE, currentStep: "ejendom" });
-    navigate({ to: "/projekt/ejendom" });
+    syncPatch({ byggeoenske: MOCK_BYGGEOENSKE, currentStep: "byggeanalyse" });
+    navigate({ to: "/projekt/byggeanalyse" });
   };
 
   if (showSummary) {
@@ -598,8 +598,8 @@ function ByggeoenskeStep() {
       <SummaryView
         byggeoenske={byggeoenske}
         onSkip={() => {
-          syncPatch({ byggeoenske, currentStep: "ejendom" });
-          navigate({ to: "/projekt/ejendom" });
+          syncPatch({ byggeoenske, currentStep: "byggeanalyse" });
+          navigate({ to: "/projekt/byggeanalyse" });
         }}
         onEdit={() => setShowSummary(false)}
       />

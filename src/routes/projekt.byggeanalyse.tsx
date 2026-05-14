@@ -198,6 +198,8 @@ function ComplianceStep() {
 
 function ComplianceContent() {
   const navigate = useNavigate();
+  const mode =
+    sessionStorage.getItem("projectMode") === "due-diligence" ? "due-diligence" : "design";
   const {
     address,
     bbrData,
@@ -226,7 +228,9 @@ function ComplianceContent() {
   const [saveLocal, setSaveLocal] = useState<SaveData | null>(null);
   const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
   const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
-  const [fbbDataLocal, setFbbDataLocal] = useState<import("@/integrations/fbb/client").FbbResultat | null>(null);
+  const [fbbDataLocal, setFbbDataLocal] = useState<
+    import("@/integrations/fbb/client").FbbResultat | null
+  >(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const reanalyseDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -407,7 +411,9 @@ function ComplianceContent() {
 
   return (
     <PageTransition>
-      <div className={`mx-auto px-6 py-10 ${status === "done" ? "max-w-[1400px]" : "max-w-[720px]"}`}>
+      <div
+        className={`mx-auto px-6 py-10 ${status === "done" ? "max-w-[1400px]" : "max-w-[720px]"}`}
+      >
         <div className="mb-6">
           <BackLink to="/projekt/boligoenske" />
         </div>
@@ -440,6 +446,7 @@ function ComplianceContent() {
             naboer={naboerLocal}
             isRecomputing={isRecomputing}
             onPatched={triggerReanalyse}
+            mode={mode}
             onContinue={() => navigate({ to: "/projekt/oekonomi" })}
           />
         )}
@@ -520,6 +527,7 @@ function ResultView({
   fjernvarme,
   naboer,
   isRecomputing,
+  mode,
   onPatched,
   onContinue,
 }: {
@@ -537,9 +545,11 @@ function ResultView({
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
   isRecomputing: boolean;
+  mode: "due-diligence" | "design";
   onPatched: () => void;
   onContinue: () => void;
 }) {
+  const navigate = useNavigate();
   const harData = data.beregning_mulig;
   const erBolig = data.anvendelseskode
     ? ["110", "120", "121", "122", "130", "131", "140", "190"].includes(data.anvendelseskode)
@@ -567,6 +577,30 @@ function ResultView({
       transition={{ duration: 0.4 }}
     >
       <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
+
+      {/* Due-diligence mode banner */}
+      {mode === "due-diligence" && (
+        <div className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3">
+          <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-300/80 leading-relaxed">
+            <span className="font-mono text-amber-400 tracking-[0.1em]">
+              DUE DILIGENCE-TILSTAND
+            </span>{" "}
+            — Du vurderer denne ejendom til køb. Alle risikoflag er vejledende og erstatter ikke
+            professionel byggerådgivning.{" "}
+            <button
+              type="button"
+              onClick={() => {
+                sessionStorage.setItem("projectMode", "design");
+                navigate({ to: "/projekt/byggeanalyse" });
+              }}
+              className="underline hover:text-amber-200 transition-colors"
+            >
+              Skift til design-tilstand
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Cockpit — 3-kolonne dashboard */}
       <div className="mb-8">
@@ -767,12 +801,20 @@ function ResultView({
       >
         Fortsæt til Økonomi →
       </button>
-      <Link
-        to="/projekt/datacheck"
-        className="mt-3 w-full inline-flex items-center justify-center rounded-md border border-border bg-transparent px-6 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"
-      >
-        Se projektparathed →
-      </Link>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <Link
+          to="/projekt/datacheck"
+          className="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"
+        >
+          Projektparathed →
+        </Link>
+        <Link
+          to="/projekt/ejendom"
+          className="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"
+        >
+          Ejendomsdetaljer →
+        </Link>
+      </div>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
       </p>
