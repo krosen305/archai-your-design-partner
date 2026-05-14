@@ -33,12 +33,13 @@ import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch } from "@/lib/project-sync";
-import { Cockpit } from "@/components/byggeanalyse/cockpit";
+import { Cockpit } from "@/components/cockpit";
+import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
+import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Server function – cache-first orchestration (ARCH-46).
-// ARCH-91: server-side auth via session token i request body.
-// Klienten henter session.access_token og passer det som `token`-felt.
+// Server functions
 // ---------------------------------------------------------------------------
 
 const analysisInputSchema = z.object({
@@ -80,7 +81,6 @@ const runByggeanalyse = createServerFn({ method: "POST" })
 
     const { token: _token, ...analysisInput } = data;
 
-    // Regelkerne — deterministisk fase (ARCH-109)
     let ruleEngineResult: import("@/lib/rule-engine/types").RuleEngineResult | undefined;
     try {
       const { assembleRuleEngineInput } = await import("@/lib/rule-engine/input-assembler");
@@ -115,11 +115,17 @@ const runByggeanalyse = createServerFn({ method: "POST" })
 // Route
 // ---------------------------------------------------------------------------
 
-export const Route = createFileRoute("/projekt/byggeanalyse")({
-  component: ComplianceStep,
+export const Route = createFileRoute("/projekt/$id/cockpit")({
+  component: CockpitPage,
 });
 
-const ROWS = [
+// ---------------------------------------------------------------------------
+// Cockpit tab type
+// ---------------------------------------------------------------------------
+
+type CockpitTab = "analyse" | "ejendom" | "oekonomi";
+
+const LOADING_ROWS = [
   { icon: FileText, label: "Henter BBR-data", durationMs: 800 },
   { icon: ScrollText, label: "Læser bygningsregister", durationMs: 1600 },
   { icon: Map, label: "Henter lokalplandata", durationMs: 2000 },
@@ -128,7 +134,12 @@ const ROWS = [
 
 type Status = "loading" | "done" | "error";
 
-function ComplianceStep() {
+// ---------------------------------------------------------------------------
+// Auth wrapper
+// ---------------------------------------------------------------------------
+
+function CockpitPage() {
+  const { id } = Route.useParams();
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -152,13 +163,13 @@ function ComplianceStep() {
       <PageTransition>
         <div className="mx-auto max-w-[560px] px-6 py-16">
           <div className="mb-6">
-            <BackLink to="/projekt/ejendom" />
+            <BackLink to="/projekt/adresse" />
           </div>
           <Card className="text-center">
             <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
               LOGIN PÅKRÆVET
             </div>
-            <h2 className="text-xl text-foreground mb-2">Byggeanalyse kræver konto</h2>
+            <h2 className="text-xl text-foreground mb-2">Cockpit kræver konto</h2>
             <p className="text-sm text-muted-foreground mb-6">
               Vi henter data fra BBR og Plandata til din analyse. Opret en gratis konto for at
               fortsætte.
@@ -193,13 +204,24 @@ function ComplianceStep() {
     );
   }
 
-  return <ComplianceContent />;
+  return <CockpitContent adresseId={id} />;
 }
 
-function ComplianceContent() {
+// ---------------------------------------------------------------------------
+// Main cockpit content
+// ---------------------------------------------------------------------------
+
+function CockpitContent({ adresseId }: { adresseId: string }) {
   const navigate = useNavigate();
-  const mode =
-    sessionStorage.getItem("projectMode") === "due-diligence" ? "due-diligence" : "design";
+  const [activeTab, setActiveTab] = useState<CockpitTab>("analyse");
+  const [mode, setMode] = useState<"due-diligence" | "design">("design");
+
+  useEffect(() => {
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("projectMode") === "due-diligence") {
+      setMode("due-diligence");
+    }
+  }, []);
+
   const {
     address,
     bbrData,
@@ -234,7 +256,6 @@ function ComplianceContent() {
   const [isRecomputing, setIsRecomputing] = useState(false);
   const reanalyseDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounced re-run af AI byggeanalyse — kaldes når brugeren ændrer byggeønsker i Cockpit
   const triggerReanalyse = useCallback(() => {
     if (!bbrData || !address) return;
     if (reanalyseDebounce.current) clearTimeout(reanalyseDebounce.current);
@@ -265,7 +286,7 @@ function ComplianceContent() {
         });
         setByggeanalyseResultat(analyse);
       } catch (e) {
-        console.warn("[Byggeanalyse] re-analyse fejlede:", e);
+        console.warn("[Cockpit] re-analyse fejlede:", e);
       } finally {
         setIsRecomputing(false);
       }
@@ -279,8 +300,7 @@ function ComplianceContent() {
     }
 
     if (!address?.adresseid) {
-      setFetchError("Ingen adresse valgt – gå tilbage og vælg en adresse.");
-      setStatus("error");
+      navigate({ to: "/projekt/adresse" });
       return;
     }
 
@@ -294,7 +314,7 @@ function ComplianceContent() {
       if (!session) {
         const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
         setTimeout(() => {
-          setFetchError("Login krævet – log ind for at hente byggeanalyse.");
+          setFetchError("Login krævet – log ind for at hente analyse.");
           setStatus("error");
         }, remaining);
         return;
@@ -346,7 +366,6 @@ function ComplianceContent() {
             currentStep: "byggeanalyse",
           });
 
-          // Kør AI byggeanalyse hvis brugeren har udfyldt byggeønsker (ARCH-83)
           const harByggeoenskeData = Object.values(byggeoenske).some((v) => v !== undefined);
           if (harByggeoenskeData) {
             const lokalplanNavn =
@@ -372,7 +391,6 @@ function ComplianceContent() {
             })
               .then((analyse) => {
                 setByggeanalyseResultat(analyse);
-                // Opdater compliance flags med regelkerne-violations (ARCH-109)
                 if (analyse.ruleEngine) {
                   const updatedFlags = deriveComplianceFlags(
                     result.bbr,
@@ -386,7 +404,7 @@ function ComplianceContent() {
                 }
               })
               .catch((e: unknown) =>
-                console.warn("[Byggeanalyse] AI analyse fejlede (ikke kritisk):", e),
+                console.warn("[Cockpit] AI analyse fejlede (ikke kritisk):", e),
               );
           }
 
@@ -400,7 +418,7 @@ function ComplianceContent() {
           setTimeout(() => {
             setFetchError(
               msg.startsWith("ArchAI: manglende")
-                ? msg // vis validateEnv()-fejl direkte så det er tydeligt hvad der mangler
+                ? msg
                 : "BBR-data kunne ikke hentes. Prøv igen.",
             );
             setStatus("error");
@@ -415,9 +433,11 @@ function ComplianceContent() {
         className={`mx-auto px-6 py-10 ${status === "done" ? "max-w-[1400px]" : "max-w-[720px]"}`}
       >
         <div className="mb-6">
-          <BackLink to="/projekt/boligoenske" />
+          <BackLink to="/projekt/adresse" />
         </div>
+
         {status === "loading" && <LoadingView />}
+
         {status === "error" && (
           <ErrorView
             message={fetchError ?? "Ukendt fejl."}
@@ -429,38 +449,100 @@ function ComplianceContent() {
             }}
           />
         )}
+
         {status === "done" && bbrData && (
-          <ResultView
-            adresse={address?.adresse ?? ""}
-            data={bbrData}
-            lokalplaner={lokalplanerLocal}
-            byggeanalyse={byggeanalyseResultat}
-            metrics={complianceMetrics}
-            fbbData={fbbDataLocal}
-            vurderingData={vurderingData}
-            geusRisk={geusRiskLocal}
-            servitutter={servitutterLocal}
-            terrain={terrainLocal}
-            save={saveLocal}
-            fjernvarme={fjernvarmeLocal}
-            naboer={naboerLocal}
-            isRecomputing={isRecomputing}
-            onPatched={triggerReanalyse}
-            mode={mode}
-            onContinue={() => navigate({ to: "/projekt/oekonomi" })}
-          />
+          <>
+            {/* Due-diligence banner */}
+            {mode === "due-diligence" && (
+              <div className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3">
+                <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-300/80 leading-relaxed">
+                  <span className="font-mono text-amber-400 tracking-[0.1em]">
+                    DUE DILIGENCE-TILSTAND
+                  </span>{" "}
+                  — Du vurderer denne ejendom til køb. Alle risikoflag er vejledende og erstatter
+                  ikke professionel byggerådgivning.{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sessionStorage.setItem("projectMode", "design");
+                      setMode("design");
+                    }}
+                    className="underline hover:text-amber-200 transition-colors"
+                  >
+                    Skift til design-tilstand
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab navigation */}
+            <div className="flex gap-1 mb-6 border-b border-border/40">
+              {(
+                [
+                  { id: "analyse", label: "ANALYSE" },
+                  { id: "ejendom", label: "EJENDOM" },
+                  { id: "oekonomi", label: "ØKONOMI" },
+                ] as { id: CockpitTab; label: string }[]
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "px-4 py-2 font-mono text-[11px] tracking-[0.15em] border-b-2 transition-colors -mb-px",
+                    activeTab === tab.id
+                      ? "border-accent text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            {activeTab === "analyse" && (
+              <AnalyseTab
+                adresse={address?.adresse ?? ""}
+                data={bbrData}
+                lokalplaner={lokalplanerLocal}
+                byggeanalyse={byggeanalyseResultat}
+                metrics={complianceMetrics}
+                fbbData={fbbDataLocal}
+                vurderingData={vurderingData}
+                geusRisk={geusRiskLocal}
+                servitutter={servitutterLocal}
+                terrain={terrainLocal}
+                save={saveLocal}
+                fjernvarme={fjernvarmeLocal}
+                naboer={naboerLocal}
+                isRecomputing={isRecomputing}
+                onPatched={triggerReanalyse}
+                onShowEjendom={() => setActiveTab("ejendom")}
+                onShowOekonomi={() => setActiveTab("oekonomi")}
+              />
+            )}
+
+            {activeTab === "ejendom" && <EjendomPanel />}
+
+            {activeTab === "oekonomi" && <OekonomiPanel />}
+          </>
         )}
       </div>
     </PageTransition>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Loading & error views
+// ---------------------------------------------------------------------------
+
 function LoadingView() {
   return (
     <div>
       <h1 className="font-mono text-[28px] mb-8">Analyserer adresse...</h1>
       <Card className="space-y-5">
-        {ROWS.map((r) => (
+        {LOADING_ROWS.map((r) => (
           <ProgressRow key={r.label} {...r} />
         ))}
       </Card>
@@ -512,7 +594,11 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
   );
 }
 
-function ResultView({
+// ---------------------------------------------------------------------------
+// Analyse tab
+// ---------------------------------------------------------------------------
+
+function AnalyseTab({
   adresse,
   data,
   lokalplaner,
@@ -527,9 +613,9 @@ function ResultView({
   fjernvarme,
   naboer,
   isRecomputing,
-  mode,
   onPatched,
-  onContinue,
+  onShowEjendom,
+  onShowOekonomi,
 }: {
   adresse: string;
   data: BbrKompliantData;
@@ -545,18 +631,16 @@ function ResultView({
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
   isRecomputing: boolean;
-  mode: "due-diligence" | "design";
   onPatched: () => void;
-  onContinue: () => void;
+  onShowEjendom: () => void;
+  onShowOekonomi: () => void;
 }) {
-  const navigate = useNavigate();
   const harData = data.beregning_mulig;
   const erBolig = data.anvendelseskode
     ? ["110", "120", "121", "122", "130", "131", "140", "190"].includes(data.anvendelseskode)
     : false;
   const harErhverv = data.anvendelseskode ? ["321", "322"].includes(data.anvendelseskode) : false;
 
-  // Adskil vedtagne lokalplaner fra forslag
   const vedtagne = lokalplaner.filter(
     (p) =>
       !p.status ||
@@ -577,30 +661,6 @@ function ResultView({
       transition={{ duration: 0.4 }}
     >
       <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
-
-      {/* Due-diligence mode banner */}
-      {mode === "due-diligence" && (
-        <div className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3">
-          <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-300/80 leading-relaxed">
-            <span className="font-mono text-amber-400 tracking-[0.1em]">
-              DUE DILIGENCE-TILSTAND
-            </span>{" "}
-            — Du vurderer denne ejendom til køb. Alle risikoflag er vejledende og erstatter ikke
-            professionel byggerådgivning.{" "}
-            <button
-              type="button"
-              onClick={() => {
-                sessionStorage.setItem("projectMode", "design");
-                navigate({ to: "/projekt/byggeanalyse" });
-              }}
-              className="underline hover:text-amber-200 transition-colors"
-            >
-              Skift til design-tilstand
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Cockpit — 3-kolonne dashboard */}
       <div className="mb-8">
@@ -707,7 +767,6 @@ function ResultView({
         </Card>
       )}
 
-      {/* Lokalplan-sektion */}
       {lokalplaner.length > 0 ? (
         <Card className="mb-4">
           <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
@@ -781,25 +840,20 @@ function ResultView({
       )}
 
       {save && <SaveSektion data={save} />}
-
       {geusRisk && <GeusRisikoSektion data={geusRisk} />}
-
       {terrain && <TerrainSektion data={terrain} />}
-
       {servitutter && servitutter.servitutter.length > 0 && (
         <ServitutterSektion data={servitutter} />
       )}
-
       {fjernvarme && <FjernvarmeSektion data={fjernvarme} />}
-
       {naboer && naboer.count > 0 && <NaboerSektion data={naboer} />}
 
       <button
         data-testid="compliance-continue"
-        onClick={onContinue}
+        onClick={onShowOekonomi}
         className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
       >
-        Fortsæt til Økonomi →
+        Vis Økonomi →
       </button>
       <div className="mt-3 grid grid-cols-2 gap-3">
         <Link
@@ -808,12 +862,12 @@ function ResultView({
         >
           Projektparathed →
         </Link>
-        <Link
-          to="/projekt/ejendom"
+        <button
+          onClick={onShowEjendom}
           className="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"
         >
           Ejendomsdetaljer →
-        </Link>
+        </button>
       </div>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
         AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
@@ -821,6 +875,10 @@ function ResultView({
     </motion.div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Detail section components
+// ---------------------------------------------------------------------------
 
 function FjernvarmeSektion({ data }: { data: FjernvarmeResultat }) {
   const badge =

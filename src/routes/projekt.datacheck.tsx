@@ -194,7 +194,7 @@ function DatacheckPage() {
     <PageTransition>
       <div className="mx-auto max-w-[800px] px-6 py-10">
         <div className="mb-6">
-          <BackLink to="/projekt/byggeanalyse" />
+          <BackLink to="/projekt/adresse" />
         </div>
 
         <div className="mb-1 font-mono text-[10px] tracking-[0.15em] text-muted-foreground">

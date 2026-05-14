@@ -13,22 +13,25 @@ bunx eslint .                                  # Lint
 bunx prettier --write .                        # Format
 ```
 
-## Wizard routes (`src/routes/`)
+## Cockpit architecture (`src/routes/`)
 
 ```
-/                        → index.tsx
-/projekt/start           → projekt.start.tsx
-/projekt/adresse         → projekt.adresse.tsx       (GSearch autocomplete)
-/projekt/boligoenske     → projekt.boligoenske.tsx   (22-trins byggeønsker + billedupload)
-/projekt/ejendom         → projekt.ejendom.tsx       (ejendomsdata)
-/projekt/byggeanalyse    → projekt.byggeanalyse.tsx  (BBR+Plandata pipeline + AI analyse)
-/projekt/datacheck       → projekt.datacheck.tsx     (projektparathed — manuelle datapunkter)
-/projekt/oekonomi        → projekt.oekonomi.tsx
-/projekt/teknik          → projekt.teknik.tsx
-/projekt/udbud           → projekt.udbud.tsx
+/                              → index.tsx
+/projekt/start                 → projekt.start.tsx
+/projekt/adresse               → projekt.adresse.tsx           (GSearch autocomplete + pre-check)
+/projekt/$id/cockpit           → projekt.$id.cockpit.tsx       (Cockpit — Single Source of Truth)
+/projekt/datacheck             → projekt.datacheck.tsx         (projektparathed — manuelle datapunkter)
+/projekt/teknik                → projekt.teknik.tsx
+/projekt/udbud                 → projekt.udbud.tsx
 ```
 
-Flow: adresse → boligoenske → byggeanalyse (auto-kører BBR+Plandata+AI) → … (`/projekt/ejendom` er optional detail-panel nået fra cockpit)
+Flow: adresse → `/projekt/{adresseid}/cockpit` (auto-kører BBR+Plandata+AI, byggeønsker i venstre panel)
+
+Cockpit-moduler (tabs i `projekt.$id.cockpit.tsx`):
+- **ANALYSE** — 3-kolonne dashboard (Design | Matrikel | Compliance) + AI byggeanalyse + lokalplaner + sektioner
+- **EJENDOM** — ejendomsdata, plangrænser, compliance flags (`src/components/cockpit/EjendomPanel.tsx`)
+- **ØKONOMI** — VUR-data, finansieringsgrundlag (`src/components/cockpit/OekonomiPanel.tsx`)
+
 Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis-orchestrator.ts` → cache i Supabase `address_analysis` (key: `adresseid`).
 
 ## Kritiske regler

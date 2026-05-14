@@ -2,7 +2,7 @@ import { useProject } from "@/lib/project-store";
 
 export type PhaseStatus = "complete" | "active" | "locked" | "error";
 
-export type PhaseId = 1 | 2 | 3 | 4 | 5;
+export type PhaseId = 1 | 2 | 3 | 4;
 
 export type Phase = {
   id: PhaseId;
@@ -18,31 +18,24 @@ export const PHASES: Phase[] = [
     label: "GRUNDLAGET",
     shortLabel: "Grundlaget",
     route: "/projekt/adresse",
-    description: "Adresse, byggeønske & ejendom",
+    description: "Adresse & ejendomsdata",
   },
   {
     id: 2,
-    label: "BYGGEANALYSE",
-    shortLabel: "Byggeanalyse",
-    route: "/projekt/byggeanalyse",
-    description: "Lokalplan & krav",
+    label: "COCKPIT",
+    shortLabel: "Cockpit",
+    route: "/projekt/cockpit",
+    description: "Analyse, design & økonomi",
   },
   {
     id: 3,
-    label: "ØKONOMI",
-    shortLabel: "Økonomi",
-    route: "/projekt/oekonomi",
-    description: "Bank & forsikring",
-  },
-  {
-    id: 4,
     label: "TEKNIK",
     shortLabel: "Teknik",
     route: "/projekt/teknik",
     description: "BR18 & statik",
   },
   {
-    id: 5,
+    id: 4,
     label: "UDBUD",
     shortLabel: "Udbud",
     route: "/projekt/udbud",
@@ -50,15 +43,14 @@ export const PHASES: Phase[] = [
   },
 ];
 
-const PHASE_1_ROUTES = ["/projekt/start", "/projekt/adresse", "/projekt/boligoenske"];
+const PHASE_1_ROUTES = ["/projekt/start", "/projekt/adresse"];
 
 /** Hvilken fase en given route hører til (null hvis ingen). */
 export function phaseForRoute(pathname: string): PhaseId | null {
   if (PHASE_1_ROUTES.includes(pathname)) return 1;
-  if (pathname === "/projekt/byggeanalyse") return 2;
-  if (pathname === "/projekt/oekonomi") return 3;
-  if (pathname === "/projekt/teknik") return 4;
-  if (pathname === "/projekt/udbud") return 5;
+  if (/^\/projekt\/[^/]+\/cockpit$/.test(pathname)) return 2;
+  if (pathname === "/projekt/teknik") return 3;
+  if (pathname === "/projekt/udbud") return 4;
   return null;
 }
 
@@ -72,7 +64,6 @@ export function usePhaseStates(currentPath: string): PhaseStateMap {
     2: complianceDone && !!bbrData,
     3: false,
     4: false,
-    5: false,
   };
 
   const activePhase = phaseForRoute(currentPath);
@@ -96,15 +87,14 @@ export function usePhaseSubKeys(): Record<PhaseId, { label: string; value: strin
   return {
     1: [
       { label: "Adresse", value: address?.adresse?.split(",")[0] ?? "—" },
-      { label: "Byggeønske", value: husDna ? "Udfyldt" : "—" },
       { label: "Ejendom", value: bbrData ? "Hentet" : "—" },
     ],
     2: [
       { label: "BBR", value: bbrData ? "Hentet" : "—" },
       { label: "Lokalplan", value: bbrData ? "Tjekket" : "—" },
+      { label: "Byggeønske", value: husDna ? "Udfyldt" : "—" },
     ],
     3: [],
     4: [],
-    5: [],
   };
 }

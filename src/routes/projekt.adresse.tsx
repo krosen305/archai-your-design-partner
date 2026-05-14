@@ -7,6 +7,7 @@ import { useProject, type ComplianceFlag, type Address } from "@/lib/project-sto
 type ProjectMode = "due-diligence" | "design";
 
 function getProjectMode(): ProjectMode {
+  if (typeof sessionStorage === "undefined") return "design";
   return sessionStorage.getItem("projectMode") === "due-diligence" ? "due-diligence" : "design";
 }
 
@@ -427,7 +428,7 @@ function AddressStep() {
           ) : (
             <button
               disabled={!selected || isCheckingCompliance}
-              onClick={() => navigate({ to: "/projekt/boligoenske" })}
+              onClick={() => navigate({ to: `/projekt/${selected?.adresseid}/cockpit` as never })}
               className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-md px-6 py-3 font-mono text-sm transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed ${
                 hasSoft && !overrideContinue
                   ? "bg-yellow-500 text-black"
@@ -501,7 +502,7 @@ function AddressStep() {
             type="button"
             onClick={() => {
               setAddress(null);
-              navigate({ to: "/projekt/boligoenske" });
+              navigate({ to: "/projekt/adresse" });
             }}
             className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
           >
@@ -517,7 +518,7 @@ function AddressStep() {
                 type="button"
                 onClick={() => {
                   setAddress(MOCK_ADRESSE);
-                  navigate({ to: "/projekt/boligoenske" });
+                  navigate({ to: `/projekt/${MOCK_ADRESSE.adresseid}/cockpit` as never });
                 }}
                 className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-accent/40 bg-accent/5 px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-accent hover:bg-accent/10 transition-colors"
               >

@@ -145,13 +145,7 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
   );
 }
 
-const STEP_TO_ROUTE: Record<string, string> = {
-  adresse: "/projekt/adresse",
-  boligoenske: "/projekt/boligoenske",
-  ejendom: "/projekt/byggeanalyse",
-  byggeanalyse: "/projekt/byggeanalyse",
-  oekonomi: "/projekt/oekonomi",
-};
+const COCKPIT_STEPS = new Set(["boligoenske", "ejendom", "byggeanalyse", "oekonomi"]);
 
 function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   const navigate = useNavigate();
@@ -166,10 +160,13 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
 
   const handleFortsaet = () => {
     setCurrentProjectId(projekt.id);
-    const route =
-      (projekt.current_step && STEP_TO_ROUTE[projekt.current_step]) ??
-      (harAdresse ? "/projekt/boligoenske" : "/projekt/adresse");
-    navigate({ to: route });
+    if (harAdresse && projekt.adresse_dar_id && (COCKPIT_STEPS.has(projekt.current_step ?? "") || projekt.compliance_done)) {
+      navigate({ to: `/projekt/${projekt.adresse_dar_id}/cockpit` as never });
+    } else if (harAdresse) {
+      navigate({ to: "/projekt/adresse" });
+    } else {
+      navigate({ to: "/projekt/adresse" });
+    }
   };
 
   const fremskridt = projekt.compliance_done

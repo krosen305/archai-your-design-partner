@@ -13,12 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjektUdbudRouteImport } from './routes/projekt.udbud'
 import { Route as ProjektTeknikRouteImport } from './routes/projekt.teknik'
 import { Route as ProjektStartRouteImport } from './routes/projekt.start'
-import { Route as ProjektOekonomiRouteImport } from './routes/projekt.oekonomi'
-import { Route as ProjektEjendomRouteImport } from './routes/projekt.ejendom'
 import { Route as ProjektDatacheckRouteImport } from './routes/projekt.datacheck'
-import { Route as ProjektByggeanalyseRouteImport } from './routes/projekt.byggeanalyse'
-import { Route as ProjektBoligoenskeRouteImport } from './routes/projekt.boligoenske'
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
+import { Route as ProjektIdCockpitRouteImport } from './routes/projekt.$id.cockpit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,29 +37,9 @@ const ProjektStartRoute = ProjektStartRouteImport.update({
   path: '/projekt/start',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjektOekonomiRoute = ProjektOekonomiRouteImport.update({
-  id: '/projekt/oekonomi',
-  path: '/projekt/oekonomi',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjektEjendomRoute = ProjektEjendomRouteImport.update({
-  id: '/projekt/ejendom',
-  path: '/projekt/ejendom',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProjektDatacheckRoute = ProjektDatacheckRouteImport.update({
   id: '/projekt/datacheck',
   path: '/projekt/datacheck',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjektByggeanalyseRoute = ProjektByggeanalyseRouteImport.update({
-  id: '/projekt/byggeanalyse',
-  path: '/projekt/byggeanalyse',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjektBoligoenskeRoute = ProjektBoligoenskeRouteImport.update({
-  id: '/projekt/boligoenske',
-  path: '/projekt/boligoenske',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
@@ -70,94 +47,78 @@ const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
   path: '/projekt/adresse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
+  id: '/projekt/$id/cockpit',
+  path: '/projekt/$id/cockpit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
-  '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
-  '/projekt/ejendom': typeof ProjektEjendomRoute
-  '/projekt/oekonomi': typeof ProjektOekonomiRoute
   '/projekt/start': typeof ProjektStartRoute
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
+  '/projekt/$id/cockpit': typeof ProjektIdCockpitRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
-  '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
-  '/projekt/ejendom': typeof ProjektEjendomRoute
-  '/projekt/oekonomi': typeof ProjektOekonomiRoute
   '/projekt/start': typeof ProjektStartRoute
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
+  '/projekt/$id/cockpit': typeof ProjektIdCockpitRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
-  '/projekt/boligoenske': typeof ProjektBoligoenskeRoute
-  '/projekt/byggeanalyse': typeof ProjektByggeanalyseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
-  '/projekt/ejendom': typeof ProjektEjendomRoute
-  '/projekt/oekonomi': typeof ProjektOekonomiRoute
   '/projekt/start': typeof ProjektStartRoute
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
+  '/projekt/$id/cockpit': typeof ProjektIdCockpitRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/projekt/adresse'
-    | '/projekt/boligoenske'
-    | '/projekt/byggeanalyse'
     | '/projekt/datacheck'
-    | '/projekt/ejendom'
-    | '/projekt/oekonomi'
     | '/projekt/start'
     | '/projekt/teknik'
     | '/projekt/udbud'
+    | '/projekt/$id/cockpit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/projekt/adresse'
-    | '/projekt/boligoenske'
-    | '/projekt/byggeanalyse'
     | '/projekt/datacheck'
-    | '/projekt/ejendom'
-    | '/projekt/oekonomi'
     | '/projekt/start'
     | '/projekt/teknik'
     | '/projekt/udbud'
+    | '/projekt/$id/cockpit'
   id:
     | '__root__'
     | '/'
     | '/projekt/adresse'
-    | '/projekt/boligoenske'
-    | '/projekt/byggeanalyse'
     | '/projekt/datacheck'
-    | '/projekt/ejendom'
-    | '/projekt/oekonomi'
     | '/projekt/start'
     | '/projekt/teknik'
     | '/projekt/udbud'
+    | '/projekt/$id/cockpit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjektAdresseRoute: typeof ProjektAdresseRoute
-  ProjektBoligoenskeRoute: typeof ProjektBoligoenskeRoute
-  ProjektByggeanalyseRoute: typeof ProjektByggeanalyseRoute
   ProjektDatacheckRoute: typeof ProjektDatacheckRoute
-  ProjektEjendomRoute: typeof ProjektEjendomRoute
-  ProjektOekonomiRoute: typeof ProjektOekonomiRoute
   ProjektStartRoute: typeof ProjektStartRoute
   ProjektTeknikRoute: typeof ProjektTeknikRoute
   ProjektUdbudRoute: typeof ProjektUdbudRoute
+  ProjektIdCockpitRoute: typeof ProjektIdCockpitRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -190,39 +151,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjektStartRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projekt/oekonomi': {
-      id: '/projekt/oekonomi'
-      path: '/projekt/oekonomi'
-      fullPath: '/projekt/oekonomi'
-      preLoaderRoute: typeof ProjektOekonomiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projekt/ejendom': {
-      id: '/projekt/ejendom'
-      path: '/projekt/ejendom'
-      fullPath: '/projekt/ejendom'
-      preLoaderRoute: typeof ProjektEjendomRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/projekt/datacheck': {
       id: '/projekt/datacheck'
       path: '/projekt/datacheck'
       fullPath: '/projekt/datacheck'
       preLoaderRoute: typeof ProjektDatacheckRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projekt/byggeanalyse': {
-      id: '/projekt/byggeanalyse'
-      path: '/projekt/byggeanalyse'
-      fullPath: '/projekt/byggeanalyse'
-      preLoaderRoute: typeof ProjektByggeanalyseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projekt/boligoenske': {
-      id: '/projekt/boligoenske'
-      path: '/projekt/boligoenske'
-      fullPath: '/projekt/boligoenske'
-      preLoaderRoute: typeof ProjektBoligoenskeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projekt/adresse': {
@@ -232,20 +165,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjektAdresseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projekt/$id/cockpit': {
+      id: '/projekt/$id/cockpit'
+      path: '/projekt/$id/cockpit'
+      fullPath: '/projekt/$id/cockpit'
+      preLoaderRoute: typeof ProjektIdCockpitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjektAdresseRoute: ProjektAdresseRoute,
-  ProjektBoligoenskeRoute: ProjektBoligoenskeRoute,
-  ProjektByggeanalyseRoute: ProjektByggeanalyseRoute,
   ProjektDatacheckRoute: ProjektDatacheckRoute,
-  ProjektEjendomRoute: ProjektEjendomRoute,
-  ProjektOekonomiRoute: ProjektOekonomiRoute,
   ProjektStartRoute: ProjektStartRoute,
   ProjektTeknikRoute: ProjektTeknikRoute,
   ProjektUdbudRoute: ProjektUdbudRoute,
+  ProjektIdCockpitRoute: ProjektIdCockpitRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

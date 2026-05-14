@@ -12,7 +12,7 @@ export const Route = createFileRoute("/projekt/teknik")({
         "Energiramme & BR18-compliance",
         "Tegningsmateriale til byggetilladelse",
       ]}
-      backTo="/projekt/oekonomi"
+      backTo="/projekt/adresse"
     />
   ),
 });

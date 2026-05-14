@@ -29,7 +29,7 @@ import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Cockpit — 3-kolonne dashboard for byggeanalyse
+// Cockpit — 3-kolonne dashboard
 // ---------------------------------------------------------------------------
 
 export type CockpitProps = {
@@ -83,9 +83,6 @@ function ByggeoenskeAccordion({ onPatched }: { onPatched: () => void }) {
   const { byggeoenske, setByggeoenske } = useProject();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounced patch: opdater store straks (UI reaktiv) — vent 500ms før sync + re-analyse.
-  // computePartialUpdate kører øjeblikkeligt client-side (ingen API-kald) så Gauge-felterne
-  // opdateres i realtid mens brugeren justerer byggeønsker.
   const patch = (partial: Partial<Byggeoenske>) => {
     setByggeoenske(partial);
 
@@ -217,7 +214,6 @@ function ChoiceField({
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
-  // Render as a compact native-style select so accordion stays scannable
   const selected = options.find((o) => o.value === value);
   return (
     <div className="relative">
@@ -416,7 +412,6 @@ function MatrikelCanvas({
       ? (oensket ?? eksisterende ?? 0)
       : samlet || eksisterende || 0;
 
-  // Antag kvadratisk grund for visualisering
   const grundSide = grundareal ? Math.sqrt(grundareal) : 0;
   const husSide = husAreal ? Math.sqrt(husAreal) : 0;
 
@@ -461,7 +456,6 @@ function MatrikelCanvas({
             role="img"
             aria-label="Matrikel og husplacering"
           >
-            {/* Grid baggrund */}
             <defs>
               <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
                 <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1f1f1f" strokeWidth="0.5" />
@@ -478,7 +472,6 @@ function MatrikelCanvas({
             </defs>
             <rect width={canvasW} height={canvasH} fill="url(#grid)" />
 
-            {/* Matrikel */}
             <rect
               x={grundX}
               y={grundY}
@@ -499,7 +492,6 @@ function MatrikelCanvas({
               GRUND {Math.round(grundareal)} m²
             </text>
 
-            {/* Hus */}
             {husPx > 0 && (
               <motion.g
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -529,7 +521,6 @@ function MatrikelCanvas({
               </motion.g>
             )}
 
-            {/* Byggeret-zone (max bebyggelsesprocent ramme) */}
             {maxPct !== null &&
               grundareal &&
               (() => {
@@ -596,7 +587,6 @@ function CompliancePanel({
 }) {
   const { byggeoenske, complianceFlags } = useProject();
 
-  // Bebyggelsesprocent (live: eksisterende + ønsket areal)
   const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
   const eksisterende = bbr?.bebygget_areal ?? 0;
   const oensket = byggeoenske.oensketAreal ?? 0;
@@ -610,24 +600,20 @@ function CompliancePanel({
   const pctValue =
     beregnetPct !== null && maxPct !== null ? Math.min(100, (beregnetPct / maxPct) * 100) : 0;
 
-  // Etager
   const etager = (byggeoenske.antalEtager as number | undefined) ?? null;
   const maxEtager = metrics?.maxEtager ?? null;
   const etagerOver = etager !== null && maxEtager !== null && etager > maxEtager;
   const etagerValue = etager !== null && maxEtager ? Math.min(100, (etager / maxEtager) * 100) : 0;
 
-  // Højdegrænse: estimeret højde = etager * 3m
   const estHoejde = etager ? etager * 3 : null;
   const maxHoejde = metrics?.maxBygningshoejde ?? null;
   const hoejdeOver = maxHoejde !== null && estHoejde !== null && estHoejde > maxHoejde;
   const hoejdeValue =
     estHoejde !== null && maxHoejde !== null ? Math.min(100, (estHoejde / maxHoejde) * 100) : 0;
 
-  // Animeret total-pris-tæller
   const totalpris = useMemo(() => estimerTotalpris(byggeoenske), [byggeoenske]);
   const animatedPris = useAnimatedNumber(totalpris ?? 0, 600);
 
-  // Konflikt-tæller fra byggeanalyse
   const konflikter = byggeanalyse?.konflikt.length ?? 0;
   const dispensationer = byggeanalyse?.kraever_dispensation.length ?? 0;
 
@@ -646,7 +632,6 @@ function CompliancePanel({
           )}
         </div>
         <div className="p-4 space-y-5">
-          {/* Frednings- og SAVE-badges */}
           {bbr?.fredet && (
             <div className="flex items-center gap-2 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
               🏛️ Fredet bygning — kræver dispensation fra Slots- og Kulturstyrelsen
@@ -682,7 +667,6 @@ function CompliancePanel({
             danger={hoejdeOver}
           />
 
-          {/* Compliance flags fra preCheck + regelkerne */}
           {complianceFlags.length > 0 && (
             <div className="border-t border-border/40 pt-3 space-y-1.5">
               {complianceFlags
@@ -779,7 +763,7 @@ function CompliancePanel({
 }
 
 // ===========================================================================
-// Budget-risici — skjulte poster der glemmes i budgettet (Phase 2.5 i kunderejsen)
+// Budget-risici
 // ===========================================================================
 
 type BudgetRisiko = {
@@ -795,7 +779,6 @@ function computeBudgetRisici(
 ): BudgetRisiko[] {
   const risici: BudgetRisiko[] = [];
 
-  // Altid synlige baseline-poster som oftest glemmes
   risici.push({
     label: "Forsyningsafkobling (el, vand, kloak)",
     range: "50–150k kr",
@@ -803,7 +786,6 @@ function computeBudgetRisici(
   });
   risici.push({ label: "Geoteknik & jordbundsundersøgelse", range: "0–500k kr+", type: "info" });
 
-  // FBB bevaringsværdi 1–3 → nedrivningstilladelse kræves
   const bv = fbbData?.fbb_bedste_bygning?.bevaringsvaerdi;
   if (bv !== undefined && bv !== null && bv >= 1 && bv <= 3) {
     risici.push({
@@ -813,7 +795,6 @@ function computeBudgetRisici(
     });
   }
 
-  // MAT strandbeskyttelse → absolut byggestop
   if (bbr?.mat_strandbeskyttelse) {
     risici.push({
       label: "Strandbeskyttelseslinje — dispensation kræves",
@@ -822,7 +803,6 @@ function computeBudgetRisici(
     });
   }
 
-  // MAT fredskov
   if (bbr?.mat_fredskov) {
     risici.push({
       label: "Fredskov — skovbyggelinje",
@@ -831,7 +811,6 @@ function computeBudgetRisici(
     });
   }
 
-  // Høj bebyggelsesprocent kan indikere pælfundering-risiko
   const curPct = metrics?.currentBebyggelsesprocent;
   const maxPct = metrics?.maxBebyggelsesprocent;
   if (

@@ -1,12 +1,22 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Check, Lock } from "lucide-react";
 import { PHASES, usePhaseStates, usePhaseSubKeys } from "@/lib/phases";
+import { useProject } from "@/lib/project-store";
 
 export function PhaseSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const states = usePhaseStates(pathname);
   const subKeys = usePhaseSubKeys();
+  const { address } = useProject();
+
+  const handlePhaseClick = (phaseId: number, route: string) => {
+    if (phaseId === 2 && address?.adresseid) {
+      navigate({ to: `/projekt/${address.adresseid}/cockpit` as never });
+    } else {
+      navigate({ to: route });
+    }
+  };
 
   return (
     <aside className="hidden xl:flex w-[240px] shrink-0 flex-col border-r border-[#222] bg-[#111111] sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
@@ -18,7 +28,7 @@ export function PhaseSidebar() {
             <div key={p.id}>
               <button
                 disabled={!clickable}
-                onClick={() => clickable && navigate({ to: p.route })}
+                onClick={() => clickable && handlePhaseClick(p.id, p.route)}
                 className="flex w-full items-center gap-2.5 text-left disabled:cursor-not-allowed"
               >
                 <StatusDot status={status} />
