@@ -1,6 +1,15 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, AlertTriangle, Menu, LogOut, FolderOpen, LogIn } from "lucide-react";
-import { PHASES, usePhaseStates, usePhaseSubKeys, type PhaseStatus } from "@/lib/phases";
+import {
+  ArrowLeft,
+  Check,
+  Lock,
+  AlertTriangle,
+  Menu,
+  LogOut,
+  FolderOpen,
+  LogIn,
+} from "lucide-react";
+import { PHASES, usePhaseStates, usePhaseSubKeys, usePhaseClickable, type PhaseStatus } from "@/lib/phases";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";
@@ -17,6 +26,7 @@ export function PhaseBar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const states = usePhaseStates(pathname);
+  const allClickable = usePhaseClickable();
 
   return (
     <div className="hidden md:flex items-center gap-1.5">
@@ -26,7 +36,8 @@ export function PhaseBar() {
             id={p.id}
             label={p.label}
             status={states[p.id]}
-            onClick={() => navigate({ to: p.route })}
+            clickable={allClickable}
+            onClick={() => allClickable && navigate({ to: p.route })}
           />
           {i < PHASES.length - 1 && <span className="text-[10px] text-[#444]">→</span>}
         </div>
@@ -39,11 +50,13 @@ function PhaseChip({
   id,
   label,
   status,
+  clickable,
   onClick,
 }: {
   id: number;
   label: string;
   status: PhaseStatus;
+  clickable: boolean;
   onClick: () => void;
 }) {
   const base =
@@ -52,10 +65,7 @@ function PhaseChip({
   let cls = "";
   let icon: React.ReactNode = null;
 
-  if (status === "complete") {
-    cls = "bg-accent text-accent-foreground hover:brightness-110";
-    icon = <Check size={11} strokeWidth={2.5} />;
-  } else if (status === "active") {
+  if (status === "active") {
     cls = "border border-accent text-foreground";
     icon = (
       <span className="relative flex h-1.5 w-1.5">
@@ -63,15 +73,36 @@ function PhaseChip({
         <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
       </span>
     );
+  } else if (status === "complete") {
+    cls = clickable
+      ? "border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+      : "border border-emerald-500/50 bg-emerald-500/10 text-emerald-400";
+    icon = <Check size={11} strokeWidth={2.5} />;
+  } else if (status === "warning") {
+    cls = clickable
+      ? "border border-yellow-500/50 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20"
+      : "border border-yellow-500/50 bg-yellow-500/10 text-yellow-400";
+    icon = <AlertTriangle size={11} />;
   } else if (status === "error") {
     cls = "border border-danger text-danger";
     icon = <AlertTriangle size={11} />;
+  } else if (status === "missing") {
+    cls = clickable
+      ? "border border-[#333] text-[#777] hover:text-foreground hover:border-[#555]"
+      : "border border-[#333] text-[#555] cursor-not-allowed";
+    icon = <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#555]" />;
   } else {
-    cls = "border border-[#2a2a2a] text-[#555] hover:border-[#444] hover:text-[#888]";
+    cls = "border border-[#333] text-[#555] cursor-not-allowed";
+    icon = <Lock size={10} />;
   }
 
   return (
-    <button onClick={onClick} aria-label={`Fase ${id}: ${label}`} className={`${base} ${cls}`}>
+    <button
+      disabled={!clickable && status !== "active"}
+      onClick={onClick}
+      aria-label={`Fase ${id}: ${label}`}
+      className={`${base} ${cls}`}
+    >
       {icon}
       <span>
         FASE {id}: {label}
@@ -80,22 +111,37 @@ function PhaseChip({
   );
 }
 
-/** Mobil-collapser: vises kun <md. */
+/** Mobil-collapser: vises kun <md. Cockpit-paradigme — ingen "FASE X AF Y" tæller. */
 export function MobilePhaseBar() {
   const { pathname } = useLocation();
   const states = usePhaseStates(pathname);
-  const activePhase = PHASES.find((p) => states[p.id] === "active") ?? PHASES[0];
-  const completedCount = PHASES.filter((p) => states[p.id] === "complete").length;
-  const pct = ((completedCount + 0.5) / PHASES.length) * 100;
+  const navigate = useNavigate();
+  const allClickable = usePhaseClickable();
 
   return (
-    <div className="md:hidden flex flex-col gap-1.5 flex-1 mx-3">
-      <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground text-center">
-        FASE {activePhase.id} AF {PHASES.length} · {activePhase.label}
-      </div>
-      <div className="h-0.5 w-full overflow-hidden rounded-full bg-[#222]">
-        <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-      </div>
+    <div className="md:hidden flex items-center gap-1 flex-1 mx-3 justify-center">
+      {PHASES.map((p) => {
+        const s = states[p.id];
+        const dot =
+          s === "active"
+            ? "bg-accent ring-2 ring-accent/40"
+            : s === "complete"
+              ? "bg-emerald-500"
+              : s === "warning"
+                ? "bg-yellow-500"
+                : s === "error"
+                  ? "bg-danger"
+                  : "bg-[#444]";
+        return (
+          <button
+            key={p.id}
+            disabled={!allClickable && s !== "active"}
+            onClick={() => allClickable && navigate({ to: p.route })}
+            aria-label={`Fase ${p.id}: ${p.label}`}
+            className={`h-2.5 w-2.5 rounded-full transition-transform ${dot} ${allClickable ? "hover:scale-125" : ""}`}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -161,19 +207,21 @@ function MobileMenu() {
             <nav className="space-y-3">
               {PHASES.map((p) => {
                 const status = states[p.id];
+                const clickable = status === "complete" || status === "active";
                 return (
                   <div key={p.id}>
                     <SheetClose asChild>
                       <button
-                        onClick={() => navigate({ to: p.route })}
-                        className="flex w-full items-center gap-2 text-left"
+                        disabled={!clickable}
+                        onClick={() => clickable && navigate({ to: p.route })}
+                        className="flex w-full items-center gap-2 text-left disabled:cursor-not-allowed"
                       >
                         {status === "complete" ? (
                           <Check size={12} className="text-accent" />
                         ) : status === "active" ? (
                           <span className="inline-flex h-2 w-2 rounded-full bg-accent" />
                         ) : (
-                          <span className="inline-flex h-2 w-2 rounded-full border border-[#444]" />
+                          <Lock size={10} className="text-[#555]" />
                         )}
                         <span
                           className={`font-mono text-[11px] tracking-[0.1em] ${

@@ -670,6 +670,8 @@ function AnalyseTab({
           byggeanalyse={byggeanalyse}
           fbbData={fbbData}
           vurderingData={vurderingData}
+          geusRisk={geusRisk}
+          naboer={naboer}
           isRecomputing={isRecomputing}
           onPatched={onPatched}
         />
@@ -870,7 +872,7 @@ function AnalyseTab({
         </button>
       </div>
       <p className="mt-3 text-[10px] text-muted-foreground text-center">
-        AI-analyse er vejledende og erstatter ikke professionel byggerådgivning.
+        Naviger via fase-rail i toppen — ingen lineær wizard. AI-analyse er vejledende.
       </p>
     </motion.div>
   );

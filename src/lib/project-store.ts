@@ -164,6 +164,9 @@ type State = {
   // ARCH-130: aktiv Supabase-projekt-id — sørger for korrekt dataadskillelse ved flere projekter
   currentProjectId: string | null;
 
+  // Cockpit mode — styrer fremhævning i højre panel: risici vs muligheder
+  cockpitMode: "kob" | "design";
+
   // AI-gatekeeper: HusDnaGeneratorService genkaldes kun hvis disse felter ændres
   _lastHusDnaInput: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null;
 
@@ -191,6 +194,7 @@ type State = {
   setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
   setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
   setCurrentProjectId: (id: string | null) => void;
+  setCockpitMode: (m: "kob" | "design") => void;
   setLastHusDnaInput: (
     v: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null,
   ) => void;
@@ -225,6 +229,7 @@ export const useProject = create<State>((set) => ({
   adressePreCheck: null,
   boligoenskeValidering: null,
   currentProjectId: null,
+  cockpitMode: "design",
   _lastHusDnaInput: null,
 
   setAddress: (address) => set({ address }),
@@ -246,6 +251,7 @@ export const useProject = create<State>((set) => ({
   setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
   setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
   setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
+  setCockpitMode: (cockpitMode) => set({ cockpitMode }),
   setLastHusDnaInput: (_lastHusDnaInput) => set({ _lastHusDnaInput }),
 
   reset: () =>

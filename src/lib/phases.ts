@@ -1,6 +1,6 @@
 import { useProject } from "@/lib/project-store";
 
-export type PhaseStatus = "complete" | "active" | "locked" | "error";
+export type PhaseStatus = "complete" | "active" | "warning" | "missing" | "locked" | "error";
 
 export type PhaseId = 1 | 2 | 3 | 4;
 
@@ -56,29 +56,48 @@ export function phaseForRoute(pathname: string): PhaseId | null {
 
 export type PhaseStateMap = Record<PhaseId, PhaseStatus>;
 
+/**
+ * Status-indicators (Cockpit-paradigme):
+ *   complete = grøn (data OK)
+ *   warning  = gul (data hentet men advarsler/blockers)
+ *   missing  = grå (data ikke hentet endnu)
+ *   active   = nuværende fase
+ *
+ * Når en adresse er valgt er ALLE faser klikbare (cockpit-navigation, ikke wizard-låse).
+ */
 export function usePhaseStates(currentPath: string): PhaseStateMap {
-  const { address, husDna, complianceDone, bbrData } = useProject();
+  const { address, husDna, complianceDone, bbrData, complianceFlags } = useProject();
 
-  const completed: Record<PhaseId, boolean> = {
-    1: !!address && !!husDna,
-    2: complianceDone && !!bbrData,
-    3: false,
-    4: false,
+  const hasBlockers = complianceFlags.some((f) => f.status === "blocker");
+  const hasWarnings = complianceFlags.some((f) => f.status === "advarsel");
+
+  const statuses: Record<PhaseId, PhaseStatus> = {
+    1: address ? (husDna ? "complete" : "warning") : "missing",
+    2: complianceDone && bbrData
+      ? hasBlockers
+        ? "warning"
+        : hasWarnings
+          ? "warning"
+          : "complete"
+      : address
+        ? "missing"
+        : "missing",
+    3: "missing",
+    4: "missing",
   };
 
   const activePhase = phaseForRoute(currentPath);
-
   const map = {} as PhaseStateMap;
   for (const p of PHASES) {
-    if (activePhase === p.id) {
-      map[p.id] = "active";
-    } else if (completed[p.id]) {
-      map[p.id] = "complete";
-    } else {
-      map[p.id] = "locked";
-    }
+    map[p.id] = activePhase === p.id ? "active" : statuses[p.id];
   }
   return map;
+}
+
+/** Når en adresse er valgt, er alle faser klikbare. */
+export function usePhaseClickable(): boolean {
+  const { address } = useProject();
+  return !!address;
 }
 
 /** Sub-keys vist i sidebar pr. fase. */
