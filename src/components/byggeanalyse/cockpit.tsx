@@ -453,9 +453,11 @@ function UploadField({ value, onChange }: { value: string[]; onChange: (v: strin
 function MatrikelCanvas({
   bbr,
   metrics,
+  naboer,
 }: {
   bbr: BbrKompliantData | null;
   metrics: ComplianceMetrics | null;
+  naboer: NeighborBuildingData | null;
 }) {
   const { byggeoenske, address } = useProject();
 
