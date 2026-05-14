@@ -228,6 +228,7 @@ export const useProject = create<State>((set) => ({
   adressePreCheck: null,
   boligoenskeValidering: null,
   currentProjectId: null,
+  cockpitMode: "design",
   _lastHusDnaInput: null,
 
   setAddress: (address) => set({ address }),
