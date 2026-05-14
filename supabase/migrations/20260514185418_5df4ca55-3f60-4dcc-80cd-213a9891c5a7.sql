@@ -1,0 +1,1 @@
+ALTER TABLE public.projects ALTER COLUMN project_data_status TYPE jsonb USING project_data_status::jsonb;
