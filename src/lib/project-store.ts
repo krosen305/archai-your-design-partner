@@ -194,6 +194,7 @@ type State = {
   setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
   setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
   setCurrentProjectId: (id: string | null) => void;
+  setCockpitMode: (m: "kob" | "design") => void;
   setLastHusDnaInput: (
     v: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null,
   ) => void;
