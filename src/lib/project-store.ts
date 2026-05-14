@@ -101,6 +101,10 @@ export type Byggeoenske = {
   // Trin 21-22: Budget & inspiration
   budget?: "under-3" | "3-5" | "5-8" | "8-12" | "over-12";
   inspirationsbilleder?: string[]; // Supabase Storage URLs
+  // AI-design hero (cockpit)
+  designDroem?: string;
+  valgteDesignforslag?: string;
+  genererededDesignforslag?: string[];
 };
 
 // ---------------------------------------------------------------------------
