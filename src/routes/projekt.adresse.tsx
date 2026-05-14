@@ -236,6 +236,26 @@ function AddressStep() {
           subtitle="Vi henter automatisk bygningsdata og lokalplan."
         />
 
+        {/* Design uden grund — spring adresse over og gå direkte i cockpit */}
+        <div className="mb-6 flex items-center justify-between rounded-md border border-dashed border-accent/30 bg-accent/[0.03] px-4 py-3">
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.15em] text-accent mb-0.5">
+              UDEN GRUND
+            </div>
+            <div className="text-sm text-foreground">Vil du designe frit uden en adresse?</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Du kan altid tilføje en adresse senere for at se compliance-data.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/projekt/frit/cockpit" as never })}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-2 font-mono text-[11px] tracking-[0.12em] text-accent hover:bg-accent/20 transition-colors"
+          >
+            Design frit →
+          </button>
+        </div>
+
         {/* Mode selector */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {(
