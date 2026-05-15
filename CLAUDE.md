@@ -7,6 +7,7 @@
 ArchAI serves private homeowners navigating the Danish residential construction journey — primarily the **Nedrivning → Nybyg** path (see `docs/domain/journey-demolition-new-build.md`). The core insight: this journey is non-linear, risk-driven, and iterative, and the biggest risks are invisible until it's too late (geoteknik, fredning, strandbeskyttelse, nabopartshøring).
 
 **The four phases of The Builder's Cockpit:**
+
 1. **Sandkassen** — Inspiration → AI-constrained 3D concepts (Hus-DNA)
 2. **Matriklen** — Site analysis → all Hard Stops surfaced before purchase or design investment
 3. **Maskinrummet** — Detailed design → parametric guardrails, live compliance, BIM
@@ -17,6 +18,7 @@ ArchAI serves private homeowners navigating the Danish residential construction 
 **Unique Danish data handling:** The Compliance Engine synthesises 10+ authoritative Danish registers in a single pipeline. Each data source has legal authority weight: lokalplan overrides kommuneplan overrides BR18. Every rule violation must carry its `kilde` (bbr | plandata | servitut | sdfi | regelkerne) so users can act on the right authority.
 
 **Critical risk categories (domain knowledge):**
+
 - Geoteknik: 0 kr (good ground) to 500,000 kr+ (pile foundations) — largest single risk
 - Forsyningsafkobling: 50,000–150,000 kr (el, vand, gas, kloak) — frequently omitted from budgets
 - Nabosager: nabopartshøring can delay 4–12 weeks — early screening is essential
@@ -49,6 +51,7 @@ bunx prettier --write .                        # Format
 Flow: adresse → `/projekt/{adresseid}/cockpit` (auto-kører BBR+Plandata+AI, byggeønsker i venstre panel)
 
 Cockpit-moduler (tabs i `projekt.$id.cockpit.tsx`):
+
 - **ANALYSE** — 3-kolonne dashboard (Design | Matrikel | Compliance) + AI byggeanalyse + lokalplaner + sektioner
 - **EJENDOM** — ejendomsdata, plangrænser, compliance flags (`src/components/cockpit/EjendomPanel.tsx`)
 - **ØKONOMI** — VUR-data, finansieringsgrundlag (`src/components/cockpit/OekonomiPanel.tsx`)
@@ -84,17 +87,20 @@ suggestDesign(byggeoenske);
 
 **Rule 2 — Single Source of Truth: the `projects` table.**
 All persisted project state lives in the `projects` table. Domain-critical compliance values (bebyggelsesprocent, max etager, grundareal, SAVE-value, Hard Stop flags) must be stored as **typed Supabase columns**, not inside JSONB blobs. When adding new compliance data:
+
 - Add a typed column migration, not a JSONB field
 - Update `project-sync.ts` to write to the typed column
 - Update `project-store.ts` to read from the typed column on restore
 
 **Rule 3 — Hard Stop logic.**
 Hard Stops are non-negotiable blocking conditions. The severity ladder:
+
 - `"illegal"` — cannot be dispensed (listed building + demolition intent)
 - `"dispensation_required"` — requires approval from named authority
 - `"warning"` — advisory; design can proceed
 
 Current Hard Stop triggers (source: `src/lib/rule-engine/rules/stop-rules.ts`):
+
 - `saveValue <= 3` → fredning/dispensation_required (Slots- og Kulturstyrelsen)
 - `saveValue === 4` → demolition warning (add this — currently missing, see Blocker 3 below)
 - `strandbeskyttelse === true` → absolute stop
@@ -110,6 +116,7 @@ The codebase has accumulated vibe-coded JSON blobs that violate the Data-Driven 
 
 **Prune pattern — JSONB → typed columns:**
 When you encounter a field being read from `compliance_data JSONB` or `projekter.bbr_data JSONB` for a domain-critical value, migrate it:
+
 1. Write a Supabase migration adding the typed column
 2. Backfill from the JSONB field in the same migration
 3. Update the TypeScript types and `project-sync.ts`

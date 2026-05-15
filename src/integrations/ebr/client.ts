@@ -129,7 +129,10 @@ export class EbrService {
       const nodes: any[] = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
 
       if (!nodes.length) {
-        return { bfeNr: null, fejl: `EBR_Ejendomsbeliggenhed ikke fundet for husnummerLokalId ${id}` };
+        return {
+          bfeNr: null,
+          fejl: `EBR_Ejendomsbeliggenhed ikke fundet for husnummerLokalId ${id}`,
+        };
       }
 
       const bfeNr: string | null = nodes[0].bestemtFastEjendomBFENr ?? null;

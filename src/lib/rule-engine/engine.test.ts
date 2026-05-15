@@ -130,6 +130,26 @@ describe("checkStopRules — SAVE-bevaringsværdi", () => {
     const violations = checkStopRules(input);
     expect(violations.find((x) => x.rule === "save_1_3_demolition")).toBeUndefined();
   });
+
+  it("SAVE 3 + renovering → dispensation_required", () => {
+    const input = baseInput({
+      heritage: { ...baseInput().heritage, saveValue: 3 },
+      project: { ...baseInput().project, type: "renovation" },
+    });
+    const violations = checkStopRules(input);
+    expect(violations.find((x) => x.rule === "save_1_3_demolition")?.severity).toBe(
+      "dispensation_required",
+    );
+  });
+
+  it("SAVE 2 + nybyg → ingen SAVE-violation", () => {
+    const input = baseInput({
+      heritage: { ...baseInput().heritage, saveValue: 2 },
+      project: { ...baseInput().project, type: "new_build" },
+    });
+    const violations = checkStopRules(input);
+    expect(violations.find((x) => x.rule === "save_1_3_demolition")).toBeUndefined();
+  });
 });
 
 describe("checkStopRules — beskyttelseslinjer", () => {
@@ -155,6 +175,54 @@ describe("checkStopRules — beskyttelseslinjer", () => {
     });
     const violations = checkStopRules(input);
     expect(violations.find((x) => x.rule === "protection_line_forest")).toBeDefined();
+  });
+
+  it("søbeskyttelseslinje → dispensation_required", () => {
+    const input = baseInput({
+      heritage: {
+        ...baseInput().heritage,
+        protectionLines: { ...baseInput().heritage.protectionLines, lake: true },
+      },
+    });
+    const violations = checkStopRules(input);
+    expect(violations.find((x) => x.rule === "protection_line_lake")?.authority).toBe("Kommunen");
+  });
+
+  it("åbeskyttelseslinje → dispensation_required", () => {
+    const input = baseInput({
+      heritage: {
+        ...baseInput().heritage,
+        protectionLines: { ...baseInput().heritage.protectionLines, lakeRiver: true },
+      },
+    });
+    const violations = checkStopRules(input);
+    expect(violations.find((x) => x.rule === "protection_line_lakeRiver")).toBeDefined();
+  });
+
+  it("klitfredning → dispensation_required", () => {
+    const input = baseInput({
+      heritage: {
+        ...baseInput().heritage,
+        protectionLines: { ...baseInput().heritage.protectionLines, clitFredning: true },
+      },
+    });
+    const violations = checkStopRules(input);
+    expect(violations.find((x) => x.rule === "protection_line_clitFredning")?.authority).toBe(
+      "Kystdirektoratet",
+    );
+  });
+
+  it("kirkebyggelinje → dispensation_required", () => {
+    const input = baseInput({
+      heritage: {
+        ...baseInput().heritage,
+        protectionLines: { ...baseInput().heritage.protectionLines, churchSurroundings: true },
+      },
+    });
+    const violations = checkStopRules(input);
+    expect(
+      violations.find((x) => x.rule === "protection_line_churchSurroundings")?.authority,
+    ).toBe("Kommunen");
   });
 
   it("multiple beskyttelseslinjer → multiple violations", () => {

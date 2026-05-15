@@ -174,7 +174,11 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
       priority: 2,
       is_auto_generated: true,
       blocked_by_constraint: "heritage_save_value",
-      metadata: { save_value: 4, myndighed: "Kommunens tekniske forvaltning", lovgrundlag: "Planlovens §14" },
+      metadata: {
+        save_value: 4,
+        myndighed: "Kommunens tekniske forvaltning",
+        lovgrundlag: "Planlovens §14",
+      },
     });
   }
 

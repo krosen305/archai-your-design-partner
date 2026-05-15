@@ -9,9 +9,11 @@ Gennemgå følgende tjekliste systematisk. For hvert punkt: læs den aktuelle ko
 ### 1. Wizard-routes (`CLAUDE.md`)
 
 Læs faktiske routes:
+
 ```
 src/routes/projekt.*.tsx
 ```
+
 Sammenlign med route-tabellen i `CLAUDE.md`. Ret hvis der mangler routes, eller navne ikke stemmer.
 
 ---
@@ -19,6 +21,7 @@ Sammenlign med route-tabellen i `CLAUDE.md`. Ret hvis der mangler routes, eller 
 ### 2. IS_MOCK-status (`CLAUDE.md` + `docs/INTEGRATIONS.md`)
 
 Søg efter `const IS_MOCK` i `src/integrations/`:
+
 - Hver service der har `IS_MOCK = true` skal stå i IS_MOCK-listen i `CLAUDE.md`
 - `docs/INTEGRATIONS.md`-tabellen skal vise 🟡 for disse services og ✅ for live services
 - Ret uoverensstemmelser

@@ -108,4 +108,3 @@ export async function fetchVurViaEbr(adgangsadresseid: string): Promise<VurData 
     return null;
   }
 }
-

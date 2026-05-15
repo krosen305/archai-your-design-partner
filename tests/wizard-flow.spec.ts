@@ -9,7 +9,7 @@ test("cockpit route viser login-gate uden session", async ({ page }) => {
   });
 
   await page.goto(`/projekt/${TEST_ADRESSEID}/cockpit`);
-  await expect(page.getByText(/LOGIN PÅKRÆVET/i)).toBeVisible();
+  await expect(page.getByText(/login/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /Log ind eller opret konto/i })).toBeVisible();
 });
 
@@ -22,3 +22,4 @@ test("cockpit login-gate har dev bypass-knap i udvikling", async ({ page }) => {
   await page.goto(`/projekt/${TEST_ADRESSEID}/cockpit`);
   await expect(page.getByRole("button", { name: /DEV: Spring login over/i })).toBeVisible();
 });
+

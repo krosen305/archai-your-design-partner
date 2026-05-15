@@ -122,7 +122,6 @@ export class VurService {
         bfeNr,
         fejl: null,
       };
-
     } catch (e) {
       console.error("[VUR] Service fejl:", e);
       return this.errorResult(bfeNr, (e as Error).message);
@@ -142,7 +141,11 @@ export class VurService {
     return { apiKey, endpoint };
   }
 
-  private static async gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
+  private static async gqlFetch(
+    url: URL,
+    query: string,
+    variables: Record<string, unknown>,
+  ): Promise<any> {
     const response = await fetchWithRetry(
       url.toString(),
       {
@@ -169,8 +172,12 @@ export class VurService {
 
   private static errorResult(bfeNr: string, msg: string): VurData {
     return {
-      ejendomsvaerdi: null, grundvaerdi: null, vurderetAreal: null, vurderingsaar: null,
-      bfeNr, fejl: msg
+      ejendomsvaerdi: null,
+      grundvaerdi: null,
+      vurderetAreal: null,
+      vurderingsaar: null,
+      bfeNr,
+      fejl: msg,
     };
   }
 }

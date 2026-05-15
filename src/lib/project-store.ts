@@ -539,10 +539,12 @@ export function deriveComplianceFlags(
 
   // ── DK-Jord forurening (ARCH-66) ───────────────────────────────��────────
   if (dkjord) {
+    const dkjordLabelPrefix = dkjord.kilde === "mock" ? "MOCK: " : "";
+
     if (dkjord.v2Kortlagt) {
       flags.push({
         id: "dkjord-v2",
-        label: "V2-kortlagt grund",
+        label: `${dkjordLabelPrefix}V2-kortlagt grund`,
         status: "blocker",
         detalje:
           "Dokumenteret forurening — oprensning kræves inden byggeri. Potentielt 500.000+ kr.",
@@ -554,7 +556,7 @@ export function deriveComplianceFlags(
     if (dkjord.v1Kortlagt) {
       flags.push({
         id: "dkjord-v1",
-        label: "V1-kortlagt grund",
+        label: `${dkjordLabelPrefix}V1-kortlagt grund`,
         status: "advarsel",
         detalje: "Mulig forurening — miljøteknisk undersøgelse kræves inden byggeri",
         aktuelVærdi: "V1-kortlagt",
@@ -565,7 +567,7 @@ export function deriveComplianceFlags(
     if (dkjord.olietank.eksisterer) {
       flags.push({
         id: "dkjord-olietank",
-        label: "Olietank registreret",
+        label: `${dkjordLabelPrefix}Olietank registreret`,
         status: "advarsel",
         detalje: `Gammel olietank${dkjord.olietank.driftsstatus ? ` (${dkjord.olietank.driftsstatus})` : ""} — prøvetagning af jord kræves`,
         aktuelVærdi: dkjord.olietank.driftsstatus ?? "registreret",
@@ -576,7 +578,7 @@ export function deriveComplianceFlags(
     if (dkjord.omraadeklassificering) {
       flags.push({
         id: "dkjord-omraade",
-        label: "Områdeklassificering",
+        label: `${dkjordLabelPrefix}Områdeklassificering`,
         status: "advarsel",
         detalje: "Krav om jordsundhedsattest ved jordflytning — kontakt kommunen",
         aktuelVærdi: dkjord.omraadeklassificering,

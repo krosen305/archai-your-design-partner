@@ -106,7 +106,7 @@ function DatacheckPage() {
         setLoaded(true);
       }
     })();
-  }, [address?.adresseid]);
+  }, [address?.adresseid, currentProjectId]);
 
   async function persistMap(map: DataStatusMap) {
     if (!address?.adresseid) return;

@@ -280,8 +280,7 @@ function FreeByggeoenskeAccordion() {
                               const opt = step.options!.find(
                                 (o) => String(o.value) === e.target.value,
                               );
-                              if (opt)
-                                setByggeoenske({ [step.key]: opt.value } as never);
+                              if (opt) setByggeoenske({ [step.key]: opt.value } as never);
                             }}
                             className="w-full rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-xs text-foreground"
                           >

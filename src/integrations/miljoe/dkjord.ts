@@ -26,6 +26,7 @@ export type DkJordResultat = {
   v2Kortlagt: boolean;
   olietank: { eksisterer: boolean; driftsstatus: string | null };
   omraadeklassificering: string | null;
+  kilde: "dkjord" | "mock";
 };
 
 type Koordinat = { lat: number; lng: number };
@@ -65,6 +66,7 @@ export class DkJordService {
         v2Kortlagt: false,
         olietank: { eksisterer: true, driftsstatus: "ikke i drift" },
         omraadeklassificering: "Lettere forurenet",
+        kilde: "mock",
       };
     }
 
@@ -87,6 +89,7 @@ export class DkJordService {
       },
       omraadeklassificering:
         (omraadeFeature?.properties?.["omraadenavn"] as string | undefined) ?? null,
+      kilde: "dkjord",
     };
   }
 }

@@ -8,7 +8,10 @@ import { logger } from "@/lib/logger";
 
 const inputSchema = z.object({
   prompt: z.string().min(1).max(2000),
-  inspirationsUrls: z.array(z.string().url().or(z.string().startsWith("data:"))).max(8).optional(),
+  inspirationsUrls: z
+    .array(z.string().url().or(z.string().startsWith("data:")))
+    .max(8)
+    .optional(),
   stil: z.string().max(64).optional(),
   facademateriale: z.string().max(64).optional(),
 });
@@ -17,9 +20,7 @@ export type DesignProposalsResult = { images: string[]; kilde: "lovable-ai" | "p
 
 function placeholderImages(seed: string): string[] {
   const safeSeed = encodeURIComponent(seed.slice(0, 40) || "archai");
-  return [1, 2, 3].map(
-    (i) => `https://picsum.photos/seed/${safeSeed}-${i}/800/520`,
-  );
+  return [1, 2, 3].map((i) => `https://picsum.photos/seed/${safeSeed}-${i}/800/520`);
 }
 
 type LovableAiImageMessage = {
@@ -82,7 +83,10 @@ export const generateDesignProposals = createServerFn({ method: "POST" })
                 role: "user",
                 content: [
                   ...userParts,
-                  { type: "text", text: `Variation ${i + 1} of 3 — vary perspective and lighting.` },
+                  {
+                    type: "text",
+                    text: `Variation ${i + 1} of 3 — vary perspective and lighting.`,
+                  },
                 ],
               },
             ],

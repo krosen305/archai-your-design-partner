@@ -13,45 +13,45 @@
 
 ## 1. Adresse
 
-| Datapunkt | Kildesystem | Status | Bruges til | Hasselvej 48 |
-|---|---|---|---|---|
-| adresseid (DAR UUID) | DAR/DAWA | LIVE | Cache-nøgle, DAR-opslag | `0a3f50a6-34da-32b8-e044-0003ba298018` |
-| adgangsadresseid | DAR/DAWA | LIVE | BBR/EBR-opslag | `0a3f507d-4cf9-32b8-e044-0003ba298018` |
-| Adressetekst | Adresse test fixture | LIVE | UI-display | Hasselvej 48, 2830 Virum |
-| Ejerlavskode | MAT/DAR | LIVE | MAT-opslag | 12352 |
-| Matrikelnummer | MAT/DAR | LIVE | MAT-opslag | 5fo |
-| Koordinater | Adresse test fixture | LIVE | Geo-opslag | 55.7937, 12.4803 |
+| Datapunkt            | Kildesystem          | Status | Bruges til              | Hasselvej 48                           |
+| -------------------- | -------------------- | ------ | ----------------------- | -------------------------------------- |
+| adresseid (DAR UUID) | DAR/DAWA             | LIVE   | Cache-nøgle, DAR-opslag | `0a3f50a6-34da-32b8-e044-0003ba298018` |
+| adgangsadresseid     | DAR/DAWA             | LIVE   | BBR/EBR-opslag          | `0a3f507d-4cf9-32b8-e044-0003ba298018` |
+| Adressetekst         | Adresse test fixture | LIVE   | UI-display              | Hasselvej 48, 2830 Virum               |
+| Ejerlavskode         | MAT/DAR              | LIVE   | MAT-opslag              | 12352                                  |
+| Matrikelnummer       | MAT/DAR              | LIVE   | MAT-opslag              | 5fo                                    |
+| Koordinater          | Adresse test fixture | LIVE   | Geo-opslag              | 55.7937, 12.4803                       |
 
 ---
 
 ## 2. BBR
 
-| Datapunkt | Kildesystem | Status | Bruges til | Hasselvej 48 |
-|---|---|---|---|---|
-| Antal bygninger | BBR v2 GraphQL | LIVE | Bygningsvalg | 8 |
-| BBR Public IDs | api.dataforsyningen.dk/bbr/bygning | FEJL | FBB-opslag | ingen |
-| Primær bygning UUID | BBR v2 GraphQL | LIVE | Sporbarhed | cb2f89dc-7278-4802-a53e-188cb7120f56 |
-| Byggeår | BBR v2 GraphQL | LIVE | Renoveringsbehov | 1937 |
-| Bebygget areal | BBR v2 GraphQL | LIVE | Bebyggelsesprocent | 68 m2 |
-| Samlet bygningsareal | BBR v2 GraphQL | LIVE | Typologi | 121 m2 |
-| Antal etager | BBR v2 GraphQL | LIVE | Planvalidering | 2 |
-| Anvendelseskode | BBR v2 GraphQL | LIVE | Boligklassificering | 130 |
-| Varmeinstallation | BBR v2 byg056 | LIVE | Energibaseline | 2 |
-| Opvarmningsmiddel | BBR v2 byg057 | LIVE | Energibaseline | 3 |
-| Fredet | BBR v2 byg070 | LIVE | Fredningsflag | null |
-| FBB reference | BBR v2 byg071 | LIVE | FBB-sporbarhed | null |
+| Datapunkt            | Kildesystem                        | Status | Bruges til          | Hasselvej 48                         |
+| -------------------- | ---------------------------------- | ------ | ------------------- | ------------------------------------ |
+| Antal bygninger      | BBR v2 GraphQL                     | LIVE   | Bygningsvalg        | 8                                    |
+| BBR Public IDs       | api.dataforsyningen.dk/bbr/bygning | FEJL   | FBB-opslag          | ingen                                |
+| Primær bygning UUID  | BBR v2 GraphQL                     | LIVE   | Sporbarhed          | cb2f89dc-7278-4802-a53e-188cb7120f56 |
+| Byggeår              | BBR v2 GraphQL                     | LIVE   | Renoveringsbehov    | 1937                                 |
+| Bebygget areal       | BBR v2 GraphQL                     | LIVE   | Bebyggelsesprocent  | 68 m2                                |
+| Samlet bygningsareal | BBR v2 GraphQL                     | LIVE   | Typologi            | 121 m2                               |
+| Antal etager         | BBR v2 GraphQL                     | LIVE   | Planvalidering      | 2                                    |
+| Anvendelseskode      | BBR v2 GraphQL                     | LIVE   | Boligklassificering | 130                                  |
+| Varmeinstallation    | BBR v2 byg056                      | LIVE   | Energibaseline      | 2                                    |
+| Opvarmningsmiddel    | BBR v2 byg057                      | LIVE   | Energibaseline      | 3                                    |
+| Fredet               | BBR v2 byg070                      | LIVE   | Fredningsflag       | null                                 |
+| FBB reference        | BBR v2 byg071                      | LIVE   | FBB-sporbarhed      | null                                 |
 
 ---
 
 ## 3. FBB - Fredede og Bevaringsværdige Bygninger
 
-| Datapunkt | Kildesystem | Status | Bruges til | Hasselvej 48 |
-|---|---|---|---|---|
-| FBB endpoint | https://www.kulturarv.dk/geoserver/wfs | LIVE | SAVE-opslag | FBB WFS HTTP 200 |
-| Input IDs | Integer FBB/BBR bygningsids | LIVE | CQL bygningsid IN | 4602381, 4600919 |
-| FBB bygning 4602381 | Kulturarv GeoServer WFS | LIVE | SAVE/fredning | SAVE 3, fredningsstatus 3 |
-| FBB bygning 4600919 | Kulturarv GeoServer WFS | LIVE | SAVE/fredning | SAVE -1, fredningsstatus 5 |
-| Bedste/laveste SAVE | FbbService.getSaveData | LIVE | Regelkerne heritage.saveValue | 3 på bygning 4602381 |
+| Datapunkt           | Kildesystem                            | Status | Bruges til                    | Hasselvej 48               |
+| ------------------- | -------------------------------------- | ------ | ----------------------------- | -------------------------- |
+| FBB endpoint        | https://www.kulturarv.dk/geoserver/wfs | LIVE   | SAVE-opslag                   | FBB WFS HTTP 200           |
+| Input IDs           | Integer FBB/BBR bygningsids            | LIVE   | CQL bygningsid IN             | 4602381, 4600919           |
+| FBB bygning 4602381 | Kulturarv GeoServer WFS                | LIVE   | SAVE/fredning                 | SAVE 3, fredningsstatus 3  |
+| FBB bygning 4600919 | Kulturarv GeoServer WFS                | LIVE   | SAVE/fredning                 | SAVE -1, fredningsstatus 5 |
+| Bedste/laveste SAVE | FbbService.getSaveData                 | LIVE   | Regelkerne heritage.saveValue | 3 på bygning 4602381       |
 
 **FBB-noter**
 
@@ -68,47 +68,47 @@
 
 ## 4. MAT
 
-| Datapunkt | Kildesystem | Status | Bruges til | Hasselvej 48 |
-|---|---|---|---|---|
-| Registreret areal | MAT v2 GraphQL | LIVE | Bebyggelsesprocent | 441 m2 |
-| Strandbeskyttelse | MAT v2 GraphQL | LIVE | Compliance-flag | null |
-| Fredskov | MAT v2 GraphQL | LIVE | Compliance-flag | null |
-| Klitfredning | MAT v2 GraphQL | LIVE | Compliance-flag | null |
+| Datapunkt         | Kildesystem    | Status | Bruges til         | Hasselvej 48 |
+| ----------------- | -------------- | ------ | ------------------ | ------------ |
+| Registreret areal | MAT v2 GraphQL | LIVE   | Bebyggelsesprocent | 441 m2       |
+| Strandbeskyttelse | MAT v2 GraphQL | LIVE   | Compliance-flag    | null         |
+| Fredskov          | MAT v2 GraphQL | LIVE   | Compliance-flag    | null         |
+| Klitfredning      | MAT v2 GraphQL | LIVE   | Compliance-flag    | null         |
 
 ---
 
 ## 5. EBR og VUR
 
-| Datapunkt | Kildesystem | Status | Bruges til | Hasselvej 48 |
-|---|---|---|---|---|
-| BFE-nummer | EBR v1 GraphQL | LIVE | VUR-opslag | 2073922 |
-| Vurderingsår | VUR v1 GraphQL | LIVE | Aktualitet | 2020 |
-| Ejendomsværdi | VUR v1 GraphQL | LIVE | Finansiering | 3.450.000 kr. |
-| Grundværdi | VUR v1 GraphQL | LIVE | Finansiering | 1.391.500 kr. |
-| Vurderet areal | VUR v1 GraphQL | LIVE | Reference | 441 m2 |
+| Datapunkt      | Kildesystem    | Status | Bruges til   | Hasselvej 48  |
+| -------------- | -------------- | ------ | ------------ | ------------- |
+| BFE-nummer     | EBR v1 GraphQL | LIVE   | VUR-opslag   | 2073922       |
+| Vurderingsår   | VUR v1 GraphQL | LIVE   | Aktualitet   | 2020          |
+| Ejendomsværdi  | VUR v1 GraphQL | LIVE   | Finansiering | 3.450.000 kr. |
+| Grundværdi     | VUR v1 GraphQL | LIVE   | Finansiering | 1.391.500 kr. |
+| Vurderet areal | VUR v1 GraphQL | LIVE   | Reference    | 441 m2        |
 
 ---
 
 ## 6. WFS og øvrige endpoint-checks
 
-| Integration | Status | Resultat |
-|---|---|---|
-| Naturbeskyttelse DAI WFS | LIVE | - dmp:STRANDBESKYTTELSESLINJE: HTTP 200, 0 features<br>- dmp:SKOVBYGGELINJE: HTTP 200, 0 features<br>- dmp:SOEBESKYTTELSESLINJE: HTTP 200, 0 features<br>- dmp:AABESKYTTELSESLINJE: HTTP 200, 0 features<br>- dmp:KLITFREDNING: HTTP 200, 0 features |
-| Fredede bygninger DAI WFS | LIVE | - dmp:FREDEDE_BYGNINGER: HTTP 200, 0 features |
-| Fjernvarme Plandata WFS | LIVE | - pdk:theme_pdk_varmeplansomraade_vedtaget_v: HTTP 200, 0 features |
-| DHM WCS | FEJL | - GetCapabilities: HTTP 404 |
-| GEUS WFS | LIVE | - GetCapabilities: HTTP 200<br>- Radon layer nævnt: false<br>- Jupiter layers nævnt: true |
-| DK-Jord WFS | FEJL | - GetCapabilities: HTTP 0 |
+| Integration               | Status | Resultat                                                                                                                                                                                                                                             |
+| ------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Naturbeskyttelse DAI WFS  | LIVE   | - dmp:STRANDBESKYTTELSESLINJE: HTTP 200, 0 features<br>- dmp:SKOVBYGGELINJE: HTTP 200, 0 features<br>- dmp:SOEBESKYTTELSESLINJE: HTTP 200, 0 features<br>- dmp:AABESKYTTELSESLINJE: HTTP 200, 0 features<br>- dmp:KLITFREDNING: HTTP 200, 0 features |
+| Fredede bygninger DAI WFS | LIVE   | - dmp:FREDEDE_BYGNINGER: HTTP 200, 0 features                                                                                                                                                                                                        |
+| Fjernvarme Plandata WFS   | LIVE   | - pdk:theme_pdk_varmeplansomraade_vedtaget_v: HTTP 200, 0 features                                                                                                                                                                                   |
+| DHM WCS                   | FEJL   | - GetCapabilities: HTTP 404                                                                                                                                                                                                                          |
+| GEUS WFS                  | LIVE   | - GetCapabilities: HTTP 200<br>- Radon layer nævnt: false<br>- Jupiter layers nævnt: true                                                                                                                                                            |
+| DK-Jord WFS               | FEJL   | - GetCapabilities: HTTP 0                                                                                                                                                                                                                            |
 
 ---
 
 ## Sammenfatning
 
 | Status | Antal |
-|---|---:|
-| LIVE | 9 |
-| MOCK | 0 |
-| FEJL | 2 |
+| ------ | ----: |
+| LIVE   |     9 |
+| MOCK   |     0 |
+| FEJL   |     2 |
 
 ### Alle testnoter
 

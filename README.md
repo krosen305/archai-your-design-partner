@@ -7,42 +7,46 @@
 ## The Four Phases of The Builder's Journey
 
 ### Phase 1 — Sandkassen (Inspiration)
+
 Upload inspiration images. An AI generates buildable 3D concepts anchored to your architectural style preferences and budget envelope. Every design option is constrained from the first pixel by real plot data — no fantasy sketches that can't be permitted.
 
 ### Phase 2 — Matriklen (Site Analysis)
+
 Enter any Danish address. The Compliance Engine fetches and cross-references 10+ authoritative Danish datasets (BBR, MAT, DAR, Plandata, FBB/SAVE, naturbeskyttelse, geoteknik, VUR) and surfaces every Hard Stop before you invest in an architect. This phase is the due-diligence layer — equally useful for pre-purchase evaluation as for active project planning.
 
 ### Phase 3 — Maskinrummet (Detailed Design / BIM)
+
 Parametric guardrails keep creative iteration inside the compliance envelope. Change roof pitch → budget updates live. Add a dormer → bebyggelsesprocent recalculates instantly. The Compliance Engine runs client-side on every Byggeoenske change with zero server round-trips. When constraints permit it, a BIM export feeds directly into structural calculations and LCA.
 
 ### Phase 4 — Myndighed (Permitting)
+
 One-click generation of demolition and building permit applications, pre-filled with verified data from the prior phases. Statics documentation and LCA calculations are assembled from the parametric model. Nabopartshøring risk is scored before submission.
 
 ---
 
 ## Product Pillars
 
-| Pillar | What It Does |
-|--------|-------------|
-| **Dream to Draft** | Upload inspiration → AI generates buildable 3D models based on architectural traits |
-| **Compliance Engine** | Hard Stop validation against BR18, local plans (Plandata.dk), and heritage values (FBB/SAVE) |
-| **Live Financials** | Real-time budget updates driven by design choices and local site data (soil, forsyning, nabosager) |
-| **Bureaucracy Killer** | Automated permit applications, statics docs, and LCA — pre-filled from verified project data |
+| Pillar                 | What It Does                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| **Dream to Draft**     | Upload inspiration → AI generates buildable 3D models based on architectural traits                |
+| **Compliance Engine**  | Hard Stop validation against BR18, local plans (Plandata.dk), and heritage values (FBB/SAVE)       |
+| **Live Financials**    | Real-time budget updates driven by design choices and local site data (soil, forsyning, nabosager) |
+| **Bureaucracy Killer** | Automated permit applications, statics docs, and LCA — pre-filled from verified project data       |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | TanStack Start (React SSR) |
-| Runtime | Cloudflare Workers |
-| Language | TypeScript, Bun |
-| Database / Auth | Supabase (PostgreSQL + RLS) — Single Source of Truth for all project and compliance state |
-| AI | Anthropic Claude (Sonnet / Haiku) — design generation, PDF extraction, AI analysis |
-| Danish Data | Datafordeler (BBR, MAT, DAR, EBR, VUR), Plandata (WFS), SDFI (DHM, naturbeskyttelse), FBB, GEUS, DK-Jord |
-| Styling | Tailwind CSS + shadcn/ui |
-| Tests | Vitest (unit) + Playwright (E2E) + eval-framework |
+| Layer           | Technology                                                                                               |
+| --------------- | -------------------------------------------------------------------------------------------------------- |
+| Framework       | TanStack Start (React SSR)                                                                               |
+| Runtime         | Cloudflare Workers                                                                                       |
+| Language        | TypeScript, Bun                                                                                          |
+| Database / Auth | Supabase (PostgreSQL + RLS) — Single Source of Truth for all project and compliance state                |
+| AI              | Anthropic Claude (Sonnet / Haiku) — design generation, PDF extraction, AI analysis                       |
+| Danish Data     | Datafordeler (BBR, MAT, DAR, EBR, VUR), Plandata (WFS), SDFI (DHM, naturbeskyttelse), FBB, GEUS, DK-Jord |
+| Styling         | Tailwind CSS + shadcn/ui                                                                                 |
+| Tests           | Vitest (unit) + Playwright (E2E) + eval-framework                                                        |
 
 ---
 

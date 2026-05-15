@@ -76,7 +76,7 @@ export const STEPS: Step[] = [
     unit: "stk.",
     group: "Areal & rum",
   },
-  
+
   // Stil
   {
     key: "arkitektoniskStil",

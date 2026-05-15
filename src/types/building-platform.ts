@@ -36,28 +36,28 @@ export type BuildingTaskStatus = "pending" | "in_progress" | "done" | "blocked" 
  */
 export const BUILDING_TASK_KEYS = {
   // Matriklen phase
-  JORDBUNDSPROVE:                  "jordbundsprove",
-  KORTLAEG_FORSYNINGER:            "kortlaeg_forsyninger",
-  MILJOEUNDERSOEGELSE:             "miljoeundersoegelse",
-  SAVE_4_PARAGRAPH14:              "save_4_paragraph14",       // SAVE 4 → §14-forbud risk
+  JORDBUNDSPROVE: "jordbundsprove",
+  KORTLAEG_FORSYNINGER: "kortlaeg_forsyninger",
+  MILJOEUNDERSOEGELSE: "miljoeundersoegelse",
+  SAVE_4_PARAGRAPH14: "save_4_paragraph14", // SAVE 4 → §14-forbud risk
   // Sandkassen phase
-  INSPIRATIONSARK:                 "inspirationsark",
-  DEFINER_BUDGET:                  "definer_budget",
+  INSPIRATIONSARK: "inspirationsark",
+  DEFINER_BUDGET: "definer_budget",
   // Maskinrummet phase
-  ARKITEKTTEGNINGER:               "arkitekttegninger",
-  STATIK:                          "statik",
-  LCA_BEREGNING:                   "lca_beregning",
+  ARKITEKTTEGNINGER: "arkitekttegninger",
+  STATIK: "statik",
+  LCA_BEREGNING: "lca_beregning",
   // Myndighed phase — auto-generated from Hard Stop data
-  SAVE_DISPENSATION:               "save_dispensation",        // SAVE 1–3
-  FREDNING_JURIDISK:               "fredning_juridisk",        // is_fredet = true
-  STRANDBESKYTTELSE_DISPENSATION:  "strandbeskyttelse_dispensation",
-  FREDSKOV_DISPENSATION:           "fredskov_dispensation",
-  KLITFREDNING_DISPENSATION:       "klitfredning_dispensation",
+  SAVE_DISPENSATION: "save_dispensation", // SAVE 1–3
+  FREDNING_JURIDISK: "fredning_juridisk", // is_fredet = true
+  STRANDBESKYTTELSE_DISPENSATION: "strandbeskyttelse_dispensation",
+  FREDSKOV_DISPENSATION: "fredskov_dispensation",
+  KLITFREDNING_DISPENSATION: "klitfredning_dispensation",
   // Myndighed phase — journey tasks
-  NEDRIVNINGSANSOEGNING:           "nedrivningsansoegning",
-  BYGGESAGSANSOEGNING:             "byggesagsansoegning",
-  NABOHORING:                      "nabohoring",
-  FINANSIERING:                    "finansiering",
+  NEDRIVNINGSANSOEGNING: "nedrivningsansoegning",
+  BYGGESAGSANSOEGNING: "byggesagsansoegning",
+  NABOHORING: "nabohoring",
+  FINANSIERING: "finansiering",
 } as const;
 
 export type BuildingTaskKey = (typeof BUILDING_TASK_KEYS)[keyof typeof BUILDING_TASK_KEYS];
@@ -109,8 +109,8 @@ export type ValidationResult = {
   designIterationId: string;
   constraintsAddressId: string;
   constraintsConfidence: ConstraintConfidence;
-  hardStops: HardStopViolation[];     // severity: illegal | dispensation_required
-  warnings: HardStopViolation[];      // severity: warning
+  hardStops: HardStopViolation[]; // severity: illegal | dispensation_required
+  warnings: HardStopViolation[]; // severity: warning
   metrics: {
     currentBebyggelsesprocent: number | null;
     maxBebyggelsesprocent: number | null;

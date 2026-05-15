@@ -1,4 +1,3 @@
-
 # Cockpit-redesign: Fra guidet wizard til frit dashboard
 
 Vi sletter hele fase-paradigmet og gør cockpittet til den primære arbejdsflade. Brugeren rammer cockpittet umiddelbart efter projektoprettelse — enten med adresse-data trukket fra Datafordeler, eller helt uden grund (frit design). Et nyt AI-hero panel øverst genererer 3 visuelle forslag fra inspirationsbilleder + fritekst-drøm. Personrelaterede byggeønsker fjernes.
@@ -18,6 +17,7 @@ Vi sletter hele fase-paradigmet og gør cockpittet til den primære arbejdsflade
 **Fil:** `src/routes/projekt.start.tsx` (mindre justering) + `src/routes/projekt.adresse.tsx` (tilføjelse) + ny route `src/routes/projekt.frit.tsx` ELLER hash i cockpit.
 
 **Beslutning:** Vi tilføjer en lille toggle i `projekt.adresse.tsx`-skærmen ("Indtast adresse" / "Design uden grund"). Vælges "design uden grund":
+
 - Opret projekt uden adresse via `serverCreateProject` (allerede understøttet — `address` forbliver null)
 - Naviger til `/projekt/frit/cockpit` (en speciel rute der mounter `Cockpit` med `bbr=null`, `metrics=null` osv.)
 - Cockpittet skjuler matrikel-canvas og compliance-gauges når der ikke er adresse-data — viser i stedet kun AI-hero + design-input + grov estimat.
@@ -52,6 +52,7 @@ Når `bbr === null` (frit design): vis kun AI-hero + venstre input-panel + et bu
 **Fil:** `src/lib/byggeoenske-steps.ts` (+ `src/lib/project-store.ts` typen `Byggeoenske` — beskyttet fil; markeres med `🔒` i PR)
 
 Fjern fra `STEPS`-arrayet:
+
 - `husstandsstoerrelse`, `voksne`, `boern`, `livsfase` (gruppe "Grundlæggende")
 - `hjemmekontor` (toggle, gruppe "Areal & rum")
 
@@ -65,18 +66,21 @@ Bevar: `byggetype`, `oensketAreal`, `antalEtager`, `antalSovevaerelser`, `antalB
 **Ny server-fn:** Tilføjes i `src/routes/projekt.$id.cockpit.tsx` (eller egen `src/lib/ai-design.functions.ts`)
 
 UI:
+
 - Stort kort øverst i cockpittet
 - Venstre: drag-and-drop upload (genbrug logik fra `UploadField` i `cockpit/index.tsx`) + textarea til "Beskriv dit drømmehus" (gemmes i en ny `byggeoenske.designDroem: string` i store)
 - Højre: knap "Generér 3 forslag" → kalder server-fn `generateDesignProposals`
 - Resultat: 3 billeder rendres som klikbare kort. Valgt forslag persisteres i `byggeoenske.valgteDesignforslag` (string url)
 
 Server-fn:
+
 - `createServerFn({ method: "POST" })` med auth-middleware
 - Bruger Lovable AI Gateway (`google/gemini-3.1-flash-image-preview`) til billed-generering
 - System-prompt baseret på inspirationsbilleder + fritekst + valgte stil/materialer fra `byggeoenske`
 - Returnerer `{ images: string[] }` (3 stk., gemt i Supabase Storage eller som data-URLs)
 
 State-tilføjelser i `project-store.ts` (beskyttet fil — kræver review):
+
 - `byggeoenske.designDroem?: string`
 - `byggeoenske.valgteDesignforslag?: string`
 - `byggeoenske.genererededDesignforslag?: string[]`

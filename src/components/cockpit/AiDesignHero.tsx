@@ -15,9 +15,7 @@ import { logger } from "@/lib/logger";
 export function AiDesignHero() {
   const { byggeoenske, setByggeoenske } = useProject();
   const [drøm, setDrøm] = useState(byggeoenske.designDroem ?? "");
-  const [forslag, setForslag] = useState<string[]>(
-    byggeoenske.genererededDesignforslag ?? [],
-  );
+  const [forslag, setForslag] = useState<string[]>(byggeoenske.genererededDesignforslag ?? []);
   const [valgt, setValgt] = useState<string | null>(byggeoenske.valgteDesignforslag ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
