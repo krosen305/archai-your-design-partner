@@ -5,17 +5,21 @@ import { useProject, type ComplianceFlag } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 
 export function EjendomPanel() {
-  const { complianceMetrics, bbrData, vurderingData, complianceFlags, address } = useProject();
+  const { complianceMetrics, bbrData, vurderingData, complianceFlags, address, adressePreCheck } =
+    useProject();
   const [showFlags, setShowFlags] = useState(false);
+  const k = adressePreCheck?.kontekst;
+  const bbr = bbrData ?? adressePreCheck?.bbr ?? null;
 
-  const grundareal = complianceMetrics?.grundareal ?? null;
-  const remaining = complianceMetrics?.remainingBygningsareal ?? null;
+  const grundareal = complianceMetrics?.grundareal ?? k?.grundareal ?? null;
+  const remaining = complianceMetrics?.remainingBygningsareal ?? k?.restBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
-  const currentPct = complianceMetrics?.currentBebyggelsesprocent ?? null;
-  const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? null;
-  const currentEtager = complianceMetrics?.currentEtager ?? null;
-  const maxEtager = complianceMetrics?.maxEtager ?? null;
-  const maxHoejde = complianceMetrics?.maxBygningshoejde ?? null;
+  const currentPct =
+    complianceMetrics?.currentBebyggelsesprocent ?? k?.bebyggelsesprocent ?? null;
+  const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? k?.maxBebyggelsesprocent ?? null;
+  const currentEtager = complianceMetrics?.currentEtager ?? k?.antalEtager ?? null;
+  const maxEtager = complianceMetrics?.maxEtager ?? k?.maxEtager ?? null;
+  const maxHoejde = complianceMetrics?.maxBygningshoejde ?? k?.maxBygningshoejde ?? null;
 
   const noegletal = [
     {
