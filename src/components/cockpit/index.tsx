@@ -564,10 +564,14 @@ function FieldEditor({
   step,
   value,
   onChange,
+  onOpenDispensation,
+  onClearField,
 }: {
   step: Step;
   value: unknown;
   onChange: (v: unknown) => void;
+  onOpenDispensation: (t: "etager" | "areal") => void;
+  onClearField: () => void;
 }) {
   return (
     <div>
@@ -595,6 +599,12 @@ function FieldEditor({
           onChange={onChange as (v: string[]) => void}
         />
       )}
+      <StepExtras
+        stepKey={step.key}
+        value={value}
+        onOpenDispensation={onOpenDispensation}
+        onClearField={onClearField}
+      />
     </div>
   );
 }
