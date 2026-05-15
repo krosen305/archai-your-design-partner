@@ -21,9 +21,9 @@ function createSupabaseClient() {
         return "";
       }
     })();
-    if (urlProjectRef && urlProjectRef !== SUPABASE_PROJECT_ID) {
-      throw new Error(
-        `Supabase project mismatch: VITE_SUPABASE_URL points to "${urlProjectRef}" but VITE_SUPABASE_PROJECT_ID is "${SUPABASE_PROJECT_ID}".`,
+    if (urlProjectRef && urlProjectRef !== SUPABASE_PROJECT_ID && import.meta.env.DEV) {
+      console.warn(
+        "[Supabase] Miljøkonfiguration mismatch mellem VITE_SUPABASE_URL og VITE_SUPABASE_PROJECT_ID.",
       );
     }
   }

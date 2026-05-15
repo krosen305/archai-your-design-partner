@@ -1,4 +1,4 @@
-﻿// SERVER-SIDE ONLY — bruger supabaseAdmin (service role).
+// SERVER-SIDE ONLY — bruger supabaseAdmin (service role).
 // Gem og gendan wizard-state i `projects`-tabellen.
 //
 // Kun for indloggede brugere — gæster returnerer null/no-op uden fejl.
@@ -6,8 +6,11 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json, Database } from "@/integrations/supabase/types";
+import type { FbbResultat } from "@/integrations/fbb/client";
 
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
+type BuildingTaskInsert = Database["public"]["Tables"]["building_tasks"]["Insert"];
+
 import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project-store";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
@@ -21,6 +24,7 @@ import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { SaveData } from "@/integrations/save/client";
+import { BUILDING_TASK_KEYS } from "@/types/building-platform";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -44,7 +48,7 @@ export type ProjectPatch = {
   naboer?: NeighborBuildingData | null;
   fjernvarme?: FjernvarmeResultat | null;
   save?: SaveData | null;
-  fbbData?: import("@/integrations/fbb/client").FbbResultat | null;
+  fbbData?: FbbResultat | null;
   complianceDone?: boolean;
   currentStep?: string;
   projectDataStatus?: Json | null;
@@ -67,7 +71,212 @@ export type PersistedProject = {
   compliance_done: boolean;
   current_step: string;
   project_data_status: Json | null;
+  // Typed compliance columns (may be null if pipeline has not run yet)
+  heritage_save_value: number | null;
+  is_fredet: boolean | null;
+  grundareal_m2: number | null;
+  bebygget_areal_m2: number | null;
+  hard_stop: boolean;
+  hard_stop_reason: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Interne hjælpertyper
+// ---------------------------------------------------------------------------
+
+type ComplianceTriggers = {
+  projectId: string;
+  saveValue: number | null;
+  isFredet: boolean | null;
+  strandbeskyttelse: boolean | null;
+  fredskov: boolean | null;
+  klitfredning: boolean | null;
+  soilContamination: "clean" | "registered" | "contaminated" | null;
+};
+
+// ---------------------------------------------------------------------------
+// Hjælpere: Hard Stop aggregering
+// ---------------------------------------------------------------------------
+
+function deriveSoilContaminationStatus(
+  dkjord: DkJordResultat | null | undefined,
+): "clean" | "registered" | "contaminated" | null {
+  if (!dkjord) return null;
+  if (dkjord.v2Kortlagt) return "contaminated";
+  if (dkjord.v1Kortlagt) return "registered";
+  return "clean";
+}
+
+function deriveHardStopReason(opts: {
+  saveValue: number | null;
+  isFredet: boolean | null;
+  strandbeskyttelse: boolean | null;
+  fredskov: boolean | null;
+  klitfredning: boolean | null;
+}): string | null {
+  const reasons: string[] = [];
+  if (opts.isFredet === true) reasons.push("Fredet bygning (DAI WFS)");
+  if (opts.saveValue !== null && opts.saveValue <= 3)
+    reasons.push(`SAVE ${opts.saveValue} — dispensation kræves (Slots- og Kulturstyrelsen)`);
+  if (opts.strandbeskyttelse === true) reasons.push("Strandbeskyttelse");
+  if (opts.fredskov === true) reasons.push("Fredskov");
+  if (opts.klitfredning === true) reasons.push("Klitfredning");
+  return reasons.length > 0 ? reasons.join("; ") : null;
+}
+
+// ---------------------------------------------------------------------------
+// Building Tasks: auto-generering baseret på compliance-data
+// ---------------------------------------------------------------------------
+
+function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
+  const tasks: BuildingTaskInsert[] = [];
+
+  if (t.isFredet === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.FREDNING_JURIDISK,
+      title: "Fredningsstatus — juridisk afklaring påkrævet",
+      description:
+        "Bygningen er registreret som fredet (DAI WFS). Kontakt Slots- og Kulturstyrelsen inden nedrivning eller væsentlig ombygning.",
+      phase: "myndighed",
+      status: "blocked",
+      priority: 0,
+      is_auto_generated: true,
+      blocked_by_constraint: "is_fredet",
+      metadata: { kilde: "DAI WFS FREDEDE_BYGNINGER" },
+    });
+  }
+
+  if (t.saveValue !== null && t.saveValue <= 3) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.SAVE_DISPENSATION,
+      title: `Dispensation fra Slots- og Kulturstyrelsen krævet (SAVE ${t.saveValue})`,
+      description: `Bygningen har høj bevaringsværdi (SAVE ${t.saveValue}/9). Nedrivning eller væsentlig ombygning kræver forudgående tilladelse fra Slots- og Kulturstyrelsen.`,
+      phase: "myndighed",
+      status: "blocked",
+      priority: 1,
+      is_auto_generated: true,
+      blocked_by_constraint: "heritage_save_value",
+      metadata: { save_value: t.saveValue, myndighed: "Slots- og Kulturstyrelsen" },
+    });
+  }
+
+  if (t.saveValue === 4) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.SAVE_4_PARAGRAPH14,
+      title: "Undersøg §14-forbud risiko (SAVE 4)",
+      description:
+        "Bygningen har bevaringsværdi SAVE 4. Kommunen kan nedlægge §14-forbud mod nedrivning. Kontakt kommunens tekniske forvaltning tidligt i processen — gerne inden budgetlåsning.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "heritage_save_value",
+      metadata: { save_value: 4, myndighed: "Kommunens tekniske forvaltning", lovgrundlag: "Planlovens §14" },
+    });
+  }
+
+  if (t.strandbeskyttelse === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.STRANDBESKYTTELSE_DISPENSATION,
+      title: "Strandbeskyttelse — dispensation påkrævet",
+      description:
+        "Grunden er inden for strandbeskyttelseslinjen (300 m fra kyst). Nybyggeri kræver dispensation fra Kystdirektoratet. Behandlingstid typisk 3–6 måneder.",
+      phase: "myndighed",
+      status: "blocked",
+      priority: 0,
+      is_auto_generated: true,
+      blocked_by_constraint: "strandbeskyttelse",
+      metadata: { myndighed: "Kystdirektoratet" },
+    });
+  }
+
+  if (t.fredskov === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.FREDSKOV_DISPENSATION,
+      title: "Fredskov — dispensation påkrævet",
+      description:
+        "Ejendommen er beliggende i fredskov (Skovloven). Byggeaktivitet kræver dispensation fra Miljøministeriet.",
+      phase: "myndighed",
+      status: "blocked",
+      priority: 0,
+      is_auto_generated: true,
+      blocked_by_constraint: "fredskov",
+      metadata: { myndighed: "Miljøministeriet" },
+    });
+  }
+
+  if (t.klitfredning === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.KLITFREDNING_DISPENSATION,
+      title: "Klitfredning — dispensation påkrævet",
+      description:
+        "Grunden er inden for klitfredningslinjen. Byggeaktivitet kræver dispensation fra Kystdirektoratet.",
+      phase: "myndighed",
+      status: "blocked",
+      priority: 0,
+      is_auto_generated: true,
+      blocked_by_constraint: "klitfredning",
+      metadata: { myndighed: "Kystdirektoratet" },
+    });
+  }
+
+  if (t.soilContamination === "contaminated" || t.soilContamination === "registered") {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.MILJOEUNDERSOEGELSE,
+      title: "Miljøundersøgelse af grund påkrævet",
+      description:
+        t.soilContamination === "contaminated"
+          ? "Grunden er V2-kortlagt (dokumenteret forurening). En miljøundersøgelse og evt. oprensning er nødvendig inden byggestart. Budgetér 200.000–500.000 kr+."
+          : "Grunden er V1-kortlagt (mulig forurening). En indledende miljøundersøgelse er nødvendig inden byggetilladelse kan opnås.",
+      phase: "matriklen",
+      status: t.soilContamination === "contaminated" ? "blocked" : "pending",
+      priority: 3,
+      is_auto_generated: true,
+      blocked_by_constraint: "soil_contamination_status",
+      metadata: { kortlaeggingsklasse: t.soilContamination },
+    });
+  }
+
+  return tasks;
+}
+
+async function syncBuildingTasks(triggers: ComplianceTriggers): Promise<void> {
+  const tasks = deriveAutoTasks(triggers);
+  if (tasks.length === 0) return;
+
+  // Load existing auto-generated tasks once to avoid overwriting user-completed tasks
+  const { data: existing } = await supabaseAdmin
+    .from("building_tasks")
+    .select("task_key, status")
+    .eq("project_id", triggers.projectId)
+    .eq("is_auto_generated", true)
+    .not("task_key", "is", null);
+
+  const preservedKeys = new Set(
+    (existing ?? [])
+      .filter((t) => t.status === "done" || t.status === "not_applicable")
+      .map((t) => t.task_key as string),
+  );
+
+  const toUpsert = tasks.filter((t) => !preservedKeys.has(t.task_key!));
+  if (toUpsert.length === 0) return;
+
+  const { error } = await supabaseAdmin
+    .from("building_tasks")
+    .upsert(toUpsert, { onConflict: "project_id,task_key" });
+
+  if (error) {
+    // Non-fatal: building_tasks sync failure must not block the main project save
+    console.warn("[Persistence] building_tasks sync fejlede:", error.message);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Hjælper: verificér access token og returnér userId
@@ -89,7 +298,6 @@ async function getUserId(accessToken: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 async function getOrCreateProject(userId: string): Promise<string> {
-  // Prøv at finde eksisterende projekt
   const { data: existing } = await supabaseAdmin
     .from("projects")
     .select("id")
@@ -100,7 +308,6 @@ async function getOrCreateProject(userId: string): Promise<string> {
 
   if (existing?.id) return existing.id;
 
-  // Opret nyt projekt
   const { data: created, error } = await supabaseAdmin
     .from("projects")
     .insert({ user_id: userId, current_step: "adresse" })
@@ -143,18 +350,20 @@ export async function saveProject(
   projectId?: string | null,
 ): Promise<void> {
   const userId = await getUserId(accessToken);
-  if (!userId) return; // Gæst — no-op
+  if (!userId) return;
 
   const id = projectId?.trim() ? projectId : await getOrCreateProject(userId);
 
   const update: ProjectUpdate = {};
 
+  // ── Adresse ──────────────────────────────────────────────────────────────
   if (patch.address !== undefined) {
     update.address_full = patch.address.adresse;
     update.address_kommune = patch.address.kommune;
     update.address_matrikel = patch.address.matrikel;
     update.address_bbr = patch.address.adgangsadresseid;
     update.address_adresseid = patch.address.adresseid;
+    update.adresse_dar_id = patch.address.adresseid;
     update.address_postnr = patch.address.postnr;
     update.address_postnrnavn = patch.address.postnrnavn;
     update.address_koordinater = patch.address.koordinater as unknown as Json;
@@ -162,13 +371,15 @@ export async function saveProject(
     update.address_matrikelnummer = patch.address.matrikelnummer;
   }
 
+  // ── Byggeoenske / HusDna ─────────────────────────────────────────────────
   if (patch.byggeoenske !== undefined) {
     update.brief_data = patch.byggeoenske as unknown as Json;
   } else if (patch.husDna !== undefined) {
     update.brief_data = patch.husDna;
   }
 
-  if (
+  // ── Compliance JSONB (backward compat) + typed columns ───────────────────
+  const hasComplianceData =
     patch.bbrData !== undefined ||
     patch.complianceFlags !== undefined ||
     patch.lokalplaner !== undefined ||
@@ -183,8 +394,10 @@ export async function saveProject(
     patch.naboer !== undefined ||
     patch.fjernvarme !== undefined ||
     patch.save !== undefined ||
-    patch.fbbData !== undefined
-  ) {
+    patch.fbbData !== undefined;
+
+  if (hasComplianceData) {
+    // Keep the JSONB blob for backward compat — readers not yet migrated to typed columns
     update.compliance_data = {
       bbr: patch.bbrData ?? null,
       flags: patch.complianceFlags ?? [],
@@ -202,16 +415,64 @@ export async function saveProject(
       save: patch.save ?? null,
       fbbData: patch.fbbData ?? null,
     };
+
+    // ── Extract typed compliance values ─────────────────────────────────────
+    // Rule: only write a typed column when its source data is explicitly in this patch.
+    // This prevents a partial patch from zeroing out values set by an earlier full patch.
+
+    // heritage_save_value: authoritative source is FBB (saveBevaringsvaerdi is always null)
+    if (patch.fbbData !== undefined) {
+      const saveVal = patch.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
+      // FBB returns -1 for "not SAVE-registered" — store as null
+      update.heritage_save_value = saveVal !== null && saveVal >= 1 ? saveVal : null;
+    }
+
+    // is_fredet: SaveData.fredet is the authoritative live check (DAI WFS)
+    // Fall back to BBR byg070 flag if SaveData not in this patch
+    if (patch.save !== undefined) {
+      update.is_fredet = patch.save?.fredet ?? null;
+    } else if (patch.bbrData !== undefined) {
+      update.is_fredet = patch.bbrData?.fredet ?? null;
+    }
+
+    // grundareal_m2 and bebygget_areal_m2: from BBR/MAT
+    if (patch.bbrData !== undefined && patch.bbrData !== null) {
+      update.grundareal_m2 = patch.bbrData.grundareal;
+      update.bebygget_areal_m2 = patch.bbrData.bebygget_areal;
+    }
+
+    // ── Aggregate hard_stop flag ─────────────────────────────────────────────
+    // Re-compute every time compliance data arrives so the flag stays current.
+    const saveValue = (update.heritage_save_value as number | null | undefined) ?? null;
+    const isFredet = (update.is_fredet as boolean | null | undefined) ?? null;
+    const strandbeskyttelse = patch.bbrData?.mat_strandbeskyttelse ?? null;
+    const fredskov = patch.bbrData?.mat_fredskov ?? null;
+    const klitfredning = patch.bbrData?.mat_klitfredning ?? null;
+
+    const hardStop =
+      isFredet === true ||
+      (saveValue !== null && saveValue <= 3) ||
+      strandbeskyttelse === true ||
+      fredskov === true ||
+      klitfredning === true;
+
+    update.hard_stop = hardStop;
+    update.hard_stop_reason = hardStop
+      ? deriveHardStopReason({ saveValue, isFredet, strandbeskyttelse, fredskov, klitfredning })
+      : null;
   }
 
+  // ── Compliance done flag ──────────────────────────────────────────────────
   if (patch.complianceDone !== undefined) {
     update.compliance_done = patch.complianceDone;
   }
 
+  // ── Current step ─────────────────────────────────────────────────────────
   if (patch.currentStep !== undefined) {
     update.current_step = patch.currentStep;
   }
 
+  // ── Project data status ───────────────────────────────────────────────────
   if (patch.projectDataStatus !== undefined) {
     update.project_data_status = patch.projectDataStatus;
   }
@@ -222,6 +483,24 @@ export async function saveProject(
 
   if (error) {
     throw new Error(`[Persistence] update fejlede: ${error.message}`);
+  }
+
+  // ── Auto-generate building tasks from compliance triggers ─────────────────
+  // Run after the project write so task generation never blocks the main save.
+  if (hasComplianceData) {
+    const soilContamination = deriveSoilContaminationStatus(patch.dkjord);
+    const saveVal = (update.heritage_save_value as number | null | undefined) ?? null;
+    const isFredetVal = (update.is_fredet as boolean | null | undefined) ?? null;
+
+    await syncBuildingTasks({
+      projectId: id,
+      saveValue: saveVal,
+      isFredet: isFredetVal,
+      strandbeskyttelse: patch.bbrData?.mat_strandbeskyttelse ?? null,
+      fredskov: patch.bbrData?.mat_fredskov ?? null,
+      klitfredning: patch.bbrData?.mat_klitfredning ?? null,
+      soilContamination,
+    });
   }
 }
 
@@ -239,7 +518,7 @@ export async function loadProject(
   let query = supabaseAdmin
     .from("projects")
     .select(
-      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status",
+      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status, heritage_save_value, is_fredet, grundareal_m2, bebygget_areal_m2, hard_stop, hard_stop_reason",
     )
     .eq("user_id", userId);
 
@@ -256,5 +535,5 @@ export async function loadProject(
     return null;
   }
 
-  return data ?? null;
+  return (data as unknown as PersistedProject) ?? null;
 }

@@ -1,6 +1,27 @@
 # CLAUDE.md
 
-**ArchAI** — AI-assisted byggetilladelsesrådgiver. TanStack Start (React SSR) på Cloudflare Workers.
+**ArchAI — The Builder's Cockpit.** AI-powered platform that eliminates the fear and complexity of private residential construction in Denmark. TanStack Start (React SSR) on Cloudflare Workers.
+
+## Product Context
+
+ArchAI serves private homeowners navigating the Danish residential construction journey — primarily the **Nedrivning → Nybyg** path (see `docs/domain/journey-demolition-new-build.md`). The core insight: this journey is non-linear, risk-driven, and iterative, and the biggest risks are invisible until it's too late (geoteknik, fredning, strandbeskyttelse, nabopartshøring).
+
+**The four phases of The Builder's Cockpit:**
+1. **Sandkassen** — Inspiration → AI-constrained 3D concepts (Hus-DNA)
+2. **Matriklen** — Site analysis → all Hard Stops surfaced before purchase or design investment
+3. **Maskinrummet** — Detailed design → parametric guardrails, live compliance, BIM
+4. **Myndighed** — Permitting → auto-generated permit applications, statics, LCA
+
+**Pre-purchase is a first-class use case.** Users evaluate properties before buying — compliance data is due diligence, not just project tooling.
+
+**Unique Danish data handling:** The Compliance Engine synthesises 10+ authoritative Danish registers in a single pipeline. Each data source has legal authority weight: lokalplan overrides kommuneplan overrides BR18. Every rule violation must carry its `kilde` (bbr | plandata | servitut | sdfi | regelkerne) so users can act on the right authority.
+
+**Critical risk categories (domain knowledge):**
+- Geoteknik: 0 kr (good ground) to 500,000 kr+ (pile foundations) — largest single risk
+- Forsyningsafkobling: 50,000–150,000 kr (el, vand, gas, kloak) — frequently omitted from budgets
+- Nabosager: nabopartshøring can delay 4–12 weeks — early screening is essential
+- Fredning/SAVE 1–3: demolition requires Slots- og Kulturstyrelsen approval
+- Strandbeskyttelse/fredskov: absolute building stop without dispensation
 
 ## Commands
 
@@ -45,6 +66,60 @@ Compliance pipeline: `createServerFn` → `analyseAddress()` i `src/lib/analysis
 **State** — wizard-data lever udelukkende i `src/lib/project-store.ts`. Ingen lokal `useState` for flow-data.
 
 **Env** — importér altid fra `src/lib/env.ts`, aldrig `process.env` direkte.
+
+## Development Rules — Compliance Engine
+
+**Rule 1 — Check `site_constraints` first.**
+Before any design suggestion, code generation, or AI prompt that involves plot dimensions, building height, footprint, or style, verify the site constraints are loaded. The `RuleEngineInput` assembled by `src/lib/rule-engine/input-assembler.ts` is the authoritative constraint object for the current plot. Never suggest a design change that hasn't been validated against it.
+
+```typescript
+// CORRECT: read constraints, then suggest
+const input = assembleRuleEngineInput(bbrData, plandata, byggeoenske, ...);
+const result = runRuleEngine(input);
+if (result.hardStops.length > 0) { /* surface before proceeding */ }
+
+// WRONG: suggest first, validate later
+suggestDesign(byggeoenske);
+```
+
+**Rule 2 — Single Source of Truth: the `projects` table.**
+All persisted project state lives in the `projects` table. Domain-critical compliance values (bebyggelsesprocent, max etager, grundareal, SAVE-value, Hard Stop flags) must be stored as **typed Supabase columns**, not inside JSONB blobs. When adding new compliance data:
+- Add a typed column migration, not a JSONB field
+- Update `project-sync.ts` to write to the typed column
+- Update `project-store.ts` to read from the typed column on restore
+
+**Rule 3 — Hard Stop logic.**
+Hard Stops are non-negotiable blocking conditions. The severity ladder:
+- `"illegal"` — cannot be dispensed (listed building + demolition intent)
+- `"dispensation_required"` — requires approval from named authority
+- `"warning"` — advisory; design can proceed
+
+Current Hard Stop triggers (source: `src/lib/rule-engine/rules/stop-rules.ts`):
+- `saveValue <= 3` → fredning/dispensation_required (Slots- og Kulturstyrelsen)
+- `saveValue === 4` → demolition warning (add this — currently missing, see Blocker 3 below)
+- `strandbeskyttelse === true` → absolute stop
+- `fredskov === true` → absolute stop
+- `klitfredning === true` → absolute stop
+- `listedBuilding === true` → illegal
+
+When implementing new compliance rules, always add a corresponding `ComplianceFlag` entry so the UI surfaces the violation with its `kilde` and `dispensationMyndighed`.
+
+## Tech Debt Management
+
+The codebase has accumulated vibe-coded JSON blobs that violate the Data-Driven Architecture north star. Prune in this order:
+
+**Prune pattern — JSONB → typed columns:**
+When you encounter a field being read from `compliance_data JSONB` or `projekter.bbr_data JSONB` for a domain-critical value, migrate it:
+1. Write a Supabase migration adding the typed column
+2. Backfill from the JSONB field in the same migration
+3. Update the TypeScript types and `project-sync.ts`
+4. Remove the JSONB read path once the typed column is confirmed stable
+5. Do NOT delete the JSONB column until the backfill has been verified in production
+
+**Prune pattern — duplicate project tables:**
+`projects` and `projekter` are two tables serving overlapping purposes (see Blocker 2 below). New features must not add data to `projekter` — use `projects`. The consolidation migration is tracked as a Linear issue.
+
+**Never add new JSONB fields for compliance data.** If you're tempted to add `compliance_data->>'new_value'`, add a typed column instead. The one exception is `inspection_payload` — raw API response archiving is intentionally untyped.
 
 ## src/lib — nøglefiler
 

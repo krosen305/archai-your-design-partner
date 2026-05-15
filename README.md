@@ -1,70 +1,90 @@
-# ArchAI — Den Digitale Byggepartner
+# ArchAI — The Builder's Cockpit
 
-AI-assisteret byggetilladelsesrådgiver. Hjælper danskere med at forstå hvad de må bygge på deres grund inden de kontakter en arkitekt eller kommunen.
+**We eliminate the fear and complexity of building a dream home in Denmark.** ArchAI replaces uncertainty with a real-time, data-driven cockpit where private homeowners move from inspiration to building permit with full transparency on compliance, budget, and risk.
 
-## Hvad er ArchAI?
+---
 
-ArchAI guider brugeren gennem et wizard-flow:
+## The Four Phases of The Builder's Journey
 
-1. **Adresse** — slå adressen op via DAWA/DAR
-2. **Hus-DNA** — AI-genereret billede af drømmehuset (Claude vision)
-3. **Compliance** — Automatisk analyse: BBR + Plandata + 7+ geodatakilder
-4. **Match** — Compliance-matrix: hvad må du bygge?
-5. **Finans** — Budgetestimat og næste skridt
+### Phase 1 — Sandkassen (Inspiration)
+Upload inspiration images. An AI generates buildable 3D concepts anchored to your architectural style preferences and budget envelope. Every design option is constrained from the first pixel by real plot data — no fantasy sketches that can't be permitted.
 
-Compliance-pipeline: `analyseAddress()` → cache i Supabase → BBR, MAT, DAR, Plandata, naturbeskyttelse, geoteknik, terrain, nabobygninger, fjernvarme.
+### Phase 2 — Matriklen (Site Analysis)
+Enter any Danish address. The Compliance Engine fetches and cross-references 10+ authoritative Danish datasets (BBR, MAT, DAR, Plandata, FBB/SAVE, naturbeskyttelse, geoteknik, VUR) and surfaces every Hard Stop before you invest in an architect. This phase is the due-diligence layer — equally useful for pre-purchase evaluation as for active project planning.
+
+### Phase 3 — Maskinrummet (Detailed Design / BIM)
+Parametric guardrails keep creative iteration inside the compliance envelope. Change roof pitch → budget updates live. Add a dormer → bebyggelsesprocent recalculates instantly. The Compliance Engine runs client-side on every Byggeoenske change with zero server round-trips. When constraints permit it, a BIM export feeds directly into structural calculations and LCA.
+
+### Phase 4 — Myndighed (Permitting)
+One-click generation of demolition and building permit applications, pre-filled with verified data from the prior phases. Statics documentation and LCA calculations are assembled from the parametric model. Nabopartshøring risk is scored before submission.
+
+---
+
+## Product Pillars
+
+| Pillar | What It Does |
+|--------|-------------|
+| **Dream to Draft** | Upload inspiration → AI generates buildable 3D models based on architectural traits |
+| **Compliance Engine** | Hard Stop validation against BR18, local plans (Plandata.dk), and heritage values (FBB/SAVE) |
+| **Live Financials** | Real-time budget updates driven by design choices and local site data (soil, forsyning, nabosager) |
+| **Bureaucracy Killer** | Automated permit applications, statics docs, and LCA — pre-filled from verified project data |
+
+---
 
 ## Tech Stack
 
-| Lag             | Teknologi                                         |
-| --------------- | ------------------------------------------------- |
-| Framework       | TanStack Start (React SSR)                        |
-| Runtime         | Cloudflare Workers                                |
-| Sprog           | TypeScript, Bun                                   |
-| Database / Auth | Supabase (PostgreSQL + RLS)                       |
-| AI              | Anthropic Claude (Haiku / Sonnet)                 |
-| Styling         | Tailwind CSS + shadcn/ui                          |
-| Tests           | Vitest (unit) + Playwright (E2E) + eval-framework |
+| Layer | Technology |
+|-------|-----------|
+| Framework | TanStack Start (React SSR) |
+| Runtime | Cloudflare Workers |
+| Language | TypeScript, Bun |
+| Database / Auth | Supabase (PostgreSQL + RLS) — Single Source of Truth for all project and compliance state |
+| AI | Anthropic Claude (Sonnet / Haiku) — design generation, PDF extraction, AI analysis |
+| Danish Data | Datafordeler (BBR, MAT, DAR, EBR, VUR), Plandata (WFS), SDFI (DHM, naturbeskyttelse), FBB, GEUS, DK-Jord |
+| Styling | Tailwind CSS + shadcn/ui |
+| Tests | Vitest (unit) + Playwright (E2E) + eval-framework |
 
-## Lokalt setup
+---
+
+## Local Setup
 
 ```bash
-# Forudsætter: Bun, Wrangler CLI, Supabase CLI
+# Prerequisites: Bun, Wrangler CLI, Supabase CLI
 
 bun install
-cp .dev.vars.example .dev.vars   # Udfyld API-nøgler (se nedenfor)
+cp .dev.vars.example .dev.vars   # Fill in API keys (see below)
 bun dev                           # http://localhost:3000
 ```
 
-Kræver `.dev.vars`:
+Required `.dev.vars`:
 
 ```
 DATAFORDELER_API_KEY=...
 ANTHROPIC_API_KEY=...
-DATAFORSYNINGEN_TOKEN=...   # valgfri
+DATAFORSYNINGEN_TOKEN=...   # optional — rate-limits apply without it
 SUPABASE_URL=...
 SUPABASE_PUBLISHABLE_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
-## Kommandoer
+## Commands
 
 ```bash
-bun dev           # Dev server
-bun build         # Production build (Cloudflare Workers)
-bun test          # Unit tests
-bun run evals     # AI eval-suite (mock mode)
-bunx tsc --noEmit # Type-check
-bunx eslint .     # Lint
-bunx prettier --write . # Format
+bun dev                     # Dev server
+bun build                   # Production build (Cloudflare Workers)
+bun test                    # Unit tests
+bun run evals               # AI eval-suite (mock mode)
+bunx tsc --noEmit           # Type-check
+bunx eslint .               # Lint
+bunx prettier --write .     # Format
 ```
 
 <!-- INTEGRATIONS-START -->
-<!-- Auto-genereret af .github/workflows/auto-readme.yml — rediger ikke manuelt -->
+<!-- Auto-generated by .github/workflows/auto-readme.yml — do not edit manually -->
 
-## Integrationer
+## Integrations
 
-| Service                   | Fil                                     | Status          | Beskrivelse                                               |
+| Service                   | File                                    | Status          | Description                                               |
 | ------------------------- | --------------------------------------- | --------------- | --------------------------------------------------------- |
 | `BbrService`              | `integrations/bbr/client.ts`            | ✅ Live         | Bygningsregister via Datafordeler GraphQL v2              |
 | `NaboService`             | `integrations/bbr/neighbor-client.ts`   | ✅ Live         | Nabobygninger inden for 40 m via DAWA REST                |
@@ -85,22 +105,24 @@ bunx prettier --write . # Format
 
 <!-- INTEGRATIONS-END -->
 
-## Arkitektur
+## Architecture
 
 ```
 src/
-├── routes/          # TanStack Start SSR routes (wizard-steps)
-├── lib/             # Domænelogik (orchestrator, regelmotor, projekt-store)
-├── integrations/    # Alle eksterne API-klienter (server-side only)
-└── components/      # React UI-komponenter
+├── routes/          # TanStack Start SSR routes — four-phase cockpit flow
+├── lib/             # Domain logic (orchestrator, rule engine, project store, reactive compliance)
+├── integrations/    # All external API clients (server-side only)
+└── components/      # React UI components
 ```
 
-**Server boundary**: al Datafordeler/Supabase-kode lever i `createServerFn`. Importer aldrig server-moduler direkte i route-filer.
+**Server boundary**: All Datafordeler/Supabase code lives in `createServerFn`. Never import server modules directly in route files.
+
+**Single Source of Truth**: The `projects` table in Supabase is the canonical record for all project state. Domain-critical compliance values (bebyggelsesprocent, etager, SAVE-value, Hard Stop flags) must be stored as typed columns, not buried in JSONB blobs.
 
 ## CI/CD
 
-GitHub Actions: type-check → lint → test → build → evals (mock) → E2E → deploy til Cloudflare Workers.
+GitHub Actions: type-check → lint → test → build → evals (mock) → E2E → deploy to Cloudflare Workers.
 
-Se `.github/workflows/` for detaljer.
+See `.github/workflows/` for details.
 
-Se [CHANGELOG.md](CHANGELOG.md) for versionshistorik.
+See [CHANGELOG.md](CHANGELOG.md) for version history.
