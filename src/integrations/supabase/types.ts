@@ -62,6 +62,130 @@ export type Database = {
         }
         Relationships: []
       }
+      building_tasks: {
+        Row: {
+          blocked_by_constraint: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_auto_generated: boolean
+          metadata: Json
+          phase: string
+          priority: number
+          project_id: string
+          status: string
+          task_key: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          blocked_by_constraint?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_auto_generated?: boolean
+          metadata?: Json
+          phase: string
+          priority?: number
+          project_id: string
+          status?: string
+          task_key?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          blocked_by_constraint?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_auto_generated?: boolean
+          metadata?: Json
+          phase?: string
+          priority?: number
+          project_id?: string
+          status?: string
+          task_key?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      design_iterations: {
+        Row: {
+          area_m2: number | null
+          budget_estimate: number | null
+          byggeoenske: Json | null
+          compliance_snapshot: Json | null
+          created_at: string
+          description: string | null
+          floors: number | null
+          hus_dna: Json | null
+          id: string
+          inspirations: Json
+          is_active: boolean
+          label: string | null
+          project_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          area_m2?: number | null
+          budget_estimate?: number | null
+          byggeoenske?: Json | null
+          compliance_snapshot?: Json | null
+          created_at?: string
+          description?: string | null
+          floors?: number | null
+          hus_dna?: Json | null
+          id?: string
+          inspirations?: Json
+          is_active?: boolean
+          label?: string | null
+          project_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          area_m2?: number | null
+          budget_estimate?: number | null
+          byggeoenske?: Json | null
+          compliance_snapshot?: Json | null
+          created_at?: string
+          description?: string | null
+          floors?: number | null
+          hus_dna?: Json | null
+          id?: string
+          inspirations?: Json
+          is_active?: boolean
+          label?: string | null
+          project_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "design_iterations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -98,18 +222,27 @@ export type Database = {
           address_matrikelnummer: string | null
           address_postnr: string | null
           address_postnrnavn: string | null
+          adresse_dar_id: string | null
           area: string | null
+          bebygget_areal_m2: number | null
+          bfe_nr: string | null
           brief_data: Json | null
           brief_done: boolean
           budget: string | null
+          budget_estimate: number | null
           compliance_data: Json | null
           compliance_done: boolean
           created_at: string
           current_step: string
           description: string | null
           floors: string | null
+          grundareal_m2: number | null
+          hard_stop: boolean | null
+          hard_stop_reason: string | null
+          heritage_save_value: number | null
           id: string
           inspirations: Json | null
+          is_fredet: boolean | null
           name: string | null
           project_data_status: Json | null
           timeline: string | null
@@ -127,18 +260,27 @@ export type Database = {
           address_matrikelnummer?: string | null
           address_postnr?: string | null
           address_postnrnavn?: string | null
+          adresse_dar_id?: string | null
           area?: string | null
+          bebygget_areal_m2?: number | null
+          bfe_nr?: string | null
           brief_data?: Json | null
           brief_done?: boolean
           budget?: string | null
+          budget_estimate?: number | null
           compliance_data?: Json | null
           compliance_done?: boolean
           created_at?: string
           current_step?: string
           description?: string | null
           floors?: string | null
+          grundareal_m2?: number | null
+          hard_stop?: boolean | null
+          hard_stop_reason?: string | null
+          heritage_save_value?: number | null
           id?: string
           inspirations?: Json | null
+          is_fredet?: boolean | null
           name?: string | null
           project_data_status?: Json | null
           timeline?: string | null
@@ -156,18 +298,27 @@ export type Database = {
           address_matrikelnummer?: string | null
           address_postnr?: string | null
           address_postnrnavn?: string | null
+          adresse_dar_id?: string | null
           area?: string | null
+          bebygget_areal_m2?: number | null
+          bfe_nr?: string | null
           brief_data?: Json | null
           brief_done?: boolean
           budget?: string | null
+          budget_estimate?: number | null
           compliance_data?: Json | null
           compliance_done?: boolean
           created_at?: string
           current_step?: string
           description?: string | null
           floors?: string | null
+          grundareal_m2?: number | null
+          hard_stop?: boolean | null
+          hard_stop_reason?: string | null
+          heritage_save_value?: number | null
           id?: string
           inspirations?: Json | null
+          is_fredet?: boolean | null
           name?: string | null
           project_data_status?: Json | null
           timeline?: string | null
@@ -175,6 +326,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      site_constraints: {
+        Row: {
+          address_id: string
+          confidence: string
+          extracted_at: string
+          fredskov: boolean
+          id: string
+          is_fredet: boolean | null
+          klitfredning: boolean
+          max_bebyggelsesprocent: number | null
+          max_etager: number | null
+          max_height_m: number | null
+          min_distance_to_boundary_m: number | null
+          save_value: number | null
+          soil_contamination_status: string | null
+          source_kommuneplan_id: string | null
+          source_lokalplan_id: string | null
+          strandbeskyttelse: boolean
+          updated_at: string
+        }
+        Insert: {
+          address_id: string
+          confidence?: string
+          extracted_at?: string
+          fredskov?: boolean
+          id?: string
+          is_fredet?: boolean | null
+          klitfredning?: boolean
+          max_bebyggelsesprocent?: number | null
+          max_etager?: number | null
+          max_height_m?: number | null
+          min_distance_to_boundary_m?: number | null
+          save_value?: number | null
+          soil_contamination_status?: string | null
+          source_kommuneplan_id?: string | null
+          source_lokalplan_id?: string | null
+          strandbeskyttelse?: boolean
+          updated_at?: string
+        }
+        Update: {
+          address_id?: string
+          confidence?: string
+          extracted_at?: string
+          fredskov?: boolean
+          id?: string
+          is_fredet?: boolean | null
+          klitfredning?: boolean
+          max_bebyggelsesprocent?: number | null
+          max_etager?: number | null
+          max_height_m?: number | null
+          min_distance_to_boundary_m?: number | null
+          save_value?: number | null
+          soil_contamination_status?: string | null
+          source_kommuneplan_id?: string | null
+          source_lokalplan_id?: string | null
+          strandbeskyttelse?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_constraints_address_id_fkey"
+            columns: ["address_id"]
+            isOneToOne: true
+            referencedRelation: "address_analysis"
+            referencedColumns: ["address_id"]
+          },
+        ]
       }
     }
     Views: {
