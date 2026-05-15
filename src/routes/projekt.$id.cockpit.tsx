@@ -1086,7 +1086,7 @@ function AnalyseTab({
             label: `NABOBYGNINGER (${naboer.count})`,
             content: <NaboerSektion data={naboer} />,
           },
-        ].filter((s): s is DetailsSection => Boolean(s))}
+        ].filter(Boolean) as DetailsSection[]}
       />
 
       {/* Slim navigation — én primær handling, sekundære som links */}
