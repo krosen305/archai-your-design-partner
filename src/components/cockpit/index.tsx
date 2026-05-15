@@ -40,6 +40,7 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
+import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { cn } from "@/lib/utils";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 
