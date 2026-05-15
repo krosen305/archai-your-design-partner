@@ -149,7 +149,7 @@ const COCKPIT_STEPS = new Set(["boligoenske", "ejendom", "byggeanalyse", "oekono
 
 function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   const navigate = useNavigate();
-  const { setCurrentProjectId } = useProject();
+  const { reset, setCurrentProjectId } = useProject();
 
   const harAdresse = !!projekt.adresse_dar_id;
   const dato = new Date(projekt.updated_at).toLocaleDateString("da-DK", {
@@ -159,6 +159,7 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   });
 
   const handleFortsaet = () => {
+    reset();
     setCurrentProjectId(projekt.id);
     const search = { projectId: projekt.id } as never;
     if (
