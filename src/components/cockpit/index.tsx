@@ -30,6 +30,7 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,7 @@ export type CockpitProps = {
   naboer: NeighborBuildingData | null;
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
+  naturbeskyttelse: NaturbeskyttelsesResultat | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
 };
@@ -61,11 +63,12 @@ export function Cockpit({
   naboer,
   servitutter,
   terrain,
+  naturbeskyttelse,
   isRecomputing,
 }: CockpitProps) {
   const reactiveContext = useMemo(
-    () => ({ geusRisk, servitutter, terrain, fbbData }),
-    [geusRisk, servitutter, terrain, fbbData],
+    () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse }),
+    [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse],
   );
 
   return (
@@ -103,6 +106,7 @@ function ProjektDnaPanel({
     servitutter: TinglysningResult | null;
     terrain: TerrainData | null;
     fbbData: FbbResultat | null;
+    naturbeskyttelse: NaturbeskyttelsesResultat | null;
   };
 }) {
   return (
@@ -169,6 +173,7 @@ function ByggeoenskeAccordion({
     servitutter: TinglysningResult | null;
     terrain: TerrainData | null;
     fbbData: FbbResultat | null;
+    naturbeskyttelse: NaturbeskyttelsesResultat | null;
   };
 }) {
   const { byggeoenske, setByggeoenske } = useProject();
@@ -182,12 +187,12 @@ function ByggeoenskeAccordion({
 
     const state = useProject.getState();
     if (state.bbrData) {
-      const { complianceMetrics: cm } = computePartialUpdate({
+      const { complianceMetrics: cm, complianceFlags } = computePartialUpdate({
         bbr: state.bbrData,
         ramme: state.kommuneplanramme,
         lokalplanExtract: state.lokalplanExtract,
         lokalplaner: state.lokalplaner,
-        naturbeskyttelse: null,
+        naturbeskyttelse: reactiveContext.naturbeskyttelse,
         geusRisk: reactiveContext.geusRisk,
         servitutter: reactiveContext.servitutter,
         terrain: reactiveContext.terrain,
@@ -197,6 +202,7 @@ function ByggeoenskeAccordion({
         kommunekode: state.address?.kommunekode ?? "",
       });
       state.setComplianceMetrics(cm);
+      state.setComplianceFlags(complianceFlags);
     }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -406,7 +412,7 @@ function ToggleField({
 function UploadField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const { currentProjectId } = useProject();
+  const { currentProjectId, byggeoenske, setByggeoenske } = useProject();
 
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -414,13 +420,16 @@ function UploadField({ value, onChange }: { value: string[]; onChange: (v: strin
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user.id;
-      const uploaded: string[] = [];
+      const uploadedUrls: string[] = [];
+      const uploadedPaths: string[] = [];
       for (const file of Array.from(files).slice(0, 8 - value.length)) {
         if (userId) {
           if (!currentProjectId) continue;
           try {
-            const signedUrl = await uploadInspirationsbillede(currentProjectId, file);
-            uploaded.push(signedUrl);
+            // ARCH-174: gem path (til URL-fornyelse) + signedUrl (til visning)
+            const { path, signedUrl } = await uploadInspirationsbillede(currentProjectId, file);
+            uploadedUrls.push(signedUrl);
+            uploadedPaths.push(path);
           } catch {
             continue;
           }
@@ -431,10 +440,18 @@ function UploadField({ value, onChange }: { value: string[]; onChange: (v: strin
             reader.onerror = reject;
             reader.readAsDataURL(file);
           });
-          uploaded.push(b64);
+          uploadedUrls.push(b64);
         }
       }
-      onChange([...value, ...uploaded]);
+      onChange([...value, ...uploadedUrls]);
+      if (uploadedPaths.length > 0) {
+        setByggeoenske({
+          inspirationsbilledePaths: [
+            ...(byggeoenske.inspirationsbilledePaths ?? []),
+            ...uploadedPaths,
+          ],
+        });
+      }
     } finally {
       setUploading(false);
     }
@@ -721,64 +738,29 @@ function CompliancePanel({
   const konflikter = byggeanalyse?.konflikt.length ?? 0;
   const dispensationer = byggeanalyse?.kraever_dispensation.length ?? 0;
 
-  // Usynlige Budgetrisici (ARCH cockpit) — fremhæves særligt i "Overvejer køb"-mode
-  const risici: Array<{
-    key: string;
-    label: string;
-    severity: "high" | "med" | "low";
-    detalje: string;
-  }> = [];
-  if (
-    fbbData?.fbb_bedste_bygning &&
-    fbbData.fbb_bedste_bygning.bevaringsvaerdi >= 1 &&
-    fbbData.fbb_bedste_bygning.bevaringsvaerdi <= 3
-  ) {
-    risici.push({
-      key: "save",
-      label: `SAVE ${fbbData.fbb_bedste_bygning.bevaringsvaerdi}/9 — Nedrivning kræver tilladelse`,
-      severity: "high",
-      detalje: "Høj bevaringsværdi (PL §14) — kommunen kan nedlægge forbud mod nedrivning",
-    });
-  }
-  if (bbr?.fredet) {
-    risici.push({
-      key: "fredet",
-      label: "Fredet bygning",
-      severity: "high",
-      detalje: "Slots- og Kulturstyrelsen skal godkende ændringer",
-    });
-  }
-  if (geusRisk?.radonRisk === "high") {
-    risici.push({
-      key: "radon-h",
-      label: "Høj radonrisiko",
-      severity: "high",
-      detalje: "Kræver radonsikring (~30-80.000 kr ekstra)",
-    });
-  } else if (geusRisk?.radonRisk === "medium") {
-    risici.push({
-      key: "radon-m",
-      label: "Mellem radonrisiko",
-      severity: "med",
-      detalje: "Anbefalet radonsikring (~15-30.000 kr ekstra)",
-    });
-  }
-  if (bbr?.mat_fredskov) {
-    risici.push({
-      key: "fredskov",
-      label: "Fredskov på matrikel",
-      severity: "high",
-      detalje: "Naturstyrelsens dispensation kræves — rydning normalt udelukket",
-    });
-  }
-  if (bbr?.mat_strandbeskyttelse) {
-    risici.push({
-      key: "strand",
-      label: "Strandbeskyttelseslinje",
-      severity: "high",
-      detalje: "Kystdirektoratet — byggestop uden dispensation",
-    });
-  }
+  // Usynlige Budgetrisici — afledt fra complianceFlags (ARCH-176).
+  // Ingen direkte fbbData/bbr-checks — single source of truth er store.
+  const RISICI_FLAG_IDS = new Set([
+    "save-bevaringsvaerdi",
+    "bbr-fredet",
+    "fredet",
+    "geus-radon",
+    "geus-grundvand",
+    "mat-fredskov",
+    "mat-strandbeskyttelse",
+    "mat-klitfredning",
+    "naturbeskyttelse-strandbeskyttelse",
+    "dkjord-v2",
+    "dkjord-v1",
+  ]);
+  const risici = complianceFlags
+    .filter((f) => RISICI_FLAG_IDS.has(f.id) || f.kilde === "geus" || f.kilde === "dkjord")
+    .map((f) => ({
+      key: f.id,
+      label: f.label,
+      severity: f.status === "blocker" ? ("high" as const) : ("med" as const),
+      detalje: f.detalje ?? "",
+    }));
 
   const inKobMode = cockpitMode === "kob";
 

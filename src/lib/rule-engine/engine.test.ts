@@ -220,9 +220,9 @@ describe("checkStopRules — beskyttelseslinjer", () => {
       },
     });
     const violations = checkStopRules(input);
-    expect(
-      violations.find((x) => x.rule === "protection_line_churchSurroundings")?.authority,
-    ).toBe("Kommunen");
+    expect(violations.find((x) => x.rule === "protection_line_churchSurroundings")?.authority).toBe(
+      "Kommunen",
+    );
   });
 
   it("multiple beskyttelseslinjer → multiple violations", () => {

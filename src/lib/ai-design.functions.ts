@@ -5,6 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { getEnvOptional } from "@/lib/env";
 
 const inputSchema = z.object({
   prompt: z.string().min(1).max(2000),
@@ -14,6 +15,10 @@ const inputSchema = z.object({
     .optional(),
   stil: z.string().max(64).optional(),
   facademateriale: z.string().max(64).optional(),
+  // ARCH-172: Rule 1 gate — klienten sender hard-stop status fra rule engine.
+  // Serverfunction afviser genereringen hvis aktive hard stops findes,
+  // så gaten ikke kan omgås blot ved at kalde endpointet direkte.
+  hasHardStop: z.boolean().optional(),
 });
 
 export type DesignProposalsResult = { images: string[]; kilde: "lovable-ai" | "placeholder" };
@@ -42,7 +47,14 @@ function extractImageUrl(message: LovableAiImageMessage | undefined): string | n
 export const generateDesignProposals = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }): Promise<DesignProposalsResult> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    // ARCH-172: Rule 1 gate — bloker AI-generering ved aktive hard stops.
+    if (data.hasHardStop) {
+      throw new Error(
+        "AI-design er blokeret: ejendommen har aktive compliance-stop der skal afklares først.",
+      );
+    }
+
+    const apiKey = getEnvOptional("LOVABLE_API_KEY");
     if (!apiKey) {
       return { images: placeholderImages(data.prompt), kilde: "placeholder" };
     }

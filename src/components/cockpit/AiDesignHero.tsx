@@ -3,7 +3,7 @@
 
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Upload, X, Check, Loader2 } from "lucide-react";
+import { Sparkles, Upload, X, Check, Loader2, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/wizard-ui";
 import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "@/lib/project-store";
@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 
 export function AiDesignHero() {
-  const { byggeoenske, setByggeoenske } = useProject();
+  const { byggeoenske, setByggeoenske, complianceFlags } = useProject();
+  // ARCH-172: Rule 1 gate — ingen AI-design ved aktive compliance-stop.
+  const hasHardStop = complianceFlags.some((f) => f.status === "blocker");
   const [drøm, setDrøm] = useState(byggeoenske.designDroem ?? "");
   const [forslag, setForslag] = useState<string[]>(byggeoenske.genererededDesignforslag ?? []);
   const [valgt, setValgt] = useState<string | null>(byggeoenske.valgteDesignforslag ?? null);
@@ -61,6 +63,7 @@ export function AiDesignHero() {
           inspirationsUrls: uploadedImages.slice(0, 4),
           stil: byggeoenske.arkitektoniskStil,
           facademateriale: byggeoenske.facademateriale,
+          hasHardStop,
         },
       });
       setForslag(result.images);
@@ -141,22 +144,33 @@ export function AiDesignHero() {
           {error && <div className="text-xs text-danger">{error}</div>}
         </div>
 
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={loading}
-          className="inline-flex h-[88px] min-w-[160px] items-center justify-center gap-2 rounded-md bg-accent px-5 font-mono text-sm text-accent-foreground hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <>
-              <Loader2 size={14} className="animate-spin" /> Genererer…
-            </>
-          ) : (
-            <>
-              <Sparkles size={14} /> Generér 3 forslag
-            </>
-          )}
-        </button>
+        {hasHardStop ? (
+          <div className="inline-flex h-[88px] min-w-[160px] items-center justify-center gap-2 rounded-md border border-danger/40 bg-danger/5 px-4 font-mono text-xs text-danger text-center leading-snug">
+            <ShieldAlert size={14} className="shrink-0" />
+            <span>
+              Design blokeret
+              <br />
+              af compliance-stop
+            </span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={loading}
+            className="inline-flex h-[88px] min-w-[160px] items-center justify-center gap-2 rounded-md bg-accent px-5 font-mono text-sm text-accent-foreground hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Genererer…
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} /> Generér 3 forslag
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {forslag.length > 0 && (

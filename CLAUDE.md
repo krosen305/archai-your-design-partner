@@ -165,6 +165,7 @@ SUPABASE_SERVICE_ROLE_KEY   # Påkrævet: Supabase service role (server-side)
 SUPABASE_PUBLISHABLE_KEY    # Påkrævet: Supabase anon key (client-side)
 DATAFORDELER_API_KEY        # Påkrævet: BBR, MAT, DAR, EBR, VUR
 ANTHROPIC_API_KEY           # Valgfri: PdfExtractor + HusDnaGenerator (mock-fallback uden)
+LOVABLE_API_KEY             # Valgfri: Lovable AI Gateway til designforslag (placeholder-billeder uden)
 DATAFORSYNINGEN_TOKEN       # Valgfri: GSearch (rate-limits uden)
 SENTRY_DSN                  # Valgfri
 ENVIRONMENT                 # Valgfri: Sentry env tag

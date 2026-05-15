@@ -49,6 +49,19 @@ export function checkStopRules(input: RuleEngineInput): RuleViolation[] {
     }
   }
 
+  // SAVE 4: middel-høj bevaringsværdi — kommunen KAN nedlægge §14-forbud (ARCH-159)
+  if (input.heritage.saveValue === 4) {
+    if (input.project.type === "demolition_and_new") {
+      violations.push({
+        rule: "save_4_paragraph14_risk",
+        severity: "warning",
+        reason:
+          "Bygningen har bevaringsværdi SAVE 4. Kommunen kan nedlægge §14-forbud mod nedrivning (Planlovens §14). Afklar med kommunens tekniske forvaltning inden budgetlåsning.",
+        authority: "Kommunens tekniske forvaltning",
+      });
+    }
+  }
+
   // ── Naturbeskyttelseslinjer ──────────────────────────────────────────────
   type ProtKey = keyof typeof input.heritage.protectionLines;
   const protectionChecks: Array<{

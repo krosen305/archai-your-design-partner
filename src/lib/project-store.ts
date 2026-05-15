@@ -100,7 +100,8 @@ export type Byggeoenske = {
   ladestander?: boolean;
   // Trin 21-22: Budget & inspiration
   budget?: "under-3" | "3-5" | "5-8" | "8-12" | "over-12";
-  inspirationsbilleder?: string[]; // Supabase Storage URLs
+  inspirationsbilleder?: string[]; // signed URLs til visning (udløber efter 1t)
+  inspirationsbilledePaths?: string[]; // Storage paths til URL-fornyelse (ARCH-174)
   // AI-design hero (cockpit)
   designDroem?: string;
   valgteDesignforslag?: string;

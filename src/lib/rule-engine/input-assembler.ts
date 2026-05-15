@@ -163,12 +163,17 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
   const saveValue = fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
   if (saveValue === null) missingFields.push("heritage.saveValue");
 
+  // MAT-felter (mat_strandbeskyttelse/mat_fredskov/mat_klitfredning) er live data
+  // fra MAT_Jordstykke og OR'es med SDFI naturbeskyttelse-data (finding #8).
+  // mat_fredskov (plot ER fredskov) er strengere end skovbyggelinje (buffer), men
+  // begge kortlægger til `forest` da rule-engine ikke har separate kolonner endnu.
   const protectionLines = {
-    coastal: naturbeskyttelse?.strandbeskyttelse ?? false,
-    forest: naturbeskyttelse?.skovbyggelinje ?? false,
+    coastal:
+      (naturbeskyttelse?.strandbeskyttelse ?? false) || (bbr?.mat_strandbeskyttelse ?? false),
+    forest: (naturbeskyttelse?.skovbyggelinje ?? false) || (bbr?.mat_fredskov ?? false),
     lakeRiver: naturbeskyttelse?.aabeskyttelse ?? false,
     lake: naturbeskyttelse?.soebeskyttelse ?? false,
-    clitFredning: naturbeskyttelse?.klitfredning ?? false,
+    clitFredning: (naturbeskyttelse?.klitfredning ?? false) || (bbr?.mat_klitfredning ?? false),
     churchSurroundings: naturbeskyttelse?.kirkebyggelinje ?? false,
   };
 

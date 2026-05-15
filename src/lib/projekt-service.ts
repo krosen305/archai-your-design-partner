@@ -68,13 +68,22 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png"] as const;
 const SIGNED_URL_EXPIRY_S = 3600; // 1 time
 
+export type BilledeUploadResultat = {
+  /** Storage-stien — gem denne i state/DB for at forny URLs efter udløb (ARCH-174) */
+  path: string;
+  /** 1-times signed URL til øjeblikkelig visning — må ikke persistes */
+  signedUrl: string;
+};
+
 /**
- * Uploader ét inspirationsbillede til Supabase Storage og returnerer en signed URL.
- *
- * Kaster ved ugyldigt filformat/størrelse, ikke-indlogget bruger, eller max-antal overskredet.
- * Gæster skal gemme base64 i lokalt state og kalde denne funktion efter login.
+ * Uploader ét inspirationsbillede til Supabase Storage.
+ * Returnerer `{ path, signedUrl }` — gem path i state, brug signedUrl til visning.
+ * Signed URLs udløber efter 1 time; brug `fornyBilledeUrl(path)` til fornyelse.
  */
-export async function uploadInspirationsbillede(projektId: string, file: File): Promise<string> {
+export async function uploadInspirationsbillede(
+  projektId: string,
+  file: File,
+): Promise<BilledeUploadResultat> {
   if (!ALLOWED_TYPES.includes(file.type as (typeof ALLOWED_TYPES)[number])) {
     throw new Error(`Filtype ikke tilladt: ${file.type}. Kun JPEG og PNG accepteres.`);
   }
@@ -85,7 +94,6 @@ export async function uploadInspirationsbillede(projektId: string, file: File): 
   const userId = await getUserId();
   if (!userId) throw new Error("Upload kræver indlogget bruger");
 
-  // Tæl eksisterende billeder
   const { data: existing } = await supabase.storage.from(BUCKET).list(`${userId}/${projektId}`);
 
   if ((existing?.length ?? 0) >= MAX_BILLEDER) {
@@ -109,7 +117,7 @@ export async function uploadInspirationsbillede(projektId: string, file: File): 
     throw new Error(`Kunne ikke oprette signed URL: ${signError?.message}`);
   }
 
-  return signed.signedUrl;
+  return { path, signedUrl: signed.signedUrl };
 }
 
 /**

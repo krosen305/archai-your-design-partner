@@ -401,69 +401,87 @@ export async function saveProject(
     patch.fbbData !== undefined;
 
   if (hasComplianceData) {
-    // Keep the JSONB blob for backward compat — readers not yet migrated to typed columns
+    // Read existing compliance_data and merge — prevents partial patches from
+    // overwriting unpatched fields with null/[] and from incorrectly resetting
+    // hard_stop when only e.g. byggeanalyseResultat is in the patch (finding #2).
+    // The ownership filter here also provides a secondary IDOR guard.
+    const { data: existingRow } = await supabaseAdmin
+      .from("projects")
+      .select("compliance_data")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const prev =
+      typeof existingRow?.compliance_data === "object" && existingRow.compliance_data !== null
+        ? (existingRow.compliance_data as Record<string, unknown>)
+        : {};
+
     update.compliance_data = {
-      bbr: patch.bbrData ?? null,
-      flags: patch.complianceFlags ?? [],
-      lokalplaner: patch.lokalplaner ?? [],
-      kommuneplanramme: patch.kommuneplanramme ?? null,
-      byggeanalyseResultat: patch.byggeanalyseResultat ?? null,
-      vurderingData: patch.vurderingData ?? null,
-      naturbeskyttelse: patch.naturbeskyttelse ?? null,
-      dkjord: patch.dkjord ?? null,
-      geusRisk: patch.geusRisk ?? null,
-      servitutter: patch.servitutter ?? null,
-      terrain: patch.terrain ?? null,
-      naboer: patch.naboer ?? null,
-      fjernvarme: patch.fjernvarme ?? null,
-      save: patch.save ?? null,
-      fbbData: patch.fbbData ?? null,
+      ...prev,
+      ...(patch.bbrData !== undefined && { bbr: patch.bbrData }),
+      ...(patch.complianceFlags !== undefined && { flags: patch.complianceFlags }),
+      ...(patch.lokalplaner !== undefined && { lokalplaner: patch.lokalplaner }),
+      ...(patch.kommuneplanramme !== undefined && { kommuneplanramme: patch.kommuneplanramme }),
+      ...(patch.byggeanalyseResultat !== undefined && {
+        byggeanalyseResultat: patch.byggeanalyseResultat,
+      }),
+      ...(patch.vurderingData !== undefined && { vurderingData: patch.vurderingData }),
+      ...(patch.naturbeskyttelse !== undefined && { naturbeskyttelse: patch.naturbeskyttelse }),
+      ...(patch.dkjord !== undefined && { dkjord: patch.dkjord }),
+      ...(patch.geusRisk !== undefined && { geusRisk: patch.geusRisk }),
+      ...(patch.servitutter !== undefined && { servitutter: patch.servitutter }),
+      ...(patch.terrain !== undefined && { terrain: patch.terrain }),
+      ...(patch.naboer !== undefined && { naboer: patch.naboer }),
+      ...(patch.fjernvarme !== undefined && { fjernvarme: patch.fjernvarme }),
+      ...(patch.save !== undefined && { save: patch.save }),
+      ...(patch.fbbData !== undefined && { fbbData: patch.fbbData }),
     };
 
     // ── Extract typed compliance values ─────────────────────────────────────
     // Rule: only write a typed column when its source data is explicitly in this patch.
-    // This prevents a partial patch from zeroing out values set by an earlier full patch.
 
-    // heritage_save_value: authoritative source is FBB (saveBevaringsvaerdi is always null)
     if (patch.fbbData !== undefined) {
       const saveVal = patch.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
-      // FBB returns -1 for "not SAVE-registered" — store as null
       update.heritage_save_value = saveVal !== null && saveVal >= 1 ? saveVal : null;
     }
 
-    // is_fredet: SaveData.fredet is the authoritative live check (DAI WFS)
-    // Fall back to BBR byg070 flag if SaveData not in this patch
     if (patch.save !== undefined) {
       update.is_fredet = patch.save?.fredet ?? null;
     } else if (patch.bbrData !== undefined) {
       update.is_fredet = patch.bbrData?.fredet ?? null;
     }
 
-    // grundareal_m2 and bebygget_areal_m2: from BBR/MAT
     if (patch.bbrData !== undefined && patch.bbrData !== null) {
       update.grundareal_m2 = patch.bbrData.grundareal;
       update.bebygget_areal_m2 = patch.bbrData.bebygget_areal;
     }
 
     // ── Aggregate hard_stop flag ─────────────────────────────────────────────
-    // Re-compute every time compliance data arrives so the flag stays current.
-    const saveValue = (update.heritage_save_value as number | null | undefined) ?? null;
-    const isFredet = (update.is_fredet as boolean | null | undefined) ?? null;
-    const strandbeskyttelse = patch.bbrData?.mat_strandbeskyttelse ?? null;
-    const fredskov = patch.bbrData?.mat_fredskov ?? null;
-    const klitfredning = patch.bbrData?.mat_klitfredning ?? null;
+    // Only recompute when the triggering data sources are in this patch.
+    // This prevents byggeanalyseResultat-only patches from resetting hard_stop=false.
+    const hasHardStopTrigger =
+      patch.fbbData !== undefined || patch.save !== undefined || patch.bbrData !== undefined;
 
-    const hardStop =
-      isFredet === true ||
-      (saveValue !== null && saveValue <= 3) ||
-      strandbeskyttelse === true ||
-      fredskov === true ||
-      klitfredning === true;
+    if (hasHardStopTrigger) {
+      const saveValue = (update.heritage_save_value as number | null | undefined) ?? null;
+      const isFredet = (update.is_fredet as boolean | null | undefined) ?? null;
+      const strandbeskyttelse = patch.bbrData?.mat_strandbeskyttelse ?? null;
+      const fredskov = patch.bbrData?.mat_fredskov ?? null;
+      const klitfredning = patch.bbrData?.mat_klitfredning ?? null;
 
-    update.hard_stop = hardStop;
-    update.hard_stop_reason = hardStop
-      ? deriveHardStopReason({ saveValue, isFredet, strandbeskyttelse, fredskov, klitfredning })
-      : null;
+      const hardStop =
+        isFredet === true ||
+        (saveValue !== null && saveValue <= 3) ||
+        strandbeskyttelse === true ||
+        fredskov === true ||
+        klitfredning === true;
+
+      update.hard_stop = hardStop;
+      update.hard_stop_reason = hardStop
+        ? deriveHardStopReason({ saveValue, isFredet, strandbeskyttelse, fredskov, klitfredning })
+        : null;
+    }
   }
 
   // ── Compliance done flag ──────────────────────────────────────────────────
@@ -483,7 +501,11 @@ export async function saveProject(
 
   if (Object.keys(update).length === 0) return;
 
-  const { error } = await supabaseAdmin.from("projects").update(update).eq("id", id);
+  const { error } = await supabaseAdmin
+    .from("projects")
+    .update(update)
+    .eq("id", id)
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`[Persistence] update fejlede: ${error.message}`);

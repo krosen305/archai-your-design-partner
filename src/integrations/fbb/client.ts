@@ -4,7 +4,10 @@
 //
 // Endpoint: https://www.kulturarv.dk/geoserver/wfs
 // typename: fbb:view_bygningslag
-// CQL_FILTER: bygningsid IN ({comma-separated integer BBR building ids})
+//
+// CQL_FILTER varianter:
+//   Primær (by BBR integer IDs):  bygningsid IN ({comma-separated integer BBR building ids})
+//   Adresse-fallback (ARCH-151):  adresse = '{vejnavn}' AND kommune LIKE '{kommunePræfiks}%'
 //
 // SAVE-skala 1-9: lavere tal = højere bevaringsværdi.
 //   1-3: Høj bevaringsværdi — nedrivning/ombygning kræver kommunal tilladelse (PL §14)
@@ -14,6 +17,9 @@
 //
 // bygningsid = integer BBR id_lokalId fra BBR Public Service (api.dataforsyningen.dk)
 // — forskellig fra Datafordeler UUID id_lokalId.
+//
+// Adresse-fallback udløses når BBR Public Service returnerer 404 (fx visse rækkehuse).
+// Bruger vejnavn+husnr (del af adressetekst før første komma) + kommunenavn.
 
 const FBB_WFS = "https://www.kulturarv.dk/geoserver/wfs";
 
@@ -35,6 +41,8 @@ export type FbbResultat = {
     bevaringsvaerdi: number;
     fredningsstatus: string | null;
   } | null;
+  /** Bruges til cockpit-visning: skelner "ingen data" fra "opslag fejlede" (ARCH-151) */
+  kilde?: "fbb-wfs" | "adresse-fallback" | "fejl" | "ingen-ids";
 };
 
 // ---------------------------------------------------------------------------
@@ -61,6 +69,44 @@ async function fetchWfs(ids: number[]): Promise<FbbBygning[]> {
   const bodyText = await res.text();
   if (!res.ok) {
     throw new Error(`FBB WFS HTTP ${res.status}: ${bodyText.slice(0, 300)}`);
+  }
+
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("json") || bodyText.trimStart().startsWith("{")) {
+    return parseJson(bodyText);
+  }
+  return parseXml(bodyText);
+}
+
+// ---------------------------------------------------------------------------
+// WFS-kald: adresse-fallback (ARCH-151)
+// ---------------------------------------------------------------------------
+
+function cqlEscape(s: string): string {
+  return s.replace(/'/g, "''");
+}
+
+async function fetchWfsByAddress(vejnavn: string, kommunenavn: string): Promise<FbbBygning[]> {
+  const params = new URLSearchParams({
+    service: "WFS",
+    version: "2.0.0",
+    request: "GetFeature",
+    typename: "fbb:view_bygningslag",
+    count: "20",
+    outputFormat: "application/json",
+    CQL_FILTER: `adresse = '${cqlEscape(vejnavn)}' AND kommune LIKE '${cqlEscape(kommunenavn)}%'`,
+  });
+  const url = `${FBB_WFS}?${params}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json, application/xml, */*" },
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  const bodyText = await res.text();
+  if (!res.ok) {
+    throw new Error(`FBB WFS adresse-fallback HTTP ${res.status}: ${bodyText.slice(0, 300)}`);
   }
 
   const ct = res.headers.get("content-type") ?? "";
@@ -178,19 +224,44 @@ export class FbbService {
    * @param bygningIds  Integer BBR building IDs fra BBR Public Service (id_lokalId)
    */
   static async getSaveData(bygningIds: number[]): Promise<FbbResultat> {
-    const empty: FbbResultat = { fbb_bygninger: [], fbb_bedste_bygning: null };
-
-    if (!bygningIds.length) return empty;
+    if (!bygningIds.length)
+      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "ingen-ids" };
 
     try {
       const bygninger = await fetchWfs(bygningIds);
       return {
         fbb_bygninger: bygninger,
         fbb_bedste_bygning: vælgBedsteBygning(bygninger),
+        kilde: "fbb-wfs",
       };
     } catch (e) {
       console.warn("[FBB] GeoServer fejl:", (e as Error).message);
-      return empty;
+      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "fejl" };
+    }
+  }
+
+  /**
+   * Adresse-fallback (ARCH-151): bruges når BBR Public Service ikke returnerer integer bygnings-IDs.
+   * Søger FBB WFS direkte på vejnavn+husnr og kommunenavn.
+   *
+   * @param vejnavn     Vejnavn + husnr, fx "Hasselvej 48" (del af adressetekst før første komma)
+   * @param kommunenavn Kommunenavn, fx "Lyngby-Taarbæk" — bruges som LIKE-præfiks
+   */
+  static async getSaveDataByAddress(vejnavn: string, kommunenavn: string): Promise<FbbResultat> {
+    if (!vejnavn || !kommunenavn) {
+      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "ingen-ids" };
+    }
+
+    try {
+      const bygninger = await fetchWfsByAddress(vejnavn, kommunenavn);
+      return {
+        fbb_bygninger: bygninger,
+        fbb_bedste_bygning: vælgBedsteBygning(bygninger),
+        kilde: "adresse-fallback",
+      };
+    } catch (e) {
+      console.warn("[FBB] Adresse-fallback fejlede:", (e as Error).message);
+      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "fejl" };
     }
   }
 }

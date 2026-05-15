@@ -8,7 +8,9 @@ describe("FbbService.getSaveData", () => {
 
   it("returns empty result for empty ids", async () => {
     const result = await FbbService.getSaveData([]);
-    expect(result).toEqual({ fbb_bygninger: [], fbb_bedste_bygning: null });
+    expect(result.fbb_bygninger).toEqual([]);
+    expect(result.fbb_bedste_bygning).toBeNull();
+    expect(result.kilde).toBe("ingen-ids");
   });
 
   it("maps JSON features and picks lowest save value >= 1", async () => {

@@ -28,6 +28,7 @@ import type { ByggeanalyseInput, ByggeanalyseResultat } from "@/integrations/ai/
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { SaveData } from "@/integrations/save/client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
@@ -442,6 +443,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   const [fbbDataLocal, setFbbDataLocal] = useState<
     import("@/integrations/fbb/client").FbbResultat | null
   >(null);
+  const [naturbeskyttelsesLocal, setNaturbeskyttelsesLocal] =
+    useState<NaturbeskyttelsesResultat | null>(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
 
   useEffect(() => {
@@ -453,7 +456,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
       saveLocal ||
       fjernvarmeLocal ||
       naboerLocal ||
-      fbbDataLocal
+      fbbDataLocal ||
+      naturbeskyttelsesLocal
     ) {
       return;
     }
@@ -476,6 +480,17 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
       setFbbDataLocal(
         (complianceData.fbbData as import("@/integrations/fbb/client").FbbResultat | null) ?? null,
       );
+      setNaturbeskyttelsesLocal(
+        (complianceData.naturbeskyttelse as NaturbeskyttelsesResultat | null) ?? null,
+      );
+      // ARCH-148: restore byggeanalyseResultat efter reload
+      if (complianceData.byggeanalyseResultat) {
+        useProject
+          .getState()
+          .setByggeanalyseResultat(
+            complianceData.byggeanalyseResultat as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat,
+          );
+      }
     })();
   }, [
     bbrData,
@@ -486,6 +501,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     fjernvarmeLocal,
     naboerLocal,
     fbbDataLocal,
+    naturbeskyttelsesLocal,
   ]);
 
   const runManualAnalyse = useCallback(async () => {
@@ -579,6 +595,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           setFjernvarmeLocal(result.fjernvarme ?? null);
           setNaboerLocal(result.naboer ?? null);
           setFbbDataLocal(result.fbbData ?? null);
+          setNaturbeskyttelsesLocal(result.naturbeskyttelse ?? null);
           setVurderingData(result.vurderingData ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
@@ -718,6 +735,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                 save={saveLocal}
                 fjernvarme={fjernvarmeLocal}
                 naboer={naboerLocal}
+                naturbeskyttelse={naturbeskyttelsesLocal}
                 isRecomputing={isRecomputing}
                 onRunAnalyse={runManualAnalyse}
                 onShowEjendom={() => setActiveTab("ejendom")}
@@ -814,6 +832,7 @@ function AnalyseTab({
   save,
   fjernvarme,
   naboer,
+  naturbeskyttelse,
   isRecomputing,
   onRunAnalyse,
   onShowEjendom,
@@ -832,6 +851,7 @@ function AnalyseTab({
   save: SaveData | null;
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
+  naturbeskyttelse: NaturbeskyttelsesResultat | null;
   isRecomputing: boolean;
   onRunAnalyse: () => void;
   onShowEjendom: () => void;
@@ -891,6 +911,7 @@ function AnalyseTab({
           servitutter={servitutter}
           terrain={terrain}
           naboer={naboer}
+          naturbeskyttelse={naturbeskyttelse ?? null}
           isRecomputing={isRecomputing}
         />
       </div>

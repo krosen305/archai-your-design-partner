@@ -191,6 +191,15 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     }
   }
 
+  // ARCH-167: Hard Stop gate — spring dyre WFS/API-kald i Layer 4 over når
+  // Layer 1 (BBR/MAT) allerede afslører et absolut byggestop.
+  // FBB køres stadig (kræves til SAVE-værdien); naturbeskyttelse supplerer MAT.
+  const bbrHardStop =
+    complianceBase.bbr?.fredet === true ||
+    complianceBase.bbr?.mat_strandbeskyttelse === true ||
+    complianceBase.bbr?.mat_fredskov === true ||
+    complianceBase.bbr?.mat_klitfredning === true;
+
   // ── Layers 2 + 3 + 4: kører parallelt — ingen indbyrdes afhængighed ──────
   // Layer 2 (lokalplan PDF), Layer 3 (servitutter) og Layer 4 (geodata)
   // behøver alle kun Layer 1's output. Parallel Promise.all sparer ~2s live.
@@ -245,7 +254,8 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
       let save: SaveData | null = null;
       let fbbData: FbbResultat | null = null;
 
-      // FBB: kræver integer BBR building IDs fra BBR Public Service — uafhængig af koordinater
+      // FBB: kræver integer BBR building IDs — kører altid (SAVE-værdi er nødvendig
+      // selv på hard-stopped grunde for korrekt flag-visning)
       const bygningIds = complianceBase.bbr?.alle_bbr_public_ids ?? [];
       if (bygningIds.length) {
         fbbData = await import("@/integrations/fbb/client")
@@ -254,6 +264,25 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
             console.warn("[Orchestrator] FBB fejlede:", e.message);
             return null;
           });
+      }
+
+      // ARCH-167: skip dyre WFS/API-kald (geus, dkjord, terrain, naboer, fjernvarme)
+      // når Layer 1 allerede viser absolut byggestop — spar ~3-5s responstid.
+      // naturbeskyttelse og save kører stadig (supplerer MAT-data med WFS-verifikation).
+      if (bbrHardStop) {
+        if (koordinater) {
+          [naturbeskyttelse, save] = await Promise.all([
+            import("@/integrations/sdfi/naturbeskyttelse")
+              .then(({ NaturbeskyttelseService }) =>
+                NaturbeskyttelseService.getTilstand(koordinater),
+              )
+              .catch(() => null),
+            import("@/integrations/save/client")
+              .then(({ SaveService }) => SaveService.getBevaringsdata(koordinater))
+              .catch(() => null),
+          ]);
+        }
+        return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save, fbbData };
       }
 
       if (koordinater) {

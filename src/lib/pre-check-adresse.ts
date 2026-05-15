@@ -8,6 +8,7 @@
 // på klienten (som kaldestubbe) uden at bryde server-boundary.
 
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import type { ComplianceFlag } from "@/lib/project-store";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
@@ -17,6 +18,28 @@ import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskytt
 import type { SaveData } from "@/integrations/save/client";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import { fetchLayer1 } from "@/lib/compliance-layer1";
+
+// ---------------------------------------------------------------------------
+// Input-validering (ARCH-173): strict Zod-schema forhindrer at serverfunctionen
+// bruges som uauthentificeret proxy mod Datafordeler.
+// ---------------------------------------------------------------------------
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidField = z.string().regex(UUID_RE, "Ugyldigt UUID-format").max(64);
+
+const preCheckSchema = z.object({
+  adgangsadresseid: uuidField,
+  adresseid: uuidField,
+  ejerlavskode: z.number().int().positive().max(999999).nullable(),
+  matrikelnummer: z.string().max(20).nullable(),
+  // Koordinater begrænses til Danmark (ca. bounding box + margin)
+  koordinater: z
+    .object({ lat: z.number().gte(54).lte(58), lng: z.number().gte(7).lte(16) })
+    .nullable(),
+  grundareal: z.number().positive().max(500_000).nullable().optional(),
+  vejnavn: z.string().max(120).nullable().optional(),
+  kommunenavn: z.string().max(120).nullable().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Input / Output typer
@@ -29,6 +52,10 @@ export type AdressePreCheckInput = {
   matrikelnummer: string | null;
   koordinater: { lat: number; lng: number } | null;
   grundareal?: number | null;
+  /** Vejnavn + husnr til FBB adresse-fallback, fx "Hasselvej 48" (ARCH-151) */
+  vejnavn?: string | null;
+  /** Kommunenavn til FBB adresse-fallback, fx "Lyngby-Taarbæk" (ARCH-151) */
+  kommunenavn?: string | null;
 };
 
 export type AdressePreCheckResultat = {
@@ -59,7 +86,7 @@ export type AdressePreCheckResultat = {
 // ---------------------------------------------------------------------------
 
 export const preCheckAdresse = createServerFn({ method: "POST" })
-  .inputValidator((data: AdressePreCheckInput) => data)
+  .inputValidator((data: unknown) => preCheckSchema.parse(data))
   .handler(async ({ data }): Promise<AdressePreCheckResultat> => {
     const { adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = data;
 
@@ -105,6 +132,7 @@ export const preCheckAdresse = createServerFn({ method: "POST" })
     const vurdering = layer1.vurderingData;
 
     // FBB: kræver integer BBR building IDs fra BBR Public Service — køres separat efter BBR-fasen (ARCH-131)
+    // Fallback til adresse-opslag når BBR Public Service returnerer 404/tom (ARCH-151).
     let fbbData: FbbResultat | null = null;
     const bygningIds = bbr?.alle_bbr_public_ids ?? [];
     if (bygningIds.length) {
@@ -112,6 +140,13 @@ export const preCheckAdresse = createServerFn({ method: "POST" })
         .then(({ FbbService }) => FbbService.getSaveData(bygningIds))
         .catch((e: Error) => {
           console.warn("[preCheckAdresse] FBB fejlede:", e.message);
+          return null;
+        });
+    } else if (data.vejnavn && data.kommunenavn) {
+      fbbData = await import("@/integrations/fbb/client")
+        .then(({ FbbService }) => FbbService.getSaveDataByAddress(data.vejnavn!, data.kommunenavn!))
+        .catch((e: Error) => {
+          console.warn("[preCheckAdresse] FBB adresse-fallback fejlede:", e.message);
           return null;
         });
     }
@@ -177,19 +212,31 @@ function buildPreCheckFlags(
     });
   }
 
-  // SAVE-bevaringsværdi 1-3: stor advarsel ved alle byggetyper (ARCH-131)
+  // SAVE-bevaringsværdi — konsistent med stop-rules.ts (ARCH-176, ARCH-159)
   const saveScore = fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
   if (saveScore !== null && saveScore !== undefined && saveScore <= 3) {
     flags.push({
       id: "save-bevaringsvaerdi",
       label: `Høj bevaringsværdi (SAVE ${saveScore})`,
-      status: "advarsel",
-      detalje: `Bygningen er registreret med høj bevaringsværdi (SAVE ${saveScore}/9) i Kulturmiljøregisteret — nedrivning og væsentlig ombygning kræver særlig kommunal tilladelse (Planlovens §14).`,
+      status: "blocker",
+      detalje: `Bygningen er registreret med høj bevaringsværdi (SAVE ${saveScore}/9) — nedrivning og væsentlig ombygning kræver særlig kommunal tilladelse (Planlovens §14).`,
       aktuelVærdi: `SAVE ${saveScore}`,
       tilladt: null,
       kilde: "bbr",
       dispensationMulig: true,
       dispensationMyndighed: "Kommunen",
+    });
+  } else if (saveScore === 4) {
+    flags.push({
+      id: "save-4-paragraph14",
+      label: "Bevaringsværdi SAVE 4 — §14-forbud muligt",
+      status: "advarsel",
+      detalje:
+        "Kommunen kan nedlægge §14-forbud mod nedrivning (Planlovens §14). Afklar med kommunens tekniske forvaltning inden budgetlåsning.",
+      aktuelVærdi: "SAVE 4",
+      tilladt: null,
+      kilde: "bbr",
+      dispensationMulig: false,
     });
   }
 

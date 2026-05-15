@@ -41,7 +41,8 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Upload source maps to Sentry
-        run: bunx @sentry/cli sourcemaps upload ./dist
+        # --ignore ekskluderer .dev.vars (indeholder secrets) fra upload (ARCH-175)
+        run: bunx @sentry/cli sourcemaps upload ./dist --ignore "**/.dev.vars" --ignore ".dev.vars"
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: archai

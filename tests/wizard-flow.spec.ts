@@ -22,4 +22,3 @@ test("cockpit login-gate har dev bypass-knap i udvikling", async ({ page }) => {
   await page.goto(`/projekt/${TEST_ADRESSEID}/cockpit`);
   await expect(page.getByRole("button", { name: /DEV: Spring login over/i })).toBeVisible();
 });
-

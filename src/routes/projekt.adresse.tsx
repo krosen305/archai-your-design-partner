@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Loader2, AlertTriangle, CheckCircle2, ChevronDown } from "lucide-react";
 import { useProject, type ComplianceFlag, type Address } from "@/lib/project-store";
@@ -42,15 +43,19 @@ function flagIcon(id: string): string {
 // Server functions — begge kræver credentials der kun er tilgængelige server-side.
 // ---------------------------------------------------------------------------
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const searchAddresses = createServerFn({ method: "POST" })
-  .inputValidator((data: { q: string }) => data)
+  .inputValidator((data: unknown) => z.object({ q: z.string().min(2).max(200).trim() }).parse(data))
   .handler(async ({ data }) => {
     const { GsearchService } = await import("@/integrations/gsearch/client");
     return GsearchService.getSuggestions(data.q);
   });
 
 const fetchAddressDetails = createServerFn({ method: "POST" })
-  .inputValidator((data: { adresseid: string }) => data)
+  .inputValidator((data: unknown) =>
+    z.object({ adresseid: z.string().regex(UUID_RE, "Ugyldigt adresse-ID").max(64) }).parse(data),
+  )
   .handler(async ({ data }) => {
     const { DarService } = await import("@/integrations/dar/client");
     return DarService.getAddressDetails(data.adresseid);
@@ -200,6 +205,8 @@ function AddressStep() {
 
     // TRIN 3: Kør pre-check compliance
     try {
+      // vejnavn = vejnavn+husnr til FBB adresse-fallback (del af adressetekst før første komma)
+      const vejnavn = fullAddress.adresse?.split(",")[0]?.trim() ?? null;
       const preCheck = await preCheckAdresse({
         data: {
           adgangsadresseid: fullAddress.adgangsadresseid,
@@ -208,6 +215,8 @@ function AddressStep() {
           matrikelnummer: fullAddress.matrikelnummer,
           koordinater: fullAddress.koordinater,
           grundareal: fullAddress.grundareal,
+          vejnavn,
+          kommunenavn: fullAddress.kommune ?? null,
         },
       });
       setAdressePreCheck(preCheck);
@@ -439,7 +448,7 @@ function AddressStep() {
           )}
 
           {/* Fortsæt-knap — varianter */}
-          {hasHard && !overrideContinue ? (
+          {(hasHard || softBlockers.length > 0) && !overrideContinue ? (
             <button
               onClick={() => setShowBlockerDialog(true)}
               className="mt-6 w-full inline-flex items-center justify-center rounded-md bg-danger px-6 py-3 font-mono text-sm text-white transition-all hover:brightness-110"
@@ -468,11 +477,13 @@ function AddressStep() {
                 <DialogTitle>
                   {mode === "due-diligence"
                     ? "Risikofaktorer ved køb"
-                    : "Byggeri kan ikke anbefales her"}
+                    : hasHard
+                      ? "Byggeri kan ikke anbefales her"
+                      : "Dispensation er muligvis nødvendig"}
                 </DialogTitle>
               </DialogHeader>
               <ul className="space-y-3 max-h-[50vh] overflow-y-auto">
-                {hardBlockers.map((b: ComplianceFlag) => (
+                {[...hardBlockers, ...softBlockers].map((b: ComplianceFlag) => (
                   <li
                     key={b.id}
                     className="rounded-md border border-danger/40 bg-danger/5 px-3 py-2.5"
@@ -499,9 +510,11 @@ function AddressStep() {
                   onClick={() => setShowBlockerDialog(false)}
                   className="w-full rounded-md bg-accent px-4 py-2.5 font-mono text-sm text-accent-foreground hover:brightness-110"
                 >
-                  {mode === "due-diligence"
-                    ? "Gå tilbage og vælg anden ejendom"
-                    : "Gå tilbage og vælg anden adresse"}
+                  {hasHard
+                    ? mode === "due-diligence"
+                      ? "Gå tilbage og vælg anden ejendom"
+                      : "Gå tilbage og vælg anden adresse"
+                    : "Gå tilbage"}
                 </button>
                 {anyDispensationPossible && (
                   <button

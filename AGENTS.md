@@ -10,7 +10,7 @@
 
 ```bash
 bun dev                   # Dev server
-bun build                 # Production build — kør inden du erklærer dig færdig
+bun run build             # Production build — kør inden du erklærer dig færdig
 bun test                  # Test suite (0 failures påkrævet)
 bunx tsc --noEmit         # Type check (0 errors påkrævet)
 bunx eslint .             # Lint (0 errors påkrævet)

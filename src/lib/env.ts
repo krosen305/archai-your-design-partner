@@ -7,7 +7,7 @@ const REQUIRED_ENV_VARS = [
   "DATAFORDELER_API_KEY",
 ] as const;
 
-const OPTIONAL_ENV_VARS = ["ANTHROPIC_API_KEY"] as const;
+const OPTIONAL_ENV_VARS = ["ANTHROPIC_API_KEY", "LOVABLE_API_KEY"] as const;
 
 type RequiredEnvKey = (typeof REQUIRED_ENV_VARS)[number];
 type OptionalEnvKey = (typeof OPTIONAL_ENV_VARS)[number];
