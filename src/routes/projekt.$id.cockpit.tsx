@@ -37,6 +37,7 @@ import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch, restoreProject } from "@/lib/project-sync";
 import { Cockpit } from "@/components/cockpit";
 import { AiDesignHero } from "@/components/cockpit/AiDesignHero";
+import { ComplianceFeed } from "@/components/cockpit/ComplianceFeed";
 import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
 import { cn } from "@/lib/utils";
@@ -943,6 +944,9 @@ function AnalyseTab({
       transition={{ duration: 0.4 }}
     >
       <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
+
+      {/* Compliance-feed — samlet kronologisk risiko-overflade */}
+      <ComplianceFeed />
 
       {/* AI-design hero — øverst i cockpittet */}
       <AiDesignHero />
