@@ -84,6 +84,7 @@ function AddressStep() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCheckingCompliance, setIsCheckingCompliance] = useState(false);
+  const [highlightIdx, setHighlightIdx] = useState(0);
   const lastQueryRef = useRef<string>("");
 
   const queryTrimmed = useMemo(() => query.trim(), [query]);
@@ -118,6 +119,7 @@ function AddressStep() {
         const res = await searchAddresses({ data: { q } });
         if (lastQueryRef.current !== q) return;
         setSuggestions(res);
+        setHighlightIdx(0);
       } catch {
         if (lastQueryRef.current !== q) return;
         setSuggestions([]);
