@@ -43,6 +43,7 @@ import { RiskOverview } from "@/components/cockpit/RiskOverview";
 import { AnimatedNumber } from "@/components/cockpit/AnimatedNumber";
 import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
+import { DetailsAccordion, type DetailsSection } from "@/components/cockpit/DetailsAccordion";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { estimerTotalpris, STEPS, STEP_GROUPS } from "@/lib/byggeoenske-steps";
