@@ -764,33 +764,38 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
               ))}
             </div>
 
-            {/* Tab content */}
-            {activeTab === "analyse" && (
-              <AnalyseTab
-                adresse={address?.adresse ?? ""}
-                data={bbrData}
-                lokalplaner={lokalplanerLocal}
-                byggeanalyse={byggeanalyseResultat}
-                metrics={complianceMetrics}
-                fbbData={fbbDataLocal}
-                vurderingData={vurderingData}
-                geusRisk={geusRiskLocal}
-                servitutter={servitutterLocal}
-                terrain={terrainLocal}
-                save={saveLocal}
-                fjernvarme={fjernvarmeLocal}
-                naboer={naboerLocal}
-                naturbeskyttelse={naturbeskyttelsesLocal}
-                isRecomputing={isRecomputing}
-                onRunAnalyse={runManualAnalyse}
-                onShowEjendom={() => setActiveTab("ejendom")}
-                onShowOekonomi={() => setActiveTab("oekonomi")}
-              />
-            )}
-
-            {activeTab === "ejendom" && <EjendomPanel />}
-
-            {activeTab === "oekonomi" && <OekonomiPanel />}
+            {/* Tab content med crossfade */}
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              {activeTab === "analyse" && (
+                <AnalyseTab
+                  adresse={address?.adresse ?? ""}
+                  data={bbrData}
+                  lokalplaner={lokalplanerLocal}
+                  byggeanalyse={byggeanalyseResultat}
+                  metrics={complianceMetrics}
+                  fbbData={fbbDataLocal}
+                  vurderingData={vurderingData}
+                  geusRisk={geusRiskLocal}
+                  servitutter={servitutterLocal}
+                  terrain={terrainLocal}
+                  save={saveLocal}
+                  fjernvarme={fjernvarmeLocal}
+                  naboer={naboerLocal}
+                  naturbeskyttelse={naturbeskyttelsesLocal}
+                  isRecomputing={isRecomputing}
+                  onRunAnalyse={runManualAnalyse}
+                  onShowEjendom={() => setActiveTab("ejendom")}
+                  onShowOekonomi={() => setActiveTab("oekonomi")}
+                />
+              )}
+              {activeTab === "ejendom" && <EjendomPanel />}
+              {activeTab === "oekonomi" && <OekonomiPanel />}
+            </motion.div>
           </>
         )}
       </div>
