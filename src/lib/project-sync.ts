@@ -47,13 +47,30 @@ export async function syncPatch(patch: ProjectPatch): Promise<void> {
   }
 }
 
+// In-flight + short-lived cache for restoreProject — undgår dobbeltkald når både
+// __root.tsx (app-mount) og cockpit-route restorer samme projekt indenfor få sekunder.
+const RESTORE_CACHE_TTL_MS = 5000;
+const restoreCache = new Map<
+  string,
+  { promise: Promise<PersistedProject | null>; ts: number }
+>();
+
 export async function restoreProject(projectId?: string | null): Promise<PersistedProject | null> {
   const accessToken = await getAccessToken();
   if (!accessToken) return null;
-  try {
-    return await serverLoadProject({ data: { accessToken, projectId } });
-  } catch (e) {
-    logger.warn("[ProjectSync] gendan fejlede:", (e as Error).message);
-    return null;
+  const cacheKey = `${accessToken}::${projectId ?? ""}`;
+  const cached = restoreCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < RESTORE_CACHE_TTL_MS) {
+    return cached.promise;
   }
+  const promise = (async () => {
+    try {
+      return await serverLoadProject({ data: { accessToken, projectId } });
+    } catch (e) {
+      logger.warn("[ProjectSync] gendan fejlede:", (e as Error).message);
+      return null;
+    }
+  })();
+  restoreCache.set(cacheKey, { promise, ts: Date.now() });
+  return promise;
 }

@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PhaseComingSoon } from "@/components/phase-coming-soon";
+import { useProject } from "@/lib/project-store";
 
-export const Route = createFileRoute("/projekt/udbud")({
-  component: () => (
+function UdbudPage() {
+  const { address } = useProject();
+  const backTo = address?.adresseid
+    ? `/projekt/${address.adresseid}/cockpit`
+    : "/projekt/start";
+  return (
     <PhaseComingSoon
-      step={5}
+      step={4}
       title="Udbud & Kontrakt"
       subtitle="Vi udbyder dit projekt til verificerede entreprenører og leverer juridisk granskede kontrakter."
       bullets={[
@@ -12,7 +17,11 @@ export const Route = createFileRoute("/projekt/udbud")({
         "Tilbudsindhentning fra 3+ entreprenører",
         "Standard- og specialkontrakter",
       ]}
-      backTo="/projekt/teknik"
+      backTo={backTo}
     />
-  ),
+  );
+}
+
+export const Route = createFileRoute("/projekt/udbud")({
+  component: UdbudPage,
 });

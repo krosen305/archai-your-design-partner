@@ -140,7 +140,7 @@ function AddressStep() {
       } finally {
         if (lastQueryRef.current === q) setLoading(false);
       }
-    }, 150);
+    }, 300);
 
     return () => {
       clearTimeout(timer);
