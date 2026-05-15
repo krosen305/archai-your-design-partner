@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Upload, X, ShoppingCart, Home, AlertTriangle } from "lucide-react";
+import { ChevronDown, Upload, X, ShoppingCart, Home, AlertTriangle, Flame, Info } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -10,6 +10,14 @@ import {
 import { Card } from "@/components/wizard-ui";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useProject, type Byggeoenske } from "@/lib/project-store";
 import {
   STEPS,
