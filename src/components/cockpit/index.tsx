@@ -118,56 +118,7 @@ function ProjektDnaPanel({
     naturbeskyttelse: NaturbeskyttelsesResultat | null;
   };
 }) {
-  return (
-    <div className="space-y-3">
-      <ModeToggle />
-      <ByggeoenskeAccordion reactiveContext={reactiveContext} />
-    </div>
-  );
-}
-
-function ModeToggle() {
-  const { cockpitMode, setCockpitMode } = useProject();
-  const modes: Array<{
-    value: "kob" | "design";
-    label: string;
-    icon: typeof ShoppingCart;
-    hint: string;
-  }> = [
-    { value: "kob", label: "Overvejer køb", icon: ShoppingCart, hint: "Fremhæv risici" },
-    { value: "design", label: "Designer hjem", icon: Home, hint: "Fremhæv muligheder" },
-  ];
-  return (
-    <Card className="p-2">
-      <div className="grid grid-cols-2 gap-1">
-        {modes.map((m) => {
-          const sel = cockpitMode === m.value;
-          const Icon = m.icon;
-          return (
-            <button
-              key={m.value}
-              onClick={() => setCockpitMode(m.value)}
-              className={cn(
-                "flex flex-col items-center gap-0.5 rounded-md px-2 py-2 transition-all",
-                sel
-                  ? m.value === "kob"
-                    ? "bg-yellow-500/15 border border-yellow-500/50 text-yellow-300"
-                    : "bg-emerald-500/15 border border-emerald-500/50 text-emerald-300"
-                  : "border border-border/40 text-muted-foreground hover:text-foreground hover:border-border",
-              )}
-              aria-pressed={sel}
-            >
-              <div className="flex items-center gap-1.5">
-                <Icon size={12} />
-                <span className="font-mono text-[10px] tracking-[0.1em] uppercase">{m.label}</span>
-              </div>
-              <span className="text-[9px] opacity-70">{m.hint}</span>
-            </button>
-          );
-        })}
-      </div>
-    </Card>
-  );
+  return <ByggeoenskeAccordion reactiveContext={reactiveContext} />;
 }
 
 // ===========================================================================
