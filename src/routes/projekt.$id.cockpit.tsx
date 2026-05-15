@@ -35,6 +35,7 @@ import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch, restoreProject } from "@/lib/project-sync";
+import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { Cockpit } from "@/components/cockpit";
 import { AiDesignHero } from "@/components/cockpit/AiDesignHero";
 import { ComplianceFeed } from "@/components/cockpit/ComplianceFeed";
@@ -719,10 +720,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                   ikke professionel byggerådgivning.{" "}
                   <button
                     type="button"
-                    onClick={() => {
-                      sessionStorage.setItem("projectMode", "design");
-                      setMode("design");
-                    }}
+                    onClick={() => setMode("design")}
                     className="underline hover:text-amber-200 transition-colors"
                   >
                     Skift til design-tilstand
