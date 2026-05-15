@@ -98,6 +98,7 @@ export type Database = {
           address_matrikelnummer: string | null
           address_postnr: string | null
           address_postnrnavn: string | null
+          adresse_dar_id: string | null
           area: string | null
           brief_data: Json | null
           brief_done: boolean
@@ -127,6 +128,7 @@ export type Database = {
           address_matrikelnummer?: string | null
           address_postnr?: string | null
           address_postnrnavn?: string | null
+          adresse_dar_id?: string | null
           area?: string | null
           brief_data?: Json | null
           brief_done?: boolean
@@ -156,6 +158,7 @@ export type Database = {
           address_matrikelnummer?: string | null
           address_postnr?: string | null
           address_postnrnavn?: string | null
+          adresse_dar_id?: string | null
           area?: string | null
           brief_data?: Json | null
           brief_done?: boolean
