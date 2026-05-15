@@ -1,108 +1,107 @@
-# Cockpit-redesign: Fra guidet wizard til frit dashboard
+# UX-review: ArchAI — Builder's Cockpit
 
-Vi sletter hele fase-paradigmet og gør cockpittet til den primære arbejdsflade. Brugeren rammer cockpittet umiddelbart efter projektoprettelse — enten med adresse-data trukket fra Datafordeler, eller helt uden grund (frit design). Et nyt AI-hero panel øverst genererer 3 visuelle forslag fra inspirationsbilleder + fritekst-drøm. Personrelaterede byggeønsker fjernes.
+Bemærkning om "hent nyeste fra GitHub": Lovable og GitHub er bidirektionelt synkroniseret i realtid. Workspacet **er** allerede på nyeste commit. Hvis du har offline commits jeg ikke kan se, så skub dem først.
 
-## 1. Faseoverblik fjernes helt
+---
 
-**Filer:** `src/components/wizard-chrome.tsx`, `src/lib/phases.ts`, `src/components/phase-sidebar.tsx`, `src/components/phase-coming-soon.tsx`, `src/routes/__root.tsx`
+## Diagnose — kritiske fund
 
-- Slet `PhaseBar`, `MobilePhaseBar`, `PhaseChip` fra `wizard-chrome.tsx`. `TopBar` reduceres til: logo (venstre) · evt. kort projektkontekst (midten) · `UserMenu` (højre). `MobileMenu` beholdes men uden faseoversigt — kun "Mine projekter" + "Log ud".
-- Fjern `PhaseSidebar` overalt (sletter både komponenten og evt. brug i `__root.tsx` / cockpit).
-- Behold `BackLink`-helper.
-- `src/lib/phases.ts`: behold kun `setPhase`-relaterede typer hvis project-store stadig refererer dem internt; fjern `PHASES`, `usePhaseStates`, `usePhaseSubKeys`, `usePhaseClickable`. Fjern alle imports af disse fra øvrige filer.
-- Slet stub-routes der kun gav mening i fase-flowet: `projekt.datacheck.tsx`, `projekt.teknik.tsx`, `projekt.udbud.tsx` (alt funktionalitet flyttes ind i cockpit-tabs senere efter behov).
+### A. Dobbeltkald og spildte requests
 
-## 2. Ny indgang: Adresse er default, "design frit" som toggle
+1. **`restoreProject` kaldes to gange** ved entry til cockpit. `__root.tsx` (linje 117) restorer på app-mount. `projekt.$id.cockpit.tsx` (linje 484) restorer igen i en `useEffect`. Begge hits Supabase + skriver i project-store. Symptom: kort "flicker" mellem restored state #1 og #2.
+2. **Adressesøgning debounces kun 150 ms** (`projekt.adresse.tsx` linje 143). Netværksloggen viser separate `searchAddresses`-kald for `Has`, `Hass`, `Hasselv`, `Hasselvej`, `Hasselvej 40`, `Hasselvej 40,`, `Hasselvej 40, v` — 6 server fns på 5 sekunders typing. Bør være 300 ms + abort af tidligere request.
+3. **`<Outlet key={location.pathname}>`** i `__root.tsx` (linje 176) tvinger fuld remount af *hver* route ved navigation. Det river al lokal state, scroll-position og effekter ned — og refetcher data der allerede er i store. Det er hovedårsagen til at overgange føles "hårde".
+4. **Cockpit kører `fetchCompliance` → `runByggeanalyse`** i kæde (linje 567 + 599) uden at tjekke om `complianceDone` allerede er `true` fra restore. Ved fortsæt-fra-projektliste fyrer begge igen.
+5. **`projekt.start.tsx`** dynamic-importerer `auth` og `projekt-service` i `useEffect` på hver mount (linje 19) — to vandfald-roundtrips før liste vises. Viser "ARCHAI"-loader 200–600 ms uden grund.
 
-**Fil:** `src/routes/projekt.start.tsx` (mindre justering) + `src/routes/projekt.adresse.tsx` (tilføjelse) + ny route `src/routes/projekt.frit.tsx` ELLER hash i cockpit.
+### B. Brudte / forkerte referencer
 
-**Beslutning:** Vi tilføjer en lille toggle i `projekt.adresse.tsx`-skærmen ("Indtast adresse" / "Design uden grund"). Vælges "design uden grund":
+6. **`PhaseSidebar` er dead code.** Komponenten findes (`src/components/phase-sidebar.tsx`), `phases.ts` har sub-keys og statuser — men `__root.tsx` rendrer **ikke** sidebar'en. Fase-navigationen (Grundlaget → Cockpit → Teknik → Udbud) er det centrale paradigme i AGENTS.md, men brugeren ser den aldrig.
+7. **Adresse → Cockpit URL bruger `s.adresseid` (DAR-ID)**, men cockpit-route hedder `$id` og bruges af `phaseForRoute` som `adresseid`. På `/projekt/start` bruges `projekt.adresse_dar_id`. Det er konsistent, men `address.adresseid` i store kan være `bbr` ved restore (`__root.tsx` linje 122 fallback) — så cockpit-URL'en kan diverge fra hvad sidebar-navigation laver.
+8. **`projekt.teknik.tsx` og `projekt.udbud.tsx`** er 18-line `PhaseComingSoon`-stubs med `backTo="/projekt/adresse"` — ikke til cockpit. Bryder navigationsflow, brugeren kastes ud af projektkontekst.
+9. **`/`-routen redirect-er via `useEffect`** efter mount (linje 30-34), så indloggede brugere ser auth-formen i ~50ms før redirect. Bør være `beforeLoad`.
+10. **`ProjektDnaPanel` bruger 22 byggeønsker i ét accordion** i venstre kolonne (360px). Med Compliance-panel højre + matrikel-canvas midt giver det informationsoverload på 1160px viewport.
 
-- Opret projekt uden adresse via `serverCreateProject` (allerede understøttet — `address` forbliver null)
-- Naviger til `/projekt/frit/cockpit` (en speciel rute der mounter `Cockpit` med `bbr=null`, `metrics=null` osv.)
-- Cockpittet skjuler matrikel-canvas og compliance-gauges når der ikke er adresse-data — viser i stedet kun AI-hero + design-input + grov estimat.
+### C. Informationsarkitektur — strukturelle problemer
 
-I `projekt.start.tsx` ændres "Nyt projekt"-knappens undertekst til "Indtast adresse eller design frit".
+11. **Faser er ikke synlige i UI.** AGENTS.md beskriver 4 faser som hovedparadigme; brugeren ser kun TopBar med adresse-text. Ingen wayfinding.
+12. **Cockpit-fil er 1614 linjer i én route.** Tre "tabs" (Analyse/Ejendom/Økonomi) mountes alle samtidigt → unødigt rendering-arbejde.
+13. **Compliance-data spredes over for mange overflader**: HardStopBanner, CompliancePanel højre, Adresse-blocker dialog, EjendomPanel flags. Samme info, forskellig framing.
+14. **Pre-purchase vs design-mode** lever i `sessionStorage` (`projekt.adresse.tsx` linje 10-17) — global UX-tilstand uden visuel indikator efter adressevalg.
 
-## 3. Cockpit-omstrukturering: AI-hero øverst, slankere paneler
+---
 
-**Fil:** `src/components/cockpit/index.tsx`, `src/routes/projekt.$id.cockpit.tsx`
+## Implementeringsplan
 
-Ny vertikal struktur i cockpittet (oppefra og ned):
+Opdelt i 4 faser. Hver fase er selvstændig — du kan stoppe mellem dem.
 
-```text
-┌────────────────────────────────────────────────────────┐
-│ AI-HERO: "Drøm dit hjem"                              │
-│ [Upload billeder] [Fritekst-felt] [Generér 3 forslag] │
-│ → 3 generede billed-kort vises horisontalt herunder    │
-└────────────────────────────────────────────────────────┘
-┌──────────┬──────────────┬──────────────┐
-│ Byggeønsker │ Matrikel/  │ Compliance & │
-│ (accordion) │ placering  │ budget       │
-│             │ + visuel   │ (gauges)     │
-└──────────┴──────────────┴──────────────┘
-```
+### Fase 1 — Quick wins (dobbeltkald + brudte refs) — ~1 time
 
-Center-panel splittes i to faner: **"Matrikel & placering"** (eksisterende `MatrikelCanvas`) og **"Visuelt udseende"** (de genererede AI-billeder + valgt facade/materiale-preview).
+1. **Fjern dobbelt restore**: i `cockpit/index.tsx` linje 484-area, tjek `useProject().address && complianceDone` før `restoreProject()`. Hvis state er fyldt fra `__root`, skip.
+2. **Adresse-debounce → 300 ms** + AbortController på `searchAddresses` så in-flight kald cancelles ved nyt tastetryk. (`projekt.adresse.tsx` linje 131-148)
+3. **Skip cockpit `fetchCompliance` hvis `complianceDone`** og resultat allerede i store. Tilføj `if (complianceDone && bbrData) return;` øverst i den useEffect.
+4. **Auth-redirect via `beforeLoad`** i `/` routen — fjern flicker:
+   ```
+   beforeLoad: async () => {
+     const session = await getSession();
+     if (session) throw redirect({ to: '/projekt/start' });
+   }
+   ```
+5. **Stub-routes peger på cockpit** når der er en address i store; ellers `/projekt/start`.
 
-Når `bbr === null` (frit design): vis kun AI-hero + venstre input-panel + et budget-estimat. Skjul matrikel-canvas og compliance-gauges med placeholder "Tilføj adresse for at se grunddata".
+### Fase 2 — Elegante overgange — ~2 timer
 
-## 4. Slankere byggeønsker — fjern personrelaterede felter
+6. **Fjern `key={location.pathname}` fra `<Outlet>`**. Erstat med `AnimatePresence mode="popLayout"` per route component (PageTransition-wrapperen findes allerede i `wizard-ui.tsx`).
+7. **Layout-route for cockpit**: ny `src/routes/projekt.$id.tsx` (parent layout med `<Outlet />`) der holder TopBar + nyt PhaseRail (se Fase 3) konstant. Cockpit-tabs bliver child-routes (`/projekt/$id/cockpit/analyse`, `/cockpit/ejendom`, `/cockpit/oekonomi`) → bruger får ægte URL pr. tab + browser-back virker + kun aktiv tab mountes.
+8. **View Transitions API** for matrikel-canvas → ejendomspanel (samme rektangel "morpher" mellem skærme). Faldback til opacity for browsers uden support.
+9. **Persistent skeleton-shapes**: når der navigeres mellem tabs, hold KPI-kortenes skeleton-pladser i samme position (ingen layout-shift mellem skeleton og data).
 
-**Fil:** `src/lib/byggeoenske-steps.ts` (+ `src/lib/project-store.ts` typen `Byggeoenske` — beskyttet fil; markeres med `🔒` i PR)
+### Fase 3 — Ny informationsarkitektur — ~4 timer
 
-Fjern fra `STEPS`-arrayet:
+10. **PhaseRail erstatter PhaseSidebar**: top-horisontal stripe i TopBar (under logo) med 4 status-prikker + label. Sticky, altid synlig efter adressevalg. Klikbar når `address` er valgt. Sidebar-kode genbruges (`usePhaseStates`).
+11. **Cockpit som 2-kolonne i stedet for 3**: Venstre `ProjektDnaPanel` (byggeønsker) bliver til collapsible drawer med trigger-knap "Justér ønsker". Frigør plads til at matrikel-canvas + compliance kan være side-om-side på 1160 px.
+12. **Unified Compliance-overflade**: ét `<ComplianceFeed>` komponent der konsoliderer HardStopBanner + flags + warnings i én kronologisk liste. Vises både på Adresse (gate) og Cockpit (top af analyse-tab) med samme visuelle sprog. Genbrug i EjendomPanel som "expandable" sektion.
+13. **Mode-indikator** ("Due-diligence" vs "Design-mode") som lille pill i TopBar nær adresse-tekst. Klikbar → toggle. Påvirker copy i ComplianceFeed og CTA-knapper.
+14. **Flyt cockpit-side i mindre filer**: `cockpit/AnalyseTab.tsx`, `cockpit/EjendomPanel.tsx`, `cockpit/OekonomiPanel.tsx`. Route-fil bliver ~200 linjer (kun data fetching + tab-switching). Allerede delvist gjort.
 
-- `husstandsstoerrelse`, `voksne`, `boern`, `livsfase` (gruppe "Grundlæggende")
-- `hjemmekontor` (toggle, gruppe "Areal & rum")
+### Fase 4 — Polering og data-præsentation — ~2 timer
 
-Bevar: `byggetype`, `oensketAreal`, `antalEtager`, `antalSovevaerelser`, `antalBadevaerelser`, alle stil/arkitektur-felter, alle bæredygtighed-felter, `budget`, `inspirationsbilleder`.
+15. **Compliance-flags som "risiko-kort"** i stedet for liste: kategoriseret efter risikotype (Geoteknik / Forsyning / Naboer / Fredning / Beskyttelseslinjer) jvf. domæne-risikomatrix i AGENTS.md. Hver type får egen ikon + farve + estimeret kr.-impact når kendt.
+16. **KPI-talkort med animeret tæller** når data lander (framer-motion `animate` på number).
+17. **Empty states** for cockpit-tabs uden data: konkret CTA i stedet for tom skeleton (fx "Tilføj byggeønsker for at se compliance-impact").
+18. **Stub-routes (Teknik/Udbud)**: opgrader fra `PhaseComingSoon` til "preview"-skærm med fase-roadmap + tilbage til cockpit.
 
-`Byggeoenske`-typen i `project-store.ts` beholder felterne som optional for bagudkompatibilitet med eksisterende projekter, men de bruges ikke længere i UI. Gruppen "Grundlæggende" reduceres til kun `byggetype`.
+---
 
-## 5. AI-design hero komponent (ny)
+## Tekniske detaljer
 
-**Ny fil:** `src/components/cockpit/AiDesignHero.tsx`
-**Ny server-fn:** Tilføjes i `src/routes/projekt.$id.cockpit.tsx` (eller egen `src/lib/ai-design.functions.ts`)
+**Filer der ændres pr. fase:**
 
-UI:
+| Fase | Filer |
+|------|-------|
+| 1 | `routes/projekt.adresse.tsx`, `routes/projekt.$id.cockpit.tsx`, `routes/index.tsx`, `routes/projekt.teknik.tsx`, `routes/projekt.udbud.tsx` |
+| 2 | `routes/__root.tsx`, ny `routes/projekt.$id.tsx` (layout), splitting af cockpit-tabs til child-routes |
+| 3 | `components/wizard-chrome.tsx` (PhaseRail), ny `components/compliance-feed.tsx`, `components/cockpit/index.tsx` (2-kol) |
+| 4 | `components/cockpit/EjendomPanel.tsx`, ny `components/risk-card.tsx`, stubs |
 
-- Stort kort øverst i cockpittet
-- Venstre: drag-and-drop upload (genbrug logik fra `UploadField` i `cockpit/index.tsx`) + textarea til "Beskriv dit drømmehus" (gemmes i en ny `byggeoenske.designDroem: string` i store)
-- Højre: knap "Generér 3 forslag" → kalder server-fn `generateDesignProposals`
-- Resultat: 3 billeder rendres som klikbare kort. Valgt forslag persisteres i `byggeoenske.valgteDesignforslag` (string url)
+**Beskyttede filer (kræver `🔒` markering ved review):** Ingen ændringer planlagt i `project-store.ts`, `analysis-orchestrator.ts`, `pre-check-adresse.ts`, `project-persistence.ts`, `reactive-compliance.ts`. Fase 1 punkt 1 og 3 berører `routes/projekt.$id.cockpit.tsx` som kalder `restoreProject` — det er route-fil, ikke beskyttet, men ændringen er adfærdsmæssig så jeg flagger den i PR.
 
-Server-fn:
+**Ingen ændringer i:** server functions, Supabase-skema, Zustand state-shape, env vars.
 
-- `createServerFn({ method: "POST" })` med auth-middleware
-- Bruger Lovable AI Gateway (`google/gemini-3.1-flash-image-preview`) til billed-generering
-- System-prompt baseret på inspirationsbilleder + fritekst + valgte stil/materialer fra `byggeoenske`
-- Returnerer `{ images: string[] }` (3 stk., gemt i Supabase Storage eller som data-URLs)
+**Verificering pr. fase:**
+- `bunx tsc --noEmit` 0 errors
+- `bun build` ingen fejl
+- Netværksfanen: tæl serverFn-kald før/efter på "Adresse → Cockpit"-flow. Mål: fra ~12 kald til ~6.
+- Visuel: navigation Adresse → Cockpit → Analyse → Ejendom uden hvide flash.
 
-State-tilføjelser i `project-store.ts` (beskyttet fil — kræver review):
+---
 
-- `byggeoenske.designDroem?: string`
-- `byggeoenske.valgteDesignforslag?: string`
-- `byggeoenske.genererededDesignforslag?: string[]`
+## Hvad jeg IKKE rører
 
-## 6. Routing-konsekvenser
+- Server functions (`createServerFn`)
+- Project-store shape eller Supabase-migrations
+- Compliance-pipeline (`analysis-orchestrator`, `pre-check-adresse`, `reactive-compliance`)
+- AI-prompts eller Hus-DNA-generator
+- Auth-flow logik (kun redirect-timing)
 
-- Fjern logikken i `projekt.start.tsx` `ProjektKort.handleFortsaet` der tjekker `current_step` mod `COCKPIT_STEPS` — alle projekter med adresse går direkte til `/projekt/{adresseid}/cockpit`. Projekter uden adresse går til `/projekt/adresse?projectId=...`.
-- `routeTree.gen.ts` regenereres automatisk af Vite-pluginet når `projekt.frit.tsx` tilføjes / stub-routes slettes.
-
-## 7. Verifikation
-
-- `bunx tsc --noEmit` skal være ren — fjern alle imports af de slettede phase-helpers i: `wizard-chrome.tsx`, `phase-sidebar.tsx`, `phase-coming-soon.tsx`, evt. cockpit-fil hvis den kalder `setPhase`.
-- `bun test` skal forblive grøn — tjek `tests/wizard-flow.spec.ts` og `tests/address-flow.spec.ts`; opdatér selectors hvis de leder efter "FASE X"-chips.
-- Manuel rundtur: opret projekt → vælg "design frit" → cockpit uden grund → tilføj adresse senere via tilbage-link → cockpit med grund.
-
-## Tekniske noter
-
-- Ingen nye dependencies; AI-billedgenerering bruger eksisterende Lovable AI Gateway-mønster (se `connecting-to-ai-models-tanstack`).
-- Beskyttede filer rørt: `src/lib/project-store.ts` — markeres `🔒` i PR.
-- AGENTS.md/CLAUDE.md opdateres ikke automatisk (Codex må ikke).
-- Slettede stub-routes (`datacheck`, `teknik`, `udbud`) kan reintroduceres senere som cockpit-tabs hvis behov opstår.
-
-## Åbne spørgsmål inden implementering
-
-Ingen blokerende — alle 4 designvalg er afklaret. Implementering kan starte når denne plan er godkendt.
+Når du klikker "Implement plan" starter jeg i Fase 1.
