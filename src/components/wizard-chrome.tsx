@@ -56,6 +56,26 @@ export function TopBar() {
   );
 }
 
+function ModeIndicator() {
+  const [mode, setMode] = useCockpitMode();
+  const isDD = mode === "due-diligence";
+  return (
+    <button
+      type="button"
+      onClick={() => setMode(isDD ? "design" : "due-diligence")}
+      title={isDD ? "Skift til design-tilstand" : "Skift til due-diligence-tilstand"}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[9.5px] tracking-[0.12em] transition-colors ${
+        isDD
+          ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/15"
+          : "border-accent/40 bg-accent/10 text-accent hover:bg-accent/15"
+      }`}
+    >
+      {isDD ? <Eye size={10} /> : <Wrench size={10} />}
+      {isDD ? "DUE DILIGENCE" : "DESIGN"}
+    </button>
+  );
+}
+
 function PhaseRail() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
