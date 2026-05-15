@@ -4,17 +4,7 @@ import { z } from "zod";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Loader2, AlertTriangle, CheckCircle2, ChevronDown } from "lucide-react";
 import { useProject, type ComplianceFlag, type Address } from "@/lib/project-store";
-
-type ProjectMode = "due-diligence" | "design";
-
-function getProjectMode(): ProjectMode {
-  if (typeof sessionStorage === "undefined") return "design";
-  return sessionStorage.getItem("projectMode") === "due-diligence" ? "due-diligence" : "design";
-}
-
-function saveProjectMode(m: ProjectMode) {
-  sessionStorage.setItem("projectMode", m);
-}
+import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
@@ -67,12 +57,7 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const [mode, setModeState] = useState<ProjectMode>(getProjectMode);
-
-  const setMode = (m: ProjectMode) => {
-    saveProjectMode(m);
-    setModeState(m);
-  };
+  const [mode, setMode] = useCockpitMode();
 
   const {
     address,
