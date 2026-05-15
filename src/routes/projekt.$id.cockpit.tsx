@@ -43,6 +43,7 @@ import { RiskOverview } from "@/components/cockpit/RiskOverview";
 import { AnimatedNumber } from "@/components/cockpit/AnimatedNumber";
 import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
+import { DetailsAccordion, type DetailsSection } from "@/components/cockpit/DetailsAccordion";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { estimerTotalpris, STEPS, STEP_GROUPS } from "@/lib/byggeoenske-steps";
@@ -932,14 +933,12 @@ function AnalyseTab({
         />
       </div>
 
-      {/* Samlet kronologisk compliance-feed — under workspacet, ikke over */}
+      {/* Samlet kronologisk compliance-feed + 5 risikokategorier */}
       <ComplianceFeed />
-
-      {/* 5 risikokategorier — visuel oversigt */}
       <RiskOverview />
 
       {/* Manuel AI-genberegning */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
           AI-VURDERING
         </div>
@@ -954,128 +953,166 @@ function AnalyseTab({
         </button>
       </div>
 
-      {byggeanalyse && <ByggeanalyseKort analyse={byggeanalyse} />}
-      {!byggeanalyse && (
-        <Card className="mb-4">
-          <p className="text-sm leading-relaxed text-foreground/80">
-            {genererVurdering(data, adresse)}
-          </p>
-        </Card>
-      )}
-
-      {/* AI-design — visualisering */}
-      <div className="mt-8 mb-4">
-        <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground mb-3">
-          AI-DESIGN
-        </div>
-        <AiDesignHero />
-      </div>
-
-      {lokalplaner.length > 0 ? (
-        <Card className="mb-4">
-          <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
-            LOKALPLANER
-          </div>
-          <div className="space-y-3">
-            {vedtagne.map((lp) => (
-              <div key={lp.planid} className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm text-foreground font-medium truncate">
-                    {lp.plannr ? `${lp.plannr} – ` : ""}
-                    {lp.plannavn || "Ukendt lokalplan"}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {lp.datoVedtaget ? `Vedtaget ${lp.datoVedtaget.slice(0, 10)}` : "Vedtaget"}
-                    {lp.kommunenavn ? ` · ${lp.kommunenavn}` : ""}
-                  </div>
-                </div>
-                {lp.plandokumentLink && (
-                  <a
-                    href={lp.plandokumentLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center gap-1 rounded border border-accent/40 bg-accent/5 px-2 py-1 font-mono text-[11px] text-accent hover:bg-accent/10 transition-colors"
-                  >
-                    PDF <ExternalLink size={10} />
-                  </a>
-                )}
-              </div>
-            ))}
-            {forslag.map((lp) => (
-              <div key={lp.planid} className="flex items-start justify-between gap-3 opacity-70">
-                <div className="min-w-0">
-                  <div className="text-sm text-foreground truncate">
-                    {lp.plannr ? `${lp.plannr} – ` : ""}
-                    {lp.plannavn || "Lokalplanforslag"}
-                    <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">
-                      FORSLAG
-                    </span>
-                  </div>
-                </div>
-                {lp.plandokumentLink && (
-                  <a
-                    href={lp.plandokumentLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center gap-1 rounded border border-border px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    PDF <ExternalLink size={10} />
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      ) : (
-        <div className="flex gap-3 rounded-md border border-[#333]/60 bg-[#1A1A1A] p-4 mb-4">
-          <Info size={18} className="text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-sm text-muted-foreground">
-            Ingen lokalplan fundet for adressen – ejendommen er reguleret af kommuneplanen. Kontakt
-            din kommune for præcise byggeretlige grænser.
-          </p>
-        </div>
-      )}
-
       {data.fejl && (
-        <div className="flex gap-3 rounded-md border border-warning/40 bg-warning/10 p-4 mb-6">
+        <div className="flex gap-3 rounded-md border border-warning/40 bg-warning/10 p-4 mb-4">
           <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
           <p className="text-sm text-foreground">{data.fejl}</p>
         </div>
       )}
 
-      {save && <SaveSektion data={save} />}
-      {geusRisk && <GeusRisikoSektion data={geusRisk} />}
-      {terrain && <TerrainSektion data={terrain} />}
-      {servitutter && servitutter.servitutter.length > 0 && (
-        <ServitutterSektion data={servitutter} />
-      )}
-      {fjernvarme && <FjernvarmeSektion data={fjernvarme} />}
-      {naboer && naboer.count > 0 && <NaboerSektion data={naboer} />}
+      {/* Dybdedata foldet ind i ét accordion — fokus forbliver på workspace + feed */}
+      <DetailsAccordion
+        sections={[
+          {
+            id: "ai-byggeanalyse",
+            label: "AI BYGGEANALYSE",
+            badge: byggeanalyse?.kilde === "mock" ? (
+              <span className="text-[9px] border border-warning/40 text-warning rounded px-1 font-mono">
+                MOCK
+              </span>
+            ) : null,
+            content: byggeanalyse ? (
+              <ByggeanalyseKort analyse={byggeanalyse} />
+            ) : (
+              <Card>
+                <p className="text-sm leading-relaxed text-foreground/80">
+                  {genererVurdering(data, adresse)}
+                </p>
+              </Card>
+            ),
+          },
+          {
+            id: "ai-design",
+            label: "AI-DESIGN VISUALISERING",
+            content: <AiDesignHero />,
+          },
+          {
+            id: "lokalplaner",
+            label: `LOKALPLANER (${lokalplaner.length})`,
+            content:
+              lokalplaner.length > 0 ? (
+                <Card>
+                  <div className="space-y-3">
+                    {vedtagne.map((lp) => (
+                      <div key={lp.planid} className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm text-foreground font-medium truncate">
+                            {lp.plannr ? `${lp.plannr} – ` : ""}
+                            {lp.plannavn || "Ukendt lokalplan"}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {lp.datoVedtaget
+                              ? `Vedtaget ${lp.datoVedtaget.slice(0, 10)}`
+                              : "Vedtaget"}
+                            {lp.kommunenavn ? ` · ${lp.kommunenavn}` : ""}
+                          </div>
+                        </div>
+                        {lp.plandokumentLink && (
+                          <a
+                            href={lp.plandokumentLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center gap-1 rounded border border-accent/40 bg-accent/5 px-2 py-1 font-mono text-[11px] text-accent hover:bg-accent/10 transition-colors"
+                          >
+                            PDF <ExternalLink size={10} />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                    {forslag.map((lp) => (
+                      <div
+                        key={lp.planid}
+                        className="flex items-start justify-between gap-3 opacity-70"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm text-foreground truncate">
+                            {lp.plannr ? `${lp.plannr} – ` : ""}
+                            {lp.plannavn || "Lokalplanforslag"}
+                            <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">
+                              FORSLAG
+                            </span>
+                          </div>
+                        </div>
+                        {lp.plandokumentLink && (
+                          <a
+                            href={lp.plandokumentLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center gap-1 rounded border border-border px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            PDF <ExternalLink size={10} />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              ) : (
+                <div className="flex gap-3 rounded-md border border-[#333]/60 bg-[#1A1A1A] p-4">
+                  <Info size={18} className="text-muted-foreground shrink-0 mt-0.5" />
+                  <p className="text-sm text-muted-foreground">
+                    Ingen lokalplan fundet — ejendommen er reguleret af kommuneplanen.
+                  </p>
+                </div>
+              ),
+          },
+          save && {
+            id: "save",
+            label: "FREDNING & BEVARELSE",
+            content: <SaveSektion data={save} />,
+          },
+          geusRisk && {
+            id: "geus",
+            label: "GEOTEKNISK RISIKO",
+            content: <GeusRisikoSektion data={geusRisk} />,
+          },
+          terrain && {
+            id: "terrain",
+            label: "TERRÆN & KOTER",
+            content: <TerrainSektion data={terrain} />,
+          },
+          servitutter && servitutter.servitutter.length > 0 && {
+            id: "servitutter",
+            label: `SERVITUTTER (${servitutter.servitutter.length})`,
+            content: <ServitutterSektion data={servitutter} />,
+          },
+          fjernvarme && {
+            id: "fjernvarme",
+            label: "FJERNVARMEDÆKNING",
+            content: <FjernvarmeSektion data={fjernvarme} />,
+          },
+          naboer && naboer.count > 0 && {
+            id: "naboer",
+            label: `NABOBYGNINGER (${naboer.count})`,
+            content: <NaboerSektion data={naboer} />,
+          },
+        ].filter(Boolean) as DetailsSection[]}
+      />
 
-      <button
-        data-testid="compliance-continue"
-        onClick={onShowOekonomi}
-        className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110"
-      >
-        Vis Økonomi →
-      </button>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <Link
-          to="/projekt/datacheck"
-          className="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"
-        >
-          Projektparathed →
-        </Link>
+      {/* Slim navigation — én primær handling, sekundære som links */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-4">
+        <div className="flex flex-wrap gap-3 text-[11px] font-mono">
+          <button
+            onClick={onShowEjendom}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Ejendomsdetaljer →
+          </button>
+          <Link
+            to="/projekt/datacheck"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Projektparathed →
+          </Link>
+        </div>
         <button
-          onClick={onShowEjendom}
-          className="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-3 font-mono text-sm text-foreground hover:bg-[#1A1A1A] transition-colors"
+          data-testid="compliance-continue"
+          onClick={onShowOekonomi}
+          className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-2 font-mono text-[11px] tracking-[0.12em] text-accent-foreground transition-all hover:brightness-110"
         >
-          Ejendomsdetaljer →
+          ØKONOMI →
         </button>
       </div>
-      <p className="mt-3 text-[10px] text-muted-foreground text-center">
-        Naviger via fase-rail i toppen — ingen lineær wizard. AI-analyse er vejledende.
-      </p>
     </motion.div>
   );
 }
