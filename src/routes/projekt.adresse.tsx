@@ -4,17 +4,7 @@ import { z } from "zod";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Loader2, AlertTriangle, CheckCircle2, ChevronDown } from "lucide-react";
 import { useProject, type ComplianceFlag, type Address } from "@/lib/project-store";
-
-type ProjectMode = "due-diligence" | "design";
-
-function getProjectMode(): ProjectMode {
-  if (typeof sessionStorage === "undefined") return "design";
-  return sessionStorage.getItem("projectMode") === "due-diligence" ? "due-diligence" : "design";
-}
-
-function saveProjectMode(m: ProjectMode) {
-  sessionStorage.setItem("projectMode", m);
-}
+import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
@@ -67,12 +57,7 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const [mode, setModeState] = useState<ProjectMode>(getProjectMode);
-
-  const setMode = (m: ProjectMode) => {
-    saveProjectMode(m);
-    setModeState(m);
-  };
+  const [mode, setMode] = useCockpitMode();
 
   const {
     address,
@@ -99,6 +84,7 @@ function AddressStep() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCheckingCompliance, setIsCheckingCompliance] = useState(false);
+  const [highlightIdx, setHighlightIdx] = useState(0);
   const lastQueryRef = useRef<string>("");
 
   const queryTrimmed = useMemo(() => query.trim(), [query]);
@@ -133,6 +119,7 @@ function AddressStep() {
         const res = await searchAddresses({ data: { q } });
         if (lastQueryRef.current !== q) return;
         setSuggestions(res);
+        setHighlightIdx(0);
       } catch {
         if (lastQueryRef.current !== q) return;
         setSuggestions([]);
@@ -252,16 +239,43 @@ function AddressStep() {
                 setQuery(e.target.value);
                 setSelected(null);
                 setOpen(true);
+                setHighlightIdx(0);
               }}
               onFocus={() => setOpen(true)}
               onBlur={() => setTimeout(() => setOpen(false), 200)}
+              onKeyDown={(e) => {
+                if (!showDropdown || suggestions.length === 0) return;
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setHighlightIdx((i) => (i + 1) % suggestions.length);
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setHighlightIdx((i) => (i - 1 + suggestions.length) % suggestions.length);
+                } else if (e.key === "Enter") {
+                  const s = suggestions[highlightIdx];
+                  if (s) {
+                    e.preventDefault();
+                    handleSelectSuggestion(s);
+                  }
+                } else if (e.key === "Escape") {
+                  setOpen(false);
+                }
+              }}
               placeholder="Søg adresse, f.eks. Hasselvej 48, 2830 Virum..."
+              aria-autocomplete="list"
+              aria-expanded={showDropdown}
+              aria-activedescendant={
+                showDropdown && suggestions[highlightIdx]
+                  ? `addr-sugg-${highlightIdx}`
+                  : undefined
+              }
               className="w-full rounded-sm border border-[#333333] bg-[#111111] pl-10 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
             />
 
             {/* Dropdown – max 5 forslag */}
             <div
               data-testid="address-suggestions"
+              role="listbox"
               className={`absolute z-20 mt-2 w-full rounded-md border border-border bg-[#1A1A1A] shadow-xl overflow-hidden ${
                 showDropdown ? "" : "hidden"
               }`}
@@ -277,24 +291,33 @@ function AddressStep() {
               )}
               {!loading &&
                 !error &&
-                suggestions.map((s, i) => (
-                  <button
-                    data-testid="address-suggestion"
-                    key={s.adgangsadresseid || i}
-                    onMouseDown={(e: any) => {
-                      e.preventDefault();
-                      handleSelectSuggestion(s);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-[#222222] transition-colors border-b border-border last:border-b-0"
-                  >
-                    <div className="text-sm text-foreground font-medium">{s.tekst}</div>
-                    {s.postnrnavn && (
-                      <div className="text-xs text-muted-foreground italic mt-0.5">
-                        {s.postnrnavn} · {s.kommunekode}
-                      </div>
-                    )}
-                  </button>
-                ))}
+                suggestions.map((s, i) => {
+                  const isHi = i === highlightIdx;
+                  return (
+                    <button
+                      data-testid="address-suggestion"
+                      id={`addr-sugg-${i}`}
+                      role="option"
+                      aria-selected={isHi}
+                      key={s.adgangsadresseid || i}
+                      onMouseEnter={() => setHighlightIdx(i)}
+                      onMouseDown={(e: any) => {
+                        e.preventDefault();
+                        handleSelectSuggestion(s);
+                      }}
+                      className={`w-full text-left px-4 py-3 transition-colors border-b border-border last:border-b-0 ${
+                        isHi ? "bg-[#222222]" : "hover:bg-[#1f1f1f]"
+                      }`}
+                    >
+                      <div className="text-sm text-foreground font-medium">{s.tekst}</div>
+                      {s.postnrnavn && (
+                        <div className="text-xs text-muted-foreground italic mt-0.5">
+                          {s.postnrnavn} · {s.kommunekode}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
             </div>
           </div>
 

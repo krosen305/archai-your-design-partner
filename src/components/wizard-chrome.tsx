@@ -1,9 +1,10 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Menu, LogOut, FolderOpen, LogIn, Check, Lock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Menu, LogOut, FolderOpen, LogIn, Check, Lock, AlertTriangle, Eye, Wrench } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";
 import { useProject } from "@/lib/project-store";
+import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { PHASES, usePhaseStates, type PhaseStatus, type PhaseId } from "@/lib/phases";
 import {
   Sheet,
@@ -29,16 +30,17 @@ export function TopBar() {
           </Link>
         </div>
 
-        {/* Projekt-kontekst (adresse) */}
+        {/* Projekt-kontekst (adresse + mode) */}
         <div className="flex-1 flex justify-center min-w-0">
           {address?.adresse && (
-            <div className="hidden md:flex items-center gap-2 truncate">
+            <div className="hidden md:flex items-center gap-3 truncate">
               <span className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
                 PROJEKT
               </span>
-              <span className="text-sm text-foreground truncate max-w-[420px]">
+              <span className="text-sm text-foreground truncate max-w-[360px]">
                 {address.adresse.split(",")[0]}
               </span>
+              <ModeIndicator />
             </div>
           )}
         </div>
@@ -51,6 +53,26 @@ export function TopBar() {
       {/* PhaseRail — vises kun når adresse er valgt */}
       {address?.adresseid && <PhaseRail />}
     </header>
+  );
+}
+
+function ModeIndicator() {
+  const [mode, setMode] = useCockpitMode();
+  const isDD = mode === "due-diligence";
+  return (
+    <button
+      type="button"
+      onClick={() => setMode(isDD ? "design" : "due-diligence")}
+      title={isDD ? "Skift til design-tilstand" : "Skift til due-diligence-tilstand"}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[9.5px] tracking-[0.12em] transition-colors ${
+        isDD
+          ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/15"
+          : "border-accent/40 bg-accent/10 text-accent hover:bg-accent/15"
+      }`}
+    >
+      {isDD ? <Eye size={10} /> : <Wrench size={10} />}
+      {isDD ? "DUE DILIGENCE" : "DESIGN"}
+    </button>
   );
 }
 
