@@ -38,6 +38,8 @@ import { syncPatch, restoreProject } from "@/lib/project-sync";
 import { Cockpit } from "@/components/cockpit";
 import { AiDesignHero } from "@/components/cockpit/AiDesignHero";
 import { ComplianceFeed } from "@/components/cockpit/ComplianceFeed";
+import { RiskOverview } from "@/components/cockpit/RiskOverview";
+import { AnimatedNumber } from "@/components/cockpit/AnimatedNumber";
 import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
 import { cn } from "@/lib/utils";
@@ -948,6 +950,9 @@ function AnalyseTab({
       {/* Compliance-feed — samlet kronologisk risiko-overflade */}
       <ComplianceFeed />
 
+      {/* Risikokategorier — visuel oversigt over de 5 kritiske områder */}
+      <RiskOverview />
+
       {/* AI-design hero — øverst i cockpittet */}
       <AiDesignHero />
 
@@ -1598,18 +1603,32 @@ function MetricCard({
   subClass?: string;
   bar?: number;
 }) {
+  // Forsøg at udtrække tal + suffix fra value-strengen for at animere det.
+  const match = /^(-?\d+(?:[.,]\d+)?)(\D*)$/.exec(value.trim());
+  const numericValue = match ? parseFloat(match[1].replace(",", ".")) : null;
+  const suffix = match ? match[2] : "";
+  const decimals = match && match[1].includes(".") ? 1 : 0;
+
   return (
     <Card>
       <div className="text-[11px] font-mono tracking-[0.1em] text-muted-foreground mb-2">
         {title.toUpperCase()}
       </div>
-      <div className="font-mono text-2xl text-foreground">{value}</div>
+      <div className="font-mono text-2xl text-foreground">
+        {numericValue !== null ? (
+          <AnimatedNumber value={numericValue} decimals={decimals} suffix={suffix} />
+        ) : (
+          value
+        )}
+      </div>
       <div className={`text-xs mt-1 ${subClass}`}>{sub}</div>
       {bar !== undefined && (
         <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[#222]">
-          <div
+          <motion.div
             className="h-full bg-accent"
-            style={{ width: `${Math.min(100, Math.max(0, bar * 100))}%` }}
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, Math.max(0, bar * 100))}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
           />
         </div>
       )}
