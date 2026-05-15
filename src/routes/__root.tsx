@@ -172,8 +172,8 @@ function RootComponent() {
       <div className="min-h-screen bg-background">
         {!isWelcome && <TopBar />}
         <main className="min-w-0">
-          <AnimatePresence mode="wait">
-            <Outlet key={location.pathname} />
+          <AnimatePresence mode="wait" initial={false}>
+            <Outlet />
           </AnimatePresence>
         </main>
       </div>
