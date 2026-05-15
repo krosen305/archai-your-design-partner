@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Upload, X, ShoppingCart, Home, AlertTriangle, Flame, Info } from "lucide-react";
+import {
+  ChevronDown,
+  Upload,
+  X,
+  ShoppingCart,
+  Home,
+  AlertTriangle,
+  Flame,
+  Info,
+} from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -176,9 +185,9 @@ function ByggeoenskeAccordion({
     const grundareal = k?.grundareal ?? state.complianceMetrics?.grundareal ?? null;
     const samletAreal =
       merged.byggetype === "tilbyg" ? eksAreal + (valgtAreal ?? 0) : (valgtAreal ?? eksAreal);
-    const beregnetPct =
-      grundareal && grundareal > 0 ? (samletAreal / grundareal) * 100 : null;
-    const maxPct = k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
+    const beregnetPct = grundareal && grundareal > 0 ? (samletAreal / grundareal) * 100 : null;
+    const maxPct =
+      k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
     const maxEtager = k?.maxEtager ?? state.complianceMetrics?.maxEtager ?? null;
     const etagerStatus: "ok" | "dispensation" | "ingen_data" =
       valgtEtager == null || maxEtager == null
@@ -252,9 +261,7 @@ function ByggeoenskeAccordion({
                       value={byggeoenske[step.key]}
                       onChange={(v) => patch({ [step.key]: v } as Partial<Byggeoenske>)}
                       onOpenDispensation={(t) => setDispensationFor(t)}
-                      onClearField={() =>
-                        patch({ [step.key]: undefined } as Partial<Byggeoenske>)
-                      }
+                      onClearField={() => patch({ [step.key]: undefined } as Partial<Byggeoenske>)}
                     />
                   ))}
                 </div>
@@ -263,10 +270,7 @@ function ByggeoenskeAccordion({
           );
         })}
       </Accordion>
-      <DispensationModal
-        type={dispensationFor}
-        onClose={() => setDispensationFor(null)}
-      />
+      <DispensationModal type={dispensationFor} onClose={() => setDispensationFor(null)} />
     </Card>
   );
 }
@@ -304,9 +308,7 @@ function StepExtras({
             <div className="flex items-start gap-1.5 text-danger">
               <AlertTriangle size={12} className="mt-0.5 shrink-0" />
               <div>
-                <div className="font-medium">
-                  {String(value)} etager er ikke tilladt her
-                </div>
+                <div className="font-medium">{String(value)} etager er ikke tilladt her</div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   Kommuneplanen tillader maks {k?.maxEtager} etager. Du kan søge dispensation hos
                   kommunen.
@@ -353,9 +355,7 @@ function StepExtras({
           <div className="font-mono text-[10px] text-muted-foreground">
             Samlet bebyggelsesprocent:{" "}
             <span
-              className={
-                beregnet > k.maxBebyggelsesprocent ? "text-danger" : "text-emerald-400"
-              }
+              className={beregnet > k.maxBebyggelsesprocent ? "text-danger" : "text-emerald-400"}
             >
               {beregnet.toFixed(0)}%
             </span>{" "}

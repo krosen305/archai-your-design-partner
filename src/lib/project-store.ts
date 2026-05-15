@@ -233,7 +233,7 @@ type State = {
   setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
   setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
   setCurrentProjectId: (id: string | null) => void;
-  
+
   setLastHusDnaInput: (
     v: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null,
   ) => void;
@@ -274,7 +274,7 @@ export const useProject = create<State>((set) => ({
   adressePreCheck: null,
   boligoenskeValidering: null,
   currentProjectId: null,
-  
+
   _lastHusDnaInput: null,
   designPlacement: null,
   heritage_save_value: null,
@@ -303,7 +303,7 @@ export const useProject = create<State>((set) => ({
   setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
   setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
   setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
-  
+
   setLastHusDnaInput: (_lastHusDnaInput) => set({ _lastHusDnaInput }),
   setDesignPlacement: (designPlacement) => set({ designPlacement }),
   setHeritageSaveValue: (heritage_save_value) => set({ heritage_save_value }),
