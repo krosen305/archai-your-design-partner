@@ -303,7 +303,7 @@ export const useProject = create<State>((set) => ({
   setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
   setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
   setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
-  setCockpitMode: (cockpitMode) => set({ cockpitMode }),
+  
   setLastHusDnaInput: (_lastHusDnaInput) => set({ _lastHusDnaInput }),
   setDesignPlacement: (designPlacement) => set({ designPlacement }),
   setHeritageSaveValue: (heritage_save_value) => set({ heritage_save_value }),
