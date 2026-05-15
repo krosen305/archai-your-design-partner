@@ -16,8 +16,8 @@ export function MatrikelMap({
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
 }) {
-  const grundareal = bbr?.grundareal_m2 ?? metrics?.grundareal ?? null;
-  const bebygget = metrics?.bebyggetAreal ?? null;
+  const grundareal = bbr?.grundareal ?? metrics?.grundareal ?? null;
+  const bebygget = metrics?.currentBygningsareal ?? null;
   return (
     <div className="rounded-lg border border-border bg-[#111] p-6 min-h-[320px] flex flex-col items-center justify-center text-center">
       <MapIcon size={32} className="text-muted-foreground/40 mb-3" />
