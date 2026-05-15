@@ -10,6 +10,7 @@ import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { TopBar } from "@/components/wizard-chrome";
 import { useProject, isHusDna, parseComplianceData } from "@/lib/project-store";
+// 🔒 Rører beskyttet fil — kræver review (ARCH-160)
 import { restoreProject } from "@/lib/project-sync";
 import { AuthProvider } from "@/lib/auth-context";
 
@@ -94,6 +95,11 @@ function RootComponent() {
     setByggeanalyseResultat,
     setVurderingData,
     setCurrentProjectId,
+    setHeritageSaveValue,
+    setIsFredet,
+    setGrundareal,
+    setBebyggetAreal,
+    setHardStop,
   } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
@@ -153,6 +159,12 @@ function RootComponent() {
         if (cd.vurderingData) setVurderingData(cd.vurderingData);
         if (project.compliance_done) setComplianceDone(true);
       }
+      // ARCH-160: typede kolonner er ground truth — overskriver altid JSONB-aflæste værdier
+      if (project.heritage_save_value != null) setHeritageSaveValue(project.heritage_save_value);
+      if (project.is_fredet != null) setIsFredet(project.is_fredet);
+      if (project.grundareal_m2 != null) setGrundareal(project.grundareal_m2);
+      if (project.bebygget_areal_m2 != null) setBebyggetAreal(project.bebygget_areal_m2);
+      setHardStop(project.hard_stop ?? false, project.hard_stop_reason ?? null);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (

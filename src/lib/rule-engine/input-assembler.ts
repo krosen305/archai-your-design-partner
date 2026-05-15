@@ -13,7 +13,7 @@ import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskytt
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { Byggeoenske } from "@/lib/project-store";
+import type { Byggeoenske, DesignPlacement } from "@/lib/project-store";
 import type {
   RuleEngineInput,
   RuleValue,
@@ -36,6 +36,7 @@ export type AssemblerParams = {
   terrain: TerrainData | null;
   fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi fra FBB
   byggeoenske: Byggeoenske | null; // null = serverside kørslen (Option A)
+  designPlacement?: DesignPlacement | null; // ARCH-180: præcis footprint/skelafstand fra korteditor
   municipality: string;
   kommunekode: string;
 };
@@ -137,6 +138,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     terrain,
     fbbData,
     byggeoenske,
+    designPlacement,
     municipality,
     kommunekode,
   } = params;
@@ -277,21 +279,39 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
   let newBuilding: RuleEngineInput["newBuilding"] = null;
 
   if (byggeoenske) {
-    const storeys = mapAntalEtager(byggeoenske.antalEtager);
+    const storeysFromWizard = mapAntalEtager(byggeoenske.antalEtager);
     const floorAreaM2 = byggeoenske.oensketAreal ?? null;
-    const footprintEstimated = true;
+
+    // ARCH-180: korteditor leverer præcise værdier der overskriver heuristiske estimater
+    const hasPlacement = designPlacement != null;
+
+    const storeys =
+      hasPlacement && designPlacement.floors !== null ? designPlacement.floors : storeysFromWizard;
+
+    const footprintEstimated = !hasPlacement;
     const footprintM2 =
-      floorAreaM2 !== null && storeys !== null ? Math.round(floorAreaM2 / storeys) : null;
-    const heightEstimated = true;
-    const heightM = storeys !== null ? Math.round(storeys * 3.0 * 10) / 10 : null;
+      hasPlacement && designPlacement.footprintAreaM2 !== null
+        ? designPlacement.footprintAreaM2
+        : floorAreaM2 !== null && storeys !== null
+          ? Math.round(floorAreaM2 / storeys)
+          : null;
+
+    const heightEstimated = !(hasPlacement && designPlacement.heightM !== null);
+    const heightM =
+      hasPlacement && designPlacement.heightM !== null
+        ? designPlacement.heightM
+        : storeys !== null
+          ? Math.round(storeys * 3.0 * 10) / 10
+          : null;
+
+    const distanceToBoundaryM = hasPlacement ? designPlacement.minDistanceToBoundaryM : null;
 
     if (floorAreaM2 === null) missingFields.push("newBuilding.floorAreaM2");
     if (storeys === null) missingFields.push("newBuilding.storeys");
     if (footprintM2 === null) missingFields.push("newBuilding.footprintM2");
     if (heightM === null) missingFields.push("newBuilding.heightM");
-
-    // distanceToBoundaryM kræver brugerinput — ikke i Byggeoenske endnu
-    missingFields.push("newBuilding.distanceToBoundaryM");
+    // skelafstand kræver korteditor eller brugerinput
+    if (!hasPlacement) missingFields.push("newBuilding.distanceToBoundaryM");
 
     newBuilding = {
       floorAreaM2,
@@ -300,7 +320,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
       heightM,
       heightEstimated,
       storeys,
-      distanceToBoundaryM: null,
+      distanceToBoundaryM,
       buildType: mapByggetypeToProjectType(byggeoenske.byggetype),
       roofType: byggeoenske.tagform ?? null,
       facadeMaterial: byggeoenske.facademateriale ?? null,
@@ -336,6 +356,16 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
 
   // ── Saml ──────────────────────────────────────────────────────────────────
 
+  // ARCH-180: placement-sektion — kun sat når korteditor har leveret footprintAreaM2
+  const placementSection: RuleEngineInput["placement"] =
+    designPlacement?.footprintAreaM2 != null
+      ? {
+          footprintAreaM2: designPlacement.footprintAreaM2,
+          minDistanceToBoundaryM: designPlacement.minDistanceToBoundaryM,
+          outsideParcelAreaM2: designPlacement.outsideParcelAreaM2,
+        }
+      : null;
+
   const input: RuleEngineInput = {
     project: {
       type: projectType,
@@ -361,6 +391,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     newBuilding,
     geotechnical,
     servituts: servitutsSection,
+    placement: placementSection,
   };
 
   return { input, missingFields: [...new Set(missingFields)] };

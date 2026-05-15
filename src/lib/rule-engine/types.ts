@@ -131,6 +131,18 @@ export type RuleEngineInput = {
     hasCritical: boolean;
     criticalTexts: string[];
   };
+
+  /**
+   * Præcis bygningsplacering fra korteditor (ARCH-179/180).
+   * Når tilstede overskriver disse værdier de estimerede newBuilding-værdier.
+   * Kun sat når korteditor har leveret geometri — undefined = ingen kortdata.
+   */
+  placement?: {
+    footprintAreaM2: number;
+    minDistanceToBoundaryM: number | null;
+    /** > 0 = bygning overlapper parcelgrænse — hard stop */
+    outsideParcelAreaM2: number;
+  } | null;
 };
 
 // ---------------------------------------------------------------------------

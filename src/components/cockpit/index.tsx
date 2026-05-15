@@ -41,6 +41,7 @@ import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { cn } from "@/lib/utils";
+import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 
 // ---------------------------------------------------------------------------
 // Cockpit — 3-kolonne dashboard for byggeanalyse
@@ -820,174 +821,7 @@ function MatrikelCanvas({
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
 }) {
-  const { byggeoenske, address } = useProject();
-
-  const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
-  const eksisterende = bbr?.bebygget_areal ?? null;
-  const oensket = byggeoenske.oensketAreal ?? null;
-  const samlet = (eksisterende ?? 0) + (byggeoenske.byggetype === "tilbyg" ? (oensket ?? 0) : 0);
-  const husAreal =
-    byggeoenske.byggetype === "nybyg"
-      ? (oensket ?? eksisterende ?? 0)
-      : samlet || eksisterende || 0;
-
-  // Antag kvadratisk grund for visualisering
-  const grundSide = grundareal ? Math.sqrt(grundareal) : 0;
-  const husSide = husAreal ? Math.sqrt(husAreal) : 0;
-
-  const canvasW = 480;
-  const canvasH = 360;
-  const padding = 40;
-  const scale =
-    grundSide > 0 ? Math.min(canvasW - padding * 2, canvasH - padding * 2) / grundSide : 1;
-
-  const grundPx = grundSide * scale;
-  const husPx = husSide * scale;
-  const grundX = (canvasW - grundPx) / 2;
-  const grundY = (canvasH - grundPx) / 2;
-  const husX = grundX + (grundPx - husPx) / 2;
-  const husY = grundY + (grundPx - husPx) / 2;
-
-  const maxPct = metrics?.maxBebyggelsesprocent ?? null;
-  const beregnetPct = grundareal ? (husAreal / grundareal) * 100 : null;
-  const overskredet = maxPct !== null && beregnetPct !== null && beregnetPct > maxPct;
-
-  return (
-    <Card className="p-0 overflow-hidden h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
-        <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
-          MATRIKEL & PLACERING
-        </div>
-        {address?.matrikel && (
-          <div className="font-mono text-[10px] text-muted-foreground truncate ml-2">
-            {address.matrikel}
-          </div>
-        )}
-      </div>
-      <div className="relative flex-1 bg-gradient-to-br from-[#0a0a0a] to-[#141414] flex items-center justify-center p-4">
-        {grundareal === null ? (
-          <div className="text-center text-xs text-muted-foreground">
-            Ingen matrikeldata tilgængelig
-          </div>
-        ) : (
-          <svg
-            viewBox={`0 0 ${canvasW} ${canvasH}`}
-            className="w-full h-full max-h-[420px]"
-            role="img"
-            aria-label="Matrikel og husplacering"
-          >
-            {/* Grid baggrund */}
-            <defs>
-              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1f1f1f" strokeWidth="0.5" />
-              </pattern>
-              <pattern
-                id="hatch"
-                width="6"
-                height="6"
-                patternUnits="userSpaceOnUse"
-                patternTransform="rotate(45)"
-              >
-                <line x1="0" y1="0" x2="0" y2="6" stroke="currentColor" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width={canvasW} height={canvasH} fill="url(#grid)" />
-
-            {/* Matrikel */}
-            <rect
-              x={grundX}
-              y={grundY}
-              width={grundPx}
-              height={grundPx}
-              fill="hsl(var(--success) / 0.08)"
-              stroke="hsl(var(--success) / 0.6)"
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
-            />
-            <text
-              x={grundX + 4}
-              y={grundY + 14}
-              fontSize="10"
-              fill="hsl(var(--success))"
-              fontFamily="monospace"
-            >
-              GRUND {Math.round(grundareal)} m²
-            </text>
-
-            {/* Hus */}
-            {husPx > 0 && (
-              <motion.g
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4 }}
-              >
-                <rect
-                  x={husX}
-                  y={husY}
-                  width={husPx}
-                  height={husPx}
-                  fill={overskredet ? "hsl(var(--danger) / 0.2)" : "hsl(var(--accent) / 0.25)"}
-                  stroke={overskredet ? "hsl(var(--danger))" : "hsl(var(--accent))"}
-                  strokeWidth="2"
-                />
-                <text
-                  x={husX + husPx / 2}
-                  y={husY + husPx / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="11"
-                  fill="hsl(var(--foreground))"
-                  fontFamily="monospace"
-                >
-                  HUS {Math.round(husAreal)} m²
-                </text>
-              </motion.g>
-            )}
-
-            {/* Byggeret-zone (max bebyggelsesprocent ramme) */}
-            {maxPct !== null &&
-              grundareal &&
-              (() => {
-                const maxHusAreal = grundareal * (maxPct / 100);
-                const maxHusSide = Math.sqrt(maxHusAreal);
-                const maxHusPx = maxHusSide * scale;
-                const mhX = grundX + (grundPx - maxHusPx) / 2;
-                const mhY = grundY + (grundPx - maxHusPx) / 2;
-                return (
-                  <rect
-                    x={mhX}
-                    y={mhY}
-                    width={maxHusPx}
-                    height={maxHusPx}
-                    fill="none"
-                    stroke="hsl(var(--warning) / 0.5)"
-                    strokeWidth="1"
-                    strokeDasharray="2 3"
-                  />
-                );
-              })()}
-          </svg>
-        )}
-      </div>
-      <div className="px-4 py-2.5 border-t border-border/40 grid grid-cols-3 gap-2 text-[10px] font-mono">
-        <Legend swatch="bg-success/40 border-success/60" label="Grund" />
-        <Legend swatch="bg-warning/40 border-warning/60" label="Max ramme" />
-        <Legend
-          swatch={overskredet ? "bg-danger/40 border-danger" : "bg-accent/40 border-accent"}
-          label="Hus"
-        />
-      </div>
-    </Card>
-  );
-}
-
-function Legend({ swatch, label }: { swatch: string; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-muted-foreground">
-      <div className={cn("w-3 h-3 rounded-sm border", swatch)} />
-      <span>{label}</span>
-    </div>
-  );
+  return <MatrikelMap bbr={bbr} metrics={metrics} naboer={naboer} />;
 }
 
 // ===========================================================================
@@ -1011,7 +845,8 @@ function CompliancePanel({
   geusRisk: GeusRiskData | null;
   isRecomputing: boolean;
 }) {
-  const { byggeoenske, complianceFlags, cockpitMode } = useProject();
+  const { byggeoenske, complianceFlags, cockpitMode, heritage_save_value, is_fredet } =
+    useProject();
 
   const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
   const eksisterende = bbr?.bebygget_areal ?? 0;
@@ -1058,7 +893,7 @@ function CompliancePanel({
     "dkjord-v2",
     "dkjord-v1",
   ]);
-  const risici = complianceFlags
+  const flagRisici = complianceFlags
     .filter((f) => RISICI_FLAG_IDS.has(f.id) || f.kilde === "geus" || f.kilde === "dkjord")
     .map((f) => ({
       key: f.id,
@@ -1066,6 +901,44 @@ function CompliancePanel({
       severity: f.status === "blocker" ? ("high" as const) : ("med" as const),
       detalje: f.detalje ?? "",
     }));
+
+  // ARCH-162: augment med typede store-felter — vises selv ved page refresh (ingen pipeline re-run)
+  const flagKeys = new Set(flagRisici.map((r) => r.key));
+  const storeRisici: typeof flagRisici = [];
+  if (
+    heritage_save_value !== null &&
+    heritage_save_value <= 3 &&
+    !flagKeys.has("save-bevaringsvaerdi") &&
+    !flagKeys.has("regelkerne-save_1_3_demolition")
+  ) {
+    storeRisici.push({
+      key: "save",
+      label: `SAVE ${heritage_save_value}/9 — Høj bevaringsværdi`,
+      severity: "high",
+      detalje: "Nedrivning/ombygning kræver kommunens tilladelse (Planlovens §14).",
+    });
+  }
+  if (heritage_save_value === 4 && !flagKeys.has("regelkerne-save_4_paragraph14_risk")) {
+    storeRisici.push({
+      key: "save-4",
+      label: "SAVE 4/9 — §14-forbud risiko",
+      severity: "med",
+      detalje: "Kommunen kan nedlægge §14-forbud mod nedrivning. Kontakt teknisk forvaltning.",
+    });
+  }
+  if (
+    is_fredet === true &&
+    !flagKeys.has("bbr-fredet") &&
+    !flagKeys.has("regelkerne-listed_building_demolition")
+  ) {
+    storeRisici.push({
+      key: "fredet",
+      label: "Fredet bygning",
+      severity: "high",
+      detalje: "Alle ændringer kræver tilladelse fra Slots- og Kulturstyrelsen.",
+    });
+  }
+  const risici = [...storeRisici, ...flagRisici];
 
   const inKobMode = cockpitMode === "kob";
 

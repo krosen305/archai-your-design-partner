@@ -13,6 +13,7 @@ import {
   Sparkles,
   Flame,
   Home as HomeIcon,
+  XCircle,
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -117,6 +118,22 @@ const runByggeanalyse = createServerFn({ method: "POST" })
     const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
     return ByggeanalyseService.analyse({ ...analysisInput, ruleEngineResult });
   });
+
+function HardStopBanner() {
+  const { hard_stop, hard_stop_reason } = useProject();
+
+  if (!hard_stop) return null;
+
+  return (
+    <div className="mb-4 flex items-start gap-3 rounded-md border border-danger/40 bg-danger/5 px-4 py-3">
+      <XCircle size={14} className="mt-0.5 shrink-0 text-danger" />
+      <div className="text-xs leading-relaxed text-danger/90">
+        <span className="font-mono tracking-[0.1em] text-danger">HARD STOP</span>
+        <div className="mt-1">{hard_stop_reason ?? "Matriklen har et blokerende forhold."}</div>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Route
@@ -465,8 +482,18 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     (async () => {
       const currentProjectId = useProject.getState().currentProjectId;
       const persisted = await restoreProject(currentProjectId);
+      if (!persisted) return;
+
+      // ARCH-164: typede kolonner er ground truth — læses uafhængigt af JSONB
+      const store = useProject.getState();
+      if (persisted.heritage_save_value != null)
+        store.setHeritageSaveValue(persisted.heritage_save_value);
+      if (persisted.is_fredet != null) store.setIsFredet(persisted.is_fredet);
+      store.setHardStop(persisted.hard_stop ?? false, persisted.hard_stop_reason ?? null);
+
+      // JSONB fallback for felter uden typede kolonner (geusRisk, terrain, naboer, etc.)
       const complianceData =
-        persisted?.compliance_data && typeof persisted.compliance_data === "object"
+        persisted.compliance_data && typeof persisted.compliance_data === "object"
           ? (persisted.compliance_data as Record<string, unknown>)
           : null;
       if (!complianceData) return;
@@ -485,11 +512,9 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
       );
       // ARCH-148: restore byggeanalyseResultat efter reload
       if (complianceData.byggeanalyseResultat) {
-        useProject
-          .getState()
-          .setByggeanalyseResultat(
-            complianceData.byggeanalyseResultat as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat,
-          );
+        store.setByggeanalyseResultat(
+          complianceData.byggeanalyseResultat as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat,
+        );
       }
     })();
   }, [
@@ -694,6 +719,9 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                 </div>
               </div>
             )}
+
+            {/* ARCH-162: Hard Stop banner — vises ved page refresh uden at pipeline kører */}
+            <HardStopBanner />
 
             {/* Tab navigation */}
             <div className="flex gap-1 mb-6 border-b border-border/40">

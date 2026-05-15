@@ -1,13 +1,31 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, CheckCircle2, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
+import {
+  MapPin,
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  ChevronDown,
+  XCircle,
+  Copy,
+  Check,
+} from "lucide-react";
 import { useProject, type ComplianceFlag } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 
 export function EjendomPanel() {
-  const { complianceMetrics, bbrData, vurderingData, complianceFlags, address, adressePreCheck } =
-    useProject();
+  const {
+    complianceMetrics,
+    bbrData,
+    vurderingData,
+    complianceFlags,
+    address,
+    adressePreCheck,
+  } = useProject();
   const [showFlags, setShowFlags] = useState(false);
+  const [showDatakilder, setShowDatakilder] = useState(false);
+
+  // adressePreCheck bruges som fallback når compliance-pipeline ikke er kørt endnu
   const k = adressePreCheck?.kontekst;
   const bbr = bbrData ?? adressePreCheck?.bbr ?? null;
 
@@ -20,6 +38,8 @@ export function EjendomPanel() {
   const currentEtager = complianceMetrics?.currentEtager ?? k?.antalEtager ?? null;
   const maxEtager = complianceMetrics?.maxEtager ?? k?.maxEtager ?? null;
   const maxHoejde = complianceMetrics?.maxBygningshoejde ?? k?.maxBygningshoejde ?? null;
+
+  const blockers = complianceFlags.filter((f) => f.status === "blocker");
 
   const noegletal = [
     {
@@ -70,49 +90,82 @@ export function EjendomPanel() {
         ))}
       </div>
 
-      <SectionHeader title="Eksisterende bygning" />
-      <Card>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Field label="Byggeår" value={bbrData?.byggeaar ?? "—"} />
-          <Field
-            label="Samlet areal"
-            value={bbrData?.bebygget_areal != null ? `${bbrData.bebygget_areal} m²` : "—"}
-          />
-          <Field
-            label="Bebygget"
-            value={bbrData?.bebygget_areal != null ? `${bbrData.bebygget_areal} m²` : "—"}
-          />
-          <Field
-            label="Etager"
-            value={bbrData?.antal_etager != null ? `${bbrData.antal_etager}` : "—"}
-          />
-          <Field label="Anvendelse" value={bbrData?.anvendelse_tekst ?? "—"} />
+      {/* ARCH-184: Hard stop banner — viser blokerende flags med årsag fra rule-engine */}
+      {blockers.length > 0 && (
+        <div className="rounded-lg border border-danger/40 bg-danger/5 p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <XCircle size={15} className="text-danger shrink-0" />
+            <span className="font-mono text-[10px] tracking-[0.15em] text-danger">
+              HARD STOP — {blockers.length} BLOKERENDE{" "}
+              {blockers.length === 1 ? "FORHOLD" : "FORHOLD"}
+            </span>
+          </div>
+          <ul className="space-y-1.5 pl-1">
+            {blockers.map((b) => (
+              <li key={b.id} className="text-xs text-foreground">
+                <span className="font-medium">{b.label}</span>
+                {b.detalje && <span className="text-muted-foreground"> — {b.detalje}</span>}
+                {b.dispensationMyndighed && (
+                  <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
+                    ({b.dispensationMyndighed})
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
-      </Card>
+      )}
 
-      <SectionHeader title="Plangrænser" />
-      <Card>
-        <div className="divide-y divide-border">
-          <PlanRow
-            label="Bebyggelsesprocent"
-            tilladt={maxPct != null ? `${maxPct}%` : "—"}
-            nuvaerende={currentPct != null ? `${currentPct}%` : "—"}
-            ok={maxPct != null && currentPct != null ? currentPct <= maxPct : null}
-          />
-          <PlanRow
-            label="Antal etager"
-            tilladt={maxEtager != null ? `${maxEtager}` : "—"}
-            nuvaerende={currentEtager != null ? `${currentEtager}` : "—"}
-            ok={maxEtager != null && currentEtager != null ? currentEtager <= maxEtager : null}
-          />
-          <PlanRow
-            label="Bygningshøjde"
-            tilladt={maxHoejde != null ? `${maxHoejde} m` : "Ikke defineret"}
-            nuvaerende="—"
-            ok={null}
-          />
-        </div>
-      </Card>
+      {/* ARCH-185: Grund & rammer samlet — aktuelle værdier og grænser side om side */}
+      <SectionHeader title="Grund & Rammer" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card>
+          <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-3">
+            EKSISTERENDE BYGNING
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Byggeår" value={bbr?.byggeaar ?? "—"} />
+            <Field
+              label="Samlet areal"
+              value={bbr?.samlet_areal != null ? `${bbr.samlet_areal} m²` : "—"}
+            />
+            <Field
+              label="Bebygget areal"
+              value={bbr?.bebygget_areal != null ? `${bbr.bebygget_areal} m²` : "—"}
+            />
+            <Field
+              label="Etager"
+              value={bbr?.antal_etager != null ? `${bbr.antal_etager}` : "—"}
+            />
+            <Field label="Anvendelse" value={bbr?.anvendelse_tekst ?? "—"} />
+          </div>
+        </Card>
+        <Card>
+          <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-3">
+            PLANGRÆNSER
+          </div>
+          <div className="divide-y divide-border">
+            <PlanRow
+              label="Bebyggelsesprocent"
+              tilladt={maxPct != null ? `${maxPct}%` : "—"}
+              nuvaerende={currentPct != null ? `${currentPct}%` : "—"}
+              ok={maxPct != null && currentPct != null ? currentPct <= maxPct : null}
+            />
+            <PlanRow
+              label="Antal etager"
+              tilladt={maxEtager != null ? `${maxEtager}` : "—"}
+              nuvaerende={currentEtager != null ? `${currentEtager}` : "—"}
+              ok={maxEtager != null && currentEtager != null ? currentEtager <= maxEtager : null}
+            />
+            <PlanRow
+              label="Bygningshøjde"
+              tilladt={maxHoejde != null ? `${maxHoejde} m` : "Ikke defineret"}
+              nuvaerende="—"
+              ok={null}
+            />
+          </div>
+        </Card>
+      </div>
 
       {complianceFlags.length > 0 && (
         <>
@@ -140,19 +193,91 @@ export function EjendomPanel() {
         </>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground font-mono">
-        <div>
-          <span className="text-[10px] tracking-[0.15em]">MATRIKEL</span>
-          <div className="text-foreground mt-0.5">{address?.matrikel ?? "—"}</div>
-        </div>
-        <div>
-          <span className="text-[10px] tracking-[0.15em]">GRUNDVÆRDI</span>
-          <div className="text-foreground mt-0.5">{formatMio(vurderingData?.grundvaerdi)}</div>
-        </div>
-        <div>
-          <span className="text-[10px] tracking-[0.15em]">ADGANGSADRESSE</span>
-          <div className="text-foreground mt-0.5 truncate">{address?.adgangsadresseid ?? "—"}</div>
-        </div>
+      {/* ARCH-186: Datakilder — live/mock/mangler status for rå registerdata */}
+      <SectionHeader title="Datakilder" />
+      <Card>
+        <button
+          type="button"
+          onClick={() => setShowDatakilder((v) => !v)}
+          className="w-full flex items-center justify-between text-sm text-foreground"
+        >
+          <span>Datakildeoversigt</span>
+          <ChevronDown
+            size={14}
+            className={`transition-transform ${showDatakilder ? "rotate-180" : ""}`}
+          />
+        </button>
+        {showDatakilder && (
+          <div className="mt-3 divide-y divide-border">
+            <DataRow
+              label="Fredet (BBR byg070)"
+              value={bbr?.fredet == null ? "—" : bbr.fredet ? "Ja" : "Nej"}
+              status={bbr == null ? "mangler" : "live"}
+            />
+            <DataRow
+              label="Strandbeskyttelse (MAT)"
+              value={
+                bbr?.mat_strandbeskyttelse == null
+                  ? "—"
+                  : bbr.mat_strandbeskyttelse
+                    ? "Ja"
+                    : "Nej"
+              }
+              status={bbr == null ? "mangler" : "live"}
+            />
+            <DataRow
+              label="Fredskov (MAT)"
+              value={bbr?.mat_fredskov == null ? "—" : bbr.mat_fredskov ? "Ja" : "Nej"}
+              status={bbr == null ? "mangler" : "live"}
+            />
+            <DataRow
+              label="Klitfredning (MAT)"
+              value={
+                bbr?.mat_klitfredning == null ? "—" : bbr.mat_klitfredning ? "Ja" : "Nej"
+              }
+              status={bbr == null ? "mangler" : "live"}
+            />
+            <DataRow
+              label="FBB-registrering"
+              value={bbr?.fbb_reference ? "Registreret" : "—"}
+              status={bbr == null ? "mangler" : bbr.fbb_reference ? "live" : "mangler"}
+            />
+            <DataRow
+              label="Ejendomsværdi (VUR)"
+              value={
+                vurderingData?.ejendomsvaerdi != null
+                  ? formatMio(vurderingData.ejendomsvaerdi)
+                  : "—"
+              }
+              status={vurderingData == null ? "mangler" : "live"}
+            />
+            <DataRow
+              label="Grundværdi (VUR)"
+              value={
+                vurderingData?.grundvaerdi != null ? formatMio(vurderingData.grundvaerdi) : "—"
+              }
+              status={vurderingData == null ? "mangler" : "live"}
+            />
+            <DataRow
+              label="Vurderingsår"
+              value={
+                vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"
+              }
+              status={vurderingData == null ? "mangler" : "live"}
+            />
+          </div>
+        )}
+      </Card>
+
+      {/* ARCH-183: Tekniske nøgler med copy-to-clipboard */}
+      <SectionHeader title="Tekniske nøgler" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <CopyField label="ADRESSEID" value={address?.adresseid ?? null} />
+        <CopyField label="ADGANGSADRESSEID" value={address?.adgangsadresseid ?? null} />
+        <CopyField label="BYGNING UUID" value={address?.bbrId ?? null} />
+        <CopyField label="MATRIKELNUMMER" value={address?.matrikelnummer ?? null} />
+        <CopyField label="KOMMUNEKODE" value={address?.kommunekode ?? null} />
+        <CopyField label="BFE-NUMMER" value={null} placeholder="Hentes via EBR" />
       </div>
     </div>
   );
@@ -235,5 +360,82 @@ function FlagRow({ flag }: { flag: ComplianceFlag }) {
         <span className="font-mono text-[10px] tracking-[0.1em]">{cfg.text}</span>
       </div>
     </li>
+  );
+}
+
+function DataRow({
+  label,
+  value,
+  status,
+}: {
+  label: string;
+  value: string;
+  status: "live" | "mock" | "mangler";
+}) {
+  const badge = {
+    live: "text-emerald-400 border-emerald-500/40",
+    mock: "text-yellow-400 border-yellow-500/40",
+    mangler: "text-muted-foreground border-border",
+  }[status];
+
+  return (
+    <div className="flex items-center justify-between py-2 text-sm">
+      <div className="text-foreground">{label}</div>
+      <div className="flex items-center gap-2 ml-2 shrink-0">
+        <span className="text-xs text-muted-foreground">{value}</span>
+        <span
+          className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em] ${badge}`}
+        >
+          {status.toUpperCase()}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function CopyField({
+  label,
+  value,
+  placeholder = "—",
+}: {
+  label: string;
+  value: string | null;
+  placeholder?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    if (!value) return;
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  return (
+    <div className="flex items-start justify-between rounded-md border border-border p-2.5 gap-2">
+      <div className="min-w-0">
+        <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+          {label}
+        </div>
+        <div className="mt-0.5 text-xs text-foreground font-mono truncate">
+          {value ?? <span className="text-muted-foreground">{placeholder}</span>}
+        </div>
+      </div>
+      {value && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+          aria-label={`Kopiér ${label}`}
+        >
+          {copied ? (
+            <Check size={13} className="text-emerald-400" />
+          ) : (
+            <Copy size={13} />
+          )}
+        </button>
+      )}
+    </div>
   );
 }

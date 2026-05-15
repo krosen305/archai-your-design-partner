@@ -31,6 +31,11 @@ export type Address = {
   ejerlavskode: number | null;
   matrikelnummer: string | null;
   grundareal: number | null;
+  centroid?: { lat: number; lng: number } | null;
+  rotationDeg?: number;
+  footprintAreaM2?: number | null;
+  minDistanceToBoundaryM?: number | null;
+  outsideParcelAreaM2?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -109,6 +114,27 @@ export type Byggeoenske = {
 };
 
 // ---------------------------------------------------------------------------
+// Design placement (ARCH-179) — georefereret bygningsplacering fra korteditor
+// ---------------------------------------------------------------------------
+
+type GeoJsonPolygon = {
+  type: "Polygon";
+  coordinates: [number, number][][];
+};
+
+export type DesignPlacement = {
+  footprintGeojson: GeoJsonPolygon | null; // WGS84 — gemmes som JSONB i design_iterations
+  footprintAreaM2: number | null; // beregnet fra polygon via @turf/area
+  centroid: { lat: number; lng: number } | null;
+  rotationDeg: number; // 0–360, nord = 0
+  floors: number | null; // override af newBuilding.storeys
+  heightM: number | null; // override af newBuilding.heightM
+  minDistanceToBoundaryM: number | null; // korteste afstand til parcelgrænse (m)
+  outsideParcelAreaM2: number; // > 0 = bygning overlapper skel (hard stop)
+  source: "user" | "generated";
+};
+
+// ---------------------------------------------------------------------------
 // Hus-DNA (afledt af Byggeønske via AI)
 // ---------------------------------------------------------------------------
 
@@ -175,6 +201,17 @@ type State = {
   // AI-gatekeeper: HusDnaGeneratorService genkaldes kun hvis disse felter ændres
   _lastHusDnaInput: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null;
 
+  // ARCH-179: bygningsplacering fra korteditor — separat slice, ikke del af Byggeoenske
+  designPlacement: DesignPlacement | null;
+
+  // ARCH-160: typede SSOT-felter fra Supabase typed kolonner — ground truth ved restore
+  heritage_save_value: number | null; // FBB SAVE 1–9
+  is_fredet: boolean | null; // DAI WFS kanonisk kilde
+  grundareal_m2: number | null; // MAT via BBR
+  bebygget_areal_m2: number | null; // BBR bebygget areal
+  hard_stop: boolean; // aggregeret bloker-flag
+  hard_stop_reason: string | null; // menneskelæsbar årsag
+
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: BbrKompliantData | null) => void;
@@ -203,6 +240,12 @@ type State = {
   setLastHusDnaInput: (
     v: { billedUrls: string[]; arkitektoniskStil: string | undefined } | null,
   ) => void;
+  setDesignPlacement: (p: DesignPlacement | null) => void;
+  setHeritageSaveValue: (v: number | null) => void;
+  setIsFredet: (v: boolean | null) => void;
+  setGrundareal: (v: number | null) => void;
+  setBebyggetAreal: (v: number | null) => void;
+  setHardStop: (v: boolean, reason: string | null) => void;
 
   reset: () => void;
 };
@@ -236,6 +279,13 @@ export const useProject = create<State>((set) => ({
   currentProjectId: null,
   cockpitMode: "design",
   _lastHusDnaInput: null,
+  designPlacement: null,
+  heritage_save_value: null,
+  is_fredet: null,
+  grundareal_m2: null,
+  bebygget_areal_m2: null,
+  hard_stop: false,
+  hard_stop_reason: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -258,6 +308,12 @@ export const useProject = create<State>((set) => ({
   setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
   setCockpitMode: (cockpitMode) => set({ cockpitMode }),
   setLastHusDnaInput: (_lastHusDnaInput) => set({ _lastHusDnaInput }),
+  setDesignPlacement: (designPlacement) => set({ designPlacement }),
+  setHeritageSaveValue: (heritage_save_value) => set({ heritage_save_value }),
+  setIsFredet: (is_fredet) => set({ is_fredet }),
+  setGrundareal: (grundareal_m2) => set({ grundareal_m2 }),
+  setBebyggetAreal: (bebygget_areal_m2) => set({ bebygget_areal_m2 }),
+  setHardStop: (hard_stop, hard_stop_reason) => set({ hard_stop, hard_stop_reason }),
 
   reset: () =>
     set({
@@ -280,6 +336,13 @@ export const useProject = create<State>((set) => ({
       boligoenskeValidering: null,
       currentProjectId: null,
       _lastHusDnaInput: null,
+      designPlacement: null,
+      heritage_save_value: null,
+      is_fredet: null,
+      grundareal_m2: null,
+      bebygget_areal_m2: null,
+      hard_stop: false,
+      hard_stop_reason: null,
     }),
 }));
 

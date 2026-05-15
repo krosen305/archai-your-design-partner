@@ -15,6 +15,7 @@ import { Route as ProjektTeknikRouteImport } from './routes/projekt.teknik'
 import { Route as ProjektStartRouteImport } from './routes/projekt.start'
 import { Route as ProjektDatacheckRouteImport } from './routes/projekt.datacheck'
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
+import { Route as ApiMapTilesRouteImport } from './routes/api.map-tiles'
 import { Route as ProjektIdCockpitRouteImport } from './routes/projekt.$id.cockpit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +48,11 @@ const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
   path: '/projekt/adresse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMapTilesRoute = ApiMapTilesRouteImport.update({
+  id: '/api/map-tiles',
+  path: '/api/map-tiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
   id: '/projekt/$id/cockpit',
   path: '/projekt/$id/cockpit',
@@ -55,6 +61,7 @@ const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/map-tiles': typeof ApiMapTilesRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/map-tiles': typeof ApiMapTilesRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/map-tiles': typeof ApiMapTilesRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/map-tiles'
     | '/projekt/adresse'
     | '/projekt/datacheck'
     | '/projekt/start'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/map-tiles'
     | '/projekt/adresse'
     | '/projekt/datacheck'
     | '/projekt/start'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api/map-tiles'
     | '/projekt/adresse'
     | '/projekt/datacheck'
     | '/projekt/start'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiMapTilesRoute: typeof ApiMapTilesRoute
   ProjektAdresseRoute: typeof ProjektAdresseRoute
   ProjektDatacheckRoute: typeof ProjektDatacheckRoute
   ProjektStartRoute: typeof ProjektStartRoute
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjektAdresseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/map-tiles': {
+      id: '/api/map-tiles'
+      path: '/api/map-tiles'
+      fullPath: '/api/map-tiles'
+      preLoaderRoute: typeof ApiMapTilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projekt/$id/cockpit': {
       id: '/projekt/$id/cockpit'
       path: '/projekt/$id/cockpit'
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiMapTilesRoute: ApiMapTilesRoute,
   ProjektAdresseRoute: ProjektAdresseRoute,
   ProjektDatacheckRoute: ProjektDatacheckRoute,
   ProjektStartRoute: ProjektStartRoute,
@@ -187,3 +208,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
