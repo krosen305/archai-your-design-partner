@@ -438,16 +438,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     },
     [navigate, adresseId],
   );
-  const [mode, setMode] = useState<"due-diligence" | "design">("design");
-
-  useEffect(() => {
-    if (
-      typeof sessionStorage !== "undefined" &&
-      sessionStorage.getItem("projectMode") === "due-diligence"
-    ) {
-      setMode("due-diligence");
-    }
-  }, []);
+  const [mode, setMode] = useCockpitMode();
 
   const {
     address,
