@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { signIn, signUp, setGuest, getSession } from "@/lib/auth";
@@ -13,6 +13,16 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  beforeLoad: async () => {
+    if (typeof window === "undefined") return;
+    try {
+      const session = await getSession();
+      if (session) throw redirect({ to: "/projekt/start" });
+    } catch (err) {
+      // re-throw redirect; sluk for andre fejl (offline mv.)
+      if (err && typeof err === "object" && "to" in err) throw err;
+    }
+  },
   component: AuthPage,
 });
 
@@ -27,6 +37,7 @@ function AuthPage() {
   const [signupCooldownUntil, setSignupCooldownUntil] = useState(0);
   const [nowTs, setNowTs] = useState(() => Date.now());
 
+  // Defensiv fallback hvis beforeLoad-redirect fejler (fx race med session-restore)
   useEffect(() => {
     getSession().then((session) => {
       if (session) navigate({ to: "/projekt/start" });
