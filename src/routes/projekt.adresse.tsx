@@ -239,8 +239,7 @@ function AddressStep() {
         <div className="mb-6">
           <BackLink to="/projekt/start" />
         </div>
-		<Card>
-		  <div className="relative">
+        <Card>
           <div className="relative">
             <Search
               size={18}
