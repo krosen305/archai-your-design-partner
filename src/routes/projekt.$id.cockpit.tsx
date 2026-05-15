@@ -740,7 +740,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             {/* ARCH-162: Hard Stop banner — vises ved page refresh uden at pipeline kører */}
             <HardStopBanner />
 
-            {/* Tab navigation */}
+            {/* Tab navigation med animeret underline */}
             <div className="flex gap-1 mb-6 border-b border-border/40">
               {(
                 [
@@ -748,20 +748,30 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                   { id: "ejendom", label: "EJENDOM" },
                   { id: "oekonomi", label: "ØKONOMI" },
                 ] as { id: CockpitTab; label: string }[]
-              ).map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "px-4 py-2 font-mono text-[11px] tracking-[0.15em] border-b-2 transition-colors -mb-px",
-                    activeTab === tab.id
-                      ? "border-accent text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
+              ).map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "relative px-4 py-2 font-mono text-[11px] tracking-[0.15em] transition-colors -mb-px",
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {tab.label}
+                    {isActive && (
+                      <motion.span
+                        layoutId="cockpit-tab-underline"
+                        className="absolute inset-x-0 -bottom-px h-[2px] bg-accent"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab content med crossfade */}
