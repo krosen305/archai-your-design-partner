@@ -708,27 +708,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
         {status === "done" && bbrData && (
           <>
-            {/* Due-diligence banner */}
-            {mode === "due-diligence" && (
-              <div className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3">
-                <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-300/80 leading-relaxed">
-                  <span className="font-mono text-amber-400 tracking-[0.1em]">
-                    DUE DILIGENCE-TILSTAND
-                  </span>{" "}
-                  — Du vurderer denne ejendom til køb. Alle risikoflag er vejledende og erstatter
-                  ikke professionel byggerådgivning.{" "}
-                  <button
-                    type="button"
-                    onClick={() => setMode("design")}
-                    className="underline hover:text-amber-200 transition-colors"
-                  >
-                    Skift til design-tilstand
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* ARCH-162: Hard Stop banner — vises ved page refresh uden at pipeline kører */}
             <HardStopBanner />
 
