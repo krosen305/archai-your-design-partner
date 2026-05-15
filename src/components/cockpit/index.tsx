@@ -796,8 +796,8 @@ function CompliancePanel({
   geusRisk: GeusRiskData | null;
   isRecomputing: boolean;
 }) {
-  const { byggeoenske, complianceFlags, cockpitMode, heritage_save_value, is_fredet } =
-    useProject();
+  const { byggeoenske, complianceFlags, heritage_save_value, is_fredet } = useProject();
+  const [mode] = useCockpitMode();
 
   const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
   const eksisterende = bbr?.bebygget_areal ?? 0;
