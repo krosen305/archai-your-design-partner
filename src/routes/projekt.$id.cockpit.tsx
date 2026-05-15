@@ -708,27 +708,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
         {status === "done" && bbrData && (
           <>
-            {/* Due-diligence banner */}
-            {mode === "due-diligence" && (
-              <div className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3">
-                <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-300/80 leading-relaxed">
-                  <span className="font-mono text-amber-400 tracking-[0.1em]">
-                    DUE DILIGENCE-TILSTAND
-                  </span>{" "}
-                  — Du vurderer denne ejendom til køb. Alle risikoflag er vejledende og erstatter
-                  ikke professionel byggerådgivning.{" "}
-                  <button
-                    type="button"
-                    onClick={() => setMode("design")}
-                    className="underline hover:text-amber-200 transition-colors"
-                  >
-                    Skift til design-tilstand
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* ARCH-162: Hard Stop banner — vises ved page refresh uden at pipeline kører */}
             <HardStopBanner />
 
@@ -934,31 +913,10 @@ function AnalyseTab({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <p className="text-xs text-muted-foreground mb-3 font-mono">{adresse}</p>
+      <p className="text-xs text-muted-foreground mb-4 font-mono">{adresse}</p>
 
-      {/* Compliance-feed — samlet kronologisk risiko-overflade */}
-      <ComplianceFeed />
-
-      {/* Risikokategorier — visuel oversigt over de 5 kritiske områder */}
-      <RiskOverview />
-
-      {/* AI-design hero — øverst i cockpittet */}
-      <AiDesignHero />
-
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={onRunAnalyse}
-          disabled={isRecomputing}
-          className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-4 py-2 font-mono text-[11px] tracking-[0.12em] text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Sparkles size={14} />
-          {isRecomputing ? "KØRER AI-ANALYSE..." : "KØR AI-ANALYSE"}
-        </button>
-      </div>
-
-      {/* Cockpit — 3-kolonne dashboard */}
-      <div className="mb-8">
+      {/* Workspace — 3-kolonne arbejdsrum: byggeønsker | matrikel | live feedback */}
+      <div className="mb-6">
         <Cockpit
           bbr={data}
           metrics={metrics}
@@ -974,97 +932,44 @@ function AnalyseTab({
         />
       </div>
 
-      <div className="flex justify-center my-6">
-        {harData ? (
-          <div className="inline-flex items-center gap-2 rounded-full border border-success/40 bg-success/10 px-5 py-2 font-mono text-sm text-success">
-            <Check size={16} /> BYGNING FUNDET
-          </div>
-        ) : (
-          <div className="inline-flex items-center gap-2 rounded-full border border-warning/40 bg-warning/10 px-5 py-2 font-mono text-sm text-warning">
-            <AlertTriangle size={16} /> DATA UFULDSTÆNDIG
-          </div>
-        )}
-      </div>
+      {/* Samlet kronologisk compliance-feed — under workspacet, ikke over */}
+      <ComplianceFeed />
 
-      <div className="grid gap-4 md:grid-cols-3 mb-4">
-        <MetricCard
-          title="Bebyggelsesprocent"
-          value={curPct !== null ? `${curPct}%` : "—"}
-          sub={
-            maxPct !== null
-              ? `Max tilladt: ${maxPct}%`
-              : data.bebygget_areal !== null
-                ? `${data.bebygget_areal} m² bebygget`
-                : "Ikke tilgængeligt"
-          }
-          bar={barFraction}
-        />
-        <MetricCard
-          title="Antal etager"
-          value={data.antal_etager !== null ? `${data.antal_etager}` : "—"}
-          sub={
-            metrics?.maxEtager !== null && metrics?.maxEtager !== undefined
-              ? `Max tilladt: ${metrics.maxEtager}`
-              : data.byggeaar
-                ? `Opført ${data.byggeaar}`
-                : "Byggeår ukendt"
-          }
-        />
-        <MetricCard
-          title="Anvendelse"
-          value={erBolig ? "Bolig" : (data.anvendelse_tekst?.split(" ")[0] ?? "—")}
-          sub={harErhverv ? "+ Liberalt erhverv ✓" : (data.anvendelse_tekst ?? "Ukendt")}
-          subClass={harErhverv ? "text-success" : "text-muted-foreground"}
-        />
-      </div>
+      {/* 5 risikokategorier — visuel oversigt */}
+      <RiskOverview />
 
-      {metrics && (metrics.maxBygningsareal !== null || metrics.maxBygningshoejde !== null) && (
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
-          {metrics.maxBygningsareal !== null && (
-            <MetricCard
-              title="Max bygningsareal"
-              value={`${metrics.maxBygningsareal} m²`}
-              sub={
-                metrics.currentBygningsareal !== null
-                  ? `Nuværende: ${metrics.currentBygningsareal} m²`
-                  : "Beregnet fra grundareal"
-              }
-            />
-          )}
-          {metrics.remainingBygningsareal !== null && (
-            <MetricCard
-              title="Bygningsret tilbage"
-              value={`${metrics.remainingBygningsareal} m²`}
-              sub={
-                metrics.remainingBygningsareal >= 0
-                  ? "Kan bebygges yderligere"
-                  : "Overskrider rammen"
-              }
-              subClass={metrics.remainingBygningsareal >= 0 ? "text-success" : "text-danger"}
-            />
-          )}
-          {metrics.maxBygningshoejde !== null && (
-            <MetricCard
-              title="Max bygningshøjde"
-              value={`${metrics.maxBygningshoejde} m`}
-              sub="Fra kommuneplanramme"
-            />
-          )}
+      {/* Manuel AI-genberegning */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+          AI-VURDERING
         </div>
-      )}
+        <button
+          type="button"
+          onClick={onRunAnalyse}
+          disabled={isRecomputing}
+          className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Sparkles size={12} />
+          {isRecomputing ? "GENBEREGNER…" : "GENBEREGN"}
+        </button>
+      </div>
 
-      {byggeanalyse ? (
-        <ByggeanalyseKort analyse={byggeanalyse} />
-      ) : (
+      {byggeanalyse && <ByggeanalyseKort analyse={byggeanalyse} />}
+      {!byggeanalyse && (
         <Card className="mb-4">
-          <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
-            BYGGEVURDERING
-          </div>
-          <p className="text-sm leading-relaxed text-foreground">
+          <p className="text-sm leading-relaxed text-foreground/80">
             {genererVurdering(data, adresse)}
           </p>
         </Card>
       )}
+
+      {/* AI-design — visualisering */}
+      <div className="mt-8 mb-4">
+        <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground mb-3">
+          AI-DESIGN
+        </div>
+        <AiDesignHero />
+      </div>
 
       {lokalplaner.length > 0 ? (
         <Card className="mb-4">

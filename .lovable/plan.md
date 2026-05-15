@@ -1,107 +1,144 @@
-# UX-review: ArchAI — Builder's Cockpit
+## Diagnose — hvad der er galt visuelt
 
-Bemærkning om "hent nyeste fra GitHub": Lovable og GitHub er bidirektionelt synkroniseret i realtid. Workspacet **er** allerede på nyeste commit. Hvis du har offline commits jeg ikke kan se, så skub dem først.
+`AnalyseTab` er i dag en lodret mega-stak hvor alt skriger om opmærksomhed samtidig:
 
----
+```text
+┌─ adresse-linje
+├─ ComplianceFeed         ← risiko-tidslinje
+├─ RiskOverview           ← 5 risiko-kort  ╲
+├─ AiDesignHero           ← AI-billede      ╲ tre "hero"-blokke i træk
+├─ "KØR AI-ANALYSE"-knap   ╱
+├─ Cockpit (3-kolonne)    ← det egentlige design-arbejdsrum (skjult midt på siden)
+│   ├─ Byggeønsker accordion + ModeToggle
+│   ├─ Matrikel-canvas
+│   └─ CompliancePanel    ← endnu en risiko-overflade
+├─ "BYGNING FUNDET" badge
+├─ 3 metric-kort  (bebyggelses%, etager, anvendelse)
+├─ 3 metric-kort  (max areal, rest areal, max højde)
+├─ ByggeanalyseKort       ← endnu en risiko-overflade (AI-version)
+├─ Lokalplaner-kort
+├─ SaveSektion / GeusRisiko / Terrain / Servitutter / Fjernvarme / Naboer
+├─ "Vis Økonomi →" CTA   ← wizard-tankegang i et tab-system
+└─ to sekundære knapper
+```
 
-## Diagnose — kritiske fund
+Konsekvenser:
+- **Fire overlappende compliance-overflader** (ComplianceFeed, RiskOverview, CompliancePanel, ByggeanalyseKort) viser i vid udstrækning samme flag.
+- **To Mode-toggles med to kilder**: TopBar bruger `useCockpitMode` (sessionStorage), Cockpit-venstrepanel bruger `cockpitMode` fra `project-store`. De er ikke i sync.
+- **To byggeønsker-accordions** i samme route (FreeByggeoenskeAccordion + Cockpit/ByggeoenskeAccordion).
+- Den faktiske "design dit hus + få instant feedback"-arbejdsflade (3-kolonne Cockpit) er begravet under tre hero-blokke og overskygges af 6+ metric-kort + 6+ detail-sektioner under sig.
+- "Vis Økonomi →"-CTA underminerer fane-systemet og giver indtryk af lineær wizard.
 
-### A. Dobbeltkald og spildte requests
+## Nyt princip — ét arbejdsrum, én risiko-overflade
 
-1. **`restoreProject` kaldes to gange** ved entry til cockpit. `__root.tsx` (linje 117) restorer på app-mount. `projekt.$id.cockpit.tsx` (linje 484) restorer igen i en `useEffect`. Begge hits Supabase + skriver i project-store. Symptom: kort "flicker" mellem restored state #1 og #2.
-2. **Adressesøgning debounces kun 150 ms** (`projekt.adresse.tsx` linje 143). Netværksloggen viser separate `searchAddresses`-kald for `Has`, `Hass`, `Hasselv`, `Hasselvej`, `Hasselvej 40`, `Hasselvej 40,`, `Hasselvej 40, v` — 6 server fns på 5 sekunders typing. Bør være 300 ms + abort af tidligere request.
-3. **`<Outlet key={location.pathname}>`** i `__root.tsx` (linje 176) tvinger fuld remount af *hver* route ved navigation. Det river al lokal state, scroll-position og effekter ned — og refetcher data der allerede er i store. Det er hovedårsagen til at overgange føles "hårde".
-4. **Cockpit kører `fetchCompliance` → `runByggeanalyse`** i kæde (linje 567 + 599) uden at tjekke om `complianceDone` allerede er `true` fra restore. Ved fortsæt-fra-projektliste fyrer begge igen.
-5. **`projekt.start.tsx`** dynamic-importerer `auth` og `projekt-service` i `useEffect` på hver mount (linje 19) — to vandfald-roundtrips før liste vises. Viser "ARCHAI"-loader 200–600 ms uden grund.
+Kerneopgaven er: **justér byggeønske → se kritisk forhold ændre sig live**. Alt andet er sekundært eller hører til andre tabs.
 
-### B. Brudte / forkerte referencer
+Vi bygger AnalyseTab op om **ét, fuld-viewport workspace** med tre samtidige paneler — og rydder op overalt udenom.
 
-6. **`PhaseSidebar` er dead code.** Komponenten findes (`src/components/phase-sidebar.tsx`), `phases.ts` har sub-keys og statuser — men `__root.tsx` rendrer **ikke** sidebar'en. Fase-navigationen (Grundlaget → Cockpit → Teknik → Udbud) er det centrale paradigme i AGENTS.md, men brugeren ser den aldrig.
-7. **Adresse → Cockpit URL bruger `s.adresseid` (DAR-ID)**, men cockpit-route hedder `$id` og bruges af `phaseForRoute` som `adresseid`. På `/projekt/start` bruges `projekt.adresse_dar_id`. Det er konsistent, men `address.adresseid` i store kan være `bbr` ved restore (`__root.tsx` linje 122 fallback) — så cockpit-URL'en kan diverge fra hvad sidebar-navigation laver.
-8. **`projekt.teknik.tsx` og `projekt.udbud.tsx`** er 18-line `PhaseComingSoon`-stubs med `backTo="/projekt/adresse"` — ikke til cockpit. Bryder navigationsflow, brugeren kastes ud af projektkontekst.
-9. **`/`-routen redirect-er via `useEffect`** efter mount (linje 30-34), så indloggede brugere ser auth-formen i ~50ms før redirect. Bør være `beforeLoad`.
-10. **`ProjektDnaPanel` bruger 22 byggeønsker i ét accordion** i venstre kolonne (360px). Med Compliance-panel højre + matrikel-canvas midt giver det informationsoverload på 1160px viewport.
+## Den nye AnalyseTab — layout
 
-### C. Informationsarkitektur — strukturelle problemer
+```text
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  [adresse]  ·  Hasselvej 48, 2830 Virum                            [● live]  │
+│  HARD-STOP-BAR (kun hvis hard_stop=true — fuld bredde, rød)                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ DIT HUS              │  MATRIKEL               │  LIVE FEEDBACK              │
+│ (byggeønsker)        │  (canvas + nøgletal)    │  (kritiske forhold)         │
+│                      │                         │                             │
+│ Mode: ◉ Køb ○ Design │   ┌──── kort ────┐      │  ⚠ Fredning · SAVE 3        │
+│                      │   │   matrikel   │      │     Dispensation kræves     │
+│ ▾ Grundlæggende  3/4 │   │   bygning    │      │     → Slots- & Kultur       │
+│   Byggetype          │   │   nabo-skel  │      │  ⚠ Bebyggelses%: 41 / 35    │
+│   Areal     ████ 180 │   └──────────────┘      │     +6% over rammen         │
+│   Etager        ▒▒ 2 │                         │  ⚠ Etager: 2 / 1.5          │
+│   Stil               │   Bebyggelse  41 % ▓▓░  │  ✓ Strandbeskyttelse N/A    │
+│ ▸ Materialer         │   Etager       2  / 1½  │  ✓ Geoteknik OK             │
+│ ▸ Energi             │   Areal      180  m²    │  ✓ Naboafstand 4.2 m        │
+│ ▸ Inspiration        │   Højde       8.5 m     │                             │
+│                      │                         │  ─────────────────────────  │
+│                      │                         │  Vis 5 risikokategorier ▾   │
+│                      │                         │  Vis AI-analyse ▾           │
+│                      │                         │  Vis lokalplan-uddrag ▾     │
+└──────────────────────────────────────────────────────────────────────────────┘
+   Detaljer (foldet sammen) ▾   Save · Geoteknik · Terræn · Servitutter · Fjernvarme · Naboer
+```
 
-11. **Faser er ikke synlige i UI.** AGENTS.md beskriver 4 faser som hovedparadigme; brugeren ser kun TopBar med adresse-text. Ingen wayfinding.
-12. **Cockpit-fil er 1614 linjer i én route.** Tre "tabs" (Analyse/Ejendom/Økonomi) mountes alle samtidigt → unødigt rendering-arbejde.
-13. **Compliance-data spredes over for mange overflader**: HardStopBanner, CompliancePanel højre, Adresse-blocker dialog, EjendomPanel flags. Samme info, forskellig framing.
-14. **Pre-purchase vs design-mode** lever i `sessionStorage` (`projekt.adresse.tsx` linje 10-17) — global UX-tilstand uden visuel indikator efter adressevalg.
+Tre paneler, samme højde, ingen lodret stak ovenover. Det føles som et cockpit, ikke en lang side.
 
----
+### Højre panel — den ENE samlede risiko-overflade
 
-## Implementeringsplan
+I dag har vi fire steder hvor compliance vises. De smeltes sammen til **én prioriteret feed** øverst i højre panel:
 
-Opdelt i 4 faser. Hver fase er selvstændig — du kan stoppe mellem dem.
+1. **Hard stops** (rødt, øverst — fredning, strandbeskyttelse, fredskov, klitfredning).
+2. **Brud på kvantitative grænser** (bebyggelses%, etager, højde — viser delta direkte: "41% / 35% — +6%").
+3. **Advarsler** (SAVE 4–5, naboafstand, terræn-hældning, geoteknik).
+4. **OK** (grøn, skjult bag "Vis 8 grønne flag" hvis brugeren vil se dem).
 
-### Fase 1 — Quick wins (dobbeltkald + brudte refs) — ~1 time
+Hver række har ét tag der peger på myndighed/kilde. Når brugeren ændrer et byggeønske, animeres rækken (samme `AnimatedNumber`-mønster vi allerede har), så ændringen er synlig.
 
-1. **Fjern dobbelt restore**: i `cockpit/index.tsx` linje 484-area, tjek `useProject().address && complianceDone` før `restoreProject()`. Hvis state er fyldt fra `__root`, skip.
-2. **Adresse-debounce → 300 ms** + AbortController på `searchAddresses` så in-flight kald cancelles ved nyt tastetryk. (`projekt.adresse.tsx` linje 131-148)
-3. **Skip cockpit `fetchCompliance` hvis `complianceDone`** og resultat allerede i store. Tilføj `if (complianceDone && bbrData) return;` øverst i den useEffect.
-4. **Auth-redirect via `beforeLoad`** i `/` routen — fjern flicker:
-   ```
-   beforeLoad: async () => {
-     const session = await getSession();
-     if (session) throw redirect({ to: '/projekt/start' });
-   }
-   ```
-5. **Stub-routes peger på cockpit** når der er en address i store; ellers `/projekt/start`.
+**Fjernes / smeltes ind i feedet:**
+- `ComplianceFeed` (eksisterende komponent — flytter sin sortering ind i den nye feed).
+- `RiskOverview` (5 risikokort) — bliver til en foldbar undersektion under feedet ("Vis 5 risikokategorier") for dem der vil have hele kategorisynet.
+- `CompliancePanel` (i nuværende `Cockpit/index.tsx`) — erstattes helt af det nye højre-panel.
+- `ByggeanalyseKort` — bliver til en foldbar "Vis AI-analyse" under feedet (LLM-output er sekundært til hårde regler).
 
-### Fase 2 — Elegante overgange — ~2 timer
+### Midter-panel — matrikel + nøgletal
 
-6. **Fjern `key={location.pathname}` fra `<Outlet>`**. Erstat med `AnimatePresence mode="popLayout"` per route component (PageTransition-wrapperen findes allerede i `wizard-ui.tsx`).
-7. **Layout-route for cockpit**: ny `src/routes/projekt.$id.tsx` (parent layout med `<Outlet />`) der holder TopBar + nyt PhaseRail (se Fase 3) konstant. Cockpit-tabs bliver child-routes (`/projekt/$id/cockpit/analyse`, `/cockpit/ejendom`, `/cockpit/oekonomi`) → bruger får ægte URL pr. tab + browser-back virker + kun aktiv tab mountes.
-8. **View Transitions API** for matrikel-canvas → ejendomspanel (samme rektangel "morpher" mellem skærme). Faldback til opacity for browsers uden support.
-9. **Persistent skeleton-shapes**: når der navigeres mellem tabs, hold KPI-kortenes skeleton-pladser i samme position (ingen layout-shift mellem skeleton og data).
+Beholder `MatrikelCanvas` (kortet er stærkt). De seks `MetricCard`-rækker under siden kollapses til **fire kompakte tal-rækker** lige under kortet:
 
-### Fase 3 — Ny informationsarkitektur — ~4 timer
+- Bebyggelse: `41% / 35%` (delta-farvet)
+- Etager: `2 / 1½`
+- Areal: `180 m² / 165 m²`
+- Højde: `8.5 m / 8.5 m`
 
-10. **PhaseRail erstatter PhaseSidebar**: top-horisontal stripe i TopBar (under logo) med 4 status-prikker + label. Sticky, altid synlig efter adressevalg. Klikbar når `address` er valgt. Sidebar-kode genbruges (`usePhaseStates`).
-11. **Cockpit som 2-kolonne i stedet for 3**: Venstre `ProjektDnaPanel` (byggeønsker) bliver til collapsible drawer med trigger-knap "Justér ønsker". Frigør plads til at matrikel-canvas + compliance kan være side-om-side på 1160 px.
-12. **Unified Compliance-overflade**: ét `<ComplianceFeed>` komponent der konsoliderer HardStopBanner + flags + warnings i én kronologisk liste. Vises både på Adresse (gate) og Cockpit (top af analyse-tab) med samme visuelle sprog. Genbrug i EjendomPanel som "expandable" sektion.
-13. **Mode-indikator** ("Due-diligence" vs "Design-mode") som lille pill i TopBar nær adresse-tekst. Klikbar → toggle. Påvirker copy i ComplianceFeed og CTA-knapper.
-14. **Flyt cockpit-side i mindre filer**: `cockpit/AnalyseTab.tsx`, `cockpit/EjendomPanel.tsx`, `cockpit/OekonomiPanel.tsx`. Route-fil bliver ~200 linjer (kun data fetching + tab-switching). Allerede delvist gjort.
+Ingen separate Card-bokse — bare typografi i samme panel. "Bygning fundet"-badge fjernes (status er implicit når data vises).
 
-### Fase 4 — Polering og data-præsentation — ~2 timer
+### Venstre panel — byggeønsker
 
-15. **Compliance-flags som "risiko-kort"** i stedet for liste: kategoriseret efter risikotype (Geoteknik / Forsyning / Naboer / Fredning / Beskyttelseslinjer) jvf. domæne-risikomatrix i AGENTS.md. Hver type får egen ikon + farve + estimeret kr.-impact når kendt.
-16. **KPI-talkort med animeret tæller** når data lander (framer-motion `animate` på number).
-17. **Empty states** for cockpit-tabs uden data: konkret CTA i stedet for tom skeleton (fx "Tilføj byggeønsker for at se compliance-impact").
-18. **Stub-routes (Teknik/Udbud)**: opgrader fra `PhaseComingSoon` til "preview"-skærm med fase-roadmap + tilbage til cockpit.
+Beholder `ByggeoenskeAccordion` stort set som den er. Mode-toggle bliver i TopBar (vi har den der allerede via `ModeIndicator`) — den dublerede `ModeToggle` i venstrepanelet fjernes, og `cockpitMode`-felt i `project-store` udfases til fordel for den centrale `useCockpitMode`-hook.
 
----
+Den separate "KØR AI-ANALYSE"-knap flyttes ind i højre panels "Vis AI-analyse"-folde-sektion (som "Genberegn AI-vurdering").
 
-## Tekniske detaljer
+### Under workspacet — detaljer foldet ned
 
-**Filer der ændres pr. fase:**
+`SaveSektion`, `GeusRisikoSektion`, `TerrainSektion`, `ServitutterSektion`, `FjernvarmeSektion`, `NaboerSektion`, `Lokalplaner`-kort flyttes ned under workspacet i en enkelt **"Detaljer"-accordion** med 7 sektioner. De er reference-data — ikke noget brugeren behøver se for at designe.
 
-| Fase | Filer |
-|------|-------|
-| 1 | `routes/projekt.adresse.tsx`, `routes/projekt.$id.cockpit.tsx`, `routes/index.tsx`, `routes/projekt.teknik.tsx`, `routes/projekt.udbud.tsx` |
-| 2 | `routes/__root.tsx`, ny `routes/projekt.$id.tsx` (layout), splitting af cockpit-tabs til child-routes |
-| 3 | `components/wizard-chrome.tsx` (PhaseRail), ny `components/compliance-feed.tsx`, `components/cockpit/index.tsx` (2-kol) |
-| 4 | `components/cockpit/EjendomPanel.tsx`, ny `components/risk-card.tsx`, stubs |
+### CTA-knapper
 
-**Beskyttede filer (kræver `🔒` markering ved review):** Ingen ændringer planlagt i `project-store.ts`, `analysis-orchestrator.ts`, `pre-check-adresse.ts`, `project-persistence.ts`, `reactive-compliance.ts`. Fase 1 punkt 1 og 3 berører `routes/projekt.$id.cockpit.tsx` som kalder `restoreProject` — det er route-fil, ikke beskyttet, men ændringen er adfærdsmæssig så jeg flagger den i PR.
+"Vis Økonomi →" og "Ejendomsdetaljer →"-knapperne fjernes — de duplikerer fane-systemet i toppen. Kun "Projektparathed →" beholdes (den peger på en faktisk anden route).
 
-**Ingen ændringer i:** server functions, Supabase-skema, Zustand state-shape, env vars.
+## Oprydning udenfor AnalyseTab
 
-**Verificering pr. fase:**
-- `bunx tsc --noEmit` 0 errors
-- `bun build` ingen fejl
-- Netværksfanen: tæl serverFn-kald før/efter på "Adresse → Cockpit"-flow. Mål: fra ~12 kald til ~6.
-- Visuel: navigation Adresse → Cockpit → Analyse → Ejendom uden hvide flash.
+- **Mode-state**: én kilde (`useCockpitMode`). Slet `cockpitMode` + `setCockpitMode` fra `project-store.ts` og `ModeToggle`-komponenten i `cockpit/index.tsx`.
+- **Free design**: `FreeByggeoenskeAccordion` i `projekt.$id.cockpit.tsx` erstattes af samme `ByggeoenskeAccordion` som workspacet bruger — ét accordion-mønster, ikke to.
+- **Due-diligence-banner** (gul stribe øverst når mode=køb) reduceres til en lille pille i TopBar — den fylder hele bredden i dag og presser arbejdsrummet ned.
+- **`Cockpit`-komponenten** (`src/components/cockpit/index.tsx`) refaktoreres så den eksporterer de tre paneler hver for sig (`ProjektDnaPanel`, `MatrikelCanvas`, `LiveFeedbackPanel`) i stedet for ét hardcodet 3-kolonne grid — så AnalyseTab kan layoute dem direkte uden et indlejret grid-i-grid.
 
----
+## Nye/ændrede filer
+
+| Fil | Ændring |
+|---|---|
+| `src/routes/projekt.$id.cockpit.tsx` | AnalyseTab skrives om til 3-panel layout + foldbar detaljer-sektion. ~400 linjer fjernes. |
+| `src/components/cockpit/index.tsx` | Eksportér `ProjektDnaPanel`, `MatrikelCanvas`, `LiveFeedbackPanel` separat. Fjern intern 3-kol grid og ModeToggle. |
+| `src/components/cockpit/LiveFeedbackPanel.tsx` | **Ny** — den ene samlede risiko-overflade (smelter ComplianceFeed + CompliancePanel + RiskOverview + ByggeanalyseKort sammen). |
+| `src/components/cockpit/ComplianceFeed.tsx` | Beholdes som intern brick i LiveFeedbackPanel; ikke længere selvstændig hero. |
+| `src/components/cockpit/RiskOverview.tsx` | Bliver `<RiskCategoriesAccordion />` brugt foldet inde i LiveFeedbackPanel. |
+| `src/components/cockpit/DetailsAccordion.tsx` | **Ny** — samler Save/Geus/Terrain/Servitutter/Fjernvarme/Naboer/Lokalplaner i én foldbar boks. |
+| `src/lib/project-store.ts` | Slet `cockpitMode` / `setCockpitMode` (kun `useCockpitMode` bruges nu). |
+| `src/components/wizard-chrome.tsx` | TopBar's `ModeIndicator` får en lille "DD"-pille når mode=køb (erstatter gul fuld-bredde-banner). |
+
+Ingen ændringer i: orchestrator, rule-engine, project-store data-felter (kun mode-feltet droppes), server functions, integrations.
+
+## Verifikation
+
+- `bunx tsc --noEmit` 0 fejl
+- `bun test` 0 fejl
+- Visuel QA på `/projekt/{id}/cockpit?tab=analyse` ved 1160×708 viewport (brugerens nuværende): tre paneler synlige uden scroll, hard-stop banner kun ved aktivt hard stop, detaljer foldet ned.
+- Manuel: justér "antalEtager" fra 1 til 3 i venstre panel → se "Etager 3 / 1½" pulse rødt i midter-panel og en ny række pop op i højre panel højest øverst.
 
 ## Hvad jeg IKKE rører
 
-- Server functions (`createServerFn`)
-- Project-store shape eller Supabase-migrations
-- Compliance-pipeline (`analysis-orchestrator`, `pre-check-adresse`, `reactive-compliance`)
-- AI-prompts eller Hus-DNA-generator
-- Auth-flow logik (kun redirect-timing)
-
-Når du klikker "Implement plan" starter jeg i Fase 1.
+- Datapipeline (`analysis-orchestrator`, `pre-check-adresse`, `reactive-compliance`).
+- Rule-engine.
+- `project-persistence` / typede compliance-kolonner.
+- Andre tabs (Ejendom, Økonomi) — kun Analyse refaktoreres nu.

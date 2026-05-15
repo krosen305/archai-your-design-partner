@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Upload, X, ShoppingCart, Home, AlertTriangle, Flame, Info } from "lucide-react";
+import {
+  ChevronDown,
+  Upload,
+  X,
+  ShoppingCart,
+  Home,
+  AlertTriangle,
+  Flame,
+  Info,
+} from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -40,6 +49,7 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
+import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { cn } from "@/lib/utils";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 
@@ -118,56 +128,7 @@ function ProjektDnaPanel({
     naturbeskyttelse: NaturbeskyttelsesResultat | null;
   };
 }) {
-  return (
-    <div className="space-y-3">
-      <ModeToggle />
-      <ByggeoenskeAccordion reactiveContext={reactiveContext} />
-    </div>
-  );
-}
-
-function ModeToggle() {
-  const { cockpitMode, setCockpitMode } = useProject();
-  const modes: Array<{
-    value: "kob" | "design";
-    label: string;
-    icon: typeof ShoppingCart;
-    hint: string;
-  }> = [
-    { value: "kob", label: "Overvejer køb", icon: ShoppingCart, hint: "Fremhæv risici" },
-    { value: "design", label: "Designer hjem", icon: Home, hint: "Fremhæv muligheder" },
-  ];
-  return (
-    <Card className="p-2">
-      <div className="grid grid-cols-2 gap-1">
-        {modes.map((m) => {
-          const sel = cockpitMode === m.value;
-          const Icon = m.icon;
-          return (
-            <button
-              key={m.value}
-              onClick={() => setCockpitMode(m.value)}
-              className={cn(
-                "flex flex-col items-center gap-0.5 rounded-md px-2 py-2 transition-all",
-                sel
-                  ? m.value === "kob"
-                    ? "bg-yellow-500/15 border border-yellow-500/50 text-yellow-300"
-                    : "bg-emerald-500/15 border border-emerald-500/50 text-emerald-300"
-                  : "border border-border/40 text-muted-foreground hover:text-foreground hover:border-border",
-              )}
-              aria-pressed={sel}
-            >
-              <div className="flex items-center gap-1.5">
-                <Icon size={12} />
-                <span className="font-mono text-[10px] tracking-[0.1em] uppercase">{m.label}</span>
-              </div>
-              <span className="text-[9px] opacity-70">{m.hint}</span>
-            </button>
-          );
-        })}
-      </div>
-    </Card>
-  );
+  return <ByggeoenskeAccordion reactiveContext={reactiveContext} />;
 }
 
 // ===========================================================================
@@ -224,9 +185,9 @@ function ByggeoenskeAccordion({
     const grundareal = k?.grundareal ?? state.complianceMetrics?.grundareal ?? null;
     const samletAreal =
       merged.byggetype === "tilbyg" ? eksAreal + (valgtAreal ?? 0) : (valgtAreal ?? eksAreal);
-    const beregnetPct =
-      grundareal && grundareal > 0 ? (samletAreal / grundareal) * 100 : null;
-    const maxPct = k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
+    const beregnetPct = grundareal && grundareal > 0 ? (samletAreal / grundareal) * 100 : null;
+    const maxPct =
+      k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
     const maxEtager = k?.maxEtager ?? state.complianceMetrics?.maxEtager ?? null;
     const etagerStatus: "ok" | "dispensation" | "ingen_data" =
       valgtEtager == null || maxEtager == null
@@ -300,9 +261,7 @@ function ByggeoenskeAccordion({
                       value={byggeoenske[step.key]}
                       onChange={(v) => patch({ [step.key]: v } as Partial<Byggeoenske>)}
                       onOpenDispensation={(t) => setDispensationFor(t)}
-                      onClearField={() =>
-                        patch({ [step.key]: undefined } as Partial<Byggeoenske>)
-                      }
+                      onClearField={() => patch({ [step.key]: undefined } as Partial<Byggeoenske>)}
                     />
                   ))}
                 </div>
@@ -311,10 +270,7 @@ function ByggeoenskeAccordion({
           );
         })}
       </Accordion>
-      <DispensationModal
-        type={dispensationFor}
-        onClose={() => setDispensationFor(null)}
-      />
+      <DispensationModal type={dispensationFor} onClose={() => setDispensationFor(null)} />
     </Card>
   );
 }
@@ -352,9 +308,7 @@ function StepExtras({
             <div className="flex items-start gap-1.5 text-danger">
               <AlertTriangle size={12} className="mt-0.5 shrink-0" />
               <div>
-                <div className="font-medium">
-                  {String(value)} etager er ikke tilladt her
-                </div>
+                <div className="font-medium">{String(value)} etager er ikke tilladt her</div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   Kommuneplanen tillader maks {k?.maxEtager} etager. Du kan søge dispensation hos
                   kommunen.
@@ -401,9 +355,7 @@ function StepExtras({
           <div className="font-mono text-[10px] text-muted-foreground">
             Samlet bebyggelsesprocent:{" "}
             <span
-              className={
-                beregnet > k.maxBebyggelsesprocent ? "text-danger" : "text-emerald-400"
-              }
+              className={beregnet > k.maxBebyggelsesprocent ? "text-danger" : "text-emerald-400"}
             >
               {beregnet.toFixed(0)}%
             </span>{" "}
@@ -845,8 +797,8 @@ function CompliancePanel({
   geusRisk: GeusRiskData | null;
   isRecomputing: boolean;
 }) {
-  const { byggeoenske, complianceFlags, cockpitMode, heritage_save_value, is_fredet } =
-    useProject();
+  const { byggeoenske, complianceFlags, heritage_save_value, is_fredet } = useProject();
+  const [mode] = useCockpitMode();
 
   const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
   const eksisterende = bbr?.bebygget_areal ?? 0;
@@ -940,7 +892,7 @@ function CompliancePanel({
   }
   const risici = [...storeRisici, ...flagRisici];
 
-  const inKobMode = cockpitMode === "kob";
+  const inKobMode = mode === "due-diligence";
 
   return (
     <div className="space-y-4">
