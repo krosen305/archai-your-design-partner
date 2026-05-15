@@ -1086,7 +1086,7 @@ function AnalyseTab({
             label: `NABOBYGNINGER (${naboer.count})`,
             content: <NaboerSektion data={naboer} />,
           },
-        ].filter((s): s is { id: string; label: string; badge?: React.ReactNode; content: React.ReactNode } => Boolean(s))}
+        ].filter((s): s is DetailsSection => Boolean(s))}
       />
 
       {/* Slim navigation — én primær handling, sekundære som links */}
