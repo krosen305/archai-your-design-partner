@@ -20,6 +20,7 @@ const KILDE_LABEL: Record<ComplianceFlag["kilde"], string> = {
   servitut: "Servitut",
   beregnet: "Beregnet",
   sdfi: "SDFI",
+  fbb: "FBB",
   dkjord: "DK-Jord",
   geus: "GEUS",
   regelkerne: "Regelkerne",

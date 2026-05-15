@@ -22,6 +22,7 @@
 
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 
 type BbrClientConfig = {
   apiKey?: string;
@@ -191,7 +192,12 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!) {
 // Hjælpefunktion: GraphQL-kald mod Datafordeler
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
+async function gqlFetch(
+  url: URL,
+  query: string,
+  variables: Record<string, unknown>,
+  trace?: AnalysisTraceContext | null,
+): Promise<any> {
   const response = await fetchWithRetry(
     url.toString(),
     {
@@ -200,6 +206,13 @@ async function gqlFetch(url: URL, query: string, variables: Record<string, unkno
       body: JSON.stringify({ query, variables }),
     },
     { timeoutMs: 12_000 },
+    {
+      trace,
+      service: "Datafordeler BBR",
+      operation: "BBR_Bygning",
+      phase: "layer1",
+      metadata: { endpoint: "BBR/v2" },
+    },
   );
 
   const bodyText = await response.text();
@@ -241,6 +254,7 @@ export class BbrService {
     adgangsadresseid: string,
     grundareal: number | null = null,
     config?: BbrClientConfig,
+    trace?: AnalysisTraceContext | null,
   ): Promise<BbrKompliantData> {
     const id = adgangsadresseid.trim();
     if (!id) {
@@ -254,8 +268,8 @@ export class BbrService {
     try {
       const virkningstid = new Date().toISOString();
       const [data, alleBbrPublicIds] = await Promise.all([
-        gqlFetch(url, BYGNING_QUERY, { id, virkningstid }),
-        fetchBbrPublicIds(id),
+        gqlFetch(url, BYGNING_QUERY, { id, virkningstid }, trace),
+        fetchBbrPublicIds(id, trace),
       ]);
 
       // 1. Find primær bygning (prioritér bolig over garage/carport/udhus)
@@ -359,12 +373,25 @@ export class BbrService {
 // BBR Public Service — integer building IDs til FBB WFS
 // ---------------------------------------------------------------------------
 
-async function fetchBbrPublicIds(adgangsadresseid: string): Promise<number[]> {
+async function fetchBbrPublicIds(
+  adgangsadresseid: string,
+  trace?: AnalysisTraceContext | null,
+): Promise<number[]> {
   try {
     const url = new URL("https://api.dataforsyningen.dk/bbr/bygning");
     url.searchParams.set("adgangsadresseid", adgangsadresseid);
 
-    const res = await fetchWithRetry(url.toString(), {}, { timeoutMs: 8_000, retries: 1 });
+    const res = await fetchWithRetry(
+      url.toString(),
+      {},
+      { timeoutMs: 8_000, retries: 1 },
+      {
+        trace,
+        service: "Dataforsyningen BBR Public",
+        operation: "bbr_bygning_by_adgangsadresseid",
+        phase: "layer1",
+      },
+    );
     if (!res.ok) return [];
 
     const bygninger = (await res.json()) as Array<Record<string, unknown>>;

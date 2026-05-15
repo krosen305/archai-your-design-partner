@@ -21,7 +21,7 @@
 //   terrain             ⏳  IS_MOCK=true — ARCH-102 (DHM WCS kræver særskilt Datafordeler-abonnement)
 //   naboer              ✅  live DAWA REST (ARCH-103)
 //   fjernvarme          ✅  live Plandata WFS pdk:theme_pdk_varmeplansomraade_vedtaget_v (ARCH-111)
-//   save                ✅  live DAI WFS dmp:FREDEDE_BYGNINGER (ARCH-29, verificeret 2026-05-08)
+//   fbbData             ✅  live Kulturarv GeoServer fbb:view_bygningslag (ARCH-29)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
 
 import { validateEnv } from "@/lib/env";
@@ -37,7 +37,6 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { SaveData } from "@/integrations/save/client";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { VurData } from "@/integrations/vur/client";
@@ -51,6 +50,13 @@ import {
   getCachedServitut,
   setCachedServitut,
 } from "@/integrations/cache/client";
+import {
+  finishAnalysisRun,
+  recordAnalysisEvent,
+  startAnalysisRun,
+  traceStep,
+  type AnalysisTraceContext,
+} from "@/lib/analysis-tracing";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -69,10 +75,10 @@ export type ComplianceResult = {
   terrain: TerrainData | null;
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
-  save: SaveData | null;
-  fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi (1-9) fra FBB
+  fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi (1-9) + fredningsstatus fra FBB
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
+  analysisRunId?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -86,6 +92,8 @@ export type AnalysisInput = {
   matrikelnummer: string | null; // for MAT (grundareal) — fallback hvis grundareal mangler
   koordinater: { lat: number; lng: number } | null; // for Plandata
   grundareal?: number | null; // Pre-fetched fra DAR_Jordstykke — skip MAT-kald hvis tilgængeligt
+  projectId?: string | null;
+  userId?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -93,6 +101,33 @@ export type AnalysisInput = {
 // ---------------------------------------------------------------------------
 
 export async function analyseAddress(input: AnalysisInput): Promise<ComplianceResult> {
+  const startedAt = Date.now();
+  const trace = await startAnalysisRun({
+    runKind: "full_analysis",
+    projectId: input.projectId ?? null,
+    addressId: input.addressId,
+    userId: input.userId ?? null,
+    source: "analyseAddress",
+    metadata: {
+      has_prefetched_grundareal: input.grundareal !== undefined && input.grundareal !== null,
+      has_coordinates: !!input.koordinater,
+    },
+  });
+
+  try {
+    const result = await analyseAddressWithTrace(input, trace);
+    await finishAnalysisRun(trace, "done", startedAt);
+    return { ...result, analysisRunId: trace.runId };
+  } catch (e) {
+    await finishAnalysisRun(trace, "failed", startedAt, e);
+    throw e;
+  }
+}
+
+async function analyseAddressWithTrace(
+  input: AnalysisInput,
+  trace: AnalysisTraceContext,
+): Promise<ComplianceResult> {
   const { addressId, koordinater } = input;
 
   // Løs manglende adressefelter server-side via DAR.
@@ -106,7 +141,16 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   if (!adgangsadresseid || preFetchedGrundareal === null) {
     try {
       const { DarService } = await import("@/integrations/dar/client");
-      const dar = await DarService.getAddressDetails(addressId);
+      const dar = await traceStep(
+        trace,
+        {
+          eventType: "pipeline_step",
+          phase: "address_enrichment",
+          service: "DAR",
+          operation: "getAddressDetails",
+        },
+        () => DarService.getAddressDetails(addressId, undefined, trace),
+      );
       if (!adgangsadresseid) adgangsadresseid = dar.adgangsadresseid;
       if (preFetchedGrundareal === null) preFetchedGrundareal = dar.grundareal;
       if (ejerlavskode === null) ejerlavskode = dar.ejerlavskode;
@@ -127,13 +171,22 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     | "terrain"
     | "naboer"
     | "fjernvarme"
-    | "save"
     | "fbbData"
     | "ruleEngine"
   >;
   let complianceBase: ComplianceBase | null = null;
   try {
-    const cached = await getCachedCompliance(addressId);
+    const cached = await traceStep(
+      trace,
+      {
+        eventType: "cache_read",
+        phase: "cache",
+        service: "Supabase",
+        operation: "address_analysis.compliance_result.read",
+      },
+      () => getCachedCompliance(addressId),
+      { cacheHit: (value) => !!value },
+    );
     if (cached) {
       // Bypass stale cache: hvis cached BBR mangler grundareal men vi nu har det,
       // re-beregn så bebyggelsesprocent vises korrekt.
@@ -157,38 +210,53 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         ejerlavskode,
         matrikelnummer,
         grundareal: preFetchedGrundareal,
+        trace,
       }),
-      fetchPlandata(koordinater),
-      fetchVurViaEbr(adgangsadresseid),
+      fetchPlandata(koordinater, trace),
+      fetchVurViaEbr(adgangsadresseid, trace),
     ]);
-    complianceBase = {
+    const computedBase: ComplianceBase = {
       bbr: bbrResult,
       lokalplaner: plandataResult.lokalplaner,
       kommuneplanramme: plandataResult.kommuneplanramme,
       analysedAt: new Date().toISOString(),
       vurderingData: vurderingResult,
     };
+    complianceBase = computedBase;
     try {
-      await setCachedCompliance(addressId, {
-        ...complianceBase,
-        lokalplanExtract: null,
-        naturbeskyttelse: null,
-        dkjord: null,
-        geusRisk: null,
-        servitutter: null,
-        terrain: null,
-        naboer: null,
-        fjernvarme: null,
-        save: null,
-        fbbData: null,
-        vurderingData: complianceBase.vurderingData,
-      });
+      await traceStep(
+        trace,
+        {
+          eventType: "cache_write",
+          phase: "cache",
+          service: "Supabase",
+          operation: "address_analysis.compliance_result.write",
+        },
+        () =>
+          setCachedCompliance(addressId, {
+            ...computedBase,
+            lokalplanExtract: null,
+            naturbeskyttelse: null,
+            dkjord: null,
+            geusRisk: null,
+            servitutter: null,
+            terrain: null,
+            naboer: null,
+            fjernvarme: null,
+            fbbData: null,
+            vurderingData: computedBase.vurderingData,
+          }),
+      );
     } catch (e) {
       console.warn(
         "[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):",
         (e as Error).message,
       );
     }
+  }
+
+  if (!complianceBase) {
+    throw new Error("[Orchestrator] Compliance base kunne ikke opbygges");
   }
 
   // ARCH-167: Hard Stop gate — spring dyre WFS/API-kald i Layer 4 over når
@@ -209,14 +277,50 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     // ── Layer 2: lokalplan_extracted ────────────────────────────────────
     (async (): Promise<LokalplanExtract | null> => {
       try {
-        const cached = await getCachedLokalplan(addressId, primaryPdfUrl ?? undefined);
+        const cached = await traceStep(
+          trace,
+          {
+            eventType: "cache_read",
+            phase: "cache",
+            service: "Supabase",
+            operation: "address_analysis.lokalplan_extracted.read",
+          },
+          () => getCachedLokalplan(addressId, primaryPdfUrl ?? undefined),
+          { cacheHit: (value) => !!value, metadata: { has_pdf_url: !!primaryPdfUrl } },
+        );
         if (cached) return cached as unknown as LokalplanExtract;
         if (primaryPdfUrl) {
           const { PdfExtractorService } = await import("@/integrations/ai/pdf-extractor");
-          const extract = await PdfExtractorService.extractLokalplan(primaryPdfUrl);
-          await setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as Json);
+          const extract = await traceStep(
+            trace,
+            {
+              eventType: "api_call",
+              phase: "layer2",
+              service: "Anthropic/PDF",
+              operation: "extract_lokalplan",
+            },
+            () => PdfExtractorService.extractLokalplan(primaryPdfUrl),
+          );
+          await traceStep(
+            trace,
+            {
+              eventType: "cache_write",
+              phase: "cache",
+              service: "Supabase",
+              operation: "address_analysis.lokalplan_extracted.write",
+            },
+            () => setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as Json),
+          );
           return extract;
         }
+        await recordAnalysisEvent(trace, {
+          eventType: "pipeline_step",
+          phase: "layer2",
+          service: "Lokalplan",
+          operation: "extract_lokalplan",
+          status: "skipped",
+          metadata: { reason: "missing_pdf_url" },
+        });
         return null;
       } catch (e) {
         console.warn("[Orchestrator] lokalplan PDF-udtræk fejlede:", (e as Error).message);
@@ -227,15 +331,39 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     // ── Layer 3: servitut_extracted (IS_MOCK=true — ARCH-104) ───────────
     (async (): Promise<TinglysningResult | null> => {
       try {
-        const cachedServitut = await getCachedServitut(addressId);
+        const cachedServitut = await traceStep(
+          trace,
+          {
+            eventType: "cache_read",
+            phase: "cache",
+            service: "Supabase",
+            operation: "address_analysis.servitut_extracted.read",
+          },
+          () => getCachedServitut(addressId),
+          { cacheHit: (value) => !!value },
+        );
         if (cachedServitut) return cachedServitut as unknown as TinglysningResult;
         const { TinglysningService } = await import("@/integrations/tinglysning/client");
-        const result = await TinglysningService.getServitutter(
-          addressId,
-          ejerlavskode,
-          matrikelnummer,
+        const result = await traceStep(
+          trace,
+          {
+            eventType: "api_call",
+            phase: "layer3",
+            service: "Tinglysning",
+            operation: "getServitutter",
+          },
+          () => TinglysningService.getServitutter(addressId, ejerlavskode, matrikelnummer),
         );
-        await setCachedServitut(addressId, result as unknown as Json);
+        await traceStep(
+          trace,
+          {
+            eventType: "cache_write",
+            phase: "cache",
+            service: "Supabase",
+            operation: "address_analysis.servitut_extracted.write",
+          },
+          () => setCachedServitut(addressId, result as unknown as Json),
+        );
         return result;
       } catch (e) {
         console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
@@ -251,7 +379,6 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
       let terrain: TerrainData | null = null;
       let naboer: NeighborBuildingData | null = null;
       let fjernvarme: FjernvarmeResultat | null = null;
-      let save: SaveData | null = null;
       let fbbData: FbbResultat | null = null;
 
       // FBB: kræver integer BBR building IDs — kører altid (SAVE-værdi er nødvendig
@@ -259,7 +386,19 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
       const bygningIds = complianceBase.bbr?.alle_bbr_public_ids ?? [];
       if (bygningIds.length) {
         fbbData = await import("@/integrations/fbb/client")
-          .then(({ FbbService }) => FbbService.getSaveData(bygningIds))
+          .then(({ FbbService }) =>
+            traceStep(
+              trace,
+              {
+                eventType: "api_call",
+                phase: "layer4",
+                service: "FBB WFS",
+                operation: "getSaveData",
+              },
+              () => FbbService.getSaveData(bygningIds),
+              { metadata: { building_ids_count: bygningIds.length } },
+            ),
+          )
           .catch((e: Error) => {
             console.warn("[Orchestrator] FBB fejlede:", e.message);
             return null;
@@ -268,39 +407,84 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
 
       // ARCH-167: skip dyre WFS/API-kald (geus, dkjord, terrain, naboer, fjernvarme)
       // når Layer 1 allerede viser absolut byggestop — spar ~3-5s responstid.
-      // naturbeskyttelse og save kører stadig (supplerer MAT-data med WFS-verifikation).
+      // naturbeskyttelse kører stadig (supplerer MAT-data med WFS-verifikation).
       if (bbrHardStop) {
+        await recordAnalysisEvent(trace, {
+          eventType: "pipeline_step",
+          phase: "layer4",
+          service: "Orchestrator",
+          operation: "skip_expensive_layer4",
+          status: "skipped",
+          metadata: { reason: "bbr_hard_stop" },
+        });
         if (koordinater) {
-          [naturbeskyttelse, save] = await Promise.all([
-            import("@/integrations/sdfi/naturbeskyttelse")
-              .then(({ NaturbeskyttelseService }) =>
-                NaturbeskyttelseService.getTilstand(koordinater),
-              )
-              .catch(() => null),
-            import("@/integrations/save/client")
-              .then(({ SaveService }) => SaveService.getBevaringsdata(koordinater))
-              .catch(() => null),
-          ]);
+          naturbeskyttelse = await import("@/integrations/sdfi/naturbeskyttelse")
+            .then(({ NaturbeskyttelseService }) =>
+              traceStep(
+                trace,
+                {
+                  eventType: "api_call",
+                  phase: "layer4",
+                  service: "DAI WFS",
+                  operation: "naturbeskyttelse.getTilstand",
+                },
+                () => NaturbeskyttelseService.getTilstand(koordinater),
+              ),
+            )
+            .catch(() => null);
         }
-        return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save, fbbData };
+        return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData };
       }
 
       if (koordinater) {
-        const [natur, jord, geus, terr, nabo, varme, saveResult] = await Promise.all([
+        const [natur, jord, geus, terr, nabo, varme] = await Promise.all([
           import("@/integrations/sdfi/naturbeskyttelse")
-            .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
+            .then(({ NaturbeskyttelseService }) =>
+              traceStep(
+                trace,
+                {
+                  eventType: "api_call",
+                  phase: "layer4",
+                  service: "DAI WFS",
+                  operation: "naturbeskyttelse.getTilstand",
+                },
+                () => NaturbeskyttelseService.getTilstand(koordinater),
+              ),
+            )
             .catch((e: Error) => {
               console.warn("[Orchestrator] naturbeskyttelse fejlede:", e.message);
               return null;
             }),
           import("@/integrations/miljoe/dkjord")
-            .then(({ DkJordService }) => DkJordService.getTilstand(koordinater))
+            .then(({ DkJordService }) =>
+              traceStep(
+                trace,
+                {
+                  eventType: "api_call",
+                  phase: "layer4",
+                  service: "DK-Jord WFS",
+                  operation: "getTilstand",
+                },
+                () => DkJordService.getTilstand(koordinater),
+              ),
+            )
             .catch((e: Error) => {
               console.warn("[Orchestrator] DK-Jord fejlede:", e.message);
               return null;
             }),
           import("@/integrations/geus/client")
-            .then(({ GeusService }) => GeusService.getRiskData(koordinater.lat, koordinater.lng))
+            .then(({ GeusService }) =>
+              traceStep(
+                trace,
+                {
+                  eventType: "api_call",
+                  phase: "layer4",
+                  service: "GEUS",
+                  operation: "getRiskData",
+                },
+                () => GeusService.getRiskData(koordinater.lat, koordinater.lng),
+              ),
+            )
             .catch((e: Error) => {
               console.warn("[Orchestrator] GEUS fejlede:", e.message);
               return null;
@@ -308,7 +492,16 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
           import("@/integrations/sdfi/dhm-client")
             .then(({ DhmService, bboxFromPoint }) => {
               const bbox = bboxFromPoint(koordinater.lat, koordinater.lng, preFetchedGrundareal);
-              return DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng);
+              return traceStep(
+                trace,
+                {
+                  eventType: "api_call",
+                  phase: "layer4",
+                  service: "SDFI DHM",
+                  operation: "getTerrainData",
+                },
+                () => DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng),
+              );
             })
             .catch((e: Error) => {
               console.warn("[Orchestrator] DHM terrain fejlede:", e.message);
@@ -316,22 +509,36 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
             }),
           import("@/integrations/bbr/neighbor-client")
             .then(({ NaboService }) =>
-              NaboService.getNaboer(koordinater.lat, koordinater.lng, adgangsadresseid),
+              traceStep(
+                trace,
+                {
+                  eventType: "api_call",
+                  phase: "layer4",
+                  service: "DAWA",
+                  operation: "naboer.getNaboer",
+                },
+                () => NaboService.getNaboer(koordinater.lat, koordinater.lng, adgangsadresseid),
+              ),
             )
             .catch((e: Error) => {
               console.warn("[Orchestrator] NaboService fejlede:", e.message);
               return null;
             }),
           import("@/integrations/plandata/fjernvarme")
-            .then(({ FjernvarmeService }) => FjernvarmeService.getDaekning(koordinater))
+            .then(({ FjernvarmeService }) =>
+              traceStep(
+                trace,
+                {
+                  eventType: "api_call",
+                  phase: "layer4",
+                  service: "Plandata WFS",
+                  operation: "fjernvarme.getDaekning",
+                },
+                () => FjernvarmeService.getDaekning(koordinater),
+              ),
+            )
             .catch((e: Error) => {
               console.warn("[Orchestrator] FjernvarmeService fejlede:", e.message);
-              return null;
-            }),
-          import("@/integrations/save/client")
-            .then(({ SaveService }) => SaveService.getBevaringsdata(koordinater))
-            .catch((e: Error) => {
-              console.warn("[Orchestrator] SaveService fejlede:", e.message);
               return null;
             }),
         ]);
@@ -341,14 +548,13 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
         terrain = terr;
         naboer = nabo;
         fjernvarme = varme;
-        save = saveResult;
       }
 
-      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save, fbbData };
+      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData };
     })(),
   ]);
 
-  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, save, fbbData } = layer4;
+  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData } = layer4;
 
   return {
     ...complianceBase,
@@ -360,7 +566,6 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
     terrain,
     naboer,
     fjernvarme,
-    save,
     fbbData,
     vurderingData: complianceBase.vurderingData,
   };

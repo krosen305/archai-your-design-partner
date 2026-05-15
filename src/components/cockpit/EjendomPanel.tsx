@@ -14,14 +14,8 @@ import { useProject, type ComplianceFlag } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 
 export function EjendomPanel() {
-  const {
-    complianceMetrics,
-    bbrData,
-    vurderingData,
-    complianceFlags,
-    address,
-    adressePreCheck,
-  } = useProject();
+  const { complianceMetrics, bbrData, vurderingData, complianceFlags, address, adressePreCheck } =
+    useProject();
   const [showFlags, setShowFlags] = useState(false);
   const [showDatakilder, setShowDatakilder] = useState(false);
 
@@ -32,8 +26,7 @@ export function EjendomPanel() {
   const grundareal = complianceMetrics?.grundareal ?? k?.grundareal ?? null;
   const remaining = complianceMetrics?.remainingBygningsareal ?? k?.restBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
-  const currentPct =
-    complianceMetrics?.currentBebyggelsesprocent ?? k?.bebyggelsesprocent ?? null;
+  const currentPct = complianceMetrics?.currentBebyggelsesprocent ?? k?.bebyggelsesprocent ?? null;
   const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? k?.maxBebyggelsesprocent ?? null;
   const currentEtager = complianceMetrics?.currentEtager ?? k?.antalEtager ?? null;
   const maxEtager = complianceMetrics?.maxEtager ?? k?.maxEtager ?? null;
@@ -133,10 +126,7 @@ export function EjendomPanel() {
               label="Bebygget areal"
               value={bbr?.bebygget_areal != null ? `${bbr.bebygget_areal} m²` : "—"}
             />
-            <Field
-              label="Etager"
-              value={bbr?.antal_etager != null ? `${bbr.antal_etager}` : "—"}
-            />
+            <Field label="Etager" value={bbr?.antal_etager != null ? `${bbr.antal_etager}` : "—"} />
             <Field label="Anvendelse" value={bbr?.anvendelse_tekst ?? "—"} />
           </div>
         </Card>
@@ -217,11 +207,7 @@ export function EjendomPanel() {
             <DataRow
               label="Strandbeskyttelse (MAT)"
               value={
-                bbr?.mat_strandbeskyttelse == null
-                  ? "—"
-                  : bbr.mat_strandbeskyttelse
-                    ? "Ja"
-                    : "Nej"
+                bbr?.mat_strandbeskyttelse == null ? "—" : bbr.mat_strandbeskyttelse ? "Ja" : "Nej"
               }
               status={bbr == null ? "mangler" : "live"}
             />
@@ -232,9 +218,7 @@ export function EjendomPanel() {
             />
             <DataRow
               label="Klitfredning (MAT)"
-              value={
-                bbr?.mat_klitfredning == null ? "—" : bbr.mat_klitfredning ? "Ja" : "Nej"
-              }
+              value={bbr?.mat_klitfredning == null ? "—" : bbr.mat_klitfredning ? "Ja" : "Nej"}
               status={bbr == null ? "mangler" : "live"}
             />
             <DataRow
@@ -260,9 +244,7 @@ export function EjendomPanel() {
             />
             <DataRow
               label="Vurderingsår"
-              value={
-                vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"
-              }
+              value={vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"}
               status={vurderingData == null ? "mangler" : "live"}
             />
           </div>
@@ -415,9 +397,7 @@ function CopyField({
   return (
     <div className="flex items-start justify-between rounded-md border border-border p-2.5 gap-2">
       <div className="min-w-0">
-        <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
-          {label}
-        </div>
+        <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">{label}</div>
         <div className="mt-0.5 text-xs text-foreground font-mono truncate">
           {value ?? <span className="text-muted-foreground">{placeholder}</span>}
         </div>
@@ -429,11 +409,7 @@ function CopyField({
           className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
           aria-label={`Kopiér ${label}`}
         >
-          {copied ? (
-            <Check size={13} className="text-emerald-400" />
-          ) : (
-            <Copy size={13} />
-          )}
+          {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
         </button>
       )}
     </div>

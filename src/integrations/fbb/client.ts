@@ -32,6 +32,7 @@ export type FbbBygning = {
   bygningsnummer: number;
   bevaringsvaerdi: number;
   fredningsstatus: string | null;
+  fredet: boolean;
 };
 
 export type FbbResultat = {
@@ -41,6 +42,8 @@ export type FbbResultat = {
     bevaringsvaerdi: number;
     fredningsstatus: string | null;
   } | null;
+  /** true hvis mindst én bygning på ejendommen er fredet (byg070/FBB fredningsstatus=1) */
+  fbb_er_fredet: boolean;
   /** Bruges til cockpit-visning: skelner "ingen data" fra "opslag fejlede" (ARCH-151) */
   kilde?: "fbb-wfs" | "adresse-fallback" | "fejl" | "ingen-ids";
 };
@@ -139,6 +142,7 @@ function parseJson(body: string): FbbBygning[] {
     const bygningsnummer = Number(bygningsnummerRaw);
     const fredningsstatusRaw = props["fredningsstatus"] ?? props["FREDNINGSSTATUS"] ?? null;
     const fredningsstatus = fredningsstatusRaw === null ? null : String(fredningsstatusRaw);
+    const fredet = props["fredet"] === true || props["FREDET"] === true;
 
     if (isNaN(bevaringsvaerdi) || isNaN(bygningsnummer)) return [];
 
@@ -153,7 +157,7 @@ function parseJson(body: string): FbbBygning[] {
         ? Number(idMatch[1])
         : Number(props["id"] ?? props["ID"] ?? bygningsnummer);
 
-    return [{ bygningsid, bygningsnummer, bevaringsvaerdi, fredningsstatus }];
+    return [{ bygningsid, bygningsnummer, bevaringsvaerdi, fredningsstatus, fredet }];
   });
 }
 
@@ -181,6 +185,8 @@ function parseXml(body: string): FbbBygning[] {
     const bevaringsvaerdi = Number(xmlText(block, "bevaringsvaerdi"));
     const bygningsnummer = Number(xmlText(block, "bygningsnummer"));
     const fredningsstatus = xmlText(block, "fredningsstatus");
+    const fredetText = xmlText(block, "fredet");
+    const fredet = fredetText === "true" || fredetText === "1";
 
     if (isNaN(bevaringsvaerdi) || isNaN(bygningsnummer)) continue;
 
@@ -188,7 +194,7 @@ function parseXml(body: string): FbbBygning[] {
     const gmlIdMatch = featureHeader.match(/gml:id="[^."]*\.(\d+)"/);
     const bygningsid = gmlIdMatch ? Number(gmlIdMatch[1]) : bygningsnummer;
 
-    results.push({ bygningsid, bygningsnummer, bevaringsvaerdi, fredningsstatus });
+    results.push({ bygningsid, bygningsnummer, bevaringsvaerdi, fredningsstatus, fredet });
   }
   return results;
 }
@@ -225,18 +231,24 @@ export class FbbService {
    */
   static async getSaveData(bygningIds: number[]): Promise<FbbResultat> {
     if (!bygningIds.length)
-      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "ingen-ids" };
+      return {
+        fbb_bygninger: [],
+        fbb_bedste_bygning: null,
+        fbb_er_fredet: false,
+        kilde: "ingen-ids",
+      };
 
     try {
       const bygninger = await fetchWfs(bygningIds);
       return {
         fbb_bygninger: bygninger,
         fbb_bedste_bygning: vælgBedsteBygning(bygninger),
+        fbb_er_fredet: bygninger.some((b) => b.fredet),
         kilde: "fbb-wfs",
       };
     } catch (e) {
       console.warn("[FBB] GeoServer fejl:", (e as Error).message);
-      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "fejl" };
+      return { fbb_bygninger: [], fbb_bedste_bygning: null, fbb_er_fredet: false, kilde: "fejl" };
     }
   }
 
@@ -249,7 +261,12 @@ export class FbbService {
    */
   static async getSaveDataByAddress(vejnavn: string, kommunenavn: string): Promise<FbbResultat> {
     if (!vejnavn || !kommunenavn) {
-      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "ingen-ids" };
+      return {
+        fbb_bygninger: [],
+        fbb_bedste_bygning: null,
+        fbb_er_fredet: false,
+        kilde: "ingen-ids",
+      };
     }
 
     try {
@@ -257,11 +274,12 @@ export class FbbService {
       return {
         fbb_bygninger: bygninger,
         fbb_bedste_bygning: vælgBedsteBygning(bygninger),
+        fbb_er_fredet: bygninger.some((b) => b.fredet),
         kilde: "adresse-fallback",
       };
     } catch (e) {
       console.warn("[FBB] Adresse-fallback fejlede:", (e as Error).message);
-      return { fbb_bygninger: [], fbb_bedste_bygning: null, kilde: "fejl" };
+      return { fbb_bygninger: [], fbb_bedste_bygning: null, fbb_er_fredet: false, kilde: "fejl" };
     }
   }
 }

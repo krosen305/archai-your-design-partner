@@ -68,6 +68,7 @@ function AddressStep() {
     setComplianceFlags,
     setVurderingData,
     setComplianceMetrics,
+    setComplianceDone,
     setAdressePreCheck,
     adressePreCheck,
   } = useProject();
@@ -138,6 +139,7 @@ function AddressStep() {
     // Ryd tidligere pre-check ved nyt adressevalg
     setAdressePreCheck(null);
     setBbrData(null);
+    setComplianceDone(false);
 
     // TRIN 1: Sæt straks adresse fra autocomplete-data (ingen ventetid)
     const immediateAddress: Address = {
@@ -184,10 +186,10 @@ function AddressStep() {
       };
       setSelected(fullAddress);
       setAddress(fullAddress);
-      syncPatch({ address: fullAddress, currentStep: "boligoenske" });
+      syncPatch({ address: fullAddress, complianceDone: false, currentStep: "boligoenske" });
     } catch (err) {
       logger.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
-      syncPatch({ address: immediateAddress, currentStep: "boligoenske" });
+      syncPatch({ address: immediateAddress, complianceDone: false, currentStep: "boligoenske" });
     }
 
     // TRIN 3: Kør pre-check compliance

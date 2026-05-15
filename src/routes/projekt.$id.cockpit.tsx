@@ -30,7 +30,6 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { SaveData } from "@/integrations/save/client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
@@ -70,6 +69,7 @@ const analysisInputSchema = z.object({
     })
     .nullable(),
   grundareal: z.number().positive().nullable().optional(),
+  projectId: z.string().uuid().nullable().optional(),
   token: z.string().min(1),
 });
 
@@ -82,7 +82,7 @@ const fetchCompliance = createServerFn({ method: "POST" })
 
     const { token: _token, ...analysisInput } = data;
     const { analyseAddress } = await import("@/lib/analysis-orchestrator");
-    return analyseAddress(analysisInput);
+    return analyseAddress({ ...analysisInput, userId: authData.user.id });
   });
 
 const runByggeanalyse = createServerFn({ method: "POST" })
@@ -448,6 +448,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     byggeoenske,
     complianceMetrics,
     vurderingData,
+    complianceDone,
+    currentProjectId,
     setBbrData,
     setComplianceDone,
     setComplianceFlags,
@@ -461,13 +463,12 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     byggeanalyseResultat,
   } = useProject();
 
-  const [status, setStatus] = useState<Status>(bbrData ? "done" : "loading");
+  const [status, setStatus] = useState<Status>(bbrData && complianceDone ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>([]);
   const [geusRiskLocal, setGeusRiskLocal] = useState<GeusRiskData | null>(null);
   const [servitutterLocal, setServitutterLocal] = useState<TinglysningResult | null>(null);
   const [terrainLocal, setTerrainLocal] = useState<TerrainData | null>(null);
-  const [saveLocal, setSaveLocal] = useState<SaveData | null>(null);
   const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
   const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
   const [fbbDataLocal, setFbbDataLocal] = useState<
@@ -483,7 +484,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
       geusRiskLocal ||
       servitutterLocal ||
       terrainLocal ||
-      saveLocal ||
       fjernvarmeLocal ||
       naboerLocal ||
       fbbDataLocal ||
@@ -514,7 +514,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
       setGeusRiskLocal((complianceData.geusRisk as GeusRiskData | null) ?? null);
       setServitutterLocal((complianceData.servitutter as TinglysningResult | null) ?? null);
       setTerrainLocal((complianceData.terrain as TerrainData | null) ?? null);
-      setSaveLocal((complianceData.save as SaveData | null) ?? null);
       setFjernvarmeLocal((complianceData.fjernvarme as FjernvarmeResultat | null) ?? null);
       setNaboerLocal((complianceData.naboer as NeighborBuildingData | null) ?? null);
       setFbbDataLocal(
@@ -535,7 +534,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     geusRiskLocal,
     servitutterLocal,
     terrainLocal,
-    saveLocal,
     fjernvarmeLocal,
     naboerLocal,
     fbbDataLocal,
@@ -578,7 +576,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   }, [bbrData, address, setByggeanalyseResultat]);
 
   useEffect(() => {
-    if (bbrData) {
+    if (bbrData && complianceDone) {
       setStatus("done");
       return;
     }
@@ -617,6 +615,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           matrikelnummer: address.matrikelnummer ?? null,
           koordinater: address.koordinater ?? null,
           grundareal: address.grundareal ?? null,
+          projectId: currentProjectId,
           token: session.access_token,
         },
       })
@@ -629,7 +628,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           setGeusRiskLocal(result.geusRisk ?? null);
           setServitutterLocal(result.servitutter ?? null);
           setTerrainLocal(result.terrain ?? null);
-          setSaveLocal(result.save ?? null);
           setFjernvarmeLocal(result.fjernvarme ?? null);
           setNaboerLocal(result.naboer ?? null);
           setFbbDataLocal(result.fbbData ?? null);
@@ -659,12 +657,12 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             terrain: result.terrain,
             naboer: result.naboer,
             fjernvarme: result.fjernvarme,
-            save: result.save,
             fbbData: result.fbbData,
             byggeanalyseResultat: byggeanalyseResultat,
             vurderingData: result.vurderingData,
             complianceDone: true,
             currentStep: "byggeanalyse",
+            analysisRunId: result.analysisRunId,
           });
 
           const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
@@ -765,7 +763,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                   geusRisk={geusRiskLocal}
                   servitutter={servitutterLocal}
                   terrain={terrainLocal}
-                  save={saveLocal}
                   fjernvarme={fjernvarmeLocal}
                   naboer={naboerLocal}
                   naturbeskyttelse={naturbeskyttelsesLocal}
@@ -861,7 +858,6 @@ function AnalyseTab({
   geusRisk,
   servitutter,
   terrain,
-  save,
   fjernvarme,
   naboer,
   naturbeskyttelse,
@@ -880,7 +876,6 @@ function AnalyseTab({
   geusRisk: GeusRiskData | null;
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
-  save: SaveData | null;
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
   naturbeskyttelse: NaturbeskyttelsesResultat | null;
@@ -1055,11 +1050,6 @@ function AnalyseTab({
                   </p>
                 </div>
               ),
-          },
-          save && {
-            id: "save",
-            label: "FREDNING & BEVARELSE",
-            content: <SaveSektion data={save} />,
           },
           geusRisk && {
             id: "geus",
@@ -1330,56 +1320,6 @@ function TerrainSektion({ data }: { data: TerrainData }) {
           <div className="text-xs text-muted-foreground mt-0.5">Primær facade</div>
         </div>
       </div>
-    </Card>
-  );
-}
-
-function SaveSektion({ data }: { data: SaveData }) {
-  return (
-    <Card className="mb-4">
-      <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
-        FREDNING & BEVARELSE
-        {data.kilde === "mock" && (
-          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
-            MOCK
-          </span>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2 mb-2">
-        {data.fredet ? (
-          <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-danger border-danger/40 bg-danger/10">
-            FREDET BYGNING
-          </span>
-        ) : (
-          <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-success border-success/40 bg-success/10">
-            IKKE FREDET
-          </span>
-        )}
-        {data.saveBevaringsvaerdi !== null && (
-          <span
-            className={`inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 ${
-              data.saveBevaringsvaerdi <= 3
-                ? "text-danger border-danger/40 bg-danger/10"
-                : data.saveBevaringsvaerdi <= 6
-                  ? "text-warning border-warning/40 bg-warning/10"
-                  : "text-muted-foreground border-border bg-[#1a1a1a]"
-            }`}
-          >
-            SAVE {data.saveBevaringsvaerdi}
-          </span>
-        )}
-      </div>
-      {data.fredet && (
-        <p className="text-sm text-danger mt-2">
-          Bygningen er fredet — nedrivning kræver dispensation fra Slots- og Kulturstyrelsen.
-        </p>
-      )}
-      {data.saveBevaringsvaerdi !== null && data.saveBevaringsvaerdi <= 3 && (
-        <p className="text-sm text-warning mt-2">
-          Høj bevaringsværdi (SAVE {data.saveBevaringsvaerdi}) — nedrivning eller facadeændring kan
-          kræve kommunal dispensation.
-        </p>
-      )}
     </Card>
   );
 }

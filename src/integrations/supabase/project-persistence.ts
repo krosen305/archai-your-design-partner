@@ -23,8 +23,8 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { SaveData } from "@/integrations/save/client";
 import { BUILDING_TASK_KEYS } from "@/types/building-platform";
+import { recordAnalysisEvent, type AnalysisTraceContext } from "@/lib/analysis-tracing";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -47,11 +47,11 @@ export type ProjectPatch = {
   terrain?: TerrainData | null;
   naboer?: NeighborBuildingData | null;
   fjernvarme?: FjernvarmeResultat | null;
-  save?: SaveData | null;
   fbbData?: FbbResultat | null;
   complianceDone?: boolean;
   currentStep?: string;
   projectDataStatus?: Json | null;
+  analysisRunId?: string | null;
 };
 
 export type PersistedProject = {
@@ -93,6 +93,83 @@ type ComplianceTriggers = {
   klitfredning: boolean | null;
   soilContamination: "clean" | "registered" | "contaminated" | null;
 };
+
+type ExistingProjectSnapshot = {
+  compliance_data: Json | null;
+  address_adresseid: string | null;
+};
+
+type SiteConstraintsUpsert = Database["public"]["Tables"]["site_constraints"]["Insert"];
+
+function createPersistenceTrace(
+  patch: ProjectPatch,
+  projectId: string,
+  userId: string,
+): AnalysisTraceContext | null {
+  if (!patch.analysisRunId) return null;
+
+  return {
+    runId: patch.analysisRunId,
+    runKind: "full_analysis",
+    projectId,
+    userId,
+    addressId: patch.address?.adresseid ?? null,
+    source: "project-persistence",
+  };
+}
+
+function deriveSiteConstraintsPatch(
+  addressId: string | null,
+  patch: ProjectPatch,
+  update: ProjectUpdate,
+): SiteConstraintsUpsert | null {
+  if (!addressId) return null;
+
+  const sitePatch: SiteConstraintsUpsert = {
+    address_id: addressId,
+    confidence: "confirmed",
+    extracted_at: new Date().toISOString(),
+  };
+  let hasConstraintField = false;
+
+  if (patch.kommuneplanramme !== undefined) {
+    hasConstraintField = true;
+    sitePatch.max_bebyggelsesprocent = patch.kommuneplanramme?.bebygpct ?? null;
+    sitePatch.max_etager = patch.kommuneplanramme?.maxetager ?? null;
+    sitePatch.max_height_m = patch.kommuneplanramme?.maxbygnhjd ?? null;
+    sitePatch.source_kommuneplan_id = patch.kommuneplanramme?.planid ?? null;
+  }
+
+  if (patch.lokalplaner !== undefined) {
+    hasConstraintField = true;
+    sitePatch.source_lokalplan_id = patch.lokalplaner[0]?.planid ?? null;
+  }
+
+  if (patch.fbbData !== undefined) {
+    hasConstraintField = true;
+    const saveValue = patch.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
+    sitePatch.save_value = saveValue !== null && saveValue >= 1 ? saveValue : null;
+  }
+
+  if (patch.fbbData !== undefined || patch.bbrData !== undefined) {
+    hasConstraintField = true;
+    sitePatch.is_fredet = (update.is_fredet as boolean | null | undefined) ?? null;
+  }
+
+  if (patch.bbrData !== undefined && patch.bbrData !== null) {
+    hasConstraintField = true;
+    sitePatch.strandbeskyttelse = patch.bbrData.mat_strandbeskyttelse ?? false;
+    sitePatch.fredskov = patch.bbrData.mat_fredskov ?? false;
+    sitePatch.klitfredning = patch.bbrData.mat_klitfredning ?? false;
+  }
+
+  if (patch.dkjord !== undefined) {
+    hasConstraintField = true;
+    sitePatch.soil_contamination_status = deriveSoilContaminationStatus(patch.dkjord);
+  }
+
+  return hasConstraintField ? sitePatch : null;
+}
 
 // ---------------------------------------------------------------------------
 // Hjælpere: Hard Stop aggregering
@@ -251,17 +328,37 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
   return tasks;
 }
 
-async function syncBuildingTasks(triggers: ComplianceTriggers): Promise<void> {
+async function syncBuildingTasks(
+  triggers: ComplianceTriggers,
+  trace: AnalysisTraceContext | null,
+): Promise<void> {
   const tasks = deriveAutoTasks(triggers);
   if (tasks.length === 0) return;
 
   // Load existing auto-generated tasks once to avoid overwriting user-completed tasks
-  const { data: existing } = await supabaseAdmin
+  const readStartedAt = Date.now();
+  const { data: existing, error: readError } = await supabaseAdmin
     .from("building_tasks")
     .select("task_key, status")
     .eq("project_id", triggers.projectId)
     .eq("is_auto_generated", true)
     .not("task_key", "is", null);
+
+  await recordAnalysisEvent(trace, {
+    eventType: "db_read",
+    phase: "persistence",
+    service: "Supabase",
+    operation: "building_tasks.select_existing",
+    status: readError ? "error" : "ok",
+    durationMs: Date.now() - readStartedAt,
+    errorMessage: readError?.message,
+    metadata: { table: "building_tasks" },
+  });
+
+  if (readError) {
+    console.warn("[Persistence] building_tasks select fejlede:", readError.message);
+    return;
+  }
 
   const preservedKeys = new Set(
     (existing ?? [])
@@ -272,13 +369,59 @@ async function syncBuildingTasks(triggers: ComplianceTriggers): Promise<void> {
   const toUpsert = tasks.filter((t) => !preservedKeys.has(t.task_key!));
   if (toUpsert.length === 0) return;
 
+  const writeStartedAt = Date.now();
   const { error } = await supabaseAdmin
     .from("building_tasks")
     .upsert(toUpsert, { onConflict: "project_id,task_key" });
 
+  await recordAnalysisEvent(trace, {
+    eventType: "db_write",
+    phase: "persistence",
+    service: "Supabase",
+    operation: "building_tasks.upsert",
+    status: error ? "error" : "ok",
+    durationMs: Date.now() - writeStartedAt,
+    errorMessage: error?.message,
+    metadata: {
+      table: "building_tasks",
+      upsert_count: toUpsert.length,
+      task_keys: toUpsert.map((task) => task.task_key),
+    },
+  });
+
   if (error) {
     // Non-fatal: building_tasks sync failure must not block the main project save
     console.warn("[Persistence] building_tasks sync fejlede:", error.message);
+  }
+}
+
+async function syncSiteConstraints(
+  sitePatch: SiteConstraintsUpsert,
+  trace: AnalysisTraceContext | null,
+): Promise<void> {
+  const startedAt = Date.now();
+  const { error } = await supabaseAdmin
+    .from("site_constraints")
+    .upsert(sitePatch, { onConflict: "address_id" });
+
+  await recordAnalysisEvent(trace, {
+    eventType: "db_write",
+    phase: "persistence",
+    service: "Supabase",
+    operation: "site_constraints.upsert",
+    status: error ? "error" : "ok",
+    durationMs: Date.now() - startedAt,
+    errorMessage: error?.message,
+    metadata: {
+      table: "site_constraints",
+      address_id: sitePatch.address_id,
+      fields: Object.keys(sitePatch),
+    },
+  });
+
+  if (error) {
+    // Non-fatal: projects remains the SSOT; site_constraints powers validation/debugging.
+    console.warn("[Persistence] site_constraints sync fejlede:", error.message);
   }
 }
 
@@ -357,8 +500,10 @@ export async function saveProject(
   if (!userId) return;
 
   const id = projectId?.trim() ? projectId : await getOrCreateProject(userId);
+  const trace = createPersistenceTrace(patch, id, userId);
 
   const update: ProjectUpdate = {};
+  let existingRow: ExistingProjectSnapshot | null = null;
 
   // ── Adresse ──────────────────────────────────────────────────────────────
   if (patch.address !== undefined) {
@@ -397,7 +542,6 @@ export async function saveProject(
     patch.terrain !== undefined ||
     patch.naboer !== undefined ||
     patch.fjernvarme !== undefined ||
-    patch.save !== undefined ||
     patch.fbbData !== undefined;
 
   if (hasComplianceData) {
@@ -405,12 +549,29 @@ export async function saveProject(
     // overwriting unpatched fields with null/[] and from incorrectly resetting
     // hard_stop when only e.g. byggeanalyseResultat is in the patch (finding #2).
     // The ownership filter here also provides a secondary IDOR guard.
-    const { data: existingRow } = await supabaseAdmin
+    const readStartedAt = Date.now();
+    const { data, error: existingReadError } = await supabaseAdmin
       .from("projects")
-      .select("compliance_data")
+      .select("compliance_data,address_adresseid")
       .eq("id", id)
       .eq("user_id", userId)
       .maybeSingle();
+    existingRow = (data as ExistingProjectSnapshot | null) ?? null;
+
+    await recordAnalysisEvent(trace, {
+      eventType: "db_read",
+      phase: "persistence",
+      service: "Supabase",
+      operation: "projects.select_existing_compliance",
+      status: existingReadError ? "error" : "ok",
+      durationMs: Date.now() - readStartedAt,
+      errorMessage: existingReadError?.message,
+      metadata: { table: "projects", columns: ["compliance_data", "address_adresseid"] },
+    });
+
+    if (existingReadError) {
+      console.warn("[Persistence] existing compliance read fejlede:", existingReadError.message);
+    }
 
     const prev =
       typeof existingRow?.compliance_data === "object" && existingRow.compliance_data !== null
@@ -434,7 +595,6 @@ export async function saveProject(
       ...(patch.terrain !== undefined && { terrain: patch.terrain }),
       ...(patch.naboer !== undefined && { naboer: patch.naboer }),
       ...(patch.fjernvarme !== undefined && { fjernvarme: patch.fjernvarme }),
-      ...(patch.save !== undefined && { save: patch.save }),
       ...(patch.fbbData !== undefined && { fbbData: patch.fbbData }),
     };
 
@@ -446,8 +606,9 @@ export async function saveProject(
       update.heritage_save_value = saveVal !== null && saveVal >= 1 ? saveVal : null;
     }
 
-    if (patch.save !== undefined) {
-      update.is_fredet = patch.save?.fredet ?? null;
+    if (patch.fbbData !== undefined) {
+      // FBB er autoritativ; BBR som backup når FBB-opslag fejlede (fbbData=null)
+      update.is_fredet = patch.fbbData?.fbb_er_fredet ?? patch.bbrData?.fredet ?? null;
     } else if (patch.bbrData !== undefined) {
       update.is_fredet = patch.bbrData?.fredet ?? null;
     }
@@ -460,8 +621,7 @@ export async function saveProject(
     // ── Aggregate hard_stop flag ─────────────────────────────────────────────
     // Only recompute when the triggering data sources are in this patch.
     // This prevents byggeanalyseResultat-only patches from resetting hard_stop=false.
-    const hasHardStopTrigger =
-      patch.fbbData !== undefined || patch.save !== undefined || patch.bbrData !== undefined;
+    const hasHardStopTrigger = patch.fbbData !== undefined || patch.bbrData !== undefined;
 
     if (hasHardStopTrigger) {
       const saveValue = (update.heritage_save_value as number | null | undefined) ?? null;
@@ -501,11 +661,27 @@ export async function saveProject(
 
   if (Object.keys(update).length === 0) return;
 
+  const projectWriteStartedAt = Date.now();
   const { error } = await supabaseAdmin
     .from("projects")
     .update(update)
     .eq("id", id)
     .eq("user_id", userId);
+
+  await recordAnalysisEvent(trace, {
+    eventType: "db_write",
+    phase: "persistence",
+    service: "Supabase",
+    operation: "projects.update",
+    status: error ? "error" : "ok",
+    durationMs: Date.now() - projectWriteStartedAt,
+    errorMessage: error?.message,
+    metadata: {
+      table: "projects",
+      fields: Object.keys(update),
+      has_compliance_data: hasComplianceData,
+    },
+  });
 
   if (error) {
     throw new Error(`[Persistence] update fejlede: ${error.message}`);
@@ -514,19 +690,31 @@ export async function saveProject(
   // ── Auto-generate building tasks from compliance triggers ─────────────────
   // Run after the project write so task generation never blocks the main save.
   if (hasComplianceData) {
+    const siteConstraintsPatch = deriveSiteConstraintsPatch(
+      patch.address?.adresseid ?? existingRow?.address_adresseid ?? null,
+      patch,
+      update,
+    );
+    if (siteConstraintsPatch) {
+      await syncSiteConstraints(siteConstraintsPatch, trace);
+    }
+
     const soilContamination = deriveSoilContaminationStatus(patch.dkjord);
     const saveVal = (update.heritage_save_value as number | null | undefined) ?? null;
     const isFredetVal = (update.is_fredet as boolean | null | undefined) ?? null;
 
-    await syncBuildingTasks({
-      projectId: id,
-      saveValue: saveVal,
-      isFredet: isFredetVal,
-      strandbeskyttelse: patch.bbrData?.mat_strandbeskyttelse ?? null,
-      fredskov: patch.bbrData?.mat_fredskov ?? null,
-      klitfredning: patch.bbrData?.mat_klitfredning ?? null,
-      soilContamination,
-    });
+    await syncBuildingTasks(
+      {
+        projectId: id,
+        saveValue: saveVal,
+        isFredet: isFredetVal,
+        strandbeskyttelse: patch.bbrData?.mat_strandbeskyttelse ?? null,
+        fredskov: patch.bbrData?.mat_fredskov ?? null,
+        klitfredning: patch.bbrData?.mat_klitfredning ?? null,
+        soilContamination,
+      },
+      trace,
+    );
   }
 }
 

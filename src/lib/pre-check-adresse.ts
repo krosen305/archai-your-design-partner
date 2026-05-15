@@ -1,8 +1,9 @@
 ﻿// ARCH-121: preCheckAdresse — hurtig Layer-1-fetch umiddelbart efter adressevalg.
 //
-// Kører BBR+MAT, Plandata, NaturbeskyttelseService, SaveService og EBR+VUR
+// Kører BBR+MAT, Plandata, NaturbeskyttelseService og EBR+VUR
 // parallelt (Promise.allSettled) og returnerer compliance-flags + kontekstdata
 // til brug i adresse-gaten (ARCH-122) og boligoensker-hints (ARCH-123).
+// Fredningsstatus hentes fra FBB (fbb_er_fredet) — SaveService fjernet (ARCH-29).
 //
 // Handler-koden er server-side only. createServerFn gør filen importerbar
 // på klienten (som kaldestubbe) uden at bryde server-boundary.
@@ -15,9 +16,15 @@ import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client
 import type { VurData } from "@/integrations/vur/client";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { SaveData } from "@/integrations/save/client";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import { fetchLayer1 } from "@/lib/compliance-layer1";
+import {
+  finishAnalysisRun,
+  recordAnalysisEvent,
+  startAnalysisRun,
+  traceStep,
+  type AnalysisTraceContext,
+} from "@/lib/analysis-tracing";
 
 // ---------------------------------------------------------------------------
 // Input-validering (ARCH-173): strict Zod-schema forhindrer at serverfunctionen
@@ -59,6 +66,7 @@ export type AdressePreCheckInput = {
 };
 
 export type AdressePreCheckResultat = {
+  analysisRunId?: string | null;
   blockers: ComplianceFlag[];
   advarsler: ComplianceFlag[];
   kontekst: {
@@ -88,98 +96,161 @@ export type AdressePreCheckResultat = {
 export const preCheckAdresse = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => preCheckSchema.parse(data))
   .handler(async ({ data }): Promise<AdressePreCheckResultat> => {
-    const { adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = data;
-
-    const [layer1Settled, naturSettled, saveSettled] = await Promise.allSettled([
-      fetchLayer1({
-        adgangsadresseid,
-        ejerlavskode,
-        matrikelnummer,
-        koordinater,
-        grundareal: data.grundareal ?? null,
-      }),
-      koordinater
-        ? import("@/integrations/sdfi/naturbeskyttelse")
-            .then(({ NaturbeskyttelseService }) => NaturbeskyttelseService.getTilstand(koordinater))
-            .catch(() => null as NaturbeskyttelsesResultat | null)
-        : Promise.resolve(null as NaturbeskyttelsesResultat | null),
-      koordinater
-        ? import("@/integrations/save/client")
-            .then(({ SaveService }) => SaveService.getBevaringsdata(koordinater))
-            .catch(() => null as SaveData | null)
-        : Promise.resolve(null as SaveData | null),
-    ]);
-
-    const labels = ["Layer1", "Naturbeskyttelse", "SaveService"];
-    [layer1Settled, naturSettled, saveSettled].forEach((r, i) => {
-      if (r.status === "rejected")
-        console.warn(`[preCheckAdresse] ${labels[i]} fejlede:`, r.reason);
+    const startedAt = Date.now();
+    const trace = await startAnalysisRun({
+      runKind: "precheck",
+      addressId: data.adresseid,
+      source: "preCheckAdresse",
+      metadata: {
+        has_coordinates: !!data.koordinater,
+        has_prefetched_grundareal: data.grundareal !== undefined && data.grundareal !== null,
+      },
     });
 
-    const layer1 =
-      layer1Settled.status === "fulfilled"
-        ? layer1Settled.value
-        : {
-            bbr: null,
-            lokalplaner: [] as Lokalplan[],
-            kommuneplanramme: null,
-            vurderingData: null,
-          };
-
-    const bbr = layer1.bbr;
-    const naturbeskyttelse = naturSettled.status === "fulfilled" ? naturSettled.value : null;
-    const save = saveSettled.status === "fulfilled" ? saveSettled.value : null;
-    const vurdering = layer1.vurderingData;
-
-    // FBB: kræver integer BBR building IDs fra BBR Public Service — køres separat efter BBR-fasen (ARCH-131)
-    // Fallback til adresse-opslag når BBR Public Service returnerer 404/tom (ARCH-151).
-    let fbbData: FbbResultat | null = null;
-    const bygningIds = bbr?.alle_bbr_public_ids ?? [];
-    if (bygningIds.length) {
-      fbbData = await import("@/integrations/fbb/client")
-        .then(({ FbbService }) => FbbService.getSaveData(bygningIds))
-        .catch((e: Error) => {
-          console.warn("[preCheckAdresse] FBB fejlede:", e.message);
-          return null;
-        });
-    } else if (data.vejnavn && data.kommunenavn) {
-      fbbData = await import("@/integrations/fbb/client")
-        .then(({ FbbService }) => FbbService.getSaveDataByAddress(data.vejnavn!, data.kommunenavn!))
-        .catch((e: Error) => {
-          console.warn("[preCheckAdresse] FBB adresse-fallback fejlede:", e.message);
-          return null;
-        });
+    try {
+      const result = await runPreCheckAdresse(data, trace);
+      await finishAnalysisRun(trace, "done", startedAt);
+      return { ...result, analysisRunId: trace.runId };
+    } catch (e) {
+      await finishAnalysisRun(trace, "failed", startedAt, e);
+      throw e;
     }
-
-    // ── Compliance metrics ────────────────────────────────────────────────────
-    const { calculateComplianceMetrics } = await import("@/lib/compliance-engine");
-    const complianceMetrics = calculateComplianceMetrics(bbr, layer1.kommuneplanramme);
-
-    // ── Compliance flags ──────────────────────────────────────────────────────
-    const flags = buildPreCheckFlags(bbr, layer1.kommuneplanramme, naturbeskyttelse, save, fbbData);
-
-    return {
-      blockers: flags.filter((f) => f.status === "blocker"),
-      advarsler: flags.filter((f) => f.status === "advarsel"),
-      kontekst: {
-        grundareal: bbr?.grundareal ?? null,
-        bebyggetAreal: bbr?.bebygget_areal ?? null,
-        bebyggelsesprocent: bbr?.bebyggelsesprocent ?? null,
-        antalEtager: bbr?.antal_etager ?? null,
-        maxBebyggelsesprocent: layer1.kommuneplanramme?.bebygpct ?? null,
-        maxEtager: layer1.kommuneplanramme?.maxetager ?? null,
-        maxBygningshoejde: layer1.kommuneplanramme?.maxbygnhjd ?? null,
-        restBygningsareal: complianceMetrics.remainingBygningsareal,
-        ejendomsvaerdi: vurdering?.ejendomsvaerdi ?? null,
-        grundvaerdi: vurdering?.grundvaerdi ?? null,
-      },
-      bbr,
-      lokalplaner: layer1.lokalplaner,
-      kommuneplanramme: layer1.kommuneplanramme,
-      vurderingData: vurdering,
-      complianceMetrics,
-    };
   });
+
+async function runPreCheckAdresse(
+  data: z.infer<typeof preCheckSchema>,
+  trace: AnalysisTraceContext,
+): Promise<Omit<AdressePreCheckResultat, "analysisRunId">> {
+  const { adgangsadresseid, ejerlavskode, matrikelnummer, koordinater } = data;
+
+  const [layer1Settled, naturSettled] = await Promise.allSettled([
+    fetchLayer1({
+      adgangsadresseid,
+      ejerlavskode,
+      matrikelnummer,
+      koordinater,
+      grundareal: data.grundareal ?? null,
+      trace,
+    }),
+    koordinater
+      ? import("@/integrations/sdfi/naturbeskyttelse")
+          .then(({ NaturbeskyttelseService }) =>
+            traceStep(
+              trace,
+              {
+                eventType: "api_call",
+                phase: "precheck",
+                service: "DAI WFS",
+                operation: "naturbeskyttelse.getTilstand",
+              },
+              () => NaturbeskyttelseService.getTilstand(koordinater),
+            ),
+          )
+          .catch(() => null as NaturbeskyttelsesResultat | null)
+      : Promise.resolve(null as NaturbeskyttelsesResultat | null),
+  ]);
+
+  const labels = ["Layer1", "Naturbeskyttelse"];
+  [layer1Settled, naturSettled].forEach((r, i) => {
+    if (r.status === "rejected") {
+      console.warn(`[preCheckAdresse] ${labels[i]} fejlede:`, r.reason);
+      void recordAnalysisEvent(trace, {
+        eventType: "pipeline_step",
+        phase: "precheck",
+        service: labels[i],
+        operation: "settled_result",
+        status: "error",
+        errorMessage: r.reason instanceof Error ? r.reason.message : String(r.reason),
+      });
+    }
+  });
+
+  const layer1 =
+    layer1Settled.status === "fulfilled"
+      ? layer1Settled.value
+      : {
+          bbr: null,
+          lokalplaner: [] as Lokalplan[],
+          kommuneplanramme: null,
+          vurderingData: null,
+        };
+
+  const bbr = layer1.bbr;
+  const naturbeskyttelse = naturSettled.status === "fulfilled" ? naturSettled.value : null;
+  const vurdering = layer1.vurderingData;
+
+  // FBB: kræver integer BBR building IDs fra BBR Public Service — køres separat efter BBR-fasen (ARCH-131)
+  // Fallback til adresse-opslag når BBR Public Service returnerer 404/tom (ARCH-151).
+  let fbbData: FbbResultat | null = null;
+  const bygningIds = bbr?.alle_bbr_public_ids ?? [];
+  if (bygningIds.length) {
+    fbbData = await import("@/integrations/fbb/client")
+      .then(({ FbbService }) =>
+        traceStep(
+          trace,
+          {
+            eventType: "api_call",
+            phase: "precheck",
+            service: "FBB WFS",
+            operation: "getSaveData",
+          },
+          () => FbbService.getSaveData(bygningIds),
+          { metadata: { building_ids_count: bygningIds.length } },
+        ),
+      )
+      .catch((e: Error) => {
+        console.warn("[preCheckAdresse] FBB fejlede:", e.message);
+        return null;
+      });
+  } else if (data.vejnavn && data.kommunenavn) {
+    fbbData = await import("@/integrations/fbb/client")
+      .then(({ FbbService }) =>
+        traceStep(
+          trace,
+          {
+            eventType: "api_call",
+            phase: "precheck",
+            service: "FBB WFS",
+            operation: "getSaveDataByAddress",
+          },
+          () => FbbService.getSaveDataByAddress(data.vejnavn!, data.kommunenavn!),
+        ),
+      )
+      .catch((e: Error) => {
+        console.warn("[preCheckAdresse] FBB adresse-fallback fejlede:", e.message);
+        return null;
+      });
+  }
+
+  // ── Compliance metrics ────────────────────────────────────────────────────
+  const { calculateComplianceMetrics } = await import("@/lib/compliance-engine");
+  const complianceMetrics = calculateComplianceMetrics(bbr, layer1.kommuneplanramme);
+
+  // ── Compliance flags ──────────────────────────────────────────────────────
+  const flags = buildPreCheckFlags(bbr, layer1.kommuneplanramme, naturbeskyttelse, fbbData);
+
+  return {
+    blockers: flags.filter((f) => f.status === "blocker"),
+    advarsler: flags.filter((f) => f.status === "advarsel"),
+    kontekst: {
+      grundareal: bbr?.grundareal ?? null,
+      bebyggetAreal: bbr?.bebygget_areal ?? null,
+      bebyggelsesprocent: bbr?.bebyggelsesprocent ?? null,
+      antalEtager: bbr?.antal_etager ?? null,
+      maxBebyggelsesprocent: layer1.kommuneplanramme?.bebygpct ?? null,
+      maxEtager: layer1.kommuneplanramme?.maxetager ?? null,
+      maxBygningshoejde: layer1.kommuneplanramme?.maxbygnhjd ?? null,
+      restBygningsareal: complianceMetrics.remainingBygningsareal,
+      ejendomsvaerdi: vurdering?.ejendomsvaerdi ?? null,
+      grundvaerdi: vurdering?.grundvaerdi ?? null,
+    },
+    bbr,
+    lokalplaner: layer1.lokalplaner,
+    kommuneplanramme: layer1.kommuneplanramme,
+    vurderingData: vurdering,
+    complianceMetrics,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Flag-generering (kun de checks der er relevante på adresse-tidspunktet)
@@ -189,15 +260,14 @@ function buildPreCheckFlags(
   bbr: BbrKompliantData | null,
   ramme: Kommuneplanramme | null,
   naturbeskyttelse: NaturbeskyttelsesResultat | null,
-  save: SaveData | null,
   fbbData: FbbResultat | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
   if (!bbr) return flags;
 
-  // Fredning (BBR byg070 + SaveService spatial check)
-  if (bbr.fredet || save?.fredet) {
+  // Fredning: BBR byg070 ELLER FBB fredningsstatus (fbb_er_fredet)
+  if (bbr.fredet || fbbData?.fbb_er_fredet) {
     flags.push({
       id: "fredet",
       label: "Fredet bygning",
@@ -206,7 +276,7 @@ function buildPreCheckFlags(
         "Bygningen er fredet — alle ændringer kræver tilladelse fra Slots- og Kulturstyrelsen",
       aktuelVærdi: "Fredet",
       tilladt: "Ingen ændringer uden dispensation",
-      kilde: bbr.fredet ? "bbr" : "sdfi",
+      kilde: bbr.fredet ? "bbr" : "fbb",
       dispensationMulig: true,
       dispensationMyndighed: "Slots- og Kulturstyrelsen",
     });

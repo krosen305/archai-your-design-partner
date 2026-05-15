@@ -8,6 +8,7 @@
 
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -77,7 +78,11 @@ export class VurService {
    * Henter den absolut nyeste ejendomsvurdering via BFE-nummer.
    * Går gennem 3 led for at sikre, at vi ikke sidder fast i gamle historiske data.
    */
-  static async getVurdering(bfeNr: string, config?: VurClientConfig): Promise<VurData> {
+  static async getVurdering(
+    bfeNr: string,
+    config?: VurClientConfig,
+    trace?: AnalysisTraceContext | null,
+  ): Promise<VurData> {
     const bfe = parseInt(bfeNr, 10);
     if (isNaN(bfe)) {
       return this.errorResult(bfeNr, `Ugyldigt BFE-nummer format: ${bfeNr}`);
@@ -89,7 +94,13 @@ export class VurService {
       url.searchParams.set("apiKey", apiKey);
 
       // ── Trin 1: Find record-ID via BFE-krydsreference ──────────────────
-      const krydsData = await this.gqlFetch(url, BFE_KRYDS_QUERY, { bfe });
+      const krydsData = await this.gqlFetch(
+        url,
+        BFE_KRYDS_QUERY,
+        { bfe },
+        "VUR_BFEKrydsreference",
+        trace,
+      );
       const recordId = krydsData?.VUR_BFEKrydsreference?.nodes?.[0]?.fkEjendomsvurderingID;
 
       if (!recordId) {
@@ -97,7 +108,13 @@ export class VurService {
       }
 
       // ── Trin 1.5: Find ejendoms-ID via record-ID ────────────────────────
-      const propData = await this.gqlFetch(url, GET_PROPERTY_ID_QUERY, { recordId });
+      const propData = await this.gqlFetch(
+        url,
+        GET_PROPERTY_ID_QUERY,
+        { recordId },
+        "VUR_Ejendomsvurdering_property_id",
+        trace,
+      );
       const propertyId = propData?.VUR_Ejendomsvurdering?.nodes?.[0]?.fkVurderingsejendomID;
 
       if (!propertyId) {
@@ -105,7 +122,13 @@ export class VurService {
       }
 
       // ── Trin 2: Hent vurderingshistorik og vælg nyeste ──────────────────
-      const historyData = await this.gqlFetch(url, VURDERING_HISTORY_QUERY, { propId: propertyId });
+      const historyData = await this.gqlFetch(
+        url,
+        VURDERING_HISTORY_QUERY,
+        { propId: propertyId },
+        "VUR_Ejendomsvurdering_history",
+        trace,
+      );
       const nodes: any[] = historyData?.VUR_Ejendomsvurdering?.nodes ?? [];
 
       if (nodes.length === 0) {
@@ -145,6 +168,8 @@ export class VurService {
     url: URL,
     query: string,
     variables: Record<string, unknown>,
+    operation: string,
+    trace?: AnalysisTraceContext | null,
   ): Promise<any> {
     const response = await fetchWithRetry(
       url.toString(),
@@ -154,6 +179,13 @@ export class VurService {
         body: JSON.stringify({ query, variables }),
       },
       { timeoutMs: 12_000 },
+      {
+        trace,
+        service: "Datafordeler VUR",
+        operation,
+        phase: "layer1",
+        metadata: { endpoint: "VUR/v1" },
+      },
     );
 
     const bodyText = await response.text();

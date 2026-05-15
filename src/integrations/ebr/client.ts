@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 
 type EbrClientConfig = {
   apiKey?: string;
@@ -71,7 +72,12 @@ export type EbrResult = {
 
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 
-async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
+async function gqlFetch(
+  url: URL,
+  query: string,
+  variables: Record<string, unknown>,
+  trace?: AnalysisTraceContext | null,
+): Promise<any> {
   const response = await fetchWithRetry(
     url.toString(),
     {
@@ -80,6 +86,13 @@ async function gqlFetch(url: URL, query: string, variables: Record<string, unkno
       body: JSON.stringify({ query, variables }),
     },
     { timeoutMs: 12_000 },
+    {
+      trace,
+      service: "Datafordeler EBR",
+      operation: "EBR_Ejendomsbeliggenhed",
+      phase: "layer1",
+      metadata: { endpoint: "EBR/v1" },
+    },
   );
 
   const bodyText = await response.text();
@@ -115,7 +128,11 @@ export class EbrService {
    *
    * @param husnummerLokalId  DAR_Husnummer.id_lokalId (= adgangsadresseid i vores system)
    */
-  static async getBfeNr(husnummerLokalId: string, config?: EbrClientConfig): Promise<EbrResult> {
+  static async getBfeNr(
+    husnummerLokalId: string,
+    config?: EbrClientConfig,
+    trace?: AnalysisTraceContext | null,
+  ): Promise<EbrResult> {
     const id = husnummerLokalId.trim();
     if (!id) return { bfeNr: null, fejl: "husnummerLokalId er påkrævet" };
 
@@ -125,7 +142,12 @@ export class EbrService {
       url.searchParams.set("apiKey", apiKey);
       const virkningstid = new Date().toISOString();
 
-      const data = await gqlFetch(url, BELIGGENHED_QUERY, { husnummerLokalId: id, virkningstid });
+      const data = await gqlFetch(
+        url,
+        BELIGGENHED_QUERY,
+        { husnummerLokalId: id, virkningstid },
+        trace,
+      );
       const nodes: any[] = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
 
       if (!nodes.length) {

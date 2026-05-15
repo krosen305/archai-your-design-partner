@@ -25,6 +25,7 @@
 
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -101,7 +102,13 @@ query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virknin
 // Hjælpefunktion: GraphQL-kald
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
+async function gqlFetch(
+  url: URL,
+  query: string,
+  variables: Record<string, unknown>,
+  operation: string,
+  trace?: AnalysisTraceContext | null,
+): Promise<any> {
   const response = await fetchWithRetry(
     url.toString(),
     {
@@ -110,6 +117,13 @@ async function gqlFetch(url: URL, query: string, variables: Record<string, unkno
       body: JSON.stringify({ query, variables }),
     },
     { timeoutMs: 12_000 },
+    {
+      trace,
+      service: "Datafordeler MAT",
+      operation,
+      phase: "layer1",
+      metadata: { endpoint: "MAT/v2" },
+    },
   );
 
   const bodyText = await response.text();
@@ -164,6 +178,7 @@ export class MatService {
     ejerlavskode: number,
     matrikelnummer: string,
     config?: MatClientConfig,
+    trace?: AnalysisTraceContext | null,
   ): Promise<MatGrundarealResult> {
     const matr = matrikelnummer.trim();
     if (!ejerlavskode || !matr) {
@@ -186,10 +201,16 @@ export class MatService {
 
     try {
       // ---- Trin 1: Find MAT_Ejerlav via ejerlavskode ----
-      const ejerlavData = await gqlFetch(url, EJERLAV_QUERY, {
-        kode: ejerlavskode,
-        virkningstid,
-      });
+      const ejerlavData = await gqlFetch(
+        url,
+        EJERLAV_QUERY,
+        {
+          kode: ejerlavskode,
+          virkningstid,
+        },
+        "MAT_Ejerlav",
+        trace,
+      );
 
       const ejerlaver: any[] = ejerlavData?.MAT_Ejerlav?.nodes ?? [];
       if (!ejerlaver.length) {
@@ -209,11 +230,17 @@ export class MatService {
       const ejerlavsnavn: string = ejerlav.ejerlavsnavn ?? null;
 
       // ---- Trin 2: Find MAT_Jordstykke via ejerlavLokalId + matrikelnummer ----
-      const jordstykkeData = await gqlFetch(url, JORDSTYKKE_QUERY, {
-        ejerlavLokalId,
-        matrikelnummer: matr,
-        virkningstid,
-      });
+      const jordstykkeData = await gqlFetch(
+        url,
+        JORDSTYKKE_QUERY,
+        {
+          ejerlavLokalId,
+          matrikelnummer: matr,
+          virkningstid,
+        },
+        "MAT_Jordstykke",
+        trace,
+      );
 
       const jordstykker: any[] = jordstykkeData?.MAT_Jordstykke?.nodes ?? [];
       if (!jordstykker.length) {

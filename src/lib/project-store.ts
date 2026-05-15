@@ -145,7 +145,16 @@ export type ComplianceFlag = {
   detalje: string | null;
   aktuelVærdi: string | null;
   tilladt: string | null;
-  kilde: "bbr" | "plandata" | "servitut" | "beregnet" | "sdfi" | "dkjord" | "geus" | "regelkerne";
+  kilde:
+    | "bbr"
+    | "plandata"
+    | "servitut"
+    | "beregnet"
+    | "sdfi"
+    | "dkjord"
+    | "geus"
+    | "regelkerne"
+    | "fbb";
   dispensationMulig?: boolean;
   dispensationMyndighed?: string;
 };

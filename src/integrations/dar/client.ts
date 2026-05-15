@@ -24,6 +24,7 @@
 
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -255,7 +256,13 @@ function utm32NToWgs84(easting: number, northing: number): { lat: number; lng: n
 // Hjælpefunktion: GraphQL-kald mod Datafordeler
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(url: URL, query: string, variables: Record<string, unknown>): Promise<any> {
+async function gqlFetch(
+  url: URL,
+  query: string,
+  variables: Record<string, unknown>,
+  operation: string,
+  trace?: AnalysisTraceContext | null,
+): Promise<any> {
   const response = await fetchWithRetry(
     url.toString(),
     {
@@ -264,6 +271,12 @@ async function gqlFetch(url: URL, query: string, variables: Record<string, unkno
       body: JSON.stringify({ query, variables }),
     },
     { timeoutMs: 12_000 },
+    {
+      trace,
+      service: operation.startsWith("MAT_") ? "Datafordeler MAT" : "Datafordeler DAR",
+      operation,
+      phase: "address_enrichment",
+    },
   );
 
   const bodyText = await response.text();
@@ -312,6 +325,7 @@ export class DarService {
   static async getAddressDetails(
     darAdresseLokalId: string,
     config?: DarClientConfig,
+    trace?: AnalysisTraceContext | null,
   ): Promise<DarAddressDetails> {
     const id = darAdresseLokalId.trim();
     if (!id) throw new Error("DAR: darAdresseLokalId er påkrævet");
@@ -322,7 +336,13 @@ export class DarService {
     const virkningstid = new Date().toISOString();
 
     // ── Kald 1: DAR_Adresse ─────────────────────────────────────────────────
-    const adresseData = await gqlFetch(url, ADRESSE_QUERY, { id, virkningstid });
+    const adresseData = await gqlFetch(
+      url,
+      ADRESSE_QUERY,
+      { id, virkningstid },
+      "DAR_Adresse",
+      trace,
+    );
     const adresseNodes: any[] = adresseData?.DAR_Adresse?.nodes ?? [];
     if (!adresseNodes.length) {
       throw new Error(`DAR_Adresse ikke fundet for id_lokalId: ${id}`);
@@ -333,10 +353,16 @@ export class DarService {
     // ── Kald 2: DAR_Husnummer ───────────────────────────────────────────────
     let husnummer: any = null;
     if (husnummerFK) {
-      const husnummerData = await gqlFetch(url, HUSNUMMER_QUERY, {
-        id: husnummerFK,
-        virkningstid,
-      });
+      const husnummerData = await gqlFetch(
+        url,
+        HUSNUMMER_QUERY,
+        {
+          id: husnummerFK,
+          virkningstid,
+        },
+        "DAR_Husnummer",
+        trace,
+      );
       husnummer = husnummerData?.DAR_Husnummer?.nodes?.[0] ?? null;
     }
 
@@ -348,18 +374,34 @@ export class DarService {
     // ── Kald 3a + 3b + 3c: postnummer, adressepunkt og MAT_Jordstykke (parallelt) ─
     const [postnummerData, adressepunktData, jordstykkeData] = await Promise.all([
       postnummerFK
-        ? gqlFetch(url, POSTNUMMER_QUERY, { id: postnummerFK, virkningstid })
+        ? gqlFetch(
+            url,
+            POSTNUMMER_QUERY,
+            { id: postnummerFK, virkningstid },
+            "DAR_Postnummer",
+            trace,
+          )
         : Promise.resolve(null),
       adgangspunktFK
-        ? gqlFetch(url, ADRESSEPUNKT_QUERY, { id: adgangspunktFK, virkningstid })
+        ? gqlFetch(
+            url,
+            ADRESSEPUNKT_QUERY,
+            { id: adgangspunktFK, virkningstid },
+            "DAR_Adressepunkt",
+            trace,
+          )
         : Promise.resolve(null),
       jordstykkeFK
-        ? gqlFetch(matUrl, MAT_JORDSTYKKE_QUERY, { id: jordstykkeFK, virkningstid }).catch(
-            (e: Error) => {
-              console.warn("[DAR] MAT_Jordstykke opslag fejlede:", e.message);
-              return null;
-            },
-          )
+        ? gqlFetch(
+            matUrl,
+            MAT_JORDSTYKKE_QUERY,
+            { id: jordstykkeFK, virkningstid },
+            "MAT_Jordstykke_by_id",
+            trace,
+          ).catch((e: Error) => {
+            console.warn("[DAR] MAT_Jordstykke opslag fejlede:", e.message);
+            return null;
+          })
         : Promise.resolve(null),
     ]);
 
@@ -374,10 +416,16 @@ export class DarService {
     let ejerlavskode: number | null = null;
     if (matEjerlavLokalId) {
       try {
-        const ejerlavData = await gqlFetch(matUrl, MAT_EJERLAV_QUERY, {
-          id: matEjerlavLokalId,
-          virkningstid,
-        });
+        const ejerlavData = await gqlFetch(
+          matUrl,
+          MAT_EJERLAV_QUERY,
+          {
+            id: matEjerlavLokalId,
+            virkningstid,
+          },
+          "MAT_Ejerlav_by_id",
+          trace,
+        );
         ejerlavskode = ejerlavData?.MAT_Ejerlav?.nodes?.[0]?.ejerlavskode ?? null;
       } catch (e) {
         console.warn(
