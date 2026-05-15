@@ -239,70 +239,8 @@ function AddressStep() {
         <div className="mb-6">
           <BackLink to="/projekt/start" />
         </div>
-        <StepHeader
-          step={1}
-          title="Hvad er adressen?"
-          subtitle="Vi henter automatisk bygningsdata og lokalplan."
-        />
-
-        {/* Design uden grund — spring adresse over og gå direkte i cockpit */}
-        <div className="mb-6 flex items-center justify-between rounded-md border border-dashed border-accent/30 bg-accent/[0.03] px-4 py-3">
-          <div>
-            <div className="font-mono text-[10px] tracking-[0.15em] text-accent mb-0.5">
-              UDEN GRUND
-            </div>
-            <div className="text-sm text-foreground">Vil du designe frit uden en adresse?</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              Du kan altid tilføje en adresse senere for at se compliance-data.
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/projekt/frit/cockpit" as never })}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-2 font-mono text-[11px] tracking-[0.12em] text-accent hover:bg-accent/20 transition-colors"
-          >
-            Design frit →
-          </button>
-        </div>
-
-        {/* Mode selector */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          {(
-            [
-              {
-                key: "due-diligence",
-                fase: "FASE 4–5",
-                title: "Overvejer køb",
-                desc: "Vurder risici inden du køber",
-              },
-              {
-                key: "design",
-                fase: "FASE 7–8",
-                title: "Designer mit hjem",
-                desc: "Jeg ejer allerede grunden",
-              },
-            ] as const
-          ).map((opt) => (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => setMode(opt.key)}
-              className={`rounded-md border p-4 text-left transition-colors ${
-                mode === opt.key
-                  ? "border-accent bg-accent/5"
-                  : "border-border bg-[#111] hover:border-border/80"
-              }`}
-            >
-              <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-1">
-                {opt.fase}
-              </div>
-              <div className="text-sm font-medium text-foreground">{opt.title}</div>
-              <div className="text-xs text-muted-foreground mt-1">{opt.desc}</div>
-            </button>
-          ))}
-        </div>
-
-        <Card>
+		<Card>
+		  <div className="relative">
           <div className="relative">
             <Search
               size={18}
