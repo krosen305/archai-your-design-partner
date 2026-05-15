@@ -891,7 +891,7 @@ function CompliancePanel({
   }
   const risici = [...storeRisici, ...flagRisici];
 
-  const inKobMode = cockpitMode === "kob";
+  const inKobMode = mode === "due-diligence";
 
   return (
     <div className="space-y-4">
