@@ -139,15 +139,21 @@ function HardStopBanner() {
 // Route
 // ---------------------------------------------------------------------------
 
+type CockpitTab = "analyse" | "ejendom" | "oekonomi";
+
+const VALID_TABS: readonly CockpitTab[] = ["analyse", "ejendom", "oekonomi"];
+
 export const Route = createFileRoute("/projekt/$id/cockpit")({
   component: CockpitPage,
+  validateSearch: (search: Record<string, unknown>) => {
+    const tab = search.tab;
+    return {
+      tab: typeof tab === "string" && (VALID_TABS as readonly string[]).includes(tab)
+        ? (tab as CockpitTab)
+        : ("analyse" as CockpitTab),
+    };
+  },
 });
-
-// ---------------------------------------------------------------------------
-// Cockpit tab type
-// ---------------------------------------------------------------------------
-
-type CockpitTab = "analyse" | "ejendom" | "oekonomi";
 
 const LOADING_ROWS = [
   { icon: FileText, label: "Henter BBR-data", durationMs: 800 },
@@ -417,7 +423,18 @@ function FreeBudgetEstimat() {
 
 function CockpitContent({ adresseId }: { adresseId: string }) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<CockpitTab>("analyse");
+  const { tab: activeTab } = Route.useSearch();
+  const setActiveTab = useCallback(
+    (next: CockpitTab) => {
+      navigate({
+        to: "/projekt/$id/cockpit",
+        params: { id: adresseId },
+        search: { tab: next },
+        replace: false,
+      });
+    },
+    [navigate, adresseId],
+  );
   const [mode, setMode] = useState<"due-diligence" | "design">("design");
 
   useEffect(() => {
@@ -747,33 +764,38 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
               ))}
             </div>
 
-            {/* Tab content */}
-            {activeTab === "analyse" && (
-              <AnalyseTab
-                adresse={address?.adresse ?? ""}
-                data={bbrData}
-                lokalplaner={lokalplanerLocal}
-                byggeanalyse={byggeanalyseResultat}
-                metrics={complianceMetrics}
-                fbbData={fbbDataLocal}
-                vurderingData={vurderingData}
-                geusRisk={geusRiskLocal}
-                servitutter={servitutterLocal}
-                terrain={terrainLocal}
-                save={saveLocal}
-                fjernvarme={fjernvarmeLocal}
-                naboer={naboerLocal}
-                naturbeskyttelse={naturbeskyttelsesLocal}
-                isRecomputing={isRecomputing}
-                onRunAnalyse={runManualAnalyse}
-                onShowEjendom={() => setActiveTab("ejendom")}
-                onShowOekonomi={() => setActiveTab("oekonomi")}
-              />
-            )}
-
-            {activeTab === "ejendom" && <EjendomPanel />}
-
-            {activeTab === "oekonomi" && <OekonomiPanel />}
+            {/* Tab content med crossfade */}
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              {activeTab === "analyse" && (
+                <AnalyseTab
+                  adresse={address?.adresse ?? ""}
+                  data={bbrData}
+                  lokalplaner={lokalplanerLocal}
+                  byggeanalyse={byggeanalyseResultat}
+                  metrics={complianceMetrics}
+                  fbbData={fbbDataLocal}
+                  vurderingData={vurderingData}
+                  geusRisk={geusRiskLocal}
+                  servitutter={servitutterLocal}
+                  terrain={terrainLocal}
+                  save={saveLocal}
+                  fjernvarme={fjernvarmeLocal}
+                  naboer={naboerLocal}
+                  naturbeskyttelse={naturbeskyttelsesLocal}
+                  isRecomputing={isRecomputing}
+                  onRunAnalyse={runManualAnalyse}
+                  onShowEjendom={() => setActiveTab("ejendom")}
+                  onShowOekonomi={() => setActiveTab("oekonomi")}
+                />
+              )}
+              {activeTab === "ejendom" && <EjendomPanel />}
+              {activeTab === "oekonomi" && <OekonomiPanel />}
+            </motion.div>
           </>
         )}
       </div>
