@@ -22,7 +22,7 @@ type ParcelFeatureCollection = GeoJSON.FeatureCollection | null;
 
 export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
   const { address, complianceFlags, setAddress } = useProject();
-  const geo = geo ?? address?.koordinater ?? null;
+  const geo = address?.centroid ?? address?.koordinater ?? null;
   const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("ol/Map").default | null>(null);
