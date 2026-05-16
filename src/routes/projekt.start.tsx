@@ -145,8 +145,6 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
   );
 }
 
-const COCKPIT_STEPS = new Set(["boligoenske", "ejendom", "byggeanalyse", "oekonomi"]);
-
 function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   const navigate = useNavigate();
   const { reset, setCurrentProjectId } = useProject();
