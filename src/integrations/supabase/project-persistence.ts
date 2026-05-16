@@ -725,6 +725,7 @@ export async function saveProject(
 export async function loadProject(
   accessToken: string,
   projectId?: string | null,
+  addressId?: string | null,
 ): Promise<PersistedProject | null> {
   const userId = await getUserId(accessToken);
   if (!userId) return null;
@@ -738,6 +739,8 @@ export async function loadProject(
 
   if (projectId?.trim()) {
     query = query.eq("id", projectId);
+  } else if (addressId?.trim()) {
+    query = query.eq("address_adresseid", addressId).order("updated_at", { ascending: false }).limit(1);
   } else {
     query = query.order("updated_at", { ascending: false }).limit(1);
   }
