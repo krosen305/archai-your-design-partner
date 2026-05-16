@@ -587,13 +587,13 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
       fetchCompliance({
         data: {
-          addressId: address.adresseid,
-          adgangsadresseid: address.adgangsadresseid,
-          ejerlavskode: address.ejerlavskode ?? null,
-          matrikelnummer: address.matrikelnummer ?? null,
-          koordinater: address.koordinater ?? null,
-          grundareal: address.grundareal ?? null,
-          projectId: currentProjectId,
+          addressId: currentAddress.adresseid,
+          adgangsadresseid: currentAddress.adgangsadresseid,
+          ejerlavskode: currentAddress.ejerlavskode ?? null,
+          matrikelnummer: currentAddress.matrikelnummer ?? null,
+          koordinater: currentAddress.koordinater ?? null,
+          grundareal: currentAddress.grundareal ?? null,
+          projectId: useProject.getState().currentProjectId,
           token: session.access_token,
         },
       })
