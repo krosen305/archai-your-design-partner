@@ -618,17 +618,26 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
   useEffect(() => {
     if (restorePhase !== "checked") return;
-    if (bbrData && complianceDone) {
+    const currentAddress = useProject.getState().address;
+    if (bbrData && complianceDone && routeMatchesAddress(currentAddress, adresseId)) {
+      if (lokalplanerLocal.length === 0 && lokalplaner.length > 0) {
+        setLokalplanerLocal(lokalplaner);
+      }
       setStatus("done");
       return;
     }
 
     // Vent indtil restore har haft en chance for at populere address.
-    const currentAddress = useProject.getState().address;
     if (!currentAddress?.adresseid) {
       navigate({ to: "/projekt/adresse" });
       return;
     }
+    if (!routeMatchesAddress(currentAddress, adresseId)) {
+      navigate({ to: "/projekt/adresse" });
+      return;
+    }
+    if (analysisStartedRef.current) return;
+    analysisStartedRef.current = true;
 
     const MIN_LOADING_MS = 2800;
     const startTime = Date.now();
@@ -724,7 +733,25 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           }, remaining);
         });
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    adresseId,
+    bbrData,
+    complianceDone,
+    lokalplaner,
+    lokalplanerLocal.length,
+    navigate,
+    restorePhase,
+    byggeanalyseResultat,
+    setBbrData,
+    setComplianceDone,
+    setComplianceFlags,
+    setComplianceMetrics,
+    setKommuneplanramme,
+    setLokalplanExtract,
+    setLokalplaner,
+    setPhase,
+    setVurderingData,
+  ]);
 
   return (
     <PageTransition>
