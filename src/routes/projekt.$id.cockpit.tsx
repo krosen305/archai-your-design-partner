@@ -520,7 +520,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     let cancelled = false;
     (async () => {
       try {
-        const pid = searchProjectId ?? useProject.getState().currentProjectId;
+        const pid = searchProjectId ?? null;
         const project = await restoreProject(pid, adresseId);
         if (cancelled) return;
         if (project?.address_full && project?.address_bbr) {
@@ -768,6 +768,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           <ErrorView
             message={fetchError ?? "Ukendt fejl."}
             onRetry={() => {
+              analysisStartedRef.current = false;
               setFetchError(null);
               setBbrData(null);
               setComplianceDone(false);
