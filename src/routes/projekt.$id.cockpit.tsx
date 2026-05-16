@@ -709,9 +709,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
         {status === "done" && bbrData && (
           <>
-            {/* ARCH-162: Hard Stop banner — vises ved page refresh uden at pipeline kører */}
-            <HardStopBanner />
-
             {/* Tab navigation med animeret underline */}
             <div className="flex gap-1 mb-6 border-b border-border/40">
               {(
