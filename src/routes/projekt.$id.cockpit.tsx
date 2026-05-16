@@ -550,6 +550,41 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const runManualAnalyse = useCallback(async () => {
+    if (!bbrData || !address) return;
+    setIsRecomputing(true);
+    try {
+      const { getSession } = await import("@/lib/auth");
+      const session = await getSession();
+      if (!session) {
+        setIsRecomputing(false);
+        return;
+      }
+      const state = useProject.getState();
+      const lpNavn =
+        state.lokalplaner[0]?.plannavn ?? state.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
+      const analyse = await runByggeanalyse({
+        data: {
+          token: session.access_token,
+          byggeoenske: state.byggeoenske,
+          lokalplanExtract: state.lokalplanExtract,
+          bbr: bbrData,
+          lokalplanNavn: lpNavn,
+          kommuneplanramme: state.kommuneplanramme,
+          lokalplaner: state.lokalplaner,
+          municipality: address.kommune ?? "",
+          kommunekode: address.kommunekode ?? "",
+        },
+      });
+      setByggeanalyseResultat(analyse);
+      syncPatch({ byggeanalyseResultat: analyse });
+    } catch (e) {
+      logger.warn("[Cockpit] manuel AI-analyse fejlede:", e);
+    } finally {
+      setIsRecomputing(false);
+    }
+  }, [bbrData, address, setByggeanalyseResultat]);
+
   useEffect(() => {
     if (restorePhase !== "checked") return;
     if (bbrData && complianceDone) {
