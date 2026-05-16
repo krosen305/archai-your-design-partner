@@ -1,144 +1,144 @@
-## Diagnose — hvad der er galt visuelt
+## Diagnose — hvorfor cockpittet føles cluttet
 
-`AnalyseTab` er i dag en lodret mega-stak hvor alt skriger om opmærksomhed samtidig:
+Selv efter sidste refaktor render `AnalyseTab` stadig **fire parallelle "sandheds-overflader"** under hinanden:
 
-```text
-┌─ adresse-linje
-├─ ComplianceFeed         ← risiko-tidslinje
-├─ RiskOverview           ← 5 risiko-kort  ╲
-├─ AiDesignHero           ← AI-billede      ╲ tre "hero"-blokke i træk
-├─ "KØR AI-ANALYSE"-knap   ╱
-├─ Cockpit (3-kolonne)    ← det egentlige design-arbejdsrum (skjult midt på siden)
-│   ├─ Byggeønsker accordion + ModeToggle
-│   ├─ Matrikel-canvas
-│   └─ CompliancePanel    ← endnu en risiko-overflade
-├─ "BYGNING FUNDET" badge
-├─ 3 metric-kort  (bebyggelses%, etager, anvendelse)
-├─ 3 metric-kort  (max areal, rest areal, max højde)
-├─ ByggeanalyseKort       ← endnu en risiko-overflade (AI-version)
-├─ Lokalplaner-kort
-├─ SaveSektion / GeusRisiko / Terrain / Servitutter / Fjernvarme / Naboer
-├─ "Vis Økonomi →" CTA   ← wizard-tankegang i et tab-system
-└─ to sekundære knapper
-```
+1. `Cockpit` (3-kolonne workspace) → indeholder allerede sin egen `CompliancePanel` til højre
+2. `ComplianceFeed` (kronologisk feed)
+3. `RiskOverview` (5 risikokategorier)
+4. `DetailsAccordion` (7 sektioner: AI byggeanalyse, AI design, lokalplaner, geus, terræn, servitutter, fjernvarme, naboer)
 
-Konsekvenser:
-- **Fire overlappende compliance-overflader** (ComplianceFeed, RiskOverview, CompliancePanel, ByggeanalyseKort) viser i vid udstrækning samme flag.
-- **To Mode-toggles med to kilder**: TopBar bruger `useCockpitMode` (sessionStorage), Cockpit-venstrepanel bruger `cockpitMode` fra `project-store`. De er ikke i sync.
-- **To byggeønsker-accordions** i samme route (FreeByggeoenskeAccordion + Cockpit/ByggeoenskeAccordion).
-- Den faktiske "design dit hus + få instant feedback"-arbejdsflade (3-kolonne Cockpit) er begravet under tre hero-blokke og overskygges af 6+ metric-kort + 6+ detail-sektioner under sig.
-- "Vis Økonomi →"-CTA underminerer fane-systemet og giver indtryk af lineær wizard.
+Plus: HardStopBanner i toppen, tabs, AI-genberegn-knap, navigations-row med 3 CTAs.
 
-## Nyt princip — ét arbejdsrum, én risiko-overflade
+På 1160px viewport (brugerens aktuelle bredde) presses 3-kolonne workspace + 3 stablede compliance-views = >2000px scroll før brugeren ser et eneste designvalg. Resultatet er at "design huset og se instant feedback" — produktets kerneløfte — drukner.
 
-Kerneopgaven er: **justér byggeønske → se kritisk forhold ændre sig live**. Alt andet er sekundært eller hører til andre tabs.
+**Rod-årsagen er ikke for meget data — det er at hver datakilde har fået sin egen sektion i stedet for at blive sorteret efter brugerens intention.**
 
-Vi bygger AnalyseTab op om **ét, fuld-viewport workspace** med tre samtidige paneler — og rydder op overalt udenom.
+## Designprincipper (forankret i brugerrejsen)
 
-## Den nye AnalyseTab — layout
+Fra `docs/domain/journey-demolition-new-build.md` + Builder's Cockpit faser:
+
+- **Phase 4-6 (pre-purchase, due-diligence mode)**: Brugeren vil vide ét: *"Er der hard stops? Kan jeg overhovedet bygge her?"* — alt andet er støj.
+- **Phase 7-8 (design + iteration)**: Brugeren ændrer byggeønsker og vil se *delta* (grøn/rød indikator) — ikke en rapport.
+- **Dybdedata** (servitutter, geoteknik, naboer, fjernvarme, lokalplan-PDF'er) er **dokumentation** — vigtig at have, men sjælden at åbne. Skal være ét klik væk, ikke i hovedflowet.
+
+Derfor: **én primær flade, ikke fire**. Mode bestemmer hierarki.
+
+## Ny AnalyseTab — layout
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  [adresse]  ·  Hasselvej 48, 2830 Virum                            [● live]  │
-│  HARD-STOP-BAR (kun hvis hard_stop=true — fuld bredde, rød)                  │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ DIT HUS              │  MATRIKEL               │  LIVE FEEDBACK              │
-│ (byggeønsker)        │  (canvas + nøgletal)    │  (kritiske forhold)         │
-│                      │                         │                             │
-│ Mode: ◉ Køb ○ Design │   ┌──── kort ────┐      │  ⚠ Fredning · SAVE 3        │
-│                      │   │   matrikel   │      │     Dispensation kræves     │
-│ ▾ Grundlæggende  3/4 │   │   bygning    │      │     → Slots- & Kultur       │
-│   Byggetype          │   │   nabo-skel  │      │  ⚠ Bebyggelses%: 41 / 35    │
-│   Areal     ████ 180 │   └──────────────┘      │     +6% over rammen         │
-│   Etager        ▒▒ 2 │                         │  ⚠ Etager: 2 / 1.5          │
-│   Stil               │   Bebyggelse  41 % ▓▓░  │  ✓ Strandbeskyttelse N/A    │
-│ ▸ Materialer         │   Etager       2  / 1½  │  ✓ Geoteknik OK             │
-│ ▸ Energi             │   Areal      180  m²    │  ✓ Naboafstand 4.2 m        │
-│ ▸ Inspiration        │   Højde       8.5 m     │                             │
-│                      │                         │  ─────────────────────────  │
-│                      │                         │  Vis 5 risikokategorier ▾   │
-│                      │                         │  Vis AI-analyse ▾           │
-│                      │                         │  Vis lokalplan-uddrag ▾     │
-└──────────────────────────────────────────────────────────────────────────────┘
-   Detaljer (foldet sammen) ▾   Save · Geoteknik · Terræn · Servitutter · Fjernvarme · Naboer
+┌────────────────────────────────────────────────────────────────────────────┐
+│  ◀ Tilbage     Hasselvej 48 · 2820 Gentofte    [DD-mode/Design-mode pill] │
+│  ──────────────────────────────────────────────────────────────────────────│
+│  [ANALYSE]  EJENDOM  ØKONOMI                                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│  STATUS-STRIBE (full bredde, 56px høj)                                    │
+│  🔴 1 Hard Stop  ·  🟠 2 advarsler  ·  🟢 8 OK     [Vis alle 11 →]        │
+├──────────────────────────────┬─────────────────────────────────────────────┤
+│  VENSTRE: DESIGN-INTENT      │  HØJRE: LIVE FEEDBACK                      │
+│  (380px fast)                │  (fluid, fylder resten)                    │
+│                              │                                            │
+│  Mode-toggle [Køb|Design]    │  ┌─ MATRIKEL-CANVAS (16:10) ──────────┐   │
+│                              │  │  Kort + footprint + nabo-afstande  │   │
+│  Byggeønsker accordion       │  │  Inline gauges overlay:            │   │
+│  (22 trin, grupperet)        │  │  bebyggelse 18%/30%  etager 1/2    │   │
+│                              │  └─────────────────────────────────────┘   │
+│  Totalpris-estimat (sticky)  │                                            │
+│                              │  RISIKO-FEED (max 6 synlige)              │
+│                              │  🔴 SAVE 4 – nedrivning kræver §14        │
+│                              │  🟠 Bebyggelse 92% af max                 │
+│                              │  🟠 Nabo 2.1 m – brandkrav BR18 §126      │
+│                              │  🟢 Ingen strandbeskyttelse               │
+│                              │  [Vis 7 flere flag →]  [Detaljer →]       │
+└──────────────────────────────┴─────────────────────────────────────────────┘
+                              [↳ Klik "Detaljer" åbner side-drawer:
+                               AI byggeanalyse, lokalplaner, geus,
+                               terræn, servitutter, fjernvarme, naboer,
+                               AI-design visualisering]
 ```
 
-Tre paneler, samme højde, ingen lodret stak ovenover. Det føles som et cockpit, ikke en lang side.
+### Hvad forsvinder fra hovedfladen
 
-### Højre panel — den ENE samlede risiko-overflade
+| Element                  | Hvor flytter det hen                                          |
+| ------------------------ | ------------------------------------------------------------- |
+| 3-kolonne Cockpit-grid   | Kollapses til 2-panel (venstre design / højre feedback)       |
+| `CompliancePanel`        | Smelter ind i `RisikoFeed` (kun ét compliance-objekt)         |
+| `ComplianceFeed`         | Smelter ind i `RisikoFeed`                                    |
+| `RiskOverview`           | Smelter ind i `RisikoFeed` (kategorier vises som filtre)      |
+| `DetailsAccordion`       | Flyttes til side-drawer (`Sheet`) udløst af "Detaljer →"      |
+| "GENBEREGN" CTA          | Bliver til lille ikon-knap i status-stribe                    |
+| AI-byggeanalyse fritekst | I drawer, ikke i hovedflow                                    |
+| HardStopBanner           | Erstattes af status-stribe (Hard Stops vises som røde flag)   |
+| 3-CTA navigations-row    | Reduceres til én primær "ØKONOMI →" i bunden af venstre panel |
 
-I dag har vi fire steder hvor compliance vises. De smeltes sammen til **én prioriteret feed** øverst i højre panel:
+### Nye komponenter
 
-1. **Hard stops** (rødt, øverst — fredning, strandbeskyttelse, fredskov, klitfredning).
-2. **Brud på kvantitative grænser** (bebyggelses%, etager, højde — viser delta direkte: "41% / 35% — +6%").
-3. **Advarsler** (SAVE 4–5, naboafstand, terræn-hældning, geoteknik).
-4. **OK** (grøn, skjult bag "Vis 8 grønne flag" hvis brugeren vil se dem).
+- `StatusStripe` — full-bredde sammenfattende stribe (Hard Stop count, advarsler, OK). Erstatter `HardStopBanner` og er det første brugeren ser efter tab-skift.
+- `RisikoFeed` — én sorteret feed (severity desc), kategori-filterpills i top (Hard Stop, plan, geoteknik, naboer, forsyning, fredning). Default: kun severity≥warning vises, OK skjult bag toggle. Hver flag har: ikon, titel, kilde-badge, og "Læs mere" der dybde-linker til drawer.
+- `MatrikelCanvasV2` — eksisterende `MatrikelMap` med overlejret **inline gauge-strip** i bunden (4 mikro-gauges: bebyggelse, etager, areal, højde). Erstatter behovet for separat metric-grid.
+- `DetailsDrawer` — `Sheet` (shadcn) der åbner fra højre med eksisterende `DetailsAccordion`-indhold. Default lukket. Dyb-linkbar via URL `?details=ai-byggeanalyse`.
 
-Hver række har ét tag der peger på myndighed/kilde. Når brugeren ændrer et byggeønske, animeres rækken (samme `AnimatedNumber`-mønster vi allerede har), så ændringen er synlig.
+### Mode-styret hierarki
 
-**Fjernes / smeltes ind i feedet:**
-- `ComplianceFeed` (eksisterende komponent — flytter sin sortering ind i den nye feed).
-- `RiskOverview` (5 risikokort) — bliver til en foldbar undersektion under feedet ("Vis 5 risikokategorier") for dem der vil have hele kategorisynet.
-- `CompliancePanel` (i nuværende `Cockpit/index.tsx`) — erstattes helt af det nye højre-panel.
-- `ByggeanalyseKort` — bliver til en foldbar "Vis AI-analyse" under feedet (LLM-output er sekundært til hårde regler).
+`useCockpitMode()` (eksisterer allerede) bestemmer hvad der får visuel vægt:
 
-### Midter-panel — matrikel + nøgletal
+- **Køb-mode (due-diligence)**: `StatusStripe` + `RisikoFeed` bliver primær flade; venstre byggeønsker-panel kollapses til "INTENT-OVERSIGT" (read-only summary). Canvas viser kun matrikel + restriktionslag.
+- **Design-mode**: Venstre byggeønsker-accordion ekspanderes; canvas viser footprint-preview; `RisikoFeed` viser kun delta-flags der ændrer sig ved brugerens valg.
 
-Beholder `MatrikelCanvas` (kortet er stærkt). De seks `MetricCard`-rækker under siden kollapses til **fire kompakte tal-rækker** lige under kortet:
+Dette løser den uudtalte konflikt: i dag prøver UI'et at gøre begge ting samtidigt for begge brugertyper.
 
-- Bebyggelse: `41% / 35%` (delta-farvet)
-- Etager: `2 / 1½`
-- Areal: `180 m² / 165 m²`
-- Højde: `8.5 m / 8.5 m`
+### Responsivt fald-tilbage
 
-Ingen separate Card-bokse — bare typografi i samme panel. "Bygning fundet"-badge fjernes (status er implicit når data vises).
+- ≥1280px: 2-panel som ovenfor
+- 1024–1279px (brugerens viewport): venstre panel bliver 320px, canvas bevarer 16:10
+- <1024px: stack vertikalt — `StatusStripe` → canvas → byggeønsker → `RisikoFeed`. Drawer bliver bottom-sheet.
 
-### Venstre panel — byggeønsker
+## Tekniske ændringer
 
-Beholder `ByggeoenskeAccordion` stort set som den er. Mode-toggle bliver i TopBar (vi har den der allerede via `ModeIndicator`) — den dublerede `ModeToggle` i venstrepanelet fjernes, og `cockpitMode`-felt i `project-store` udfases til fordel for den centrale `useCockpitMode`-hook.
+**Nye filer:**
 
-Den separate "KØR AI-ANALYSE"-knap flyttes ind i højre panels "Vis AI-analyse"-folde-sektion (som "Genberegn AI-vurdering").
+- `src/components/cockpit/StatusStripe.tsx` — full-bredde severity-summary
+- `src/components/cockpit/RisikoFeed.tsx` — sammensmeltning af `ComplianceFeed` + `RiskOverview` + `CompliancePanel`-indhold
+- `src/components/cockpit/MatrikelCanvasV2.tsx` (eller udvid eksisterende) — canvas med overlejret gauge-strip
+- `src/components/cockpit/DetailsDrawer.tsx` — `Sheet`-wrapper omkring eksisterende `DetailsAccordion`
 
-### Under workspacet — detaljer foldet ned
+**Ændrede filer:**
 
-`SaveSektion`, `GeusRisikoSektion`, `TerrainSektion`, `ServitutterSektion`, `FjernvarmeSektion`, `NaboerSektion`, `Lokalplaner`-kort flyttes ned under workspacet i en enkelt **"Detaljer"-accordion** med 7 sektioner. De er reference-data — ikke noget brugeren behøver se for at designe.
+- `src/routes/projekt.$id.cockpit.tsx` — `AnalyseTab` skæres fra ~260 til ~80 linjer, alle dybdedata-sektioner flyttes til drawer
+- `src/components/cockpit/index.tsx` — `Cockpit`-grid ændres fra 3-kolonne til 2-kolonne; `CompliancePanel` deprecateres (logik flyttes ind i `RisikoFeed`); `ProjektDnaPanel` og `MatrikelCanvas` eksporteres uændret
+- `src/components/cockpit/ComplianceFeed.tsx` — bliver intern "brick" brugt af `RisikoFeed` (ikke længere standalone i route)
+- `src/components/cockpit/RiskOverview.tsx` — kategori-logik genbruges i `RisikoFeed`s filterpills, derefter slettes filen
 
-### CTA-knapper
+**Slettes:**
 
-"Vis Økonomi →" og "Ejendomsdetaljer →"-knapperne fjernes — de duplikerer fane-systemet i toppen. Kun "Projektparathed →" beholdes (den peger på en faktisk anden route).
+- `RiskOverview` (logik flyttet)
+- Standalone `ComplianceFeed`-brug i route (komponenten beholdes som brick)
+- `HardStopBanner` hvis dens info dækkes 100% af `StatusStripe` (verificeres før sletning)
 
-## Oprydning udenfor AnalyseTab
+**Uberørt:**
 
-- **Mode-state**: én kilde (`useCockpitMode`). Slet `cockpitMode` + `setCockpitMode` fra `project-store.ts` og `ModeToggle`-komponenten i `cockpit/index.tsx`.
-- **Free design**: `FreeByggeoenskeAccordion` i `projekt.$id.cockpit.tsx` erstattes af samme `ByggeoenskeAccordion` som workspacet bruger — ét accordion-mønster, ikke to.
-- **Due-diligence-banner** (gul stribe øverst når mode=køb) reduceres til en lille pille i TopBar — den fylder hele bredden i dag og presser arbejdsrummet ned.
-- **`Cockpit`-komponenten** (`src/components/cockpit/index.tsx`) refaktoreres så den eksporterer de tre paneler hver for sig (`ProjektDnaPanel`, `MatrikelCanvas`, `LiveFeedbackPanel`) i stedet for ét hardcodet 3-kolonne grid — så AnalyseTab kan layoute dem direkte uden et indlejret grid-i-grid.
+- `analysis-orchestrator`, `rule-engine`, `compliance-engine`, `project-store`, `project-persistence` — kun præsentation ændres, ingen domænelogik.
+- `EjendomPanel` og `OekonomiPanel` — andre tabs forbliver som de er.
+- `useCockpitMode` — bruges som er.
 
-## Nye/ændrede filer
+## Verifikation før færdig
 
-| Fil | Ændring |
-|---|---|
-| `src/routes/projekt.$id.cockpit.tsx` | AnalyseTab skrives om til 3-panel layout + foldbar detaljer-sektion. ~400 linjer fjernes. |
-| `src/components/cockpit/index.tsx` | Eksportér `ProjektDnaPanel`, `MatrikelCanvas`, `LiveFeedbackPanel` separat. Fjern intern 3-kol grid og ModeToggle. |
-| `src/components/cockpit/LiveFeedbackPanel.tsx` | **Ny** — den ene samlede risiko-overflade (smelter ComplianceFeed + CompliancePanel + RiskOverview + ByggeanalyseKort sammen). |
-| `src/components/cockpit/ComplianceFeed.tsx` | Beholdes som intern brick i LiveFeedbackPanel; ikke længere selvstændig hero. |
-| `src/components/cockpit/RiskOverview.tsx` | Bliver `<RiskCategoriesAccordion />` brugt foldet inde i LiveFeedbackPanel. |
-| `src/components/cockpit/DetailsAccordion.tsx` | **Ny** — samler Save/Geus/Terrain/Servitutter/Fjernvarme/Naboer/Lokalplaner i én foldbar boks. |
-| `src/lib/project-store.ts` | Slet `cockpitMode` / `setCockpitMode` (kun `useCockpitMode` bruges nu). |
-| `src/components/wizard-chrome.tsx` | TopBar's `ModeIndicator` får en lille "DD"-pille når mode=køb (erstatter gul fuld-bredde-banner). |
+- `bunx tsc --noEmit` 0 errors
+- `bun test` 0 failures
+- `bunx eslint .` 0 errors
+- Manuel: 1024px, 1280px, 1440px viewports — ingen overflow, drawer åbner korrekt, `?details=…` dybdelink virker
+- Manuel: skift Køb↔Design mode — hierarki ændres synligt
 
-Ingen ændringer i: orchestrator, rule-engine, project-store data-felter (kun mode-feltet droppes), server functions, integrations.
+## Risici
 
-## Verifikation
+- `RisikoFeed` skal håndtere fraværende data nådigt (hvis `geusRisk` mangler skal kategorien bare ikke vises). Vi har allerede mønstret i `ComplianceFeed`.
+- Drawer-pattern er nyt i cockpittet — kræver én ny shadcn-komponent (`sheet.tsx` er allerede installeret).
+- Vi rører ikke `project-store.ts` eller orchestratoren, så ingen "beskyttet fil"-flag.
 
-- `bunx tsc --noEmit` 0 fejl
-- `bun test` 0 fejl
-- Visuel QA på `/projekt/{id}/cockpit?tab=analyse` ved 1160×708 viewport (brugerens nuværende): tre paneler synlige uden scroll, hard-stop banner kun ved aktivt hard stop, detaljer foldet ned.
-- Manuel: justér "antalEtager" fra 1 til 3 i venstre panel → se "Etager 3 / 1½" pulse rødt i midter-panel og en ny række pop op i højre panel højest øverst.
+## Forslået rækkefølge
 
-## Hvad jeg IKKE rører
-
-- Datapipeline (`analysis-orchestrator`, `pre-check-adresse`, `reactive-compliance`).
-- Rule-engine.
-- `project-persistence` / typede compliance-kolonner.
-- Andre tabs (Ejendom, Økonomi) — kun Analyse refaktoreres nu.
+1. Byg `StatusStripe` + `RisikoFeed` isoleret, drop dem ind under eksisterende workspace (verificer at de erstatter ComplianceFeed+RiskOverview+CompliancePanel komplet)
+2. Slet de tre gamle compliance-overflader fra route
+3. Byg `DetailsDrawer`, flyt `DetailsAccordion`-indhold ind
+4. Refaktor `Cockpit`-grid fra 3→2 kolonner, integrér gauge-strip i canvas
+5. Mode-styret hierarki (Køb vs Design vægt)
+6. Responsiv finpudsning + verifikation
