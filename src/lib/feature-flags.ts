@@ -15,4 +15,6 @@ export const FEATURE_FLAGS = {
   byggeanalyseMock: false,
   /** Fjernvarme — live via Plandata WFS pdk:theme_pdk_varmeplansomraade_vedtaget_v (ARCH-111). */
   fjernvarmeMock: false,
+  /** Billedanalyse via Claude Haiku vision (ARCH-189). False = live. */
+  billedanalyseMock: false,
 } as const;
