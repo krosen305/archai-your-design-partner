@@ -22,6 +22,8 @@ type ParcelFeatureCollection = GeoJSON.FeatureCollection | null;
 
 export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
   const { address, complianceFlags, setAddress } = useProject();
+  const geo = address?.centroid ?? address?.koordinater ?? null;
+  const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("ol/Map").default | null>(null);
   const parcelSourceRef = useRef<import("ol/source/Vector").default | null>(null);
@@ -60,9 +62,9 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
   const minBoundaryDistance = address?.minDistanceToBoundaryM ?? null;
   const buildingArea =
     address?.footprintAreaM2 ?? bbr?.bebygget_areal ?? metrics?.currentBygningsareal ?? null;
-  const hasAddress = Boolean(address?.centroid);
-  const baseCenter: [number, number] = address?.centroid
-    ? [address.centroid.lng, address.centroid.lat]
+  const hasAddress = hasValidGeo;
+  const baseCenter: [number, number] = geo
+    ? [geo.lng, geo.lat]
     : [10, 56];
 
   useEffect(() => {
@@ -70,16 +72,16 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
   }, [address?.rotationDeg]);
 
   useEffect(() => {
-    if (!address?.centroid) return;
-    initialCenterRef.current = [address.centroid.lng, address.centroid.lat];
-    footprintCenterRef.current = [address.centroid.lng, address.centroid.lat];
-  }, [address?.adresseid, address?.centroid?.lat, address?.centroid?.lng]);
+    if (!geo) return;
+    initialCenterRef.current = [geo.lng, geo.lat];
+    footprintCenterRef.current = [geo.lng, geo.lat];
+  }, [address?.adresseid, geo?.lat, geo?.lng]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadGeometry() {
-      if (!address?.centroid) {
+      if (!geo) {
         setParcelGeojson(null);
         setPreviewImage(null);
         setParcelStatus("idle");
@@ -91,7 +93,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
       try {
         const geometry = await loadParcelGeometry({
           data: {
-            point: address.centroid,
+            point: geo,
             bufferMeters: 180,
           },
         });
@@ -102,7 +104,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
 
         const preview = await loadParcelPreview({
           data: {
-            point: address.centroid,
+            point: geo,
             bufferMeters: 220,
           },
         });
@@ -135,8 +137,8 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
     };
   }, [
     address?.adresseid,
-    address?.centroid?.lat,
-    address?.centroid?.lng,
+    geo?.lat,
+    geo?.lng,
     loadParcelGeometry,
     loadParcelPreview,
   ]);
@@ -369,7 +371,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
 
       const center =
         footprintCenterRef.current ??
-        (address?.centroid ? [address.centroid.lng, address.centroid.lat] : [10, 56]);
+        (geo ? [geo.lng, geo.lat] : [10, 56]);
       const center3857 = fromLonLat(center as [number, number]);
       const area = Math.max(28, buildingArea ?? 60);
       const side = Math.sqrt(area);
@@ -394,7 +396,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
     return () => {
       cancelled = true;
     };
-  }, [address?.centroid?.lat, address?.centroid?.lng, buildingArea, rotationDeg]);
+  }, [geo?.lat, geo?.lng, buildingArea, rotationDeg]);
 
   const updateRotation = (value: number) => {
     setRotationDeg(value);
@@ -409,7 +411,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
     const nextAddress = {
       ...address,
       centroid:
-        address.centroid ??
+        geo ??
         (initialCenterRef.current
           ? { lat: initialCenterRef.current[1], lng: initialCenterRef.current[0] }
           : null),
