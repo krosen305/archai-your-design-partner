@@ -109,12 +109,17 @@ function RootComponent() {
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("projectId")
         : null;
+    const selectedAddressId =
+      typeof window !== "undefined"
+        ? window.location.pathname.match(/^\/projekt\/([^/]+)\/cockpit$/)?.[1]
+        : null;
+    const restoreAddressId = selectedAddressId && selectedAddressId !== "frit" ? selectedAddressId : null;
 
     if (selectedProjectId) {
       setCurrentProjectId(selectedProjectId);
     }
 
-    restoreProject(selectedProjectId).then((project) => {
+    restoreProject(selectedProjectId, restoreAddressId).then((project) => {
       if (!project) return;
       setCurrentProjectId(project.id);
       if (project.address_full && project.address_bbr) {

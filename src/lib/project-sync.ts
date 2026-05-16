@@ -21,10 +21,10 @@ export const serverSaveProject = createServerFn({ method: "POST" })
   });
 
 export const serverLoadProject = createServerFn({ method: "POST" })
-  .inputValidator((data: { accessToken: string; projectId?: string | null }) => data)
+  .inputValidator((data: { accessToken: string; projectId?: string | null; addressId?: string | null }) => data)
   .handler(async ({ data }): Promise<PersistedProject | null> => {
     const { loadProject } = await import("@/integrations/supabase/project-persistence");
-    return loadProject(data.accessToken, data.projectId);
+    return loadProject(data.accessToken, data.projectId, data.addressId);
   });
 
 async function getAccessToken(): Promise<string | null> {
@@ -55,17 +55,20 @@ const restoreCache = new Map<
   { promise: Promise<PersistedProject | null>; ts: number }
 >();
 
-export async function restoreProject(projectId?: string | null): Promise<PersistedProject | null> {
+export async function restoreProject(
+  projectId?: string | null,
+  addressId?: string | null,
+): Promise<PersistedProject | null> {
   const accessToken = await getAccessToken();
   if (!accessToken) return null;
-  const cacheKey = `${accessToken}::${projectId ?? ""}`;
+  const cacheKey = `${accessToken}::${projectId ?? ""}::${addressId ?? ""}`;
   const cached = restoreCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < RESTORE_CACHE_TTL_MS) {
     return cached.promise;
   }
   const promise = (async () => {
     try {
-      return await serverLoadProject({ data: { accessToken, projectId } });
+      return await serverLoadProject({ data: { accessToken, projectId, addressId } });
     } catch (e) {
       logger.warn("[ProjectSync] gendan fejlede:", (e as Error).message);
       return null;

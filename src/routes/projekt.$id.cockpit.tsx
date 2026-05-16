@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -23,6 +23,7 @@ import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { FbbResultat } from "@/integrations/fbb/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import type { ByggeanalyseInput, ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
@@ -150,14 +151,32 @@ type CockpitTab = "analyse" | "ejendom" | "oekonomi";
 
 const VALID_TABS: readonly CockpitTab[] = ["analyse", "ejendom", "oekonomi"];
 
+function routeMatchesAddress(
+  currentAddress: { adresseid?: string | null; adgangsadresseid?: string | null } | null,
+  routeAddressId: string,
+) {
+  return (
+    !!currentAddress &&
+    (currentAddress.adresseid === routeAddressId || currentAddress.adgangsadresseid === routeAddressId)
+  );
+}
+
+function objectField<T>(value: unknown, key: string): T | null {
+  if (typeof value !== "object" || value === null) return null;
+  const field = (value as Record<string, unknown>)[key];
+  return typeof field === "object" && field !== null ? (field as T) : null;
+}
+
 export const Route = createFileRoute("/projekt/$id/cockpit")({
   component: CockpitPage,
   validateSearch: (search: Record<string, unknown>) => {
     const tab = search.tab;
+    const projectId = search.projectId;
     return {
       tab: typeof tab === "string" && (VALID_TABS as readonly string[]).includes(tab)
         ? (tab as CockpitTab)
         : ("analyse" as CockpitTab),
+      projectId: typeof projectId === "string" && projectId.trim() ? projectId : undefined,
     };
   },
 });
@@ -430,17 +449,17 @@ function FreeBudgetEstimat() {
 
 function CockpitContent({ adresseId }: { adresseId: string }) {
   const navigate = useNavigate();
-  const { tab: activeTab } = Route.useSearch();
+  const { tab: activeTab, projectId: searchProjectId } = Route.useSearch();
   const setActiveTab = useCallback(
     (next: CockpitTab) => {
       navigate({
         to: "/projekt/$id/cockpit",
         params: { id: adresseId },
-        search: { tab: next },
+        search: { tab: next, projectId: searchProjectId },
         replace: false,
       });
     },
-    [navigate, adresseId],
+    [navigate, adresseId, searchProjectId],
   );
   const [mode, setMode] = useCockpitMode();
 
@@ -449,6 +468,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     bbrData,
     byggeoenske,
     complianceMetrics,
+    lokalplaner,
     vurderingData,
     complianceDone,
     currentProjectId,
@@ -465,42 +485,43 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     byggeanalyseResultat,
   } = useProject();
 
-  const [status, setStatus] = useState<Status>(bbrData && complianceDone ? "done" : "loading");
+  const [status, setStatus] = useState<Status>(
+    routeMatchesAddress(address, adresseId) && bbrData && complianceDone ? "done" : "loading",
+  );
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>([]);
+  const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>(() =>
+    routeMatchesAddress(useProject.getState().address, adresseId)
+      ? useProject.getState().lokalplaner
+      : [],
+  );
   const [geusRiskLocal, setGeusRiskLocal] = useState<GeusRiskData | null>(null);
   const [servitutterLocal, setServitutterLocal] = useState<TinglysningResult | null>(null);
   const [terrainLocal, setTerrainLocal] = useState<TerrainData | null>(null);
   const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
   const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
-  const [fbbDataLocal, setFbbDataLocal] = useState<
-    import("@/integrations/fbb/client").FbbResultat | null
-  >(null);
+  const [fbbDataLocal, setFbbDataLocal] = useState<FbbResultat | null>(null);
   const [naturbeskyttelsesLocal, setNaturbeskyttelsesLocal] =
     useState<NaturbeskyttelsesResultat | null>(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const [restorePhase, setRestorePhase] = useState<"pending" | "checked">(
-    address?.adresseid ? "checked" : "pending",
+    routeMatchesAddress(address, adresseId) ? "checked" : "pending",
   );
+  const analysisStartedRef = useRef(false);
 
   // ARCH-restore: hvis vi lander direkte på cockpit-URL'en (fx via klik på et
   // eksisterende projekt fra /projekt/start), så har Zustand-state ikke nået at
   // gendanne adressen endnu. Hent projekt-data via projectId fra URL eller
   // currentProjectId, og populer store FØR vi evt. redirecter til /projekt/adresse.
   useEffect(() => {
-    if (address?.adresseid) {
+    if (routeMatchesAddress(address, adresseId)) {
       setRestorePhase("checked");
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const urlProjectId =
-          typeof window !== "undefined"
-            ? new URLSearchParams(window.location.search).get("projectId")
-            : null;
-        const pid = urlProjectId ?? useProject.getState().currentProjectId;
-        const project = await restoreProject(pid);
+        const pid = searchProjectId ?? null;
+        const project = await restoreProject(pid, adresseId);
         if (cancelled) return;
         if (project?.address_full && project?.address_bbr) {
           const store = useProject.getState();
@@ -529,11 +550,21 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             if (cd.bbr) store.setBbrData(cd.bbr);
             store.setComplianceFlags(cd.flags);
             store.setLokalplaner(cd.lokalplaner);
+            setLokalplanerLocal(cd.lokalplaner);
             if (cd.kommuneplanramme) store.setKommuneplanramme(cd.kommuneplanramme);
             if (cd.byggeanalyseResultat) store.setByggeanalyseResultat(cd.byggeanalyseResultat);
             if (cd.vurderingData) store.setVurderingData(cd.vurderingData);
             if (project.compliance_done) store.setComplianceDone(true);
           }
+          setGeusRiskLocal(objectField<GeusRiskData>(project.compliance_data, "geusRisk"));
+          setServitutterLocal(objectField<TinglysningResult>(project.compliance_data, "servitutter"));
+          setTerrainLocal(objectField<TerrainData>(project.compliance_data, "terrain"));
+          setFjernvarmeLocal(objectField<FjernvarmeResultat>(project.compliance_data, "fjernvarme"));
+          setNaboerLocal(objectField<NeighborBuildingData>(project.compliance_data, "naboer"));
+          setFbbDataLocal(objectField<FbbResultat>(project.compliance_data, "fbbData"));
+          setNaturbeskyttelsesLocal(
+            objectField<NaturbeskyttelsesResultat>(project.compliance_data, "naturbeskyttelse"),
+          );
           if (project.heritage_save_value != null)
             store.setHeritageSaveValue(project.heritage_save_value);
           if (project.is_fredet != null) store.setIsFredet(project.is_fredet);
@@ -587,17 +618,26 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
   useEffect(() => {
     if (restorePhase !== "checked") return;
-    if (bbrData && complianceDone) {
+    const currentAddress = useProject.getState().address;
+    if (bbrData && complianceDone && routeMatchesAddress(currentAddress, adresseId)) {
+      if (lokalplanerLocal.length === 0 && lokalplaner.length > 0) {
+        setLokalplanerLocal(lokalplaner);
+      }
       setStatus("done");
       return;
     }
 
     // Vent indtil restore har haft en chance for at populere address.
-    const currentAddress = useProject.getState().address;
     if (!currentAddress?.adresseid) {
       navigate({ to: "/projekt/adresse" });
       return;
     }
+    if (!routeMatchesAddress(currentAddress, adresseId)) {
+      navigate({ to: "/projekt/adresse" });
+      return;
+    }
+    if (analysisStartedRef.current) return;
+    analysisStartedRef.current = true;
 
     const MIN_LOADING_MS = 2800;
     const startTime = Date.now();
@@ -693,7 +733,25 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           }, remaining);
         });
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    adresseId,
+    bbrData,
+    complianceDone,
+    lokalplaner,
+    lokalplanerLocal.length,
+    navigate,
+    restorePhase,
+    byggeanalyseResultat,
+    setBbrData,
+    setComplianceDone,
+    setComplianceFlags,
+    setComplianceMetrics,
+    setKommuneplanramme,
+    setLokalplanExtract,
+    setLokalplaner,
+    setPhase,
+    setVurderingData,
+  ]);
 
   return (
     <PageTransition>
@@ -710,6 +768,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           <ErrorView
             message={fetchError ?? "Ukendt fejl."}
             onRetry={() => {
+              analysisStartedRef.current = false;
               setFetchError(null);
               setBbrData(null);
               setComplianceDone(false);
