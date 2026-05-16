@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -23,6 +23,7 @@ import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { FbbResultat } from "@/integrations/fbb/client";
 import type { Lokalplan } from "@/integrations/plandata/client";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import type { ByggeanalyseInput, ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
@@ -150,14 +151,32 @@ type CockpitTab = "analyse" | "ejendom" | "oekonomi";
 
 const VALID_TABS: readonly CockpitTab[] = ["analyse", "ejendom", "oekonomi"];
 
+function routeMatchesAddress(
+  currentAddress: { adresseid?: string | null; adgangsadresseid?: string | null } | null,
+  routeAddressId: string,
+) {
+  return (
+    !!currentAddress &&
+    (currentAddress.adresseid === routeAddressId || currentAddress.adgangsadresseid === routeAddressId)
+  );
+}
+
+function objectField<T>(value: unknown, key: string): T | null {
+  if (typeof value !== "object" || value === null) return null;
+  const field = (value as Record<string, unknown>)[key];
+  return typeof field === "object" && field !== null ? (field as T) : null;
+}
+
 export const Route = createFileRoute("/projekt/$id/cockpit")({
   component: CockpitPage,
   validateSearch: (search: Record<string, unknown>) => {
     const tab = search.tab;
+    const projectId = search.projectId;
     return {
       tab: typeof tab === "string" && (VALID_TABS as readonly string[]).includes(tab)
         ? (tab as CockpitTab)
         : ("analyse" as CockpitTab),
+      projectId: typeof projectId === "string" && projectId.trim() ? projectId : undefined,
     };
   },
 });
