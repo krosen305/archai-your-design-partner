@@ -1,49 +1,45 @@
-## Problem
+## Diagnose
 
-I `src/routes/projekt.start.tsx` (linje 161-176) bruger `ProjektKort.handleFortsaet()` en for streng gate inden den navigerer til cockpittet:
+Det er ikke et preview-cache problem. Ruten bliver faktisk sendt til cockpittet først, men cockpit-komponenten redirecter straks tilbage til `/projekt/adresse`, fordi den lokale Zustand-state stadig ikke har nået at gendanne projektets adresse efter `reset()`.
 
-```ts
-if (harAdresse && projekt.adresse_dar_id &&
-    (COCKPIT_STEPS.has(projekt.current_step ?? "") || projekt.compliance_done)) {
-  navigate({ to: `/projekt/${adresse_dar_id}/cockpit` })
-} else if (harAdresse) {
-  navigate({ to: "/projekt/adresse" })   // ← bug: sender bruger tilbage til adressesøgning
-}
+Nuværende kæde:
+
+```text
+Klik “Fortsæt”
+→ reset() rydder address
+→ navigate('/projekt/{adresseId}/cockpit?projectId=...')
+→ CockpitContent mountes
+→ useEffect ser: address?.adresseid mangler
+→ redirect til /projekt/adresse
+→ root-restore når ofte først bagefter
 ```
 
-`current_step` defaulter til `"adresse"` (se `projects.current_step DEFAULT 'adresse'`), og opdateres først til en COCKPIT_STEPS-værdi (`boligoenske/ejendom/byggeanalyse/oekonomi`) hvis brugeren faktisk når dertil. `compliance_done` sættes først når analyse-pipeline er færdig. 
+Derfor ser du også nogle gange analyse/loading-skærmen lynhurtigt: cockpittet mountes kort, men mangler state eller starter analyse-flowet før restore er stabilt.
 
-Resultat: Et projekt hvor brugeren har valgt adresse men endnu ikke kørt analyse → klik på "Fortsæt" → ledes til `/projekt/adresse` i stedet for cockpittet. Det er forkert: cockpittet er selv ansvarlig for at køre analysen (orchestrator triggeres på mount), og brugeren har ingen grund til at gentage adresseindtastning.
+## Plan
 
-Det strider også mod AGENTS.md-reglen om at `current_step`-streng-enum ikke skal bruges til at drive navigation.
+1. **Gør projektkort-navigationen state-klar før navigation**
+   - Når brugeren klikker på et eksisterende projekt, skal vi ikke kun sætte `currentProjectId`.
+   - Vi skal også lægge projektets kendte adresse ind i `useProject()` med det samme, så cockpit ikke starter med tom `address`.
+   - Behold fallback: projekter uden adresse går stadig til `/projekt/adresse`.
 
-## Løsning
+2. **Fjern den tidlige cockpit-redirect-race**
+   - I `CockpitContent` skal `/projekt/$id/cockpit` ikke straks redirecte til adressefeltet, hvis `address` mangler, men der findes `projectId` i URL’en.
+   - I stedet skal den vente kort på restore, eller selv hente projektet via `restoreProject(projectId)` og sætte adressen.
+   - Først hvis projektet reelt ikke har en adresse efter restore, skal brugeren sendes til adressefeltet.
 
-Forenkl gaten i `ProjektKort.handleFortsaet()`:
+3. **Sørg for at cockpit bruger URL-adressen som fallback**
+   - Hvis route-parametret `$id` findes, og store-adressen mangler eller er fra et andet projekt, skal cockpit kunne bruge `$id` som den autoritative adresse-id under restore.
+   - Det forhindrer, at gammel state eller sen restore fra et andet projekt sender brugeren forkert.
 
-```ts
-if (projekt.adresse_dar_id) {
-  navigate({ to: `/projekt/${projekt.adresse_dar_id}/cockpit`, search });
-} else {
-  navigate({ to: "/projekt/adresse", search });
-}
-```
+4. **Bevar eksisterende analyse-cache adfærd**
+   - Hvis projektet allerede har `compliance_done` og `compliance_data`, skal cockpit vise eksisterende data fremfor at virke som om den henter alt igen.
+   - Hvis data mangler, må den køre analysen — men først efter korrekt projekt/adresse-state er på plads.
 
-- Har projektet en `adresse_dar_id` → altid direkte til cockpit (uanset compliance-status / current_step). Cockpittet håndterer selv loading + auto-run af analyse.
-- Ingen adresse endnu → adressesøgning som hidtil.
-
-Fjern også den nu ubrugte `COCKPIT_STEPS`-konstant (linje 148) for at fjerne tech debt jf. AGENTS.md.
-
-## Filer
-
-- `src/routes/projekt.start.tsx` — forenkl `handleFortsaet`, slet `COCKPIT_STEPS`.
-
-## Verifikation
-
-- `bunx tsc --noEmit` 0 fejl
-- Manuel: log ind, åbn et projekt med adresse men uden gennemført analyse → lander på `/projekt/{adresseid}/cockpit`.
-- Manuel: åbn et projekt uden adresse → lander stadig på `/projekt/adresse`.
-
-## Out of scope
-
-Cockpit-routen `/projekt/$id/cockpit` (path-param er `adresseid`, ikke project-UUID) fungerer som i dag og rapporteres ikke ramt af brugeren. Hvis vi senere vil rydde op i den dobbelte identitet (projekt-UUID vs. adresseid i URL'en), kræver det en separat arkitekturopgave.
+5. **Verification**
+   - Kontrollér TypeScript for de ændrede filer.
+   - Test flowet manuelt i preview:
+     - Logget ind på `/projekt/start`
+     - Klik eksisterende projekt med adresse
+     - Forventet: direkte til `/projekt/{adresseId}/cockpit?projectId={projectId}` uden tilbagefald til adressefeltet
+     - Ved analyse-cache: ingen unødvendig “henter data igen”-oplevelse, hvis data allerede findes.

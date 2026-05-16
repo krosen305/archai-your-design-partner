@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { useProject, deriveComplianceFlags } from "@/lib/project-store";
+import { useProject, deriveComplianceFlags, parseComplianceData } from "@/lib/project-store";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import { PageTransition, Card } from "@/components/wizard-ui";
@@ -479,68 +479,76 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   const [naturbeskyttelsesLocal, setNaturbeskyttelsesLocal] =
     useState<NaturbeskyttelsesResultat | null>(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
+  const [restorePhase, setRestorePhase] = useState<"pending" | "checked">(
+    address?.adresseid ? "checked" : "pending",
+  );
 
+  // ARCH-restore: hvis vi lander direkte på cockpit-URL'en (fx via klik på et
+  // eksisterende projekt fra /projekt/start), så har Zustand-state ikke nået at
+  // gendanne adressen endnu. Hent projekt-data via projectId fra URL eller
+  // currentProjectId, og populer store FØR vi evt. redirecter til /projekt/adresse.
   useEffect(() => {
-    if (!bbrData) return;
-    if (
-      geusRiskLocal ||
-      servitutterLocal ||
-      terrainLocal ||
-      fjernvarmeLocal ||
-      naboerLocal ||
-      fbbDataLocal ||
-      naturbeskyttelsesLocal
-    ) {
+    if (address?.adresseid) {
+      setRestorePhase("checked");
       return;
     }
-
+    let cancelled = false;
     (async () => {
-      const currentProjectId = useProject.getState().currentProjectId;
-      const persisted = await restoreProject(currentProjectId);
-      if (!persisted) return;
-
-      // ARCH-164: typede kolonner er ground truth — læses uafhængigt af JSONB
-      const store = useProject.getState();
-      if (persisted.heritage_save_value != null)
-        store.setHeritageSaveValue(persisted.heritage_save_value);
-      if (persisted.is_fredet != null) store.setIsFredet(persisted.is_fredet);
-      store.setHardStop(persisted.hard_stop ?? false, persisted.hard_stop_reason ?? null);
-
-      // JSONB fallback for felter uden typede kolonner (geusRisk, terrain, naboer, etc.)
-      const complianceData =
-        persisted.compliance_data && typeof persisted.compliance_data === "object"
-          ? (persisted.compliance_data as Record<string, unknown>)
-          : null;
-      if (!complianceData) return;
-
-      setGeusRiskLocal((complianceData.geusRisk as GeusRiskData | null) ?? null);
-      setServitutterLocal((complianceData.servitutter as TinglysningResult | null) ?? null);
-      setTerrainLocal((complianceData.terrain as TerrainData | null) ?? null);
-      setFjernvarmeLocal((complianceData.fjernvarme as FjernvarmeResultat | null) ?? null);
-      setNaboerLocal((complianceData.naboer as NeighborBuildingData | null) ?? null);
-      setFbbDataLocal(
-        (complianceData.fbbData as import("@/integrations/fbb/client").FbbResultat | null) ?? null,
-      );
-      setNaturbeskyttelsesLocal(
-        (complianceData.naturbeskyttelse as NaturbeskyttelsesResultat | null) ?? null,
-      );
-      // ARCH-148: restore byggeanalyseResultat efter reload
-      if (complianceData.byggeanalyseResultat) {
-        store.setByggeanalyseResultat(
-          complianceData.byggeanalyseResultat as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat,
-        );
+      try {
+        const urlProjectId =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("projectId")
+            : null;
+        const pid = urlProjectId ?? useProject.getState().currentProjectId;
+        const project = await restoreProject(pid);
+        if (cancelled) return;
+        if (project?.address_full && project?.address_bbr) {
+          const store = useProject.getState();
+          store.setCurrentProjectId(project.id);
+          store.setAddress({
+            adresseid: project.address_adresseid ?? project.address_bbr,
+            adresse: project.address_full,
+            postnr: project.address_postnr ?? "",
+            postnrnavn: project.address_postnrnavn ?? "",
+            kommune: project.address_kommune ?? "",
+            kommunekode: "",
+            matrikel: project.address_matrikel,
+            adgangsadresseid: project.address_bbr,
+            grundareal: project.grundareal_m2 ?? null,
+            koordinater:
+              (project.address_koordinater as { lat: number; lng: number } | null) ?? {
+                lat: 0,
+                lng: 0,
+              },
+            bbrId: null,
+            ejerlavskode: project.address_ejerlavskode ?? null,
+            matrikelnummer: project.address_matrikelnummer ?? null,
+          });
+          const cd = parseComplianceData(project.compliance_data);
+          if (cd) {
+            if (cd.bbr) store.setBbrData(cd.bbr);
+            store.setComplianceFlags(cd.flags);
+            store.setLokalplaner(cd.lokalplaner);
+            if (cd.kommuneplanramme) store.setKommuneplanramme(cd.kommuneplanramme);
+            if (cd.byggeanalyseResultat) store.setByggeanalyseResultat(cd.byggeanalyseResultat);
+            if (cd.vurderingData) store.setVurderingData(cd.vurderingData);
+            if (project.compliance_done) store.setComplianceDone(true);
+          }
+          if (project.heritage_save_value != null)
+            store.setHeritageSaveValue(project.heritage_save_value);
+          if (project.is_fredet != null) store.setIsFredet(project.is_fredet);
+          store.setHardStop(project.hard_stop ?? false, project.hard_stop_reason ?? null);
+        }
+      } catch (e) {
+        logger.warn("[Cockpit] restore-by-url fejlede:", (e as Error).message);
+      } finally {
+        if (!cancelled) setRestorePhase("checked");
       }
     })();
-  }, [
-    bbrData,
-    geusRiskLocal,
-    servitutterLocal,
-    terrainLocal,
-    fjernvarmeLocal,
-    naboerLocal,
-    fbbDataLocal,
-    naturbeskyttelsesLocal,
-  ]);
+    return () => {
+      cancelled = true;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runManualAnalyse = useCallback(async () => {
     if (!bbrData || !address) return;
@@ -578,12 +586,15 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   }, [bbrData, address, setByggeanalyseResultat]);
 
   useEffect(() => {
+    if (restorePhase !== "checked") return;
     if (bbrData && complianceDone) {
       setStatus("done");
       return;
     }
 
-    if (!address?.adresseid) {
+    // Vent indtil restore har haft en chance for at populere address.
+    const currentAddress = useProject.getState().address;
+    if (!currentAddress?.adresseid) {
       navigate({ to: "/projekt/adresse" });
       return;
     }
@@ -611,13 +622,13 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
       fetchCompliance({
         data: {
-          addressId: address.adresseid,
-          adgangsadresseid: address.adgangsadresseid,
-          ejerlavskode: address.ejerlavskode ?? null,
-          matrikelnummer: address.matrikelnummer ?? null,
-          koordinater: address.koordinater ?? null,
-          grundareal: address.grundareal ?? null,
-          projectId: currentProjectId,
+          addressId: currentAddress.adresseid,
+          adgangsadresseid: currentAddress.adgangsadresseid,
+          ejerlavskode: currentAddress.ejerlavskode ?? null,
+          matrikelnummer: currentAddress.matrikelnummer ?? null,
+          koordinater: currentAddress.koordinater ?? null,
+          grundareal: currentAddress.grundareal ?? null,
+          projectId: useProject.getState().currentProjectId,
           token: session.access_token,
         },
       })
