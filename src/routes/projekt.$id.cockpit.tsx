@@ -468,6 +468,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     bbrData,
     byggeoenske,
     complianceMetrics,
+    lokalplaner,
     vurderingData,
     complianceDone,
     currentProjectId,
@@ -484,12 +485,15 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     byggeanalyseResultat,
   } = useProject();
 
-  const [status, setStatus] = useState<Status>(bbrData && complianceDone ? "done" : "loading");
+  const [status, setStatus] = useState<Status>(
+    routeMatchesAddress(address, adresseId) && bbrData && complianceDone ? "done" : "loading",
+  );
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>(() => {
-    const cd = parseComplianceData(useProject.getState().address ? null : null);
-    return cd?.lokalplaner ?? [];
-  });
+  const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>(() =>
+    routeMatchesAddress(useProject.getState().address, adresseId)
+      ? useProject.getState().lokalplaner
+      : [],
+  );
   const [geusRiskLocal, setGeusRiskLocal] = useState<GeusRiskData | null>(null);
   const [servitutterLocal, setServitutterLocal] = useState<TinglysningResult | null>(null);
   const [terrainLocal, setTerrainLocal] = useState<TerrainData | null>(null);
@@ -509,19 +513,15 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   // gendanne adressen endnu. Hent projekt-data via projectId fra URL eller
   // currentProjectId, og populer store FØR vi evt. redirecter til /projekt/adresse.
   useEffect(() => {
-    if (address?.adresseid) {
+    if (routeMatchesAddress(address, adresseId)) {
       setRestorePhase("checked");
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const urlProjectId =
-          typeof window !== "undefined"
-            ? new URLSearchParams(window.location.search).get("projectId")
-            : null;
-        const pid = urlProjectId ?? useProject.getState().currentProjectId;
-        const project = await restoreProject(pid);
+        const pid = searchProjectId ?? useProject.getState().currentProjectId;
+        const project = await restoreProject(pid, adresseId);
         if (cancelled) return;
         if (project?.address_full && project?.address_bbr) {
           const store = useProject.getState();
@@ -550,11 +550,21 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             if (cd.bbr) store.setBbrData(cd.bbr);
             store.setComplianceFlags(cd.flags);
             store.setLokalplaner(cd.lokalplaner);
+            setLokalplanerLocal(cd.lokalplaner);
             if (cd.kommuneplanramme) store.setKommuneplanramme(cd.kommuneplanramme);
             if (cd.byggeanalyseResultat) store.setByggeanalyseResultat(cd.byggeanalyseResultat);
             if (cd.vurderingData) store.setVurderingData(cd.vurderingData);
             if (project.compliance_done) store.setComplianceDone(true);
           }
+          setGeusRiskLocal(objectField<GeusRiskData>(project.compliance_data, "geusRisk"));
+          setServitutterLocal(objectField<TinglysningResult>(project.compliance_data, "servitutter"));
+          setTerrainLocal(objectField<TerrainData>(project.compliance_data, "terrain"));
+          setFjernvarmeLocal(objectField<FjernvarmeResultat>(project.compliance_data, "fjernvarme"));
+          setNaboerLocal(objectField<NeighborBuildingData>(project.compliance_data, "naboer"));
+          setFbbDataLocal(objectField<FbbResultat>(project.compliance_data, "fbbData"));
+          setNaturbeskyttelsesLocal(
+            objectField<NaturbeskyttelsesResultat>(project.compliance_data, "naturbeskyttelse"),
+          );
           if (project.heritage_save_value != null)
             store.setHeritageSaveValue(project.heritage_save_value);
           if (project.is_fredet != null) store.setIsFredet(project.is_fredet);
