@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -35,14 +35,16 @@ import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { syncPatch, restoreProject } from "@/lib/project-sync";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
-import { Cockpit } from "@/components/cockpit";
+import { ProjektDnaPanel } from "@/components/cockpit";
 import { AiDesignHero } from "@/components/cockpit/AiDesignHero";
-import { ComplianceFeed } from "@/components/cockpit/ComplianceFeed";
-import { RiskOverview } from "@/components/cockpit/RiskOverview";
 import { AnimatedNumber } from "@/components/cockpit/AnimatedNumber";
 import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
 import { DetailsAccordion, type DetailsSection } from "@/components/cockpit/DetailsAccordion";
+import { StatusStripe } from "@/components/cockpit/StatusStripe";
+import { RisikoFeed } from "@/components/cockpit/RisikoFeed";
+import { CanvasWithGauges } from "@/components/cockpit/CanvasWithGauges";
+import { DetailsDrawer } from "@/components/cockpit/DetailsDrawer";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { estimerTotalpris, STEPS, STEP_GROUPS } from "@/lib/byggeoenske-steps";
@@ -707,9 +709,6 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
         {status === "done" && bbrData && (
           <>
-            {/* ARCH-162: Hard Stop banner — vises ved page refresh uden at pipeline kører */}
-            <HardStopBanner />
-
             {/* Tab navigation med animeret underline */}
             <div className="flex gap-1 mb-6 border-b border-border/40">
               {(
@@ -884,11 +883,17 @@ function AnalyseTab({
   onShowEjendom: () => void;
   onShowOekonomi: () => void;
 }) {
-  const harData = data.beregning_mulig;
-  const erBolig = data.anvendelseskode
-    ? ["110", "120", "121", "122", "130", "131", "140", "190"].includes(data.anvendelseskode)
-    : false;
-  const harErhverv = data.anvendelseskode ? ["321", "322"].includes(data.anvendelseskode) : false;
+  const [mode] = useCockpitMode();
+  const inKobMode = mode === "due-diligence";
+  const [drawerSection, setDrawerSection] = useState<string | null>(null);
+  const drawerOpen = drawerSection !== null;
+  const openDrawer = useCallback((id?: string) => setDrawerSection(id ?? "lokalplaner"), []);
+  const closeDrawer = useCallback(() => setDrawerSection(null), []);
+
+  const reactiveContext = useMemo(
+    () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse }),
+    [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse],
+  );
 
   const vedtagne = lokalplaner.filter(
     (p) =>
@@ -898,10 +903,149 @@ function AnalyseTab({
   );
   const forslag = lokalplaner.filter((p) => p.status?.toLowerCase().includes("forslag"));
 
-  const maxPct = metrics?.maxBebyggelsesprocent ?? null;
-  const curPct = metrics?.currentBebyggelsesprocent ?? data.bebyggelsesprocent;
-  const barFraction =
-    curPct !== null && maxPct !== null && maxPct > 0 ? curPct / maxPct : undefined;
+  const drawerSections: DetailsSection[] = [
+    {
+      id: "ai-byggeanalyse",
+      label: "AI BYGGEANALYSE",
+      badge:
+        byggeanalyse?.kilde === "mock" ? (
+          <span className="text-[9px] border border-warning/40 text-warning rounded px-1 font-mono">
+            MOCK
+          </span>
+        ) : null,
+      content: byggeanalyse ? (
+        <ByggeanalyseKort analyse={byggeanalyse} />
+      ) : (
+        <Card>
+          <p className="text-sm leading-relaxed text-foreground/80">
+            {genererVurdering(data, adresse)}
+          </p>
+        </Card>
+      ),
+    },
+    {
+      id: "ai-design",
+      label: "AI-DESIGN VISUALISERING",
+      content: <AiDesignHero />,
+    },
+    {
+      id: "lokalplaner",
+      label: `LOKALPLANER (${lokalplaner.length})`,
+      content:
+        lokalplaner.length > 0 ? (
+          <Card>
+            <div className="space-y-3">
+              {vedtagne.map((lp) => (
+                <div key={lp.planid} className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm text-foreground font-medium truncate">
+                      {lp.plannr ? `${lp.plannr} – ` : ""}
+                      {lp.plannavn || "Ukendt lokalplan"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {lp.datoVedtaget ? `Vedtaget ${lp.datoVedtaget.slice(0, 10)}` : "Vedtaget"}
+                      {lp.kommunenavn ? ` · ${lp.kommunenavn}` : ""}
+                    </div>
+                  </div>
+                  {lp.plandokumentLink && (
+                    <a
+                      href={lp.plandokumentLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 inline-flex items-center gap-1 rounded border border-accent/40 bg-accent/5 px-2 py-1 font-mono text-[11px] text-accent hover:bg-accent/10 transition-colors"
+                    >
+                      PDF <ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
+              ))}
+              {forslag.map((lp) => (
+                <div
+                  key={lp.planid}
+                  className="flex items-start justify-between gap-3 opacity-70"
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm text-foreground truncate">
+                      {lp.plannr ? `${lp.plannr} – ` : ""}
+                      {lp.plannavn || "Lokalplanforslag"}
+                      <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">
+                        FORSLAG
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <div className="flex gap-3 rounded-md border border-[#333]/60 bg-[#1A1A1A] p-4">
+            <Info size={18} className="text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground">
+              Ingen lokalplan fundet — ejendommen er reguleret af kommuneplanen.
+            </p>
+          </div>
+        ),
+    },
+    geusRisk && {
+      id: "geus",
+      label: "GEOTEKNISK RISIKO",
+      content: <GeusRisikoSektion data={geusRisk} />,
+    },
+    terrain && {
+      id: "terrain",
+      label: "TERRÆN & KOTER",
+      content: <TerrainSektion data={terrain} />,
+    },
+    servitutter && servitutter.servitutter.length > 0 && {
+      id: "servitutter",
+      label: `SERVITUTTER (${servitutter.servitutter.length})`,
+      content: <ServitutterSektion data={servitutter} />,
+    },
+    fjernvarme && {
+      id: "fjernvarme",
+      label: "FJERNVARMEDÆKNING",
+      content: <FjernvarmeSektion data={fjernvarme} />,
+    },
+    naboer && naboer.count > 0 && {
+      id: "naboer",
+      label: `NABOBYGNINGER (${naboer.count})`,
+      content: <NaboerSektion data={naboer} />,
+    },
+    vurderingData && {
+      id: "vurdering",
+      label: "EJENDOMSVURDERING",
+      content: (
+        <Card>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                Ejendomsværdi
+              </div>
+              <div className="font-mono text-lg text-foreground tabular-nums">
+                {vurderingData.ejendomsvaerdi != null
+                  ? `${(vurderingData.ejendomsvaerdi / 1_000_000).toFixed(1)} mio.`
+                  : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                Grundværdi
+              </div>
+              <div className="font-mono text-lg text-foreground tabular-nums">
+                {vurderingData.grundvaerdi != null
+                  ? `${(vurderingData.grundvaerdi / 1_000_000).toFixed(1)} mio.`
+                  : "—"}
+              </div>
+            </div>
+          </div>
+        </Card>
+      ),
+    },
+  ].filter(Boolean) as DetailsSection[];
+
+  // Mode-styret hierarki: i køb-mode er højre kolonne (feedback) den primære;
+  // i design-mode er venstre (intent) ligeværdig. Begge dele synlige altid.
+  const leftWidth = inKobMode ? "lg:w-[320px]" : "lg:w-[380px]";
 
   return (
     <motion.div
@@ -909,44 +1053,16 @@ function AnalyseTab({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <p className="text-xs text-muted-foreground mb-4 font-mono">{adresse}</p>
-
-      {/* Workspace — 3-kolonne arbejdsrum: byggeønsker | matrikel | live feedback */}
-      <div className="mb-6">
-        <Cockpit
-          bbr={data}
-          metrics={metrics}
-          byggeanalyse={byggeanalyse}
-          fbbData={fbbData}
-          vurderingData={vurderingData}
-          geusRisk={geusRisk}
-          servitutter={servitutter}
-          terrain={terrain}
-          naboer={naboer}
-          naturbeskyttelse={naturbeskyttelse ?? null}
-          isRecomputing={isRecomputing}
-        />
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <p className="text-xs text-muted-foreground font-mono truncate">{adresse}</p>
       </div>
 
-      {/* Samlet kronologisk compliance-feed + 5 risikokategorier */}
-      <ComplianceFeed />
-      <RiskOverview />
-
-      {/* Manuel AI-genberegning */}
-      <div className="mb-3 flex items-center justify-between">
-        <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
-          AI-VURDERING
-        </div>
-        <button
-          type="button"
-          onClick={onRunAnalyse}
-          disabled={isRecomputing}
-          className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Sparkles size={12} />
-          {isRecomputing ? "GENBEREGNER…" : "GENBEREGN"}
-        </button>
-      </div>
+      {/* STATUS-STRIBE — full bredde, første visuelle anker */}
+      <StatusStripe
+        onOpenDetails={() => openDrawer()}
+        onRecompute={onRunAnalyse}
+        isRecomputing={isRecomputing}
+      />
 
       {data.fejl && (
         <div className="flex gap-3 rounded-md border border-warning/40 bg-warning/10 p-4 mb-4">
@@ -955,129 +1071,17 @@ function AnalyseTab({
         </div>
       )}
 
-      {/* Dybdedata foldet ind i ét accordion — fokus forbliver på workspace + feed */}
-      <DetailsAccordion
-        sections={[
-          {
-            id: "ai-byggeanalyse",
-            label: "AI BYGGEANALYSE",
-            badge: byggeanalyse?.kilde === "mock" ? (
-              <span className="text-[9px] border border-warning/40 text-warning rounded px-1 font-mono">
-                MOCK
-              </span>
-            ) : null,
-            content: byggeanalyse ? (
-              <ByggeanalyseKort analyse={byggeanalyse} />
-            ) : (
-              <Card>
-                <p className="text-sm leading-relaxed text-foreground/80">
-                  {genererVurdering(data, adresse)}
-                </p>
-              </Card>
-            ),
-          },
-          {
-            id: "ai-design",
-            label: "AI-DESIGN VISUALISERING",
-            content: <AiDesignHero />,
-          },
-          {
-            id: "lokalplaner",
-            label: `LOKALPLANER (${lokalplaner.length})`,
-            content:
-              lokalplaner.length > 0 ? (
-                <Card>
-                  <div className="space-y-3">
-                    {vedtagne.map((lp) => (
-                      <div key={lp.planid} className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-sm text-foreground font-medium truncate">
-                            {lp.plannr ? `${lp.plannr} – ` : ""}
-                            {lp.plannavn || "Ukendt lokalplan"}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {lp.datoVedtaget
-                              ? `Vedtaget ${lp.datoVedtaget.slice(0, 10)}`
-                              : "Vedtaget"}
-                            {lp.kommunenavn ? ` · ${lp.kommunenavn}` : ""}
-                          </div>
-                        </div>
-                        {lp.plandokumentLink && (
-                          <a
-                            href={lp.plandokumentLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="shrink-0 inline-flex items-center gap-1 rounded border border-accent/40 bg-accent/5 px-2 py-1 font-mono text-[11px] text-accent hover:bg-accent/10 transition-colors"
-                          >
-                            PDF <ExternalLink size={10} />
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                    {forslag.map((lp) => (
-                      <div
-                        key={lp.planid}
-                        className="flex items-start justify-between gap-3 opacity-70"
-                      >
-                        <div className="min-w-0">
-                          <div className="text-sm text-foreground truncate">
-                            {lp.plannr ? `${lp.plannr} – ` : ""}
-                            {lp.plannavn || "Lokalplanforslag"}
-                            <span className="ml-2 text-[10px] font-mono text-warning border border-warning/40 rounded px-1">
-                              FORSLAG
-                            </span>
-                          </div>
-                        </div>
-                        {lp.plandokumentLink && (
-                          <a
-                            href={lp.plandokumentLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="shrink-0 inline-flex items-center gap-1 rounded border border-border px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            PDF <ExternalLink size={10} />
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              ) : (
-                <div className="flex gap-3 rounded-md border border-[#333]/60 bg-[#1A1A1A] p-4">
-                  <Info size={18} className="text-muted-foreground shrink-0 mt-0.5" />
-                  <p className="text-sm text-muted-foreground">
-                    Ingen lokalplan fundet — ejendommen er reguleret af kommuneplanen.
-                  </p>
-                </div>
-              ),
-          },
-          geusRisk && {
-            id: "geus",
-            label: "GEOTEKNISK RISIKO",
-            content: <GeusRisikoSektion data={geusRisk} />,
-          },
-          terrain && {
-            id: "terrain",
-            label: "TERRÆN & KOTER",
-            content: <TerrainSektion data={terrain} />,
-          },
-          servitutter && servitutter.servitutter.length > 0 && {
-            id: "servitutter",
-            label: `SERVITUTTER (${servitutter.servitutter.length})`,
-            content: <ServitutterSektion data={servitutter} />,
-          },
-          fjernvarme && {
-            id: "fjernvarme",
-            label: "FJERNVARMEDÆKNING",
-            content: <FjernvarmeSektion data={fjernvarme} />,
-          },
-          naboer && naboer.count > 0 && {
-            id: "naboer",
-            label: `NABOBYGNINGER (${naboer.count})`,
-            content: <NaboerSektion data={naboer} />,
-          },
-        ].filter(Boolean) as DetailsSection[]}
-      />
+      {/* 2-kolonne workspace: design-intent | live feedback */}
+      <div className={cn("flex flex-col gap-4 lg:flex-row")}>
+        <aside className={cn("w-full shrink-0", leftWidth)}>
+          <ProjektDnaPanel reactiveContext={reactiveContext} />
+        </aside>
+
+        <section className="flex-1 min-w-0 space-y-4">
+          <CanvasWithGauges bbr={data} metrics={metrics} naboer={naboer} />
+          <RisikoFeed onOpenDetails={() => openDrawer()} />
+        </section>
+      </div>
 
       {/* Slim navigation — én primær handling, sekundære som links */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-4">
@@ -1103,6 +1107,12 @@ function AnalyseTab({
           ØKONOMI →
         </button>
       </div>
+
+      <DetailsDrawer
+        open={drawerOpen}
+        onOpenChange={(o) => (o ? openDrawer(drawerSection ?? undefined) : closeDrawer())}
+        sections={drawerSections}
+      />
     </motion.div>
   );
 }

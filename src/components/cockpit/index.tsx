@@ -117,7 +117,7 @@ export function Cockpit({
 // LEFT — Projekt DNA: Mode-toggle + 22 byggeønsker accordion
 // ===========================================================================
 
-function ProjektDnaPanel({
+export function ProjektDnaPanel({
   reactiveContext,
 }: {
   reactiveContext: {
