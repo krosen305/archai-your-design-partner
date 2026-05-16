@@ -581,6 +581,10 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           persisted.billedanalyse as import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat,
         );
       }
+      // ARCH-197: restore husDna efter reload
+      if (persisted.hus_dna) {
+        store.setHusDna(persisted.hus_dna as import("@/lib/project-store").HusDna);
+      }
     })();
     return () => {
       cancelled = true;
@@ -801,9 +805,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
                       "relative px-4 py-2 font-mono text-[11px] tracking-[0.15em] transition-colors -mb-px",
-                      isActive
-                        ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground",
+                      isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {tab.label}

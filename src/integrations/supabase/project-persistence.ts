@@ -81,6 +81,7 @@ export type PersistedProject = {
   hard_stop: boolean;
   hard_stop_reason: string | null;
   billedanalyse: Json | null;
+  hus_dna: Json | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -523,11 +524,14 @@ export async function saveProject(
     update.address_matrikelnummer = patch.address.matrikelnummer;
   }
 
-  // ── Byggeoenske / HusDna ─────────────────────────────────────────────────
+  // ── Byggeoenske ──────────────────────────────────────────────────────────
   if (patch.byggeoenske !== undefined) {
     update.brief_data = patch.byggeoenske as unknown as Json;
-  } else if (patch.husDna !== undefined) {
-    update.brief_data = patch.husDna;
+  }
+
+  // ── HusDna — dedikeret kolonne (ARCH-197) ────────────────────────────────
+  if (patch.husDna !== undefined) {
+    (update as Record<string, unknown>).hus_dna = patch.husDna ?? null;
   }
 
   // ── Compliance JSONB (backward compat) + typed columns ───────────────────
@@ -741,7 +745,7 @@ export async function loadProject(
   let query = supabaseAdmin
     .from("projects")
     .select(
-      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status, heritage_save_value, is_fredet, grundareal_m2, bebygget_areal_m2, hard_stop, hard_stop_reason, billedanalyse",
+      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status, heritage_save_value, is_fredet, grundareal_m2, bebygget_areal_m2, hard_stop, hard_stop_reason, billedanalyse, hus_dna",
     )
     .eq("user_id", userId);
 
