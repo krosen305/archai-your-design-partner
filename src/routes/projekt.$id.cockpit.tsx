@@ -486,21 +486,23 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
   const [status, setStatus] = useState<Status>(bbrData && complianceDone ? "done" : "loading");
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>([]);
+  const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>(() => {
+    const cd = parseComplianceData(useProject.getState().address ? null : null);
+    return cd?.lokalplaner ?? [];
+  });
   const [geusRiskLocal, setGeusRiskLocal] = useState<GeusRiskData | null>(null);
   const [servitutterLocal, setServitutterLocal] = useState<TinglysningResult | null>(null);
   const [terrainLocal, setTerrainLocal] = useState<TerrainData | null>(null);
   const [fjernvarmeLocal, setFjernvarmeLocal] = useState<FjernvarmeResultat | null>(null);
   const [naboerLocal, setNaboerLocal] = useState<NeighborBuildingData | null>(null);
-  const [fbbDataLocal, setFbbDataLocal] = useState<
-    import("@/integrations/fbb/client").FbbResultat | null
-  >(null);
+  const [fbbDataLocal, setFbbDataLocal] = useState<FbbResultat | null>(null);
   const [naturbeskyttelsesLocal, setNaturbeskyttelsesLocal] =
     useState<NaturbeskyttelsesResultat | null>(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const [restorePhase, setRestorePhase] = useState<"pending" | "checked">(
-    address?.adresseid ? "checked" : "pending",
+    routeMatchesAddress(address, adresseId) ? "checked" : "pending",
   );
+  const analysisStartedRef = useRef(false);
 
   // ARCH-restore: hvis vi lander direkte på cockpit-URL'en (fx via klik på et
   // eksisterende projekt fra /projekt/start), så har Zustand-state ikke nået at
