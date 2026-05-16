@@ -449,17 +449,17 @@ function FreeBudgetEstimat() {
 
 function CockpitContent({ adresseId }: { adresseId: string }) {
   const navigate = useNavigate();
-  const { tab: activeTab } = Route.useSearch();
+  const { tab: activeTab, projectId: searchProjectId } = Route.useSearch();
   const setActiveTab = useCallback(
     (next: CockpitTab) => {
       navigate({
         to: "/projekt/$id/cockpit",
         params: { id: adresseId },
-        search: { tab: next },
+        search: { tab: next, projectId: searchProjectId },
         replace: false,
       });
     },
-    [navigate, adresseId],
+    [navigate, adresseId, searchProjectId],
   );
   const [mode, setMode] = useCockpitMode();
 
