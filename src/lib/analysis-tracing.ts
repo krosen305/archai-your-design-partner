@@ -96,7 +96,7 @@ export async function startAnalysisRun(input: StartRunInput): Promise<AnalysisTr
   if (persistenceDisabled) return context;
 
   try {
-    const { error } = await supabaseAdmin.from("analysis_runs").insert({
+    const { error } = await (supabaseAdmin.from as any)("analysis_runs").insert({
       id: fallbackId,
       run_kind: input.runKind,
       project_id: input.projectId ?? null,
@@ -124,8 +124,7 @@ export async function finishAnalysisRun(
   if (!trace?.runId || persistenceDisabled) return;
 
   try {
-    const { error: updateError } = await supabaseAdmin
-      .from("analysis_runs")
+    const { error: updateError } = await (supabaseAdmin.from as any)("analysis_runs")
       .update({
         status,
         completed_at: new Date().toISOString(),
@@ -148,7 +147,7 @@ export async function recordAnalysisEvent(
   if (!trace?.runId || persistenceDisabled) return;
 
   try {
-    const { error } = await supabaseAdmin.from("analysis_events").insert({
+    const { error } = await (supabaseAdmin.from as any)("analysis_events").insert({
       run_id: trace.runId,
       event_type: input.eventType,
       phase: input.phase ?? null,

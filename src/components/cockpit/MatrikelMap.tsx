@@ -10,6 +10,7 @@ import { fetchMatriklenPreview, fetchParcelGeometry } from "@/routes/api.map-til
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
+import type * as GeoJSON from "geojson";
 
 export type MatrikelMapProps = {
   bbr: BbrKompliantData | null;

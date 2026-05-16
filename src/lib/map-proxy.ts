@@ -1,4 +1,5 @@
 import proj4 from "proj4";
+import type * as GeoJSON from "geojson";
 import { getEnvRequired } from "@/lib/env";
 
 export const EPSG25832 = "+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs +type=crs";
