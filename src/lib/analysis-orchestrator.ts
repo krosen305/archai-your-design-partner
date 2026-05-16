@@ -188,10 +188,15 @@ async function analyseAddressWithTrace(
       { cacheHit: (value) => !!value },
     );
     if (cached) {
-      // Bypass stale cache: hvis cached BBR mangler grundareal men vi nu har det,
-      // re-beregn så bebyggelsesprocent vises korrekt.
-      if (cached.bbr?.grundareal === null && preFetchedGrundareal !== null) {
-        console.warn("[Orchestrator] Stale cache bypassed — re-beregner med grundareal fra DAR");
+      // Bypass stale cache hvis BBR mangler grundareal og vi kan genskabe det —
+      // enten via preFetchedGrundareal (fra DAR) eller via MatService (kræver ejerlavskode+matrikelnummer).
+      const canRecoverGrundareal =
+        preFetchedGrundareal !== null || (ejerlavskode !== null && matrikelnummer !== null);
+      if (cached.bbr?.grundareal === null && canRecoverGrundareal) {
+        console.warn(
+          "[Orchestrator] Stale cache bypassed — grundareal mangler, genberegner",
+          { preFetchedGrundareal, ejerlavskode, matrikelnummer },
+        );
       } else {
         complianceBase = cached;
       }

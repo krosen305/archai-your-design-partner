@@ -399,15 +399,21 @@ export class DarService {
             "MAT_Jordstykke_by_id",
             trace,
           ).catch((e: Error) => {
-            console.warn("[DAR] MAT_Jordstykke opslag fejlede:", e.message);
+            console.error("[DAR] MAT_Jordstykke fejlede for jordstykkeFK", jordstykkeFK, ":", e.message);
             return null;
           })
-        : Promise.resolve(null),
+        : (() => {
+            console.warn("[DAR] DAR_Husnummer.jordstykke er tom — grundareal og matrikeldata utilgængeligt");
+            return Promise.resolve(null);
+          })(),
     ]);
 
     const postnummerNode = postnummerData?.DAR_Postnummer?.nodes?.[0] ?? null;
     const adressepunktNode = adressepunktData?.DAR_Adressepunkt?.nodes?.[0] ?? null;
     const jordstykkeNode = jordstykkeData?.MAT_Jordstykke?.nodes?.[0] ?? null;
+    if (jordstykkeFK && !jordstykkeNode) {
+      console.error("[DAR] MAT_Jordstykke returnerede ingen nodes for jordstykkeFK:", jordstykkeFK, "— id_lokalId matchede ingenting");
+    }
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
     const grundareal: number | null = jordstykkeNode?.registreretAreal ?? null;

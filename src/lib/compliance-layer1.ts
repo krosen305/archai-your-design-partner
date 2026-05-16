@@ -62,9 +62,13 @@ export async function fetchBbrWithMat(input: {
       );
       if (grundareal === null && mat.registreretAreal !== null) grundareal = mat.registreretAreal;
       if (mat.fejl) console.warn("[Layer1] MAT fejl:", mat.fejl);
+      if (grundareal === null && !mat.fejl)
+        console.error("[Layer1] MatService returnerede null registreretAreal for ejerlavskode:", ejerlavskode, "matrikelnummer:", matrikelnummer);
       mat_strandbeskyttelse = mat.strandbeskyttelse;
       mat_fredskov = mat.fredskov;
       mat_klitfredning = mat.klitfredning;
+    } else if (!ejerlavskode || !matrikelnummer) {
+      console.warn("[Layer1] Mangler ejerlavskode/matrikelnummer — MatService-fallback springes over", { ejerlavskode, matrikelnummer });
     }
 
     const { BbrService } = await import("@/integrations/bbr/client");
