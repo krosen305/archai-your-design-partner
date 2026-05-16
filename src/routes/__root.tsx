@@ -10,6 +10,7 @@ import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { TopBar } from "@/components/wizard-chrome";
 import { useProject, isHusDna, parseComplianceData } from "@/lib/project-store";
+import type { BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
 // 🔒 Rører beskyttet fil — kræver review (ARCH-160)
 import { restoreProject } from "@/lib/project-sync";
 import { AuthProvider } from "@/lib/auth-context";
@@ -93,6 +94,7 @@ function RootComponent() {
     setKommuneplanramme,
     setByggeoenske,
     setByggeanalyseResultat,
+    setBilledanalyse,
     setVurderingData,
     setCurrentProjectId,
     setHeritageSaveValue,
@@ -163,6 +165,9 @@ function RootComponent() {
         if (cd.byggeanalyseResultat) setByggeanalyseResultat(cd.byggeanalyseResultat);
         if (cd.vurderingData) setVurderingData(cd.vurderingData);
         if (project.compliance_done) setComplianceDone(true);
+      }
+      if (project.billedanalyse) {
+        setBilledanalyse(project.billedanalyse as unknown as BilledeAnalyseResultat);
       }
       // ARCH-160: typede kolonner er ground truth — overskriver altid JSONB-aflæste værdier
       if (project.heritage_save_value != null) setHeritageSaveValue(project.heritage_save_value);

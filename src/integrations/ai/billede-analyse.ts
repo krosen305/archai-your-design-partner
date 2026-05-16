@@ -19,18 +19,18 @@ const IS_MOCK = FEATURE_FLAGS.billedanalyseMock;
 
 const MOCK_RESULT: BilledeAnalyseResultat = {
   kategorier: {
-    facade:        ["pudset", "hvid"],
-    tagform:       ["fladt tag"],
-    vinduer:       ["store formater", "vinduesbånd"],
-    materialer:    ["beton", "glas"],
+    facade: ["pudset", "hvid"],
+    tagform: ["fladt tag"],
+    vinduer: ["store formater", "vinduesbånd"],
+    materialer: ["beton", "glas"],
     saerligeTraek: ["integreret carport"],
-    farver:        ["hvid", "antracit"],
-    stil:          ["minimalistisk"],
+    farver: ["hvid", "antracit"],
+    stil: ["minimalistisk"],
   },
-  konflikter:  [],
-  ekstraTags:  ["sydvendt atrium"],
-  confidence:  87,
-  kilde:       "mock",
+  konflikter: [],
+  ekstraTags: ["sydvendt atrium"],
+  confidence: 87,
+  kilde: "mock",
 };
 
 // ---------------------------------------------------------------------------
@@ -38,28 +38,34 @@ const MOCK_RESULT: BilledeAnalyseResultat = {
 // ---------------------------------------------------------------------------
 
 const KategorierSchema = z.object({
-  facade:        z.array(z.string()).default([]),
-  tagform:       z.array(z.string()).default([]),
-  vinduer:       z.array(z.string()).default([]),
-  materialer:    z.array(z.string()).default([]),
+  facade: z.array(z.string()).default([]),
+  tagform: z.array(z.string()).default([]),
+  vinduer: z.array(z.string()).default([]),
+  materialer: z.array(z.string()).default([]),
   saerligeTraek: z.array(z.string()).default([]),
-  farver:        z.array(z.string()).default([]),
-  stil:          z.array(z.string()).default([]),
+  farver: z.array(z.string()).default([]),
+  stil: z.array(z.string()).default([]),
 });
 
 const KonfliktSchema = z.object({
   kategori: z.enum([
-    "facade", "tagform", "vinduer", "materialer", "saerligeTraek", "farver", "stil",
+    "facade",
+    "tagform",
+    "vinduer",
+    "materialer",
+    "saerligeTraek",
+    "farver",
+    "stil",
   ]),
-  muligheder:  z.array(z.array(z.string())),
+  muligheder: z.array(z.array(z.string())),
   billedAntal: z.array(z.number()),
 });
 
 const ApiResponseSchema = z.object({
-  kategorier:  KategorierSchema,
-  konflikter:  z.array(KonfliktSchema).default([]),
-  ekstraTags:  z.array(z.string()).default([]),
-  confidence:  z.number().min(0).max(100).default(70),
+  kategorier: KategorierSchema,
+  konflikter: z.array(KonfliktSchema).default([]),
+  ekstraTags: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(100).default(70),
 });
 
 // ---------------------------------------------------------------------------

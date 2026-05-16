@@ -801,12 +801,14 @@ function CompliancePanel({
   const [mode] = useCockpitMode();
 
   const grundareal = metrics?.grundareal ?? bbr?.grundareal ?? null;
-  const eksisterende = bbr?.bebygget_areal ?? 0;
+  const eksisterende = bbr?.bebygget_areal ?? null;
+  const nuvaerendePct = bbr?.bebyggelsesprocent ?? null;
+  const nuvaerendeEtager = bbr?.antal_etager ?? null;
   const oensket = byggeoenske.oensketAreal ?? 0;
   const samlet =
     byggeoenske.byggetype === "nybyg"
       ? oensket
-      : eksisterende + (byggeoenske.byggetype === "tilbyg" ? oensket : 0);
+      : (eksisterende ?? 0) + (byggeoenske.byggetype === "tilbyg" ? oensket : 0);
   const beregnetPct = grundareal && samlet > 0 ? (samlet / grundareal) * 100 : null;
   const maxPct = metrics?.maxBebyggelsesprocent ?? null;
   const pctOver = maxPct !== null && beregnetPct !== null && beregnetPct > maxPct;
@@ -973,6 +975,35 @@ function CompliancePanel({
           )}
         </div>
         <div className="p-4 space-y-5">
+          {bbr && (
+            <div className="rounded-md border border-border/50 bg-[#0f0f0f] p-3">
+              <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground uppercase">
+                Nuværende bygning
+              </div>
+              <div className="mt-2 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Grundareal</span>
+                  <span className="font-mono text-foreground tabular-nums">
+                    {grundareal != null ? `${grundareal} m²` : "Ikke registreret"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Bebygget</span>
+                  <span className="font-mono text-foreground tabular-nums">
+                    {eksisterende != null
+                      ? `${eksisterende} m²${nuvaerendePct != null ? ` (${nuvaerendePct}%)` : ""}`
+                      : "Ikke registreret"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Etager</span>
+                  <span className="font-mono text-foreground tabular-nums">
+                    {nuvaerendeEtager != null ? `${nuvaerendeEtager}` : "Ikke registreret"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
           <Gauge
             label="Bebyggelsesprocent"
             current={beregnetPct !== null ? `${beregnetPct.toFixed(0)}%` : "—"}

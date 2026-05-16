@@ -14,8 +14,15 @@ import { useProject, type ComplianceFlag } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 
 export function EjendomPanel() {
-  const { complianceMetrics, bbrData, vurderingData, complianceFlags, address, adressePreCheck } =
-    useProject();
+  const {
+    complianceMetrics,
+    bbrData,
+    vurderingData,
+    complianceFlags,
+    address,
+    adressePreCheck,
+    heritage_save_value,
+  } = useProject();
   const [showFlags, setShowFlags] = useState(false);
   const [showDatakilder, setShowDatakilder] = useState(false);
 
@@ -23,10 +30,14 @@ export function EjendomPanel() {
   const k = adressePreCheck?.kontekst;
   const bbr = bbrData ?? adressePreCheck?.bbr ?? null;
 
-  const grundareal = complianceMetrics?.grundareal ?? k?.grundareal ?? null;
+  const grundareal = complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
   const remaining = complianceMetrics?.remainingBygningsareal ?? k?.restBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
-  const currentPct = complianceMetrics?.currentBebyggelsesprocent ?? k?.bebyggelsesprocent ?? null;
+  const currentPct =
+    complianceMetrics?.currentBebyggelsesprocent ??
+    bbrData?.bebyggelsesprocent ??
+    k?.bebyggelsesprocent ??
+    null;
   const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? k?.maxBebyggelsesprocent ?? null;
   const currentEtager = complianceMetrics?.currentEtager ?? k?.antalEtager ?? null;
   const maxEtager = complianceMetrics?.maxEtager ?? k?.maxEtager ?? null;
@@ -37,8 +48,11 @@ export function EjendomPanel() {
   const noegletal = [
     {
       label: "GRUNDAREAL",
-      value: grundareal != null ? `${grundareal} m²` : "—",
-      sub: currentPct != null ? `Bebygget: ${currentPct}%` : "—",
+      value: grundareal != null ? `${grundareal} m²` : "Ikke registreret",
+      sub:
+        currentPct != null
+          ? `Bebygget: ${currentPct}%`
+          : "Ikke registreret i BBR/DAWA for denne ejendom",
     },
     {
       label: "BYGGEPOTENTIALE",
@@ -128,6 +142,10 @@ export function EjendomPanel() {
             />
             <Field label="Etager" value={bbr?.antal_etager != null ? `${bbr.antal_etager}` : "—"} />
             <Field label="Anvendelse" value={bbr?.anvendelse_tekst ?? "—"} />
+            <SaveField
+              hasFbbRegistration={Boolean(bbr?.fbb_reference)}
+              heritageSaveValue={heritage_save_value}
+            />
           </div>
         </Card>
         <Card>
@@ -285,6 +303,48 @@ function Field({ label, value }: { label: string; value: string | number }) {
         {label.toUpperCase()}
       </div>
       <div className="mt-0.5 text-sm text-foreground">{String(value)}</div>
+    </div>
+  );
+}
+
+function SaveField({
+  hasFbbRegistration,
+  heritageSaveValue,
+}: {
+  hasFbbRegistration: boolean;
+  heritageSaveValue: number | null;
+}) {
+  if (!hasFbbRegistration) {
+    return <Field label="Bevaringsværdi (FBB)" value="Ikke registreret" />;
+  }
+
+  if (heritageSaveValue == null) {
+    return <Field label="Bevaringsværdi (FBB)" value="Ikke registreret" />;
+  }
+
+  const tone =
+    heritageSaveValue <= 4
+      ? "text-danger"
+      : heritageSaveValue <= 6
+        ? "text-warning"
+        : "text-emerald-400";
+
+  const konsekvens =
+    heritageSaveValue <= 3
+      ? "Høj bevaringsværdi - nedrivning/ombygning kræver kommunens tilladelse"
+      : heritageSaveValue === 4
+        ? "§14-forbud risiko - kommunen kan nedlægge forbud mod nedrivning"
+        : heritageSaveValue <= 6
+          ? "Middel bevaringsværdi - kommunen bør høres"
+          : "Lav bevaringsværdi - ingen særlige krav";
+
+  return (
+    <div className="col-span-2 rounded-md border border-border/50 p-2.5">
+      <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground uppercase">
+        Bevaringsværdi (FBB)
+      </div>
+      <div className={`mt-1 text-sm font-medium ${tone}`}>SAVE {heritageSaveValue}/9</div>
+      <div className="mt-0.5 text-xs text-muted-foreground">{konsekvens}</div>
     </div>
   );
 }

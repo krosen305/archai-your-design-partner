@@ -2,7 +2,13 @@ import { describe, test, expect } from "bun:test";
 import { BilledeAnalyseService } from "./billede-analyse";
 
 const KATEGORIER = [
-  "facade", "tagform", "vinduer", "materialer", "saerligeTraek", "farver", "stil",
+  "facade",
+  "tagform",
+  "vinduer",
+  "materialer",
+  "saerligeTraek",
+  "farver",
+  "stil",
 ] as const;
 
 describe("BilledeAnalyseService.analyser (mock)", () => {

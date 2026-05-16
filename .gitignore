@@ -29,6 +29,9 @@ bun.lockb
 .cursor/
 .claude/settings.local.json
 
+# Superpowers skill cache (bruger-specifik, ikke kode)
+.superpowers/
+
 # Supabase temp files
 supabase/.temp/
 
