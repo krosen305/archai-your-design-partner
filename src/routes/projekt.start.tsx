@@ -145,8 +145,6 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
   );
 }
 
-const COCKPIT_STEPS = new Set(["boligoenske", "ejendom", "byggeanalyse", "oekonomi"]);
-
 function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   const navigate = useNavigate();
   const { reset, setCurrentProjectId } = useProject();
@@ -162,14 +160,8 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
     reset();
     setCurrentProjectId(projekt.id);
     const search = { projectId: projekt.id } as never;
-    if (
-      harAdresse &&
-      projekt.adresse_dar_id &&
-      (COCKPIT_STEPS.has(projekt.current_step ?? "") || projekt.compliance_done)
-    ) {
+    if (projekt.adresse_dar_id) {
       navigate({ to: `/projekt/${projekt.adresse_dar_id}/cockpit` as never, search });
-    } else if (harAdresse) {
-      navigate({ to: "/projekt/adresse", search });
     } else {
       navigate({ to: "/projekt/adresse", search });
     }
