@@ -188,6 +188,7 @@ type State = {
   husDna: HusDna | null;
   byggeoenske: Byggeoenske;
   byggeanalyseResultat: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null;
+  billedanalyse: import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat | null;
   complianceFlags: ComplianceFlag[];
   complianceMetrics: ComplianceMetrics | null;
   lokalplaner: Lokalplan[];
@@ -232,6 +233,9 @@ type State = {
   setByggeanalyseResultat: (
     r: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null,
   ) => void;
+  setBilledanalyse: (
+    r: import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat | null,
+  ) => void;
   resetByggeoenske: () => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setComplianceMetrics: (m: ComplianceMetrics | null) => void;
@@ -274,6 +278,7 @@ export const useProject = create<State>((set) => ({
   husDna: null,
   byggeoenske: {},
   byggeanalyseResultat: null,
+  billedanalyse: null,
   complianceFlags: [],
   complianceMetrics: null,
   lokalplaner: [],
@@ -302,6 +307,7 @@ export const useProject = create<State>((set) => ({
   setHusDna: (husDna) => set({ husDna }),
   setByggeoenske: (b) => set((s) => ({ byggeoenske: { ...s.byggeoenske, ...b } })),
   setByggeanalyseResultat: (byggeanalyseResultat) => set({ byggeanalyseResultat }),
+  setBilledanalyse: (billedanalyse) => set({ billedanalyse }),
   resetByggeoenske: () => set({ byggeoenske: {} }),
   setComplianceFlags: (complianceFlags) => set({ complianceFlags }),
   setComplianceMetrics: (complianceMetrics) => set({ complianceMetrics }),
@@ -332,6 +338,7 @@ export const useProject = create<State>((set) => ({
       husDna: null,
       byggeoenske: {},
       byggeanalyseResultat: null,
+      billedanalyse: null,
       complianceFlags: [],
       complianceMetrics: null,
       lokalplaner: [],

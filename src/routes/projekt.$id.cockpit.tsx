@@ -575,6 +575,12 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
       } finally {
         if (!cancelled) setRestorePhase("checked");
       }
+      // ARCH-190: restore billedanalyse efter reload
+      if (persisted.billedanalyse) {
+        store.setBilledanalyse(
+          persisted.billedanalyse as import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat,
+        );
+      }
     })();
     return () => {
       cancelled = true;
