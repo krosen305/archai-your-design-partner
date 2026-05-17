@@ -54,6 +54,7 @@ export type ProjectPatch = {
   currentStep?: string;
   projectDataStatus?: Json | null;
   analysisRunId?: string | null;
+  budget_estimate?: number | null;
 };
 
 export type PersistedProject = {
@@ -672,6 +673,11 @@ export async function saveProject(
     update.project_data_status = patch.projectDataStatus;
   }
 
+  // ── Budget estimate (ARCH-213) ────────────────────────────────────────────
+  if (patch.budget_estimate !== undefined) {
+    (update as Record<string, unknown>).budget_estimate = patch.budget_estimate;
+  }
+
   if (Object.keys(update).length === 0) return;
 
   const projectWriteStartedAt = Date.now();
@@ -753,7 +759,10 @@ export async function loadProject(
   if (projectId?.trim()) {
     query = query.eq("id", projectId);
   } else if (addressId?.trim()) {
-    query = query.eq("address_adresseid", addressId).order("updated_at", { ascending: false }).limit(1);
+    query = query
+      .eq("address_adresseid", addressId)
+      .order("updated_at", { ascending: false })
+      .limit(1);
   } else {
     query = query.order("updated_at", { ascending: false }).limit(1);
   }

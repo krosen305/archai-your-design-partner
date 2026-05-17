@@ -1,6 +1,7 @@
 import { useProject } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 import { Building2, TrendingUp, AreaChart, Clock } from "lucide-react";
+import { BudgetKalkulator } from "@/components/cockpit/BudgetKalkulator";
 
 function formatKr(beloeb: number | null): string {
   if (beloeb === null) return "–";
@@ -12,7 +13,7 @@ function formatKr(beloeb: number | null): string {
 }
 
 export function OekonomiPanel() {
-  const { vurderingData, bbrData, address, grundareal_m2, bebygget_areal_m2, budget_estimate } = useProject();
+  const { vurderingData, bbrData, address, grundareal_m2, bebygget_areal_m2 } = useProject();
 
   const grundareal = grundareal_m2 ?? bbrData?.grundareal ?? null;
   const bebyggetAreal = bebygget_areal_m2 ?? bbrData?.bebygget_areal ?? null;
@@ -137,27 +138,15 @@ export function OekonomiPanel() {
           <div className="text-sm text-foreground">
             {bebyggelsespct}%
             {grundareal != null && (
-              <span className="ml-2 text-xs text-muted-foreground">({grundareal} m² grundareal)</span>
+              <span className="ml-2 text-xs text-muted-foreground">
+                ({grundareal} m² grundareal)
+              </span>
             )}
           </div>
         </div>
       )}
 
-      {budget_estimate != null && (
-        <Card>
-          <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-4">
-            PROJEKTBUDGET (ESTIMAT)
-          </div>
-          <div className="rounded-md border border-border bg-[#111] p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <span className="font-mono text-[10px] tracking-[0.1em]">SAMLET BUDGET</span>
-            </div>
-            <p className="text-xl font-medium text-foreground">
-              {formatKr(budget_estimate)}
-            </p>
-          </div>
-        </Card>
-      )}
+      <BudgetKalkulator />
     </div>
   );
 }
