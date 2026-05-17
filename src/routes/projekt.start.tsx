@@ -1,11 +1,22 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Plus, ChevronRight, LogIn, Clock, LogOut } from "lucide-react";
-import { useProject } from "@/lib/project-store";
+import { MapPin, Plus, ChevronRight, LogIn, Clock, LogOut, Trash2, Loader2 } from "lucide-react";
+import { useProject, type Address } from "@/lib/project-store";
 import { serverCreateProject } from "@/lib/project-sync";
 import { Card } from "@/components/wizard-ui";
 import type { Projekt } from "@/lib/byggeoenske";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/projekt/start")({
   component: StartPage,
