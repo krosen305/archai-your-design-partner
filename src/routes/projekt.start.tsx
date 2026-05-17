@@ -280,6 +280,14 @@ function ProjektKort({
             </div>
           </div>
           <button
+            onClick={() => setConfirmOpen(true)}
+            aria-label="Slet projekt"
+            title="Slet projekt"
+            className="shrink-0 inline-flex items-center justify-center rounded-md border border-border/60 p-2 text-muted-foreground hover:text-danger hover:border-danger/40 transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
             onClick={handleFortsaet}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-mono text-[12px] text-accent-foreground hover:brightness-110 transition-all"
           >
@@ -287,6 +295,38 @@ function ProjektKort({
           </button>
         </div>
       </Card>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slet projekt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {projekt.adresse
+                ? `Projektet på "${projekt.adresse}" og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes.`
+                : "Projektet og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sletter}>Annullér</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleSlet();
+              }}
+              disabled={sletter}
+              className="bg-danger text-danger-foreground hover:bg-danger/90"
+            >
+              {sletter ? (
+                <>
+                  <Loader2 size={14} className="mr-1.5 animate-spin" /> Sletter…
+                </>
+              ) : (
+                "Slet projekt"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }
