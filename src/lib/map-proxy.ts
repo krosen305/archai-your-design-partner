@@ -1,6 +1,6 @@
 import proj4 from "proj4";
 import type * as GeoJSON from "geojson";
-import { getEnvRequired } from "@/lib/env";
+import { getEnvRequired, getEnvOptional } from "@/lib/env";
 
 export const EPSG25832 = "+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs +type=crs";
 
@@ -31,6 +31,39 @@ export type BBox25832 = {
   maxX: number;
   maxY: number;
 };
+
+export type TileRequest = {
+  z: string;
+  x: string;
+  y: string;
+};
+
+const SKÆRMKORT_WMTS =
+  "https://api.dataforsyningen.dk/topo_skaermkort_daempet_wmts_topo_skaermkort_daempet/1.0.0/wmts";
+
+export async function fetchSkærmkortTileProxy(req: TileRequest): Promise<string | null> {
+  const token = getEnvOptional("DATAFORSYNINGEN_TOKEN");
+  if (!token) return null;
+
+  const url = new URL(SKÆRMKORT_WMTS);
+  url.searchParams.set("SERVICE", "WMTS");
+  url.searchParams.set("REQUEST", "GetTile");
+  url.searchParams.set("VERSION", "1.0.0");
+  url.searchParams.set("LAYER", "topo_skaermkort_daempet");
+  url.searchParams.set("STYLE", "default");
+  url.searchParams.set("TILEMATRIXSET", "GoogleMapsCompatible");
+  url.searchParams.set("TILEMATRIX", req.z);
+  url.searchParams.set("TILEROW", req.y);
+  url.searchParams.set("TILECOL", req.x);
+  url.searchParams.set("token", token);
+
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength === 0) return null;
+  return toDataUrl(res.headers.get("content-type") ?? "image/png", buf);
+}
 
 export type ProxiedMapImage = {
   contentType: string;

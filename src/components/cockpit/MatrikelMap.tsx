@@ -6,7 +6,11 @@ import { Card } from "@/components/wizard-ui";
 import { cn } from "@/lib/utils";
 import { syncPatch } from "@/lib/project-sync";
 import { useProject } from "@/lib/project-store";
-import { fetchMatriklenPreview, fetchParcelGeometry } from "@/routes/api.map-tiles";
+import {
+  fetchMatriklenPreview,
+  fetchParcelGeometry,
+  fetchSkærmkortTile,
+} from "@/routes/api.map-tiles";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
@@ -48,6 +52,11 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
 
   const loadParcelGeometry = useServerFn(fetchParcelGeometry);
   const loadParcelPreview = useServerFn(fetchMatriklenPreview);
+  const loadTile = useServerFn(fetchSkærmkortTile);
+  const loadTileRef = useRef(loadTile);
+  useEffect(() => {
+    loadTileRef.current = loadTile;
+  }, [loadTile]);
 
   const activeBlockers = useMemo(
     () => complianceFlags.filter((flag) => flag.status === "blocker"),
@@ -223,9 +232,23 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
       const previewLayer = new ImageLayer({ opacity: 0.68 });
       previewLayerRef.current = previewLayer;
 
+      const osmSource = new OSM();
+      osmSource.setTileLoadFunction(async (tile: any, osmSrc: string) => {
+        const [z, x, olY] = tile.getTileCoord() as [number, number, number];
+        const tileRow = -(olY + 1);
+        try {
+          const dataUrl = await loadTileRef.current({
+            data: { z: String(z), x: String(x), y: String(tileRow) },
+          });
+          tile.getImage().src = dataUrl ?? osmSrc;
+        } catch {
+          tile.getImage().src = osmSrc;
+        }
+      });
+
       const map = new Map({
         target: hostRef.current,
-        layers: [new TileLayer({ source: new OSM() }), previewLayer, parcelLayer, footprintLayer],
+        layers: [new TileLayer({ source: osmSource }), previewLayer, parcelLayer, footprintLayer],
         view: new View({
           center: fromLonLat(baseCenter as [number, number]),
           zoom: hasAddress ? 19 : 6,

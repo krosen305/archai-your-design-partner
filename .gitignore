@@ -38,6 +38,10 @@ supabase/.temp/
 # Agent trace files (runtime, ikke kode)
 agent-traces/
 
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 # Datafordeler GraphQL-skemaer (store, regenererbare via introspection - ikke i git)
 schema/
 
