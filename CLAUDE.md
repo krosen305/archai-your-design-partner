@@ -148,6 +148,9 @@ When you encounter a field being read from `compliance_data JSONB` or `projekter
 
 Se `docs/INTEGRATIONS.md` for fuld tabel og Datafordeler GraphQL-constraints.
 
+**FORBUDT: DAWA / api.dataforsyningen.dk**
+DAWA (Danmarks Adressers Web API) er udfaset og lukker. Brug aldrig `api.dataforsyningen.dk` — hverken som primær kilde eller fallback. Al adresse- og matrikeldata hentes udelukkende fra Datafordeler (DAR, MAT, BBR). Hvis DAR mangler jordstykke-FK for en adresse, returneres `null` — der laves ingen fallback til DAWA.
+
 IS_MOCK=true services (live API afventer verifikation):
 
 - `TinglysningService` — ARCH-26 (TingbogenV2 schema)

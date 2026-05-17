@@ -45,6 +45,10 @@ Kunderejsen er **ikke lineær**. Den er opdelt i 4 faser. Brug altid disse navne
 
 - `src/server.ts` — Sentry-wrapper. Mangler den, crasher `wrangler.toml` til default entry.
 
+### DAWA er forbudt
+
+Brug **aldrig** `api.dataforsyningen.dk` (DAWA) — hverken som primær kilde eller fallback. DAWA er udfaset og lukker. Al adresse- og matrikeldata hentes udelukkende fra Datafordeler (DAR, MAT, BBR). Hvis DAR mangler jordstykke-FK for en adresse, returneres `null` — ingen fallback.
+
 ### Server boundary
 
 Al Datafordeler- og Supabase-kode SKAL ligge i `createServerFn`. Importer **aldrig** server-moduler på top-level i route-filer (`src/routes/*.tsx`).

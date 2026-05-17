@@ -415,7 +415,7 @@ export class DarService {
       console.error("[DAR] MAT_Jordstykke returnerede ingen nodes for jordstykkeFK:", jordstykkeFK, "— id_lokalId matchede ingenting");
     }
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
-    let matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
+    const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
     const grundareal: number | null = jordstykkeNode?.registreretAreal ?? null;
 
     // ── Kald 4: MAT_Ejerlav (afhænger af ejerlavLokalId fra kald 3c) ────────
@@ -438,35 +438,6 @@ export class DarService {
           "[DAR] MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null:",
           (e as Error).message,
         );
-      }
-    }
-
-    // ── DAWA fallback: DAR_Husnummer.jordstykke er tom for visse adresser ────
-    // Henter matrikelnummer + ejerlavskode fra DAWA /adgangsadresser (kræver ikke auth).
-    // Gør det muligt at kalde MatService.getGrundareal() i compliance-pipeline.
-    // Fjernes når DAWA lukker august 2026 og DAR har komplet jordstykke-dækning.
-    if (matrikelnummer === null && husnummerFK) {
-      try {
-        const dawaRes = await fetch(
-          `https://api.dataforsyningen.dk/adgangsadresser/${husnummerFK}`,
-        );
-        if (dawaRes.ok) {
-          const d = (await dawaRes.json()) as Record<string, unknown>;
-          const dawaMatr = (d?.matrikelnr as string) ?? null;
-          const dawaEjerlav = ((d?.ejerlav as Record<string, unknown>)?.kode as number) ?? null;
-          if (dawaMatr) {
-            matrikelnummer = dawaMatr;
-            console.log("[DAR] DAWA-fallback matrikelnummer:", dawaMatr);
-          }
-          if (dawaEjerlav && ejerlavskode === null) {
-            ejerlavskode = dawaEjerlav;
-            console.log("[DAR] DAWA-fallback ejerlavskode:", dawaEjerlav);
-          }
-        } else {
-          console.warn("[DAR] DAWA-fallback HTTP", dawaRes.status, "for", husnummerFK);
-        }
-      } catch (e) {
-        console.warn("[DAR] DAWA-fallback fejlede:", (e as Error).message);
       }
     }
 
