@@ -6,9 +6,10 @@ on:
   pull_request:
     branches: [main]
 
-# Én deploy ad gangen — ny push annullerer igangværende deploy
+# PR-previews og production-deploys har separate concurrency-grupper
+# så en PR-åbning ikke annullerer et igangværende production-deploy.
 concurrency:
-  group: deploy-production
+  group: ${{ github.event_name == 'pull_request' && format('deploy-preview-{0}', github.event.pull_request.number) || 'deploy-production' }}
   cancel-in-progress: true
 
 jobs:

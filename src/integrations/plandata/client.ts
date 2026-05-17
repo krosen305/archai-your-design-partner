@@ -27,6 +27,11 @@
 //                     bebygpct, maxetager, maxbygnhjd, anvgen, anvendelsegenerel,
 //                     fremtidigzonestatus, sforhold, doklink, datoikraft
 
+import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+
+// WFS er et offentligt endpoint — retry på 502/503/504, ikke 429.
+const WFS_RETRY = { timeoutMs: 15_000, retries: 1, retryOnStatuses: [502, 503, 504] };
+
 // ---------------------------------------------------------------------------
 // Typer
 // ---------------------------------------------------------------------------
@@ -175,9 +180,11 @@ export class PlandataService {
     }
 
     try {
-      const vedtagetRes = await fetch(buildWfsUrl(LOKALPLAN_TYPE, lngWgs84, latWgs84), {
-        headers: { Accept: "application/json" },
-      });
+      const vedtagetRes = await fetchWithRetry(
+        buildWfsUrl(LOKALPLAN_TYPE, lngWgs84, latWgs84),
+        { headers: { Accept: "application/json" } },
+        WFS_RETRY,
+      );
 
       if (!vedtagetRes.ok) {
         const body = await vedtagetRes.text();
@@ -190,9 +197,11 @@ export class PlandataService {
       let forslagFeatures: any[] = [];
       if (includeForslag) {
         try {
-          const forslagRes = await fetch(buildWfsUrl(LOKALPLAN_FORSLAG_TYPE, lngWgs84, latWgs84), {
-            headers: { Accept: "application/json" },
-          });
+          const forslagRes = await fetchWithRetry(
+            buildWfsUrl(LOKALPLAN_FORSLAG_TYPE, lngWgs84, latWgs84),
+            { headers: { Accept: "application/json" } },
+            WFS_RETRY,
+          );
           if (forslagRes.ok) {
             const forslagJson = (await forslagRes.json()) as any;
             forslagFeatures = forslagJson?.features ?? [];
@@ -233,9 +242,11 @@ export class PlandataService {
     }
 
     try {
-      const res = await fetch(buildWfsUrl(KOMMUNEPLANRAMME_TYPE, lngWgs84, latWgs84, 1), {
-        headers: { Accept: "application/json" },
-      });
+      const res = await fetchWithRetry(
+        buildWfsUrl(KOMMUNEPLANRAMME_TYPE, lngWgs84, latWgs84, 1),
+        { headers: { Accept: "application/json" } },
+        WFS_RETRY,
+      );
 
       if (!res.ok) {
         throw new Error(`Plandata WFS HTTP ${res.status}`);
