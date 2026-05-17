@@ -569,21 +569,21 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             store.setHeritageSaveValue(project.heritage_save_value);
           if (project.is_fredet != null) store.setIsFredet(project.is_fredet);
           store.setHardStop(project.hard_stop ?? false, project.hard_stop_reason ?? null);
+
+          // ARCH-190/197: restore AI artifacts after reload.
+          if (project.billedanalyse) {
+            store.setBilledanalyse(
+              project.billedanalyse as import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat,
+            );
+          }
+          if (project.hus_dna) {
+            store.setHusDna(project.hus_dna as import("@/lib/project-store").HusDna);
+          }
         }
       } catch (e) {
         logger.warn("[Cockpit] restore-by-url fejlede:", (e as Error).message);
       } finally {
         if (!cancelled) setRestorePhase("checked");
-      }
-      // ARCH-190: restore billedanalyse efter reload
-      if (persisted.billedanalyse) {
-        store.setBilledanalyse(
-          persisted.billedanalyse as import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat,
-        );
-      }
-      // ARCH-197: restore husDna efter reload
-      if (persisted.hus_dna) {
-        store.setHusDna(persisted.hus_dna as import("@/lib/project-store").HusDna);
       }
     })();
     return () => {
