@@ -18,6 +18,16 @@ export type Projekt = {
   byggeanalyse_resultat: unknown | null;
   current_step: string | null;
   compliance_done: boolean;
+  // Adressefelter — bruges til at pre-populere store ved "Fortsæt" så cockpit
+  // ikke skal vente på restore-race.
+  address_postnr: string | null;
+  address_postnrnavn: string | null;
+  address_kommune: string | null;
+  address_matrikel: string | null;
+  address_koordinater: { lat: number; lng: number } | null;
+  address_ejerlavskode: number | null;
+  address_matrikelnummer: string | null;
+  address_bbr: string | null;
 };
 
 export type ProjektInsert = {

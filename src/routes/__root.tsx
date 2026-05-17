@@ -125,16 +125,18 @@ function RootComponent() {
     restoreProject(selectedProjectId, restoreAddressId).then((project) => {
       if (!project) return;
       setCurrentProjectId(project.id);
-      if (project.address_full && project.address_bbr) {
+      if (project.address_full && (project.address_adresseid || project.address_bbr)) {
+        const resolvedAdresseid = project.address_adresseid ?? project.address_bbr!;
+        const resolvedAdgangsadresseid = project.address_bbr ?? project.address_adresseid!;
         setAddress({
-          adresseid: project.address_adresseid ?? project.address_bbr,
+          adresseid: resolvedAdresseid,
           adresse: project.address_full,
           postnr: project.address_postnr ?? "",
           postnrnavn: project.address_postnrnavn ?? "",
           kommune: project.address_kommune ?? "",
           kommunekode: "",
           matrikel: project.address_matrikel,
-          adgangsadresseid: project.address_bbr,
+          adgangsadresseid: resolvedAdgangsadresseid,
           grundareal: null,
           koordinater: (project.address_koordinater as { lat: number; lng: number } | null) ?? {
             lat: 0,

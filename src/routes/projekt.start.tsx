@@ -1,11 +1,22 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Plus, ChevronRight, LogIn, Clock, LogOut } from "lucide-react";
-import { useProject } from "@/lib/project-store";
+import { MapPin, Plus, ChevronRight, LogIn, Clock, LogOut, Trash2, Loader2 } from "lucide-react";
+import { useProject, type Address } from "@/lib/project-store";
 import { serverCreateProject } from "@/lib/project-sync";
 import { Card } from "@/components/wizard-ui";
 import type { Projekt } from "@/lib/byggeoenske";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/projekt/start")({
   component: StartPage,
@@ -75,7 +86,11 @@ function StartPage() {
         </p>
       </motion.div>
 
-      {loggedIn ? <LoggedInView projekter={projekter} /> : <GuestView />}
+      {loggedIn ? (
+        <LoggedInView projekter={projekter} setProjekter={setProjekter} />
+      ) : (
+        <GuestView />
+      )}
     </main>
   );
 }
@@ -84,7 +99,13 @@ function StartPage() {
 // Logget ind: projektliste
 // ---------------------------------------------------------------------------
 
-function LoggedInView({ projekter }: { projekter: Projekt[] }) {
+function LoggedInView({
+  projekter,
+  setProjekter,
+}: {
+  projekter: Projekt[];
+  setProjekter: React.Dispatch<React.SetStateAction<Projekt[]>>;
+}) {
   const navigate = useNavigate();
   const { reset, setCurrentProjectId } = useProject();
 
@@ -109,7 +130,12 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
       {projekter.length > 0 && (
         <>
           {projekter.map((p, i) => (
-            <ProjektKort key={p.id} projekt={p} index={i} />
+            <ProjektKort
+              key={p.id}
+              projekt={p}
+              index={i}
+              onSlettet={(id) => setProjekter((prev) => prev.filter((x) => x.id !== id))}
+            />
           ))}
           <div className="pt-2">
             <Divider />
@@ -145,9 +171,19 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
   );
 }
 
-function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
+function ProjektKort({
+  projekt,
+  index,
+  onSlettet,
+}: {
+  projekt: Projekt;
+  index: number;
+  onSlettet: (id: string) => void;
+}) {
   const navigate = useNavigate();
-  const { reset, setCurrentProjectId } = useProject();
+  const { reset, setCurrentProjectId, setAddress, currentProjectId } = useProject();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sletter, setSletter] = useState(false);
 
   const harAdresse = !!projekt.adresse_dar_id;
   const dato = new Date(projekt.updated_at).toLocaleDateString("da-DK", {
@@ -157,13 +193,52 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   });
 
   const handleFortsaet = () => {
+    // Ryd analyse-state, men sæt så adressen + projektId med det samme så
+    // cockpit-mount ikke render'er en restore-race der bouncer til /adresse.
     reset();
     setCurrentProjectId(projekt.id);
-    const search = { projectId: projekt.id } as never;
-    if (projekt.adresse_dar_id) {
-      navigate({ to: `/projekt/${projekt.adresse_dar_id}/cockpit` as never, search });
+    if (projekt.adresse_dar_id && projekt.adresse) {
+      const adresseid = projekt.adresse_dar_id;
+      const adgang = projekt.address_bbr ?? adresseid;
+      const addr: Address = {
+        adresseid,
+        adresse: projekt.adresse,
+        postnr: projekt.address_postnr ?? "",
+        postnrnavn: projekt.address_postnrnavn ?? "",
+        kommune: projekt.address_kommune ?? "",
+        kommunekode: "",
+        matrikel: projekt.address_matrikel,
+        adgangsadresseid: adgang,
+        koordinater: projekt.address_koordinater ?? { lat: 0, lng: 0 },
+        bbrId: null,
+        ejerlavskode: projekt.address_ejerlavskode,
+        matrikelnummer: projekt.address_matrikelnummer,
+        grundareal: null,
+      };
+      setAddress(addr);
+      const search = { projectId: projekt.id } as never;
+      navigate({ to: `/projekt/${adresseid}/cockpit` as never, search });
     } else {
+      const search = { projectId: projekt.id } as never;
       navigate({ to: "/projekt/adresse", search });
+    }
+  };
+
+  const handleSlet = async () => {
+    setSletter(true);
+    try {
+      const { sletProjekt } = await import("@/lib/projekt-service");
+      await sletProjekt(projekt.id);
+      if (currentProjectId === projekt.id) {
+        reset();
+      }
+      onSlettet(projekt.id);
+      toast.success("Projektet er slettet");
+    } catch (e) {
+      toast.error((e as Error).message || "Kunne ikke slette projektet");
+    } finally {
+      setSletter(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -205,6 +280,14 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
             </div>
           </div>
           <button
+            onClick={() => setConfirmOpen(true)}
+            aria-label="Slet projekt"
+            title="Slet projekt"
+            className="shrink-0 inline-flex items-center justify-center rounded-md border border-border/60 p-2 text-muted-foreground hover:text-danger hover:border-danger/40 transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
             onClick={handleFortsaet}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-mono text-[12px] text-accent-foreground hover:brightness-110 transition-all"
           >
@@ -212,6 +295,38 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
           </button>
         </div>
       </Card>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slet projekt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {projekt.adresse
+                ? `Projektet på "${projekt.adresse}" og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes.`
+                : "Projektet og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sletter}>Annullér</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleSlet();
+              }}
+              disabled={sletter}
+              className="bg-danger text-danger-foreground hover:bg-danger/90"
+            >
+              {sletter ? (
+                <>
+                  <Loader2 size={14} className="mr-1.5 animate-spin" /> Sletter…
+                </>
+              ) : (
+                "Slet projekt"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

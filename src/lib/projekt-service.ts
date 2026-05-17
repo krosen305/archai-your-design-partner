@@ -27,12 +27,10 @@ export async function listProjekter(): Promise<Projekt[]> {
   const userId = await getUserId();
   if (!userId) return [];
 
-  // projects-tabellen er den autoritative kilde — syncPatch() skriver hertil.
-  // projekter-tabellen bruges ikke fra wizard-flowet og er altid tom.
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, user_id, created_at, updated_at, address_full, address_adresseid, compliance_done, current_step",
+      "id, user_id, created_at, updated_at, address_full, address_adresseid, address_postnr, address_postnrnavn, address_kommune, address_matrikel, address_koordinater, address_ejerlavskode, address_matrikelnummer, address_bbr, compliance_done, current_step",
     )
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
@@ -53,7 +51,27 @@ export async function listProjekter(): Promise<Projekt[]> {
     byggeanalyse_resultat: null,
     current_step: row.current_step,
     compliance_done: row.compliance_done ?? false,
+    address_postnr: row.address_postnr,
+    address_postnrnavn: row.address_postnrnavn,
+    address_kommune: row.address_kommune,
+    address_matrikel: row.address_matrikel,
+    address_koordinater: (row.address_koordinater as { lat: number; lng: number } | null) ?? null,
+    address_ejerlavskode: row.address_ejerlavskode,
+    address_matrikelnummer: row.address_matrikelnummer,
+    address_bbr: row.address_bbr,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// sletProjekt — sletter projekt + alt relateret data via server fn.
+// ---------------------------------------------------------------------------
+
+export async function sletProjekt(projectId: string): Promise<void> {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session?.access_token) throw new Error("Du skal være logget ind for at slette projekter");
+  const { serverDeleteProject } = await import("@/lib/project-sync");
+  await serverDeleteProject({ data: { accessToken: session.access_token, projectId } });
 }
 
 // ---------------------------------------------------------------------------
