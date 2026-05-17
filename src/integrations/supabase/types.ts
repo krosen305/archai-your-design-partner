@@ -226,6 +226,7 @@ export type Database = {
           area: string | null
           bebygget_areal_m2: number | null
           bfe_nr: string | null
+          billedanalyse: Json | null
           brief_data: Json | null
           brief_done: boolean
           budget: string | null
@@ -264,6 +265,7 @@ export type Database = {
           area?: string | null
           bebygget_areal_m2?: number | null
           bfe_nr?: string | null
+          billedanalyse?: Json | null
           brief_data?: Json | null
           brief_done?: boolean
           budget?: string | null
@@ -302,6 +304,7 @@ export type Database = {
           area?: string | null
           bebygget_areal_m2?: number | null
           bfe_nr?: string | null
+          billedanalyse?: Json | null
           brief_data?: Json | null
           brief_done?: boolean
           budget?: string | null
