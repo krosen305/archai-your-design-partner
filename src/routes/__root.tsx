@@ -145,14 +145,22 @@ function RootComponent() {
           matrikelnummer: project.address_matrikelnummer ?? null,
         });
       }
-      if (isHusDna(project.brief_data)) {
+      // ARCH-197: hus_dna ligger nu i dedikeret kolonne — fallback til brief_data for ældre rækker
+      if (isHusDna(project.hus_dna)) {
+        setHusDna({
+          ...project.hus_dna,
+          kilde: (project.hus_dna as { kilde?: "mock" | "anthropic" }).kilde ?? "mock",
+        });
+      } else if (isHusDna(project.brief_data)) {
         setHusDna({
           ...project.brief_data,
           kilde: (project.brief_data as { kilde?: "mock" | "anthropic" }).kilde ?? "mock",
         });
-      } else if (
+      }
+      if (
         typeof project.brief_data === "object" &&
         project.brief_data !== null &&
+        !isHusDna(project.brief_data) &&
         Object.keys(project.brief_data).length > 0
       ) {
         setByggeoenske(project.brief_data as Record<string, unknown>);
