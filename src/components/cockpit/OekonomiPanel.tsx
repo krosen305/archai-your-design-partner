@@ -84,11 +84,11 @@ export function OekonomiPanel() {
               )}
             </div>
 
-            {bbrData?.grundareal && vurderingData.grundvaerdi !== null && (
+            {grundareal && vurderingData.grundvaerdi !== null && (
               <div className="text-xs text-muted-foreground border-t border-border pt-3">
                 Grundværdi pr. m²:{" "}
                 <span className="text-foreground">
-                  {formatKr(Math.round(vurderingData.grundvaerdi / bbrData.grundareal))}/m²
+                  {formatKr(Math.round(vurderingData.grundvaerdi / grundareal))}/m²
                 </span>
                 {address?.adresse && ` · ${address.adresse}`}
               </div>
