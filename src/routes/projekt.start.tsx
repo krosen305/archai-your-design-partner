@@ -86,7 +86,11 @@ function StartPage() {
         </p>
       </motion.div>
 
-      {loggedIn ? <LoggedInView projekter={projekter} /> : <GuestView />}
+      {loggedIn ? (
+        <LoggedInView projekter={projekter} setProjekter={setProjekter} />
+      ) : (
+        <GuestView />
+      )}
     </main>
   );
 }
@@ -95,7 +99,13 @@ function StartPage() {
 // Logget ind: projektliste
 // ---------------------------------------------------------------------------
 
-function LoggedInView({ projekter }: { projekter: Projekt[] }) {
+function LoggedInView({
+  projekter,
+  setProjekter,
+}: {
+  projekter: Projekt[];
+  setProjekter: React.Dispatch<React.SetStateAction<Projekt[]>>;
+}) {
   const navigate = useNavigate();
   const { reset, setCurrentProjectId } = useProject();
 
