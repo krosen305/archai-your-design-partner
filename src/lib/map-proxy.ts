@@ -1,6 +1,10 @@
 import proj4 from "proj4";
 import type * as GeoJSON from "geojson";
 import { getEnvRequired, getEnvOptional } from "@/lib/env";
+import {
+  getCachedJordstykkePolygon,
+  setCachedJordstykkePolygon,
+} from "@/integrations/cache/client";
 
 export const EPSG25832 = "+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs +type=crs";
 
@@ -15,6 +19,7 @@ export type MapPoint = {
 
 export type ParcelGeometryRequest = {
   point: MapPoint;
+  adresseid?: string | null;
   bufferMeters?: number;
 };
 
@@ -122,6 +127,18 @@ export async function fetchParcelGeometryProxy(
   request: ParcelGeometryRequest,
 ): Promise<ParcelGeometryResult> {
   const bbox = createBboxAroundPoint(request.point, request.bufferMeters ?? 140);
+
+  if (request.adresseid) {
+    try {
+      const cached = await getCachedJordstykkePolygon(request.adresseid);
+      if (cached) {
+        return { bbox25832: bboxToArray(bbox), featureCollection: cached, source: "wfs" };
+      }
+    } catch {
+      // Cache-fejl er ikke blokerende — fortsæt til WFS
+    }
+  }
+
   const apiKey = ensureApiKey();
   const url = new URL(MAT_WFS_URL);
   url.searchParams.set("apikey", apiKey);
@@ -155,11 +172,19 @@ export async function fetchParcelGeometryProxy(
 
   try {
     const parsed = JSON.parse(text) as GeoJSON.FeatureCollection;
-    return {
+    const result: ParcelGeometryResult = {
       bbox25832: bboxToArray(bbox),
       featureCollection: parsed,
       source: parsed.features.length > 0 ? "wfs" : "missing",
     };
+
+    if (request.adresseid && result.source === "wfs" && result.featureCollection) {
+      setCachedJordstykkePolygon(request.adresseid, result.featureCollection).catch(() => {
+        // Fire-and-forget
+      });
+    }
+
+    return result;
   } catch {
     return { bbox25832: bboxToArray(bbox), featureCollection: null, source: "missing" };
   }

@@ -103,6 +103,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
         const geometry = await loadParcelGeometry({
           data: {
             point: geo,
+            adresseid: address?.adresseid ?? null,
             bufferMeters: 180,
           },
         });

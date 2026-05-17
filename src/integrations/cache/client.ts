@@ -13,6 +13,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
+import type * as GeoJSON from "geojson";
 
 const DAYS_MS = (n: number) => n * 24 * 60 * 60 * 1000;
 
@@ -21,6 +22,7 @@ const TTL = {
   servitut: DAYS_MS(7),
   compliance: DAYS_MS(30),
   report: DAYS_MS(30),
+  jordstykke: DAYS_MS(90),
 };
 
 function isFresh(timestamp: string | null, ttlMs: number): boolean {
@@ -131,5 +133,32 @@ export async function setCachedReport(addressId: string, report: string): Promis
   await upsert(addressId, {
     report_text: report,
     report_generated_at: new Date().toISOString(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Jordstykke polygon (WFS cache)
+// ---------------------------------------------------------------------------
+
+export async function getCachedJordstykkePolygon(
+  addressId: string,
+): Promise<GeoJSON.FeatureCollection | null> {
+  const row = await getRow(addressId);
+  if (!row) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const at = (row as any).jordstykke_polygon_at as string | null;
+  if (!isFresh(at, TTL.jordstykke)) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (row as any).jordstykke_polygon as GeoJSON.FeatureCollection | null;
+}
+
+export async function setCachedJordstykkePolygon(
+  addressId: string,
+  featureCollection: GeoJSON.FeatureCollection,
+): Promise<void> {
+  await upsert(addressId, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jordstykke_polygon: featureCollection as any,
+    jordstykke_polygon_at: new Date().toISOString(),
   });
 }
