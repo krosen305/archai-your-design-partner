@@ -25,6 +25,9 @@ export default tseslint.config(
       // Kodebasen bruger any legitimt mod Datafordeler GraphQL (ingen typed schemas).
       // Adresseres separat — blokerer ikke CI.
       "@typescript-eslint/no-explicit-any": "warn",
+      // console.log/debug/info er forbudt i produktionskode — brug logger.warn/error.
+      // console.warn og console.error er tilladt i integrationer som operationelle diagnostics.
+      "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
   eslintPluginPrettier,
