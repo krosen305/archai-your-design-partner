@@ -111,61 +111,49 @@ Private bygherrer undervurderer totalomkostninger med 30–50% fordi nedrivning,
 
 ---
 
-## Task 3: ARCH-181/182 — Cockpit-kort med WMS/WFS-lag
+## Task 3: ARCH-181/182 — WFS polygon-caching (det eneste tilbageværende)
 
-### Problem
+### Opdateret analyse (2026-05-17)
 
-`MatrikelCanvas` er en simpel SVG baseret på et antaget kvadratisk grundareal. Den giver ingen reel spatial kontekst — brugeren kan ikke se matrikelgrænser, nabogrunde eller sin ønskede bygnings placering på det faktiske grundstykke.
+`MatrikelMap.tsx` er allerede en fuldt implementeret OpenLayers-komponent:
+- Skærmkort WMTS basemap ✅
+- Matriklen2 WFS parcel geometry (`fetchParcelGeometry`) ✅
+- Matriklen2 WMS preview (`fetchMatriklenPreview`) ✅
+- Drag + roter + reset ✅
+- Live badges (bebyggelsesprocent, skelafstand) ✅
+- Hard stop banner ✅
+- Fallback ved ingen adresse ✅
+
+`MatrikelCanvas` i ANALYSE-tabben er allerede en tynd wrapper der renderer `<MatrikelMap />`.
+
+**Det eneste tilbageværende fra ARCH-181 definition of done:** "Jordstykke-polygon caches i `address_analysis`." WFS-polygon hentes i dag fresh ved hver load — ingen Supabase-cache.
 
 ### Design
 
-**Ny fil:** `src/components/cockpit/CockpitMap.tsx` (erstatter `MatrikelMap.tsx` i ANALYSE-tabben)
-**`MatrikelMap.tsx`** beholdes — bruges fortsat i EJENDOM-tabben som fallback indtil stabil.
+**Filer:**
+- Ny migration: `supabase/migrations/YYYYMMDD_add_jordstykke_polygon.sql`
+- Modificér: `src/lib/map-proxy.ts` — `fetchParcelGeometryProxy` udvides med cache-read/write
+- Modificér: `src/routes/api.map-tiles.ts` — `fetchParcelGeometry` inputvalidator udvides med `adresseid`
+- Modificér: `src/components/cockpit/MatrikelMap.tsx` — sender `adresseid` med til server function
 
-#### Lag-arkitektur (MVP)
+#### Migration
+```sql
+ALTER TABLE public.address_analysis
+  ADD COLUMN IF NOT EXISTS jordstykke_polygon JSONB,
+  ADD COLUMN IF NOT EXISTS jordstykke_polygon_at TIMESTAMPTZ;
+```
 
-| Lag | Kilde | Proxy | Cache |
-|---|---|---|---|
-| Basemap | Skærmkort WMTS | Eksisterende ARCH-178 proxy | Cloudflare max-age=86400 |
-| Matrikelgrænser | Matriklen2 WMS | Ny `createServerFn` | Request-level |
-| Jordstykke-polygon | Matriklen2 WFS | Ny `createServerFn` | `address_analysis.jordstykke_polygon JSONB` (ny kolonne via migration) |
-| Eksisterende bygning | BBR approx. footprint | — | Fra `bbrData` |
-| Ny bygning | `DesignPlacement` i store | — | Reaktiv |
+#### Cache-logik i `fetchParcelGeometryProxy`
+Input udvides: `{ point: MapPoint, adresseid?: string | null, bufferMeters?: number }`
 
-#### Server functions (begge i `src/routes/api/`)
-- `mat-wms-proxy.ts`: proxyer WMS-tile-requests til Matriklen2 med API-key
-- `mat-wfs-polygon.ts`: henter jordstykke-polygon for matrikelnummer, cacher i `address_analysis.jordstykke_polygon JSONB` (ny kolonne — kræver migration: `ALTER TABLE address_analysis ADD COLUMN jordstykke_polygon JSONB`)
-
-#### Bygningsplacering
-- Ny bygning tegnes som OpenLayers-feature fra `designPlacement` (footprint + rotation)
-- Drag-interaktion: `ol/interaction/Translate` → oversætter `footprintGeojson`-koordinaterne med turf `@turf/transform-translate`, kalder `setDesignPlacement({ footprintGeojson: translatedPolygon, footprintAreaM2: ... })`
-- Roter: custom rotate handle → `@turf/transform-rotate` på `footprintGeojson`-polygon
-- Reset: sætter `footprintGeojson` tilbage til center af jordstykke-polygon (centroid fra WFS-polygon)
-
-#### Live badges (øverst på kortet)
-- Bebyggelsesprocent: beregnet reaktivt fra `complianceMetrics` + `designPlacement`
-- Skelafstand: beregnet fra bygningsfodaftryk vs. jordstykke-polygon
-- Rød badge ved overskridelse
-
-#### Hard stop banner
-- Overlay over korteditor hvis `hard_stop === true` (fra store)
-- Konsistent med eksisterende Hard Stop-logik i compliance-panel
-
-#### Fallback
-- Ingen adresse i store → standard Danmark-zoom, editor disabled, CTA "Vælg adresse"
-- Ingen WFS-polygon → vis kun WMS matrikellag uden drag-feature
-
-#### Fase 2 (eksplicit udeladt)
-Restriktionspolygoner (strandbeskyttelse-areal, fredskov), snap-to-parcel, footprint-size handles, flere bygninger.
+1. Hvis `adresseid`: check `address_analysis.jordstykke_polygon` for cached polygon
+2. Cache hit → returner cached `featureCollection` med `source: "wfs"`
+3. Cache miss → fetch WFS → skriv til `address_analysis.jordstykke_polygon` → returner
 
 ### Acceptkriterier
-- [ ] OpenLayers-komponent renderer Skærmkort WMTS basemap
-- [ ] Matriklen2 WMS viser matrikelgrænser
-- [ ] Jordstykke-polygon fra WFS caches i `address_analysis`
-- [ ] Drag + roter + reset virker og skriver til `designPlacement` i store
-- [ ] Live bebyggelsesprocent-badge opdateres ved drag
-- [ ] Hard stop banner vises ved `hard_stop === true`
-- [ ] Fallback ved ingen adresse
+- [ ] Jordstykke-polygon gemmes i `address_analysis.jordstykke_polygon` efter første WFS-kald
+- [ ] Andet besøg på samme adresse bruger cached polygon (ingen ny WFS-request)
+- [ ] `adresseid` sendes fra `MatrikelMap.tsx` til `fetchParcelGeometry`
 - [ ] `bun build` + `bun test` grøn
 
 ---
