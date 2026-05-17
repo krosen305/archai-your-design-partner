@@ -280,10 +280,7 @@ export function EjendomPanel() {
               value={vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"}
               status={vurderingData == null ? "mangler" : "live"}
             />
-            <DataRow label="GEUS geoteknik" value="ForelÃ¸big demo-data" status="mock" />
-            <DataRow label="DK-Jord forurening" value="ForelÃ¸big demo-data" status="mock" />
-            <DataRow label="TerrÃ¦n (DHM)" value="ForelÃ¸big demo-data" status="mock" />
-            <DataRow label="Servitutter (Tinglysning)" value="ForelÃ¸big demo-data" status="mock" />
+
           </div>
         )}
       </Card>

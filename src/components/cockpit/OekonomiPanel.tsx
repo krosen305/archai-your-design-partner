@@ -129,6 +129,20 @@ export function OekonomiPanel() {
         </span>
       </Card>
 
+      {bebyggelsespct != null && (
+        <div className="rounded-md border border-border bg-[#111] p-3">
+          <div className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground mb-1">
+            BEBYGGELSESPROCENT (NUVÆRENDE)
+          </div>
+          <div className="text-sm text-foreground">
+            {bebyggelsespct}%
+            {grundareal != null && (
+              <span className="ml-2 text-xs text-muted-foreground">({grundareal} m² grundareal)</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {budget_estimate != null && (
         <Card>
           <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-4">
@@ -146,12 +160,6 @@ export function OekonomiPanel() {
               }).format(budget_estimate)}
             </p>
           </div>
-          {bebyggelsespct != null && (
-            <div className="mt-3 text-xs text-muted-foreground">
-              Nuværende bebyggelsesprocent: {bebyggelsespct}%
-              {grundareal != null && ` (grundareal ${grundareal} m²)`}
-            </div>
-          )}
         </Card>
       )}
     </div>
