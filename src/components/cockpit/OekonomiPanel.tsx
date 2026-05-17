@@ -12,7 +12,14 @@ function formatKr(beloeb: number | null): string {
 }
 
 export function OekonomiPanel() {
-  const { vurderingData, bbrData, address } = useProject();
+  const { vurderingData, bbrData, address, grundareal_m2, bebygget_areal_m2, budget_estimate } = useProject();
+
+  const grundareal = grundareal_m2 ?? bbrData?.grundareal ?? null;
+  const bebyggetAreal = bebygget_areal_m2 ?? bbrData?.bebygget_areal ?? null;
+  const bebyggelsespct =
+    grundareal && bebyggetAreal && grundareal > 0
+      ? ((bebyggetAreal / grundareal) * 100).toFixed(1)
+      : null;
 
   return (
     <div className="space-y-6">
@@ -121,6 +128,32 @@ export function OekonomiPanel() {
           KOMMER SNART
         </span>
       </Card>
+
+      {budget_estimate != null && (
+        <Card>
+          <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-4">
+            PROJEKTBUDGET (ESTIMAT)
+          </div>
+          <div className="rounded-md border border-border bg-[#111] p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <span className="font-mono text-[10px] tracking-[0.1em]">SAMLET BUDGET</span>
+            </div>
+            <p className="text-xl font-medium text-foreground">
+              {new Intl.NumberFormat("da-DK", {
+                style: "currency",
+                currency: "DKK",
+                maximumFractionDigits: 0,
+              }).format(budget_estimate)}
+            </p>
+          </div>
+          {bebyggelsespct != null && (
+            <div className="mt-3 text-xs text-muted-foreground">
+              Nuværende bebyggelsesprocent: {bebyggelsespct}%
+              {grundareal != null && ` (grundareal ${grundareal} m²)`}
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

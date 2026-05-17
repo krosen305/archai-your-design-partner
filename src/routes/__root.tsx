@@ -102,6 +102,7 @@ function RootComponent() {
     setGrundareal,
     setBebyggetAreal,
     setHardStop,
+    setBudgetEstimate,
   } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
@@ -175,6 +176,7 @@ function RootComponent() {
       if (project.grundareal_m2 != null) setGrundareal(project.grundareal_m2);
       if (project.bebygget_areal_m2 != null) setBebyggetAreal(project.bebygget_areal_m2);
       setHardStop(project.hard_stop ?? false, project.hard_stop_reason ?? null);
+      if (project.budget_estimate != null) setBudgetEstimate(project.budget_estimate);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (

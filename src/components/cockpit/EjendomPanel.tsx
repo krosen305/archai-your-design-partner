@@ -22,6 +22,9 @@ export function EjendomPanel() {
     address,
     adressePreCheck,
     heritage_save_value,
+    grundareal_m2,
+    bebygget_areal_m2,
+    is_fredet,
   } = useProject();
   const [showFlags, setShowFlags] = useState(false);
   const [showDatakilder, setShowDatakilder] = useState(false);
@@ -30,11 +33,13 @@ export function EjendomPanel() {
   const k = adressePreCheck?.kontekst;
   const bbr = bbrData ?? adressePreCheck?.bbr ?? null;
 
-  const grundareal = complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
+  const grundareal = grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
+  const bebyggetAreal = bebygget_areal_m2 ?? bbr?.bebygget_areal ?? null;
   const remaining = complianceMetrics?.remainingBygningsareal ?? k?.restBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
   const currentPct =
     complianceMetrics?.currentBebyggelsesprocent ??
+    (grundareal && bebyggetAreal ? (bebyggetAreal / grundareal) * 100 : null) ??
     bbrData?.bebyggelsesprocent ??
     k?.bebyggelsesprocent ??
     null;
@@ -75,6 +80,16 @@ export function EjendomPanel() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <MapPin size={13} />
           <span>{address.adresse}</span>
+        </div>
+      )}
+
+      {is_fredet === true && (
+        <div className="flex items-center gap-2 rounded-md border border-danger/40 bg-danger/5 px-3 py-2">
+          <AlertTriangle size={13} className="text-danger shrink-0" />
+          <div>
+            <span className="font-mono text-[10px] tracking-[0.15em] text-danger">FREDET BYGNING</span>
+            <span className="ml-2 text-xs text-muted-foreground">— kilde: DAI WFS</span>
+          </div>
         </div>
       )}
 
@@ -265,6 +280,10 @@ export function EjendomPanel() {
               value={vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"}
               status={vurderingData == null ? "mangler" : "live"}
             />
+            <DataRow label="GEUS geoteknik" value="ForelÃ¸big demo-data" status="mock" />
+            <DataRow label="DK-Jord forurening" value="ForelÃ¸big demo-data" status="mock" />
+            <DataRow label="TerrÃ¦n (DHM)" value="ForelÃ¸big demo-data" status="mock" />
+            <DataRow label="Servitutter (Tinglysning)" value="ForelÃ¸big demo-data" status="mock" />
           </div>
         )}
       </Card>

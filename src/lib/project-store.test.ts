@@ -69,6 +69,27 @@ describe("husDna persistence — ARCH-197", () => {
   });
 });
 
+describe("project-store budget_estimate", () => {
+  beforeEach(() => {
+    useProject.getState().reset();
+  });
+
+  it("starter som null", () => {
+    expect(useProject.getState().budget_estimate).toBeNull();
+  });
+
+  it("sættes og læses korrekt", () => {
+    useProject.getState().setBudgetEstimate(2_500_000);
+    expect(useProject.getState().budget_estimate).toBe(2_500_000);
+  });
+
+  it("nulstilles ved reset", () => {
+    useProject.getState().setBudgetEstimate(1_000_000);
+    useProject.getState().reset();
+    expect(useProject.getState().budget_estimate).toBeNull();
+  });
+});
+
 describe("project selection — ARCH-147", () => {
   it("reset() clears address so a subsequent restore can load the correct project", () => {
     const { setAddress, setCurrentProjectId, reset } = useProject.getState();

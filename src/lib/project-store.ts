@@ -218,6 +218,7 @@ type State = {
   bebygget_areal_m2: number | null; // BBR bebygget areal
   hard_stop: boolean; // aggregeret bloker-flag
   hard_stop_reason: string | null; // menneskelæsbar årsag
+  budget_estimate: number | null; // ARCH-163: projektbudget estimat
 
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
@@ -256,6 +257,7 @@ type State = {
   setGrundareal: (v: number | null) => void;
   setBebyggetAreal: (v: number | null) => void;
   setHardStop: (v: boolean, reason: string | null) => void;
+  setBudgetEstimate: (v: number | null) => void;
 
   reset: () => void;
 };
@@ -297,6 +299,7 @@ export const useProject = create<State>((set) => ({
   bebygget_areal_m2: null,
   hard_stop: false,
   hard_stop_reason: null,
+  budget_estimate: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -326,6 +329,7 @@ export const useProject = create<State>((set) => ({
   setGrundareal: (grundareal_m2) => set({ grundareal_m2 }),
   setBebyggetAreal: (bebygget_areal_m2) => set({ bebygget_areal_m2 }),
   setHardStop: (hard_stop, hard_stop_reason) => set({ hard_stop, hard_stop_reason }),
+  setBudgetEstimate: (budget_estimate) => set({ budget_estimate }),
 
   reset: () =>
     set({
@@ -356,6 +360,7 @@ export const useProject = create<State>((set) => ({
       bebygget_areal_m2: null,
       hard_stop: false,
       hard_stop_reason: null,
+      budget_estimate: null,
     }),
 }));
 
