@@ -92,11 +92,9 @@ export function beregnNybyg(
   if (!arealM2) {
     return { label: "Nybyg", min: 0, max: 0, note: "Intet ønsket areal angivet" };
   }
+  const LAVENERGI_KLASSER = ["lavenergi", "passiv", "plusenergi"];
   const lavenergitillæg =
-    energiklasse &&
-    (energiklasse.toLowerCase().includes("lavenergi") || energiklasse.startsWith("A"))
-      ? 2_000
-      : 0;
+    energiklasse && LAVENERGI_KLASSER.includes(energiklasse.toLowerCase()) ? 2_000 : 0;
   const kaeldertillæg = harKaelder ? 5_000 : 0;
   const baseSatsMin = 22_000 + lavenergitillæg + kaeldertillæg;
   const baseSatsMax = baseSatsMin + 4_000;
@@ -194,6 +192,7 @@ export function BudgetKalkulator() {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      useProject.getState().setBudgetEstimate(resultat.totalTypisk);
       void syncPatch({ budget_estimate: resultat.totalTypisk });
     }, 800);
     return () => {
@@ -315,8 +314,8 @@ export function BudgetKalkulator() {
             className={`mt-2 text-xs ${overEjendomsvaerdi ? "text-warning" : "text-muted-foreground"}`}
           >
             {overEjendomsvaerdi
-              ? `Projektet estimeres til ${((resultat.totalTypisk / ejendomsvaerdi) * 100).toFixed(0)}% af ejendomsværdien`
-              : `Projektet estimeres til ${((resultat.totalTypisk / ejendomsvaerdi) * 100).toFixed(0)}% af ejendomsværdien`}
+              ? `Advarsel: estimat overstiger ejendomsværdien (${((resultat.totalTypisk / ejendomsvaerdi) * 100).toFixed(0)}%)`
+              : `Estimeret til ${((resultat.totalTypisk / ejendomsvaerdi) * 100).toFixed(0)}% af ejendomsværdien`}
           </div>
         )}
       </div>

@@ -76,6 +76,12 @@ describe("beregnNybyg", () => {
     expect(r.min).toBe(0);
     expect(r.max).toBe(0);
   });
+
+  it("tillægger lavenergi-sats ved passiv", () => {
+    const r = beregnNybyg(100, "passiv", false);
+    expect(r.min).toBe(2_400_000); // 100 × 24.000
+    expect(r.max).toBe(2_800_000); // 100 × 28.000
+  });
 });
 
 describe("beregnBudget", () => {
