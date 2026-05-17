@@ -494,6 +494,64 @@ export async function createProject(accessToken: string): Promise<string | null>
 }
 
 // ---------------------------------------------------------------------------
+// deleteProject: slet projekt + relateret data (storage, design_iterations,
+// building_tasks). address_analysis / site_constraints er delt cache og røres ikke.
+// ---------------------------------------------------------------------------
+
+export async function deleteProject(
+  accessToken: string,
+  projectId: string,
+): Promise<void> {
+  const userId = await getUserId(accessToken);
+  if (!userId) throw new Error("[Persistence] deleteProject: ikke autoriseret");
+  if (!projectId?.trim()) throw new Error("[Persistence] deleteProject: projectId mangler");
+
+  // Verificér ejerskab inden vi sletter noget
+  const { data: owned, error: ownErr } = await supabaseAdmin
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (ownErr) throw new Error(`[Persistence] deleteProject: ${ownErr.message}`);
+  if (!owned) throw new Error("[Persistence] deleteProject: projekt findes ikke eller tilhører ikke brugeren");
+
+  // 1. Storage: fjern alle inspirationsbilleder for projektet
+  const folder = `${userId}/${projectId}`;
+  try {
+    const { data: files } = await supabaseAdmin.storage.from("inspirationsbilleder").list(folder);
+    if (files && files.length > 0) {
+      const paths = files.map((f) => `${folder}/${f.name}`);
+      await supabaseAdmin.storage.from("inspirationsbilleder").remove(paths);
+    }
+  } catch (e) {
+    console.warn("[Persistence] deleteProject: storage cleanup fejlede (ikke kritisk):", (e as Error).message);
+  }
+
+  // 2. design_iterations — ingen DB-cascade
+  const { error: diErr } = await supabaseAdmin
+    .from("design_iterations")
+    .delete()
+    .eq("project_id", projectId);
+  if (diErr) console.warn("[Persistence] deleteProject: design_iterations:", diErr.message);
+
+  // 3. building_tasks — ingen DB-cascade
+  const { error: btErr } = await supabaseAdmin
+    .from("building_tasks")
+    .delete()
+    .eq("project_id", projectId);
+  if (btErr) console.warn("[Persistence] deleteProject: building_tasks:", btErr.message);
+
+  // 4. selve projektet
+  const { error: pErr } = await supabaseAdmin
+    .from("projects")
+    .delete()
+    .eq("id", projectId)
+    .eq("user_id", userId);
+  if (pErr) throw new Error(`[Persistence] deleteProject: ${pErr.message}`);
+}
+
+// ---------------------------------------------------------------------------
 // saveProject: gem state-patch til Supabase
 // ---------------------------------------------------------------------------
 
