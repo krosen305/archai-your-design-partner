@@ -523,18 +523,20 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
         const pid = searchProjectId ?? null;
         const project = await restoreProject(pid, adresseId);
         if (cancelled) return;
-        if (project?.address_full && project?.address_bbr) {
+        if (project?.address_full && (project?.address_adresseid || project?.address_bbr)) {
           const store = useProject.getState();
           store.setCurrentProjectId(project.id);
+          const resolvedAdresseid = project.address_adresseid ?? project.address_bbr ?? adresseId;
+          const resolvedAdgangsadresseid = project.address_bbr ?? project.address_adresseid ?? adresseId;
           store.setAddress({
-            adresseid: project.address_adresseid ?? project.address_bbr,
+            adresseid: resolvedAdresseid,
             adresse: project.address_full,
             postnr: project.address_postnr ?? "",
             postnrnavn: project.address_postnrnavn ?? "",
             kommune: project.address_kommune ?? "",
             kommunekode: "",
             matrikel: project.address_matrikel,
-            adgangsadresseid: project.address_bbr,
+            adgangsadresseid: resolvedAdgangsadresseid,
             grundareal: project.grundareal_m2 ?? null,
             koordinater:
               (project.address_koordinater as { lat: number; lng: number } | null) ?? {
