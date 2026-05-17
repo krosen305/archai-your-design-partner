@@ -3,7 +3,7 @@
  * Kør med: bun test
  */
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { BbrService } from "./client";
+import { BbrService, deriveBbrSummary } from "./client";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -242,5 +242,64 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
     expect(result.alle_bygning_lokal_ids).toEqual(["uuid-1", "uuid-2"]);
     expect(result.alle_bbr_public_ids).toEqual(["uuid-1", "uuid-2"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deriveBbrSummary — ARCH-227
+// ---------------------------------------------------------------------------
+
+describe("deriveBbrSummary (ARCH-227)", () => {
+  it("bebygget_areal summerer ikke-sekundære bygninger", () => {
+    const bygninger = [
+      { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120 },
+      { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 40 },
+    ];
+    const { bebygget_areal } = deriveBbrSummary(bygninger);
+    expect(bebygget_areal).toBe(160);
+  });
+
+  it("garage (910) er ekskluderet fra bebygget_areal", () => {
+    const bygninger = [
+      { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120 },
+      { ...MOCK_BYGNING, byg021BygningensAnvendelse: "910", byg041BebyggetAreal: 30 },
+    ];
+    const { bebygget_areal } = deriveBbrSummary(bygninger);
+    expect(bebygget_areal).toBe(120);
+  });
+
+  it("primærBygning er første ikke-sekundære uanset rækkefølge i array", () => {
+    const garage = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "910", byg026Opfoerelsesaar: 2000 };
+    const bolig = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg026Opfoerelsesaar: 1992 };
+    const { primærBygning } = deriveBbrSummary([garage, bolig]);
+    expect(primærBygning.byg021BygningensAnvendelse).toBe("120");
+  });
+
+  it("fredet = true hvis én bygning har byg070Fredning='F'", () => {
+    const bygninger = [
+      { ...MOCK_BYGNING, byg070Fredning: null },
+      { ...MOCK_BYGNING, byg070Fredning: "F" },
+    ];
+    expect(deriveBbrSummary(bygninger).fredet).toBe(true);
+  });
+
+  it("fredet = false hvis alle bygninger har byg070Fredning='0'", () => {
+    const bygninger = [
+      { ...MOCK_BYGNING, byg070Fredning: "0" },
+      { ...MOCK_BYGNING, byg070Fredning: "0" },
+    ];
+    expect(deriveBbrSummary(bygninger).fredet).toBe(false);
+  });
+
+  it("fredet = null hvis ingen bygninger har byg070Fredning sat (kun null)", () => {
+    expect(deriveBbrSummary([{ ...MOCK_BYGNING, byg070Fredning: null }]).fredet).toBeNull();
+  });
+
+  it("historisk dublet påvirker ikke bebygget_areal (node-order-uafhængig)", () => {
+    const b1 = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120, id_lokalId: "uuid-1" };
+    const b2 = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120, id_lokalId: "uuid-1" }; // dublet
+    const { bebygget_areal } = deriveBbrSummary([b1, b2]);
+    // Duplikater deduplikeres — kun én tæller
+    expect(bebygget_areal).toBe(120);
   });
 });

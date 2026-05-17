@@ -241,6 +241,62 @@ async function gqlFetch(
 }
 
 // ---------------------------------------------------------------------------
+// Aggregeringskonstanter og -helper — ARCH-227
+// ---------------------------------------------------------------------------
+
+const SECONDARY_CODES = new Set(["910", "920", "930", "940"]);
+
+/**
+ * Aggregerer BBR-bygningsliste til compliance-summary.
+ * Eksporteret for testbarhed uden netværk.
+ *
+ * - bebygget_areal: sum af ikke-sekundære bygningers footprint (byg041)
+ * - fredet: true hvis NOGEN bygning har byg070Fredning != null/"0"/""
+ * - primærBygning: første ikke-sekundære bygning (til UI-felter som byggeår, materiale)
+ */
+export function deriveBbrSummary(bygninger: any[]): {
+  primærBygning: any | null;
+  bebygget_areal: number | null;
+  fredet: boolean | null;
+} {
+  if (!bygninger.length) {
+    return { primærBygning: null, bebygget_areal: null, fredet: null };
+  }
+
+  const primærBygning =
+    bygninger.find((b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? "")) ??
+    bygninger[0];
+
+  // Deduplicer på id_lokalId før aggregering — bygninger uden id medtages altid
+  const seen = new Set<string>();
+  const unikke = bygninger.filter((b) => {
+    const id = b.id_lokalId as string | null | undefined;
+    if (!id) return true; // ingen id → behold altid
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  // Sum footprint for alle ikke-sekundære bygninger (ARCH-227)
+  const relevante = unikke.filter(
+    (b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? ""),
+  );
+  const footprints = relevante
+    .map((b) => b.byg041BebyggetAreal as number | undefined)
+    .filter((a): a is number => a != null);
+  const bebygget_areal = footprints.length > 0 ? footprints.reduce((s, a) => s + a, 0) : null;
+
+  // fredet = true hvis NOGEN bygning har fredning sat (ARCH-227)
+  const fredningsValues = unikke.map((b) => (b.byg070Fredning as string | null | undefined) ?? null);
+  const hasAnyExplicitValue = fredningsValues.some((v) => v !== null);
+  const fredet = hasAnyExplicitValue
+    ? fredningsValues.some((v) => v !== null && v !== "0" && v !== "")
+    : null;
+
+  return { primærBygning, bebygget_areal, fredet };
+}
+
+// ---------------------------------------------------------------------------
 // BbrService
 // ---------------------------------------------------------------------------
 
@@ -270,19 +326,14 @@ export class BbrService {
     try {
       const data = await gqlFetch(url, BYGNING_QUERY, { id, ...currentBitemporalArgs() }, trace);
 
-      // 1. Find primær bygning (prioritér bolig over garage/carport/udhus)
+      // 1–2. Aggregér bygningsliste (ARCH-227)
       const bygninger: any[] = data?.BBR_Bygning?.nodes ?? [];
-      const primærBygning =
-        bygninger.find(
-          (b: any) => !["910", "920", "930", "940"].includes(b.byg021BygningensAnvendelse),
-        ) ?? bygninger[0];
+      const { primærBygning, bebygget_areal, fredet } = deriveBbrSummary(bygninger);
 
       if (!primærBygning) {
         return this.getEmptyData("Ingen bygning fundet på adressen");
       }
 
-      // 2. Arealer
-      const bebygget_areal: number | null = primærBygning.byg041BebyggetAreal ?? null;
       const samlet_areal: number | null = primærBygning.byg038SamletBygningsareal ?? null;
 
       // 3. Bebyggelsesprocent (kræver grundareal fra DAWA-laget)
@@ -296,7 +347,6 @@ export class BbrService {
       const opv_kode: string | null = primærBygning.byg057Opvarmningsmiddel?.toString() ?? null;
       const yv_kode: string | null = primærBygning.byg032YdervaeggensMateriale?.toString() ?? null;
       const tag_kode: string | null = primærBygning.byg033Tagdaekningsmateriale?.toString() ?? null;
-      const fredning_raw: string | null = primærBygning.byg070Fredning ?? null;
 
       // FBB: saml alle bygnings-UUIDs — bruges til SAVE-opslag (ARCH-131)
       const alle_bygning_lokal_ids: string[] = bygninger
@@ -324,7 +374,7 @@ export class BbrService {
           : null,
         ydervaegs_materiale: yv_kode ? (YDERVAEGS_KODER[yv_kode] ?? `Kode ${yv_kode}`) : null,
         tagdaekning: tag_kode ? (TAGDAEKNING_KODER[tag_kode] ?? `Kode ${tag_kode}`) : null,
-        fredet: fredning_raw !== null ? fredning_raw !== "0" && fredning_raw !== "" : null,
+        fredet,
         mat_strandbeskyttelse: null,
         mat_fredskov: null,
         mat_klitfredning: null,
