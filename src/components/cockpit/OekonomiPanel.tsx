@@ -153,11 +153,7 @@ export function OekonomiPanel() {
               <span className="font-mono text-[10px] tracking-[0.1em]">SAMLET BUDGET</span>
             </div>
             <p className="text-xl font-medium text-foreground">
-              {new Intl.NumberFormat("da-DK", {
-                style: "currency",
-                currency: "DKK",
-                maximumFractionDigits: 0,
-              }).format(budget_estimate)}
+              {formatKr(budget_estimate)}
             </p>
           </div>
         </Card>

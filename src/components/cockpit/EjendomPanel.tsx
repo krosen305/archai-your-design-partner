@@ -39,7 +39,9 @@ export function EjendomPanel() {
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
   const currentPct =
     complianceMetrics?.currentBebyggelsesprocent ??
-    (grundareal && bebyggetAreal ? (bebyggetAreal / grundareal) * 100 : null) ??
+    (grundareal && bebyggetAreal
+      ? Math.round((bebyggetAreal / grundareal) * 1000) / 10
+      : null) ??
     bbrData?.bebyggelsesprocent ??
     k?.bebyggelsesprocent ??
     null;
@@ -88,7 +90,7 @@ export function EjendomPanel() {
           <AlertTriangle size={13} className="text-danger shrink-0" />
           <div>
             <span className="font-mono text-[10px] tracking-[0.15em] text-danger">FREDET BYGNING</span>
-            <span className="ml-2 text-xs text-muted-foreground">— kilde: DAI WFS</span>
+            <span className="ml-2 text-xs text-muted-foreground">— kilde: FBB / BBR byg070</span>
           </div>
         </div>
       )}
