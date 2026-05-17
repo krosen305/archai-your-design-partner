@@ -84,7 +84,9 @@ describe("MatService.getGrundareal", () => {
     const [, init] = spy.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
     expect(body.variables.kode).toBe(12352);
+    expect(body.variables.registreringstid).toBe(body.variables.virkningstid);
     expect(body.query).toContain("MAT_Ejerlav");
+    expect(body.query).toContain("registreringstid");
   });
 
   it("anden query indeholder ejerlavLokalId + matrikelnummer", async () => {

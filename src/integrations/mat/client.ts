@@ -26,6 +26,7 @@
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -62,10 +63,11 @@ function getConfig(explicit?: MatClientConfig) {
 // Bemærk: @filterRequirement kræver virkningstid. ejerlavskode-filter forventes at virke
 // på samme måde som husnummer-filter i BBR (requiresOneOfFields er performance-hint, ikke hard constraint).
 const EJERLAV_QUERY = `
-query GetEjerlav($kode: Long!, $virkningstid: DafDateTime!) {
+query GetEjerlav($kode: Long!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   MAT_Ejerlav(
     where: { ejerlavskode: { eq: $kode } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -79,13 +81,14 @@ query GetEjerlav($kode: Long!, $virkningstid: DafDateTime!) {
 // Henter registreretAreal + beskyttelseslinjer (strandbeskyttelse, fredskov, klitfredning)
 // direkte fra MAT_Jordstykke — samme kald, nul ekstra API-kost.
 const JORDSTYKKE_QUERY = `
-query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virkningstid: DafDateTime!) {
+query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   MAT_Jordstykke(
     where: {
       ejerlavLokalId: { eq: $ejerlavLokalId }
       matrikelnummer: { eq: $matrikelnummer }
     }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -197,7 +200,7 @@ export class MatService {
     const url = new URL(endpoint);
     url.searchParams.set("apiKey", apiKey);
 
-    const virkningstid = new Date().toISOString();
+    const bitemporalArgs = currentBitemporalArgs();
 
     try {
       // ---- Trin 1: Find MAT_Ejerlav via ejerlavskode ----
@@ -206,7 +209,7 @@ export class MatService {
         EJERLAV_QUERY,
         {
           kode: ejerlavskode,
-          virkningstid,
+          ...bitemporalArgs,
         },
         "MAT_Ejerlav",
         trace,
@@ -236,7 +239,7 @@ export class MatService {
         {
           ejerlavLokalId,
           matrikelnummer: matr,
-          virkningstid,
+          ...bitemporalArgs,
         },
         "MAT_Jordstykke",
         trace,

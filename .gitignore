@@ -48,6 +48,9 @@ schema/
 # Lokale Codex-artefakter
 .codex/
 FBB-schema
+
+# Lokale debug/output-filer
+outputs/
 projekt_struktur.txt
 projekt_struktur_clean.txt
 

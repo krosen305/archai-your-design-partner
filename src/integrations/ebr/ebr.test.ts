@@ -16,7 +16,10 @@ describe("EbrService.getBfeNr", () => {
   });
 
   it("returns bfe number from first node", async () => {
-    globalThis.fetch = mock(async () => {
+    const fetchSpy = mock(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      expect(body.variables.registreringstid).toBe(body.variables.virkningstid);
+      expect(body.query).toContain("registreringstid");
       return {
         ok: true,
         status: 200,
@@ -27,12 +30,14 @@ describe("EbrService.getBfeNr", () => {
             },
           }),
       } as Response;
-    }) as any;
+    });
+    globalThis.fetch = fetchSpy as any;
 
     const result = await EbrService.getBfeNr("id-1", {
       apiKey: "x",
       endpoint: "https://example.com",
     });
     expect(result).toEqual({ bfeNr: "1234567", fejl: null });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

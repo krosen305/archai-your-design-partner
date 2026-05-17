@@ -25,6 +25,7 @@
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -81,10 +82,11 @@ export type DarAddressDetails = {
 
 // Kald 1: DAR_Adresse – henter adressebetegnelse og husnummer-FK
 const ADRESSE_QUERY = `
-query GetDarAdresse($id: String!, $virkningstid: DafDateTime!) {
+query GetDarAdresse($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   DAR_Adresse(
     where: { id_lokalId: { eq: $id } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -100,10 +102,11 @@ query GetDarAdresse($id: String!, $virkningstid: DafDateTime!) {
 
 // Kald 2: DAR_Husnummer – henter FK-referencer til adressepunkt, postnummer mv.
 const HUSNUMMER_QUERY = `
-query GetDarHusnummer($id: String!, $virkningstid: DafDateTime!) {
+query GetDarHusnummer($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   DAR_Husnummer(
     where: { id_lokalId: { eq: $id } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -122,10 +125,11 @@ query GetDarHusnummer($id: String!, $virkningstid: DafDateTime!) {
 
 // Kald 3a: DAR_Postnummer – henter postnr (4-cifret kode) og bynavn
 const POSTNUMMER_QUERY = `
-query GetDarPostnummer($id: String!, $virkningstid: DafDateTime!) {
+query GetDarPostnummer($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   DAR_Postnummer(
     where: { id_lokalId: { eq: $id } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -137,10 +141,11 @@ query GetDarPostnummer($id: String!, $virkningstid: DafDateTime!) {
 
 // Kald 3b: DAR_Adressepunkt – henter koordinat som WKT i EPSG:25832
 const ADRESSEPUNKT_QUERY = `
-query GetDarAdressepunkt($id: String!, $virkningstid: DafDateTime!) {
+query GetDarAdressepunkt($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   DAR_Adressepunkt(
     where: { id_lokalId: { eq: $id } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -152,10 +157,11 @@ query GetDarAdressepunkt($id: String!, $virkningstid: DafDateTime!) {
 // Kald 3c: MAT_Jordstykke – henter matrikelnummer + ejerlavLokalId via jordstykke-FK fra DAR_Husnummer.
 // OBS: Kald går til MAT endpoint (v2), ikke DAR.
 const MAT_JORDSTYKKE_QUERY = `
-query GetMatJordstykke($id: String!, $virkningstid: DafDateTime!) {
+query GetMatJordstykke($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   MAT_Jordstykke(
     where: { id_lokalId: { eq: $id } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -168,10 +174,11 @@ query GetMatJordstykke($id: String!, $virkningstid: DafDateTime!) {
 
 // Kald 4: MAT_Ejerlav – henter numerisk ejerlavskode via ejerlavLokalId fra MAT_Jordstykke.
 const MAT_EJERLAV_QUERY = `
-query GetMatEjerlav($id: String!, $virkningstid: DafDateTime!) {
+query GetMatEjerlav($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   MAT_Ejerlav(
     where: { id_lokalId: { eq: $id } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -333,13 +340,13 @@ export class DarService {
     const { apiKey, endpoint } = getConfig(config);
     const url = new URL(endpoint);
     url.searchParams.set("apiKey", apiKey);
-    const virkningstid = new Date().toISOString();
+    const bitemporalArgs = currentBitemporalArgs();
 
     // ── Kald 1: DAR_Adresse ─────────────────────────────────────────────────
     const adresseData = await gqlFetch(
       url,
       ADRESSE_QUERY,
-      { id, virkningstid },
+      { id, ...bitemporalArgs },
       "DAR_Adresse",
       trace,
     );
@@ -358,7 +365,7 @@ export class DarService {
         HUSNUMMER_QUERY,
         {
           id: husnummerFK,
-          virkningstid,
+          ...bitemporalArgs,
         },
         "DAR_Husnummer",
         trace,
@@ -377,7 +384,7 @@ export class DarService {
         ? gqlFetch(
             url,
             POSTNUMMER_QUERY,
-            { id: postnummerFK, virkningstid },
+            { id: postnummerFK, ...bitemporalArgs },
             "DAR_Postnummer",
             trace,
           )
@@ -386,7 +393,7 @@ export class DarService {
         ? gqlFetch(
             url,
             ADRESSEPUNKT_QUERY,
-            { id: adgangspunktFK, virkningstid },
+            { id: adgangspunktFK, ...bitemporalArgs },
             "DAR_Adressepunkt",
             trace,
           )
@@ -395,15 +402,22 @@ export class DarService {
         ? gqlFetch(
             matUrl,
             MAT_JORDSTYKKE_QUERY,
-            { id: jordstykkeFK, virkningstid },
+            { id: jordstykkeFK, ...bitemporalArgs },
             "MAT_Jordstykke_by_id",
             trace,
           ).catch((e: Error) => {
-            console.error("[DAR] MAT_Jordstykke fejlede for jordstykkeFK", jordstykkeFK, ":", e.message);
+            console.error(
+              "[DAR] MAT_Jordstykke fejlede for jordstykkeFK",
+              jordstykkeFK,
+              ":",
+              e.message,
+            );
             return null;
           })
         : (() => {
-            console.warn("[DAR] DAR_Husnummer.jordstykke er tom — grundareal og matrikeldata utilgængeligt");
+            console.warn(
+              "[DAR] DAR_Husnummer.jordstykke er tom — grundareal og matrikeldata utilgængeligt",
+            );
             return Promise.resolve(null);
           })(),
     ]);
@@ -412,7 +426,11 @@ export class DarService {
     const adressepunktNode = adressepunktData?.DAR_Adressepunkt?.nodes?.[0] ?? null;
     const jordstykkeNode = jordstykkeData?.MAT_Jordstykke?.nodes?.[0] ?? null;
     if (jordstykkeFK && !jordstykkeNode) {
-      console.error("[DAR] MAT_Jordstykke returnerede ingen nodes for jordstykkeFK:", jordstykkeFK, "— id_lokalId matchede ingenting");
+      console.error(
+        "[DAR] MAT_Jordstykke returnerede ingen nodes for jordstykkeFK:",
+        jordstykkeFK,
+        "— id_lokalId matchede ingenting",
+      );
     }
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
@@ -427,7 +445,7 @@ export class DarService {
           MAT_EJERLAV_QUERY,
           {
             id: matEjerlavLokalId,
-            virkningstid,
+            ...bitemporalArgs,
           },
           "MAT_Ejerlav_by_id",
           trace,

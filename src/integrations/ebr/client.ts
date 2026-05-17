@@ -21,6 +21,7 @@
 
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 
 type EbrClientConfig = {
   apiKey?: string;
@@ -43,10 +44,11 @@ function getConfig(explicit?: EbrClientConfig) {
 // ---------------------------------------------------------------------------
 
 const BELIGGENHED_QUERY = `
-query GetEjendomsbeliggenhed($husnummerLokalId: String!, $virkningstid: DafDateTime!) {
+query GetEjendomsbeliggenhed($husnummerLokalId: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   EBR_Ejendomsbeliggenhed(
     where: { husnummerLokalId: { eq: $husnummerLokalId } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -140,12 +142,10 @@ export class EbrService {
       const { apiKey, endpoint } = getConfig(config);
       const url = new URL(endpoint);
       url.searchParams.set("apiKey", apiKey);
-      const virkningstid = new Date().toISOString();
-
       const data = await gqlFetch(
         url,
         BELIGGENHED_QUERY,
-        { husnummerLokalId: id, virkningstid },
+        { husnummerLokalId: id, ...currentBitemporalArgs() },
         trace,
       );
       const nodes: any[] = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];

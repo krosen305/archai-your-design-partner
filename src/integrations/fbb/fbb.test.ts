@@ -51,7 +51,7 @@ describe("FbbService.getSaveData", () => {
       } as Response;
     }) as any;
 
-    const result = await FbbService.getSaveData([1, 2, 3]);
+    const result = await FbbService.getSaveData(["uuid-1", "uuid-2", "uuid-3"]);
     expect(result.fbb_bygninger).toHaveLength(3);
     expect(result.fbb_bedste_bygning?.bygningsid).toBe(2);
     expect(result.fbb_bedste_bygning?.bevaringsvaerdi).toBe(3);
@@ -80,7 +80,23 @@ describe("FbbService.getSaveData", () => {
       } as Response;
     }) as any;
 
-    const result = await FbbService.getSaveData([1]);
+    const result = await FbbService.getSaveData(["uuid-1"]);
     expect(result.fbb_er_fredet).toBe(true);
+  });
+
+  it("queries FBB by ois_id instead of bygningsid", async () => {
+    const fetchSpy = mock(async (url: string) => {
+      expect(url).toContain("CQL_FILTER=ois_id+IN+%28%27uuid-1%27%2C%27uuid-2%27%29");
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/json" },
+        text: async () => JSON.stringify({ features: [] }),
+      } as Response;
+    });
+    globalThis.fetch = fetchSpy as any;
+
+    await FbbService.getSaveData(["uuid-1", "uuid-2"]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

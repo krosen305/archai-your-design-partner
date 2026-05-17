@@ -1,13 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import {
-  Layers,
-  Plug,
-  Users,
-  Landmark,
-  Waves,
-  type LucideIcon,
-} from "lucide-react";
+import { Layers, Plug, Users, Landmark, Waves, type LucideIcon } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +54,9 @@ const LEVEL_LABEL: Record<RiskLevel, string> = {
 
 export function RiskOverview() {
   const { complianceFlags, heritage_save_value, is_fredet } = useProject();
+  const hasMockRiskSignals = complianceFlags.some(
+    (f) => f.kilde === "geus" || f.kilde === "dkjord",
+  );
 
   const categories: RiskCategory[] = useMemo(() => {
     const findFlag = (pattern: RegExp) => complianceFlags.find((f) => pattern.test(f.id));
@@ -188,6 +184,12 @@ export function RiskOverview() {
         <span className="text-[10px] text-muted-foreground/60">5 områder</span>
       </div>
 
+      {hasMockRiskSignals && (
+        <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
+          Geoteknik- og miljÃ¸signaler er forelÃ¸bige mock-data, ikke live-verificeret compliance.
+        </div>
+      )}
+
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {categories.map((cat, i) => (
           <RiskCard key={cat.key} cat={cat} index={i} />
@@ -223,9 +225,7 @@ function RiskCard({ cat, index }: { cat: RiskCategory; index: number }) {
           {LEVEL_LABEL[cat.level]}
         </span>
       </div>
-      <div className="mt-2 text-[12px] font-medium text-foreground leading-tight">
-        {cat.label}
-      </div>
+      <div className="mt-2 text-[12px] font-medium text-foreground leading-tight">{cat.label}</div>
       <div className="mt-1 text-[10.5px] text-muted-foreground leading-snug">{cat.detail}</div>
     </motion.div>
   );

@@ -85,7 +85,10 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
 
     const body = JSON.parse(init.body as string);
     expect(body.variables.id).toBe("0a3f50a0-4660-32b8-e044-0003ba298018");
+    expect(body.variables.virkningstid).toBeString();
+    expect(body.variables.registreringstid).toBe(body.variables.virkningstid);
     expect(body.query).toContain("BBR_Bygning");
+    expect(body.query).toContain("registreringstid");
   });
 
   it("beregner bebyggelsesprocent: 120m² / 1000m² = 12.0%", async () => {
@@ -227,5 +230,17 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     expect(result.mat_strandbeskyttelse).toBeNull();
     expect(result.mat_fredskov).toBeNull();
     expect(result.mat_klitfredning).toBeNull();
+  });
+  it("genbruger BBR UUIDer som FBB-opslags-IDer", async () => {
+    mockFetch([
+      okResponse([
+        { ...MOCK_BYGNING, id_lokalId: "uuid-1" },
+        { ...MOCK_BYGNING, id_lokalId: "uuid-2", byg021BygningensAnvendelse: "910" },
+      ]),
+    ]);
+
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.alle_bygning_lokal_ids).toEqual(["uuid-1", "uuid-2"]);
+    expect(result.alle_bbr_public_ids).toEqual(["uuid-1", "uuid-2"]);
   });
 });

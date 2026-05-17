@@ -243,6 +243,8 @@ describe("DarService.getAddressDetails", () => {
     const [, init] = spy.mock.calls[1] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
     expect(body.variables.id).toBe(HUSNUMMER_ID);
+    expect(body.variables.registreringstid).toBe(body.variables.virkningstid);
     expect(body.query).toContain("DAR_Husnummer");
+    expect(body.query).toContain("registreringstid");
   });
 });

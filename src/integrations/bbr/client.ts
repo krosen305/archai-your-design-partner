@@ -23,6 +23,7 @@
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 
 type BbrClientConfig = {
   apiKey?: string;
@@ -154,7 +155,7 @@ export type BbrKompliantData = {
   bygning_lokal_id: string | null; // BBR UUID for primær bygning (= FBB bygningLokalId)
   fbb_reference: string | null; // byg071 — URI-link til FBB-registrering (null = ikke i FBB)
   alle_bygning_lokal_ids: string[]; // UUIDs for alle bygninger på adressen (inkl. sekundære)
-  alle_bbr_public_ids: number[]; // Integer BBR IDs fra BBR Public Service — bruges til FBB GeoServer WFS
+  alle_bbr_public_ids: string[]; // FBB ois_id værdier afledt direkte fra BBR id_lokalId (ARCH-166)
 };
 
 // ---------------------------------------------------------------------------
@@ -163,13 +164,14 @@ export type BbrKompliantData = {
 // ---------------------------------------------------------------------------
 
 // virkningstid er obligatorisk (DAF-GQL-0009) – Datafordeler er bitemporal.
-// Vi sender aktuel tid for at få den nuværende aktive version af data.
+// registreringstid medsendes også for at undgå historiske registreringsversioner (ARCH-221).
 // byg071BevaringsvaerdighedReference: direkte link til FBB-registrering (ARCH-131)
 const BYGNING_QUERY = `
-query GetBygning($id: String!, $virkningstid: DafDateTime!) {
+query GetBygning($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   BBR_Bygning(
     where: { husnummer: { eq: $id } }
     virkningstid: $virkningstid
+    registreringstid: $registreringstid
   ) {
     nodes {
       id_lokalId
@@ -266,11 +268,7 @@ export class BbrService {
     url.searchParams.set("apiKey", apiKey);
 
     try {
-      const virkningstid = new Date().toISOString();
-      const [data, alleBbrPublicIds] = await Promise.all([
-        gqlFetch(url, BYGNING_QUERY, { id, virkningstid }, trace),
-        fetchBbrPublicIds(id, trace),
-      ]);
+      const data = await gqlFetch(url, BYGNING_QUERY, { id, ...currentBitemporalArgs() }, trace);
 
       // 1. Find primær bygning (prioritér bolig over garage/carport/udhus)
       const bygninger: any[] = data?.BBR_Bygning?.nodes ?? [];
@@ -333,7 +331,7 @@ export class BbrService {
         bygning_lokal_id: primærBygning.id_lokalId ?? null,
         fbb_reference: primærBygning.byg071BevaringsvaerdighedReference ?? null,
         alle_bygning_lokal_ids,
-        alle_bbr_public_ids: alleBbrPublicIds,
+        alle_bbr_public_ids: alle_bygning_lokal_ids,
       };
     } catch (e) {
       console.error("[BBR] Service fejl:", e);
@@ -366,43 +364,5 @@ export class BbrService {
       alle_bygning_lokal_ids: [],
       alle_bbr_public_ids: [],
     };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// BBR Public Service — integer building IDs til FBB WFS
-// ---------------------------------------------------------------------------
-
-async function fetchBbrPublicIds(
-  adgangsadresseid: string,
-  trace?: AnalysisTraceContext | null,
-): Promise<number[]> {
-  try {
-    const url = new URL("https://api.dataforsyningen.dk/bbr/bygning");
-    url.searchParams.set("adgangsadresseid", adgangsadresseid);
-
-    const res = await fetchWithRetry(
-      url.toString(),
-      {},
-      { timeoutMs: 8_000, retries: 1 },
-      {
-        trace,
-        service: "Dataforsyningen BBR Public",
-        operation: "bbr_bygning_by_adgangsadresseid",
-        phase: "layer1",
-      },
-    );
-    if (!res.ok) return [];
-
-    const bygninger = (await res.json()) as Array<Record<string, unknown>>;
-    return bygninger
-      .map((b) => {
-        const raw = b["id_lokalId"] ?? b["id"];
-        const num = Number(raw);
-        return Number.isFinite(num) && num > 0 ? num : null;
-      })
-      .filter((id): id is number => id !== null);
-  } catch {
-    return [];
   }
 }

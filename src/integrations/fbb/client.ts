@@ -6,7 +6,7 @@
 // typename: fbb:view_bygningslag
 //
 // CQL_FILTER varianter:
-//   Primær (by BBR integer IDs):  bygningsid IN ({comma-separated integer BBR building ids})
+//   Primær (by BBR UUID/FBB ois_id):  ois_id IN ('{uuid1}','{uuid2}')
 //   Adresse-fallback (ARCH-151):  adresse = '{vejnavn}' AND kommune LIKE '{kommunePræfiks}%'
 //
 // SAVE-skala 1-9: lavere tal = højere bevaringsværdi.
@@ -15,10 +15,7 @@
 //   7-9: Lav bevaringsværdi
 //   -1:  Ikke SAVE-registreret
 //
-// bygningsid = integer BBR id_lokalId fra BBR Public Service (api.dataforsyningen.dk)
-// — forskellig fra Datafordeler UUID id_lokalId.
-//
-// Adresse-fallback udløses når BBR Public Service returnerer 404 (fx visse rækkehuse).
+// Adresse-fallback udløses når BBR ikke leverer brugbare bygnings-UUID'er.
 // Bruger vejnavn+husnr (del af adressetekst før første komma) + kommunenavn.
 
 const FBB_WFS = "https://www.kulturarv.dk/geoserver/wfs";
@@ -52,14 +49,15 @@ export type FbbResultat = {
 // WFS-kald
 // ---------------------------------------------------------------------------
 
-async function fetchWfs(ids: number[]): Promise<FbbBygning[]> {
+async function fetchWfs(ids: string[]): Promise<FbbBygning[]> {
+  const quotedIds = ids.map((id) => `'${cqlEscape(String(id))}'`).join(",");
   const params = new URLSearchParams({
     service: "WFS",
     version: "2.0.0",
     request: "GetFeature",
     typename: "fbb:view_bygningslag",
     outputFormat: "application/json",
-    CQL_FILTER: `bygningsid IN (${ids.join(",")})`,
+    CQL_FILTER: `ois_id IN (${quotedIds})`,
   });
   const url = `${FBB_WFS}?${params}`;
 
@@ -227,9 +225,9 @@ export class FbbService {
    * Fail-open: API-fejl returnerer { fbb_bygninger: [], fbb_bedste_bygning: null }.
    * Bygninger med bevaringsvaerdi = -1 medtages i fbb_bygninger men ekskluderes fra bedste.
    *
-   * @param bygningIds  Integer BBR building IDs fra BBR Public Service (id_lokalId)
+   * @param bygningIds  BBR UUID'er som matcher FBB `ois_id`
    */
-  static async getSaveData(bygningIds: number[]): Promise<FbbResultat> {
+  static async getSaveData(bygningIds: string[]): Promise<FbbResultat> {
     if (!bygningIds.length)
       return {
         fbb_bygninger: [],
@@ -253,7 +251,7 @@ export class FbbService {
   }
 
   /**
-   * Adresse-fallback (ARCH-151): bruges når BBR Public Service ikke returnerer integer bygnings-IDs.
+   * Adresse-fallback (ARCH-151): bruges når BBR ikke returnerer brugbare FBB-opslags-ID'er.
    * Søger FBB WFS direkte på vejnavn+husnr og kommunenavn.
    *
    * @param vejnavn     Vejnavn + husnr, fx "Hasselvej 48" (del af adressetekst før første komma)
