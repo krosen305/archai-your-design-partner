@@ -27,6 +27,13 @@ export const serverLoadProject = createServerFn({ method: "POST" })
     return loadProject(data.accessToken, data.projectId, data.addressId);
   });
 
+export const serverDeleteProject = createServerFn({ method: "POST" })
+  .inputValidator((data: { accessToken: string; projectId: string }) => data)
+  .handler(async ({ data }): Promise<void> => {
+    const { deleteProject } = await import("@/integrations/supabase/project-persistence");
+    await deleteProject(data.accessToken, data.projectId);
+  });
+
 async function getAccessToken(): Promise<string | null> {
   try {
     const { data } = await supabase.auth.getSession();
