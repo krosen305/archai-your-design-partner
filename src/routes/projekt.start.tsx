@@ -120,7 +120,12 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
       {projekter.length > 0 && (
         <>
           {projekter.map((p, i) => (
-            <ProjektKort key={p.id} projekt={p} index={i} />
+            <ProjektKort
+              key={p.id}
+              projekt={p}
+              index={i}
+              onSlettet={(id) => setProjekter((prev) => prev.filter((x) => x.id !== id))}
+            />
           ))}
           <div className="pt-2">
             <Divider />
@@ -156,9 +161,19 @@ function LoggedInView({ projekter }: { projekter: Projekt[] }) {
   );
 }
 
-function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
+function ProjektKort({
+  projekt,
+  index,
+  onSlettet,
+}: {
+  projekt: Projekt;
+  index: number;
+  onSlettet: (id: string) => void;
+}) {
   const navigate = useNavigate();
-  const { reset, setCurrentProjectId } = useProject();
+  const { reset, setCurrentProjectId, setAddress, currentProjectId } = useProject();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sletter, setSletter] = useState(false);
 
   const harAdresse = !!projekt.adresse_dar_id;
   const dato = new Date(projekt.updated_at).toLocaleDateString("da-DK", {
@@ -168,13 +183,52 @@ function ProjektKort({ projekt, index }: { projekt: Projekt; index: number }) {
   });
 
   const handleFortsaet = () => {
+    // Ryd analyse-state, men sæt så adressen + projektId med det samme så
+    // cockpit-mount ikke render'er en restore-race der bouncer til /adresse.
     reset();
     setCurrentProjectId(projekt.id);
-    const search = { projectId: projekt.id } as never;
-    if (projekt.adresse_dar_id) {
-      navigate({ to: `/projekt/${projekt.adresse_dar_id}/cockpit` as never, search });
+    if (projekt.adresse_dar_id && projekt.adresse) {
+      const adresseid = projekt.adresse_dar_id;
+      const adgang = projekt.address_bbr ?? adresseid;
+      const addr: Address = {
+        adresseid,
+        adresse: projekt.adresse,
+        postnr: projekt.address_postnr ?? "",
+        postnrnavn: projekt.address_postnrnavn ?? "",
+        kommune: projekt.address_kommune ?? "",
+        kommunekode: "",
+        matrikel: projekt.address_matrikel,
+        adgangsadresseid: adgang,
+        koordinater: projekt.address_koordinater ?? { lat: 0, lng: 0 },
+        bbrId: null,
+        ejerlavskode: projekt.address_ejerlavskode,
+        matrikelnummer: projekt.address_matrikelnummer,
+        grundareal: null,
+      };
+      setAddress(addr);
+      const search = { projectId: projekt.id } as never;
+      navigate({ to: `/projekt/${adresseid}/cockpit` as never, search });
     } else {
+      const search = { projectId: projekt.id } as never;
       navigate({ to: "/projekt/adresse", search });
+    }
+  };
+
+  const handleSlet = async () => {
+    setSletter(true);
+    try {
+      const { sletProjekt } = await import("@/lib/projekt-service");
+      await sletProjekt(projekt.id);
+      if (currentProjectId === projekt.id) {
+        reset();
+      }
+      onSlettet(projekt.id);
+      toast.success("Projektet er slettet");
+    } catch (e) {
+      toast.error((e as Error).message || "Kunne ikke slette projektet");
+    } finally {
+      setSletter(false);
+      setConfirmOpen(false);
     }
   };
 
