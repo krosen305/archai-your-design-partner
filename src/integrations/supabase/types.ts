@@ -62,267 +62,6 @@ export type Database = {
         }
         Relationships: []
       }
-      agent_qa_verdicts: {
-        Row: {
-          blockers: string[] | null
-          build_check: string | null
-          created_at: string
-          duration_ms: number | null
-          lint_check: string | null
-          session_id: string
-          status: string
-          tests_check: string | null
-          warnings: string[] | null
-        }
-        Insert: {
-          blockers?: string[] | null
-          build_check?: string | null
-          created_at?: string
-          duration_ms?: number | null
-          lint_check?: string | null
-          session_id: string
-          status: string
-          tests_check?: string | null
-          warnings?: string[] | null
-        }
-        Update: {
-          blockers?: string[] | null
-          build_check?: string | null
-          created_at?: string
-          duration_ms?: number | null
-          lint_check?: string | null
-          session_id?: string
-          status?: string
-          tests_check?: string | null
-          warnings?: string[] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_qa_verdicts_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: true
-            referencedRelation: "agent_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      agent_sessions: {
-        Row: {
-          completed_at: string | null
-          id: string
-          metadata: Json | null
-          model: string
-          started_at: string
-          status: string
-          trigger_issue: string | null
-        }
-        Insert: {
-          completed_at?: string | null
-          id: string
-          metadata?: Json | null
-          model: string
-          started_at?: string
-          status?: string
-          trigger_issue?: string | null
-        }
-        Update: {
-          completed_at?: string | null
-          id?: string
-          metadata?: Json | null
-          model?: string
-          started_at?: string
-          status?: string
-          trigger_issue?: string | null
-        }
-        Relationships: []
-      }
-      agent_tasks: {
-        Row: {
-          agent: string
-          completed_at: string | null
-          created_at: string
-          depends_on: string[]
-          description: string
-          duration_ms: number | null
-          failure_details: string | null
-          failure_message: string | null
-          failure_type: string | null
-          files_changed: string[] | null
-          id: string
-          output_summary: string | null
-          retry_count: number
-          session_id: string
-          started_at: string | null
-          status: string
-          types_exported: string[] | null
-        }
-        Insert: {
-          agent: string
-          completed_at?: string | null
-          created_at?: string
-          depends_on?: string[]
-          description: string
-          duration_ms?: number | null
-          failure_details?: string | null
-          failure_message?: string | null
-          failure_type?: string | null
-          files_changed?: string[] | null
-          id: string
-          output_summary?: string | null
-          retry_count?: number
-          session_id: string
-          started_at?: string | null
-          status?: string
-          types_exported?: string[] | null
-        }
-        Update: {
-          agent?: string
-          completed_at?: string | null
-          created_at?: string
-          depends_on?: string[]
-          description?: string
-          duration_ms?: number | null
-          failure_details?: string | null
-          failure_message?: string | null
-          failure_type?: string | null
-          files_changed?: string[] | null
-          id?: string
-          output_summary?: string | null
-          retry_count?: number
-          session_id?: string
-          started_at?: string | null
-          status?: string
-          types_exported?: string[] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_tasks_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "agent_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      analysis_events: {
-        Row: {
-          attempt: number | null
-          cache_hit: boolean | null
-          created_at: string
-          duration_ms: number | null
-          error_message: string | null
-          event_type: string
-          http_status: number | null
-          id: string
-          metadata: Json
-          operation: string
-          phase: string | null
-          run_id: string
-          service: string
-          status: string
-        }
-        Insert: {
-          attempt?: number | null
-          cache_hit?: boolean | null
-          created_at?: string
-          duration_ms?: number | null
-          error_message?: string | null
-          event_type: string
-          http_status?: number | null
-          id?: string
-          metadata?: Json
-          operation: string
-          phase?: string | null
-          run_id: string
-          service: string
-          status?: string
-        }
-        Update: {
-          attempt?: number | null
-          cache_hit?: boolean | null
-          created_at?: string
-          duration_ms?: number | null
-          error_message?: string | null
-          event_type?: string
-          http_status?: number | null
-          id?: string
-          metadata?: Json
-          operation?: string
-          phase?: string | null
-          run_id?: string
-          service?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "analysis_events_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "analysis_run_summaries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "analysis_events_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "analysis_runs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      analysis_runs: {
-        Row: {
-          address_id: string | null
-          completed_at: string | null
-          duration_ms: number | null
-          error_message: string | null
-          id: string
-          metadata: Json
-          project_id: string | null
-          run_kind: string
-          source: string
-          started_at: string
-          status: string
-          user_id: string | null
-        }
-        Insert: {
-          address_id?: string | null
-          completed_at?: string | null
-          duration_ms?: number | null
-          error_message?: string | null
-          id?: string
-          metadata?: Json
-          project_id?: string | null
-          run_kind: string
-          source?: string
-          started_at?: string
-          status?: string
-          user_id?: string | null
-        }
-        Update: {
-          address_id?: string | null
-          completed_at?: string | null
-          duration_ms?: number | null
-          error_message?: string | null
-          id?: string
-          metadata?: Json
-          project_id?: string | null
-          run_kind?: string
-          source?: string
-          started_at?: string
-          status?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "analysis_runs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       building_tasks: {
         Row: {
           blocked_by_constraint: string | null
@@ -399,16 +138,6 @@ export type Database = {
           inspirations: Json
           is_active: boolean
           label: string | null
-          placement_centroid_lat: number | null
-          placement_centroid_lng: number | null
-          placement_floors: number | null
-          placement_footprint_area_m2: number | null
-          placement_footprint_geojson: Json | null
-          placement_height_m: number | null
-          placement_min_distance_to_boundary_m: number | null
-          placement_outside_parcel_area_m2: number
-          placement_rotation_deg: number | null
-          placement_source: string | null
           project_id: string
           updated_at: string
           version: number
@@ -426,16 +155,6 @@ export type Database = {
           inspirations?: Json
           is_active?: boolean
           label?: string | null
-          placement_centroid_lat?: number | null
-          placement_centroid_lng?: number | null
-          placement_floors?: number | null
-          placement_footprint_area_m2?: number | null
-          placement_footprint_geojson?: Json | null
-          placement_height_m?: number | null
-          placement_min_distance_to_boundary_m?: number | null
-          placement_outside_parcel_area_m2?: number
-          placement_rotation_deg?: number | null
-          placement_source?: string | null
           project_id: string
           updated_at?: string
           version?: number
@@ -453,16 +172,6 @@ export type Database = {
           inspirations?: Json
           is_active?: boolean
           label?: string | null
-          placement_centroid_lat?: number | null
-          placement_centroid_lng?: number | null
-          placement_floors?: number | null
-          placement_footprint_area_m2?: number | null
-          placement_footprint_geojson?: Json | null
-          placement_height_m?: number | null
-          placement_min_distance_to_boundary_m?: number | null
-          placement_outside_parcel_area_m2?: number
-          placement_rotation_deg?: number | null
-          placement_source?: string | null
           project_id?: string
           updated_at?: string
           version?: number
@@ -517,7 +226,6 @@ export type Database = {
           area: string | null
           bebygget_areal_m2: number | null
           bfe_nr: string | null
-          billedanalyse: Json | null
           brief_data: Json | null
           brief_done: boolean
           budget: string | null
@@ -532,7 +240,6 @@ export type Database = {
           hard_stop: boolean | null
           hard_stop_reason: string | null
           heritage_save_value: number | null
-          hus_dna: Json | null
           id: string
           inspirations: Json | null
           is_fredet: boolean | null
@@ -557,7 +264,6 @@ export type Database = {
           area?: string | null
           bebygget_areal_m2?: number | null
           bfe_nr?: string | null
-          billedanalyse?: Json | null
           brief_data?: Json | null
           brief_done?: boolean
           budget?: string | null
@@ -572,7 +278,6 @@ export type Database = {
           hard_stop?: boolean | null
           hard_stop_reason?: string | null
           heritage_save_value?: number | null
-          hus_dna?: Json | null
           id?: string
           inspirations?: Json | null
           is_fredet?: boolean | null
@@ -597,7 +302,6 @@ export type Database = {
           area?: string | null
           bebygget_areal_m2?: number | null
           bfe_nr?: string | null
-          billedanalyse?: Json | null
           brief_data?: Json | null
           brief_done?: boolean
           budget?: string | null
@@ -612,7 +316,6 @@ export type Database = {
           hard_stop?: boolean | null
           hard_stop_reason?: string | null
           heritage_save_value?: number | null
-          hus_dna?: Json | null
           id?: string
           inspirations?: Json | null
           is_fredet?: boolean | null
@@ -694,77 +397,7 @@ export type Database = {
       }
     }
     Views: {
-      analysis_event_errors: {
-        Row: {
-          address_id: string | null
-          created_at: string | null
-          duration_ms: number | null
-          error_message: string | null
-          event_type: string | null
-          http_status: number | null
-          metadata: Json | null
-          operation: string | null
-          phase: string | null
-          project_id: string | null
-          run_id: string | null
-          run_kind: string | null
-          service: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "analysis_events_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "analysis_run_summaries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "analysis_events_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "analysis_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "analysis_runs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      analysis_run_summaries: {
-        Row: {
-          address_id: string | null
-          api_call_count: number | null
-          api_calls_by_service: Json | null
-          cache_hit_count: number | null
-          cache_read_count: number | null
-          completed_at: string | null
-          db_write_count: number | null
-          duration_ms: number | null
-          error_count: number | null
-          error_message: string | null
-          event_count: number | null
-          id: string | null
-          project_id: string | null
-          run_kind: string | null
-          source: string | null
-          started_at: string | null
-          status: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "analysis_runs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       [_ in never]: never
