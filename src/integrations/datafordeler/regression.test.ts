@@ -644,3 +644,112 @@ describe("Regression: 2 Plandata-features — deterministiske selektorer (ARCH-2
     expect(selectPrimaryLokalplanForPdf(liste)?.planid).toBe("ny");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Forbidden endpoints — DAWA og BBR Public må ikke kaldes
+// ---------------------------------------------------------------------------
+
+describe("Forbidden endpoints", () => {
+  it("FBB: URL indeholder ikke api.dataforsyningen.dk/bbr (ARCH-166)", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = mock(async (url: string) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/json" },
+        text: async () => JSON.stringify({ features: [] }),
+      } as any;
+    }) as any;
+
+    await FbbService.getSaveData(["check-uuid"]);
+    expect(capturedUrl).not.toContain("api.dataforsyningen.dk/bbr");
+  });
+
+  it("FBB: URL indeholder ikke dawa.aws.dk", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = mock(async (url: string) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/json" },
+        text: async () => JSON.stringify({ features: [] }),
+      } as any;
+    }) as any;
+
+    await FbbService.getSaveData(["check-uuid"]);
+    expect(capturedUrl).not.toContain("dawa.aws.dk");
+  });
+
+  it("DAR: alle URL'er indeholder ikke dawa.aws.dk", async () => {
+    const capturedUrls: string[] = [];
+    const spy = mock(async (url: string) => {
+      capturedUrls.push(url);
+      const responses = hasselvejDarResponses();
+      let i = 0;
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/json" },
+        text: async () => JSON.stringify(responses[i++ % responses.length]),
+        json: async () => responses[i % responses.length],
+      } as any;
+    });
+    globalThis.fetch = spy as any;
+
+    await DarService.getAddressDetails(HASSELVEJ_ADRESSE_ID, DAR_CONFIG);
+    for (const url of capturedUrls) {
+      expect(url).not.toContain("dawa.aws.dk");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Live smoke — kræver RUN_LIVE_DATAFORDELER_SMOKE=true og DATAFORDELER_API_KEY
+//
+// Kør: RUN_LIVE_DATAFORDELER_SMOKE=true bun test src/integrations/datafordeler/regression.test.ts
+// ---------------------------------------------------------------------------
+
+const LIVE = process.env.RUN_LIVE_DATAFORDELER_SMOKE === "true";
+
+describe.if(LIVE)("Live smoke — Datafordeler live (ARCH-230)", () => {
+  it(
+    "Hasselvej 48: grundareal=441, matrikelnummer='5fo', ejerlavskode=12352",
+    async () => {
+      const result = await DarService.getAddressDetails(HASSELVEJ_ADRESSE_ID);
+      expect(result.grundareal).toBe(441);
+      expect(result.matrikelnummer).toBe("5fo");
+      expect(result.ejerlavskode).toBe(12352);
+    },
+    30_000,
+  );
+
+  it(
+    "Hasselvej 48: FBB SAVE=3 via ois_id (bevaringsvaerdi=-1 ekskluderes)",
+    async () => {
+      const fbb = await FbbService.getSaveData([
+        "ad5eb0d3-e365-4eb7-ab41-23ff21c67598",
+        "cb2f89dc-7278-4802-a53e-188cb7120f56",
+      ]);
+      expect(fbb.fbb_bedste_bygning?.bevaringsvaerdi).toBe(3);
+    },
+    30_000,
+  );
+
+  it(
+    "Østerlunden 10: grundareal=3580 via ebr_adresse_ejerlejlighed-rute",
+    async () => {
+      // adgangsadresseid (husnummer ID) og adresseid for Østerlunden 10 skal verificeres
+      // mod live DAR-opslag hvis de ændrer sig.
+      // Kendte værdier fra ARCH-230 audit:
+      const result = await GrundarealResolver.resolve({
+        adgangsadresseid: "0a3f507d-3f01-32b8-e044-0003ba298018",
+        adresseid: "0a3f50a6-3ecf-32b8-e044-0003ba298018",
+      });
+      expect(result.grundareal).toBe(3580);
+      expect(result.source).toBe("ebr_adresse_ejerlejlighed");
+    },
+    30_000,
+  );
+});
