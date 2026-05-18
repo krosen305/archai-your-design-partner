@@ -371,6 +371,8 @@ export const useProject = create<State>((set) => ({
   hard_stop_reason: null,
   budget_estimate: null,
   bfe_nr: null,
+  dataStatus: { ...DEFAULT_DATA_STATUS },
+  dataLastFetchedAt: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
