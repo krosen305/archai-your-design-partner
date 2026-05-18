@@ -51,11 +51,16 @@ type EventInput = {
   durationMs?: number | null;
   errorMessage?: string | null;
   metadata?: Record<string, unknown>;
+  inputSummary?: string | null;
+  outputSummary?: string | null;
+  decisionSummary?: string | null;
 };
 
 type TraceStepOptions<T> = {
   cacheHit?: boolean | ((value: T) => boolean);
   metadata?: Record<string, unknown> | ((value: T) => Record<string, unknown>);
+  outputSummary?: (value: T) => string;
+  decisionSummary?: string;
 };
 
 let persistenceDisabled = false;
@@ -160,6 +165,9 @@ export async function recordAnalysisEvent(
       duration_ms: input.durationMs ?? null,
       error_message: truncate(input.errorMessage),
       metadata: asJson(input.metadata),
+      input_summary: input.inputSummary ? truncate(input.inputSummary, 500) : null,
+      output_summary: input.outputSummary ? truncate(input.outputSummary, 500) : null,
+      decision_summary: input.decisionSummary ? truncate(input.decisionSummary, 500) : null,
     });
 
     if (error) throw error;
@@ -171,7 +179,7 @@ export async function recordAnalysisEvent(
 
 export async function traceStep<T>(
   trace: AnalysisTraceContext | null | undefined,
-  input: Omit<EventInput, "status" | "durationMs" | "errorMessage" | "cacheHit" | "metadata">,
+  input: Omit<EventInput, "status" | "durationMs" | "errorMessage" | "cacheHit" | "metadata" | "outputSummary" | "decisionSummary">,
   fn: () => Promise<T>,
   options?: TraceStepOptions<T>,
 ): Promise<T> {
@@ -183,6 +191,7 @@ export async function traceStep<T>(
       typeof options?.metadata === "function" ? options.metadata(value) : options?.metadata;
     const cacheHit =
       typeof options?.cacheHit === "function" ? options.cacheHit(value) : options?.cacheHit;
+    const outputSummary = options?.outputSummary ? options.outputSummary(value) : undefined;
 
     await recordAnalysisEvent(trace, {
       ...input,
@@ -190,6 +199,7 @@ export async function traceStep<T>(
       durationMs: Math.max(0, nowMs() - startedAt),
       cacheHit,
       metadata,
+      outputSummary,
     });
 
     return value;
@@ -199,6 +209,7 @@ export async function traceStep<T>(
       status: "error",
       durationMs: Math.max(0, nowMs() - startedAt),
       errorMessage: errorMessage(e),
+      decisionSummary: options?.decisionSummary,
     });
     throw e;
   }

@@ -131,6 +131,13 @@ async function analyseAddressWithTrace(
 ): Promise<ComplianceResult> {
   const { addressId, koordinater } = input;
 
+  const states: Partial<
+    Record<
+      import("@/lib/project-store").DataSourceKind,
+      import("@/lib/project-store").PipelineServiceState
+    >
+  > = {};
+
   // Løs manglende adressefelter server-side via DAR.
   // Udløses når adgangsadresseid mangler ELLER grundareal er null — det sikrer at
   // bebyggelsesprocent kan beregnes selv hvis klientens DAR-opslag fejlede.
@@ -149,8 +156,13 @@ async function analyseAddressWithTrace(
           phase: "address_enrichment",
           service: "DAR",
           operation: "getAddressDetails",
+          inputSummary: `adresseid=${addressId.slice(0, 8)}`,
         },
         () => DarService.getAddressDetails(addressId, undefined, trace),
+        {
+          outputSummary: (r) =>
+            `grundareal=${r.grundareal ?? "null"} matrikel=${r.matrikelnummer ?? "null"} ejerlavskode=${r.ejerlavskode ?? "null"}`,
+        },
       );
       if (!adgangsadresseid) adgangsadresseid = dar.adgangsadresseid;
       if (preFetchedGrundareal === null) preFetchedGrundareal = dar.grundareal;
@@ -184,9 +196,13 @@ async function analyseAddressWithTrace(
         phase: "cache",
         service: "Supabase",
         operation: "address_analysis.compliance_result.read",
+        inputSummary: `addressId=${addressId.slice(0, 8)}`,
       },
       () => getCachedCompliance(addressId),
-      { cacheHit: (value) => !!value },
+      {
+        cacheHit: (value) => !!value,
+        outputSummary: (v) => (v ? `cache_hit=true bbr=${v.bbr ? "present" : "null"}` : "cache_hit=false"),
+      },
     );
     if (cached) {
       // Bypass stale cache hvis BBR mangler grundareal og vi kan genskabe det —
@@ -200,6 +216,10 @@ async function analyseAddressWithTrace(
         );
       } else {
         complianceBase = cached;
+        states.bbr = "cache_hit";
+        states.lokalplaner = "cache_hit";
+        states.kommuneplanramme = "cache_hit";
+        states.vurdering = "cache_hit";
       }
     }
   } catch (e) {
@@ -222,6 +242,24 @@ async function analyseAddressWithTrace(
       fetchPlandata(koordinater, trace),
       fetchVurViaEbr(adgangsadresseid, trace),
     ]);
+    states.bbr = bbrResult ? "success" : "no_hit";
+    states.lokalplaner = plandataResult.lokalplaner.length > 0 ? "success" : "no_hit";
+    states.kommuneplanramme = plandataResult.kommuneplanramme ? "success" : "no_hit";
+    states.vurdering = vurderingResult ? "success" : "no_hit";
+
+    await recordAnalysisEvent(trace, {
+      eventType: "pipeline_step",
+      phase: "layer1",
+      service: "ComplianceLayer1",
+      operation: "bbr_plandata_vur_parallel",
+      status: "ok",
+      outputSummary: [
+        `grundareal=${bbrResult?.grundareal ?? "null"}`,
+        `lokalplaner=${plandataResult.lokalplaner.length}`,
+        `vurdering=${vurderingResult != null ? "present" : "null"}`,
+      ].join(" "),
+    });
+
     const computedBase: ComplianceBase = {
       bbr: bbrResult,
       lokalplaner: plandataResult.lokalplaner,
@@ -565,6 +603,20 @@ async function analyseAddressWithTrace(
 
   const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData } = layer4;
 
+  // Set Layer 4 service states after all parallel work resolves.
+  states.fbb = fbbData ? "success" : "no_hit";
+  states.naturbeskyttelse = naturbeskyttelse ? "success" : "no_hit";
+  // dkjord, geus, terrain are IS_MOCK=true services.
+  states.dkjord = "mock";
+  states.geusRisk = bbrHardStop ? "skipped" : "mock";
+  states.terrain = bbrHardStop ? "skipped" : "mock";
+  // servitutter is IS_MOCK=true (TingbogenV2 — feature flag).
+  states.servitutter = "mock";
+  // naboer is deactivated (ARCH-226).
+  states.naboer = bbrHardStop ? "skipped" : "no_hit";
+  // fjernvarme is live.
+  states.fjernvarme = fjernvarme ? "success" : "no_hit";
+
   return {
     ...complianceBase,
     lokalplanExtract,
@@ -577,5 +629,6 @@ async function analyseAddressWithTrace(
     fjernvarme,
     fbbData,
     vurderingData: complianceBase.vurderingData,
+    serviceStates: states,
   };
 }
