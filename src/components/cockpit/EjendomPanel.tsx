@@ -301,7 +301,7 @@ export function EjendomPanel() {
         <CopyField label="BYGNING UUID" value={address?.bbrId ?? null} />
         <CopyField label="MATRIKELNUMMER" value={address?.matrikelnummer ?? null} />
         <CopyField label="KOMMUNEKODE" value={address?.kommunekode ?? null} />
-        <CopyField label="BFE-NUMMER" value={null} placeholder="Hentes via EBR" />
+        <CopyField label="BFE-NUMMER" value={bfe_nr} placeholder="Hentes via EBR" />
       </div>
     </div>
   );
