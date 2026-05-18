@@ -86,6 +86,7 @@ export type PersistedProject = {
   bfe_nr: string | null;
   billedanalyse: Json | null;
   hus_dna: Json | null;
+  updated_at: string | null;
 };
 
 // ---------------------------------------------------------------------------
