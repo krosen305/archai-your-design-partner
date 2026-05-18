@@ -317,3 +317,115 @@ describe("Regression: Østerlunden 10 — adresse-only EBR fallback", () => {
     expect(result.fejl).toBeTruthy();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 4. Toldbodgade 31 — FBB SAVE via ois_id
+//    - CQL_FILTER bruger ois_id IN (...), ikke bygningsid
+//    - SAVE 3 aggregeres korrekt fra to bygninger (én med -1, én med 3)
+// ---------------------------------------------------------------------------
+
+describe("Regression: Toldbodgade 31 — FBB SAVE via ois_id", () => {
+  it("FBB: CQL_FILTER indeholder 'ois_id' og UUID'er, ikke BBR-integer-ID'er (ARCH-166)", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = mock(async (url: string) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/json" },
+        text: async () => JSON.stringify({ features: [] }),
+      } as any;
+    }) as any;
+
+    await FbbService.getSaveData(["toldbod-uuid-1", "toldbod-uuid-2"]);
+    expect(capturedUrl).toContain("ois_id");
+    expect(capturedUrl).toContain("toldbod-uuid-1");
+    expect(capturedUrl).not.toContain("bygningsid+IN");
+    expect(capturedUrl).not.toContain("api.dataforsyningen.dk");
+  });
+
+  it("FBB: SAVE 3 aggregeres, bevaringsvaerdi=-1 ekskluderes fra fbb_bedste_bygning", async () => {
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      text: async () =>
+        JSON.stringify({
+          features: [
+            { properties: { bygningsid: 111, bygningsnummer: 1, bevaringsvaerdi: -1, fredet: false } },
+            { properties: { bygningsid: 222, bygningsnummer: 2, bevaringsvaerdi: 3, fredet: false } },
+          ],
+        }),
+    }) as any) as any;
+
+    const result = await FbbService.getSaveData(["toldbod-uuid-1", "toldbod-uuid-2"]);
+    expect(result.fbb_bedste_bygning?.bevaringsvaerdi).toBe(3);
+    expect(result.fbb_bedste_bygning?.bygningsid).toBe(222);
+    expect(result.fbb_er_fredet).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Rækkehus med sekundære bygninger
+//    - bebygget_areal summerer kun ikke-sekundære (kode 120)
+//    - garage (kode 910) ekskluderes (ARCH-227)
+// ---------------------------------------------------------------------------
+
+const MOCK_BBR_BASE = {
+  byg026Opfoerelsesaar: 1985,
+  byg032YdervaeggensMateriale: "1",
+  byg033Tagdaekningsmateriale: "1",
+  byg038SamletBygningsareal: 150,
+  byg054AntalEtager: 1,
+  byg056Varmeinstallation: "1",
+  byg057Opvarmningsmiddel: "1",
+  byg070Fredning: null,
+};
+
+describe("Regression: Rækkehus med sekundære bygninger (ARCH-227)", () => {
+  const RAEKKEHUS_BYGNINGER = [
+    { ...MOCK_BBR_BASE, id_lokalId: "byg-bolig", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 130 },
+    { ...MOCK_BBR_BASE, id_lokalId: "byg-garage", byg021BygningensAnvendelse: "910", byg041BebyggetAreal: 25 },
+  ];
+
+  it("bebygget_areal = 130 (garage kode 910 ekskluderet)", () => {
+    const { bebygget_areal } = deriveBbrSummary(RAEKKEHUS_BYGNINGER);
+    expect(bebygget_areal).toBe(130);
+  });
+
+  it("primærBygning er boligen (kode 120), ikke garagen (kode 910)", () => {
+    const { primærBygning } = deriveBbrSummary(RAEKKEHUS_BYGNINGER);
+    expect(primærBygning?.byg021BygningensAnvendelse).toBe("120");
+  });
+
+  it("sekundær i anden position ændrer ikke bebygget_areal", () => {
+    const reversed = [...RAEKKEHUS_BYGNINGER].reverse();
+    expect(deriveBbrSummary(reversed).bebygget_areal).toBe(130);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. Adresse med 3 BBR-bygninger inkl. dublet id_lokalId
+//    - deriveBbrSummary deduplicerer på id_lokalId (ARCH-227)
+//    - bebygget_areal = 280, ikke 480
+// ---------------------------------------------------------------------------
+
+describe("Regression: 3 BBR-bygninger med dublet id_lokalId (ARCH-227)", () => {
+  const BYGNINGER_MED_DUBLET = [
+    { ...MOCK_BBR_BASE, id_lokalId: "byg-a", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 200 },
+    { ...MOCK_BBR_BASE, id_lokalId: "byg-b", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 80 },
+    { ...MOCK_BBR_BASE, id_lokalId: "byg-a", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 200 }, // dublet
+  ];
+
+  it("bebygget_areal = 280, ikke 480 — dublet tæller ikke dobbelt", () => {
+    const { bebygget_areal } = deriveBbrSummary(BYGNINGER_MED_DUBLET);
+    expect(bebygget_areal).toBe(280);
+  });
+
+  it("er node-order-uafhængig", () => {
+    const reversed = [...BYGNINGER_MED_DUBLET].reverse();
+    expect(deriveBbrSummary(BYGNINGER_MED_DUBLET).bebygget_areal).toBe(
+      deriveBbrSummary(reversed).bebygget_areal,
+    );
+  });
+});
