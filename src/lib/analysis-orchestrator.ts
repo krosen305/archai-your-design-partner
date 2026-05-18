@@ -19,7 +19,7 @@
 //   geus                ⏳  IS_MOCK=true — ARCH-101 (radon-layer eksisterer ikke i GEUS WFS)
 //   servitut_extracted  ⏳  IS_MOCK=true — ARCH-30 (TingbogenV2 kræver særskilt Datafordeler-abonnement)
 //   terrain             ⏳  IS_MOCK=true — ARCH-102 (DHM WCS kræver særskilt Datafordeler-abonnement)
-//   naboer              ✅  live DAWA REST (ARCH-103)
+//   naboer              ⏳  deaktiveret — DAWA (dawa.aws.dk) er forbudt (ARCH-226)
 //   fjernvarme          ✅  live Plandata WFS pdk:theme_pdk_varmeplansomraade_vedtaget_v (ARCH-111)
 //   fbbData             ✅  live Kulturarv GeoServer fbb:view_bygningslag (ARCH-29)
 //   report_text         ⏳  ARCH-27 (AI compliance summarizer not yet built)
