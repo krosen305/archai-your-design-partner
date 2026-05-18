@@ -148,8 +148,16 @@ When you encounter a field being read from `compliance_data JSONB` or `projekter
 
 Se `docs/INTEGRATIONS.md` for fuld tabel og Datafordeler GraphQL-constraints.
 
-**FORBUDT: DAWA / api.dataforsyningen.dk**
-DAWA (Danmarks Adressers Web API) er udfaset og lukker. Brug aldrig `api.dataforsyningen.dk` — hverken som primær kilde eller fallback. Al adresse- og matrikeldata hentes udelukkende fra Datafordeler (DAR, MAT, BBR). Hvis DAR mangler jordstykke-FK for en adresse, returneres `null` — der laves ingen fallback til DAWA.
+**FORBUDT: DAWA / api.dataforsyningen.dk som compliance-kilde**
+DAWA (Danmarks Adressers Web API) er udfaset og lukker. Brug aldrig `api.dataforsyningen.dk` til compliance-/registerdata — hverken som primær kilde eller fallback. Al adresse- og matrikeldata hentes udelukkende fra Datafordeler (DAR, MAT, BBR).
+
+**Godkendte undtagelser (ARCH-226):**
+- `GSearch v2` (`api.dataforsyningen.dk/rest/gsearch/v2.0`): Tilladt som søge-UX til adresse-autocomplete. Bruges IKKE som compliance-kilde — alt compliance-data hentes fra Datafordeler.
+- `Skærmkort WMTS` (`api.dataforsyningen.dk/...wmts`): Tilladt som baggrundskort-tiles. Geometri er ikke compliance-data.
+
+**Fallback-regel for grundareal (ARCH-222 option B):** Hvis `ejerlavskode`/`matrikelnummer` mangler eller MAT returnerer null, SKAL `GrundarealResolver` bruges som fallback (DAR → EBR/BFE/SFE → MAT_Ejerlejlighed → BBR). Ingen fallback til DAWA. Se `src/integrations/mat/grundareal-resolver.ts`.
+
+**Naboopslag:** `neighbor-client.ts` returnerer tom liste — ingen godkendt Datafordeler-kilde til radius-naboer eksisterer endnu.
 
 IS_MOCK=true services (live API afventer verifikation):
 
