@@ -265,8 +265,7 @@ export function deriveBbrSummary(bygninger: any[]): {
   }
 
   const primærBygning =
-    bygninger.find((b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? "")) ??
-    bygninger[0];
+    bygninger.find((b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? "")) ?? bygninger[0];
 
   // Deduplicer på id_lokalId før aggregering — bygninger uden id medtages altid
   const seen = new Set<string>();
@@ -279,16 +278,16 @@ export function deriveBbrSummary(bygninger: any[]): {
   });
 
   // Sum footprint for alle ikke-sekundære bygninger (ARCH-227)
-  const relevante = unikke.filter(
-    (b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? ""),
-  );
+  const relevante = unikke.filter((b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? ""));
   const footprints = relevante
     .map((b) => b.byg041BebyggetAreal as number | undefined)
     .filter((a): a is number => a != null);
   const bebygget_areal = footprints.length > 0 ? footprints.reduce((s, a) => s + a, 0) : null;
 
   // fredet = true hvis NOGEN bygning har fredning sat (ARCH-227)
-  const fredningsValues = unikke.map((b) => (b.byg070Fredning as string | null | undefined) ?? null);
+  const fredningsValues = unikke.map(
+    (b) => (b.byg070Fredning as string | null | undefined) ?? null,
+  );
   const hasAnyExplicitValue = fredningsValues.some((v) => v !== null);
   const fredet = hasAnyExplicitValue
     ? fredningsValues.some((v) => v !== null && v !== "0" && v !== "")
