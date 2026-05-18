@@ -259,6 +259,7 @@ type State = {
   setBebyggetAreal: (v: number | null) => void;
   setHardStop: (v: boolean, reason: string | null) => void;
   setBudgetEstimate: (v: number | null) => void;
+  setBfeNr: (v: string | null) => void;
 
   reset: () => void;
 };
