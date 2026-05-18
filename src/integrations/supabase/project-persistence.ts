@@ -83,6 +83,7 @@ export type PersistedProject = {
   hard_stop: boolean;
   hard_stop_reason: string | null;
   budget_estimate: number | null;
+  bfe_nr: string | null;
   billedanalyse: Json | null;
   hus_dna: Json | null;
 };
@@ -811,7 +812,7 @@ export async function loadProject(
   let query = supabaseAdmin
     .from("projects")
     .select(
-      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status, heritage_save_value, is_fredet, grundareal_m2, bebygget_areal_m2, hard_stop, hard_stop_reason, budget_estimate, billedanalyse, hus_dna",
+      "id, address_full, address_kommune, address_matrikel, address_bbr, address_adresseid, address_postnr, address_postnrnavn, address_koordinater, address_ejerlavskode, address_matrikelnummer, compliance_data, brief_data, compliance_done, current_step, project_data_status, heritage_save_value, is_fredet, grundareal_m2, bebygget_areal_m2, hard_stop, hard_stop_reason, budget_estimate, bfe_nr, billedanalyse, hus_dna",
     )
     .eq("user_id", userId);
 

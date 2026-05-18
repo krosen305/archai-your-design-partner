@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { EbrService } from "./client";
 
+const MOCK_CONFIG = { apiKey: "x", endpoint: "https://example.com" };
+
+function mockFetch(responses: { json: unknown }[]) {
+  let callIndex = 0;
+  globalThis.fetch = mock(async () => {
+    const response = responses[callIndex++ % responses.length];
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(response.json),
+    } as Response;
+  }) as any;
+}
+
 describe("EbrService.getBfeNr", () => {
   beforeEach(() => {
     globalThis.fetch = fetch;
@@ -39,5 +53,27 @@ describe("EbrService.getBfeNr", () => {
     });
     expect(result).toEqual({ bfeNr: "1234567", fejl: null });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("EbrService.getBfeNrByAdresse (ARCH-225)", () => {
+  it("finder BFE via adresseLokalId (ejerlejlighed)", async () => {
+    mockFetch([
+      {
+        json: {
+          data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "289814" }] } },
+        },
+      },
+    ]);
+    const result = await EbrService.getBfeNrByAdresse("some-adresse-id", MOCK_CONFIG);
+    expect(result.bfeNr).toBe("289814");
+    expect(result.fejl).toBeNull();
+  });
+
+  it("returnerer null + fejl når ingen EBR-node for adresseLokalId", async () => {
+    mockFetch([{ json: { data: { EBR_Ejendomsbeliggenhed: { nodes: [] } } } }]);
+    const result = await EbrService.getBfeNrByAdresse("ingen-id", MOCK_CONFIG);
+    expect(result.bfeNr).toBeNull();
+    expect(result.fejl).toBeTruthy();
   });
 });

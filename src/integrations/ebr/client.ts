@@ -59,6 +59,22 @@ query GetEjendomsbeliggenhed($husnummerLokalId: String!, $virkningstid: DafDateT
   }
 }`;
 
+const BELIGGENHED_ADRESSE_QUERY = `
+query GetEjendomsbeliggenhedByAdresse($adresseLokalId: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+  EBR_Ejendomsbeliggenhed(
+    where: { adresseLokalId: { eq: $adresseLokalId } }
+    virkningstid: $virkningstid
+    registreringstid: $registreringstid
+    first: 1
+  ) {
+    nodes {
+      bestemtFastEjendomBFENr
+      adresseLokalId
+      id_lokalId
+    }
+  }
+}`;
+
 // ---------------------------------------------------------------------------
 // Output type
 // ---------------------------------------------------------------------------
@@ -161,6 +177,46 @@ export class EbrService {
       return { bfeNr, fejl: null };
     } catch (e) {
       console.error("[EBR] Service fejl:", e);
+      return { bfeNr: null, fejl: (e as Error).message };
+    }
+  }
+
+  /**
+   * Slår BFE-nummer op via DAR_Adresse.id_lokalId (= adresseLokalId).
+   * Bruges til ejerlejligheder hvor adresseLokalId giver ejerlejlighedens BFE.
+   *
+   * @param adresseLokalId  DAR_Adresse.id_lokalId (= adresseid i vores system)
+   */
+  static async getBfeNrByAdresse(
+    adresseLokalId: string,
+    config?: EbrClientConfig,
+    trace?: AnalysisTraceContext | null,
+  ): Promise<EbrResult> {
+    const id = adresseLokalId.trim();
+    if (!id) return { bfeNr: null, fejl: "adresseLokalId er påkrævet" };
+
+    try {
+      const { apiKey, endpoint } = getConfig(config);
+      const url = new URL(endpoint);
+      url.searchParams.set("apiKey", apiKey);
+      const data = await gqlFetch(
+        url,
+        BELIGGENHED_ADRESSE_QUERY,
+        { adresseLokalId: id, ...currentBitemporalArgs() },
+        trace,
+      );
+      const nodes: any[] = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
+
+      if (!nodes.length) {
+        return {
+          bfeNr: null,
+          fejl: `EBR_Ejendomsbeliggenhed ikke fundet for adresseLokalId ${id}`,
+        };
+      }
+
+      return { bfeNr: nodes[0].bestemtFastEjendomBFENr ?? null, fejl: null };
+    } catch (e) {
+      console.error("[EBR] getBfeNrByAdresse fejl:", e);
       return { bfeNr: null, fejl: (e as Error).message };
     }
   }
