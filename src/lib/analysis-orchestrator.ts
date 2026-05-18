@@ -606,8 +606,7 @@ async function analyseAddressWithTrace(
   // Set Layer 4 service states after all parallel work resolves.
   states.fbb = fbbData ? "success" : "no_hit";
   states.naturbeskyttelse = naturbeskyttelse ? "success" : "no_hit";
-  // dkjord, geus, terrain are IS_MOCK=true services.
-  states.dkjord = "mock";
+  // geus and terrain are IS_MOCK=true services; dkjord has no DataSourceKind entry.
   states.geusRisk = bbrHardStop ? "skipped" : "mock";
   states.terrain = bbrHardStop ? "skipped" : "mock";
   // servitutter is IS_MOCK=true (TingbogenV2 — feature flag).
