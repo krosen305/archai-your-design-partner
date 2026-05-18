@@ -460,6 +460,43 @@ export function isHusDna(v: unknown): v is HusDna {
   );
 }
 
+// Stale-tærskler pr. kilde (dage). Spejler cache-TTL i src/integrations/cache/client.ts
+// og bruges KUN i UI'et til at vise "Forældet"-pille — ikke til at invalidere cachen.
+const STALE_DAYS: Record<DataSourceKind, number> = {
+  bbr: 30,
+  lokalplaner: 30,
+  kommuneplanramme: 30,
+  fbb: 30,
+  naturbeskyttelse: 30,
+  geusRisk: 30,
+  servitutter: 7,
+  terrain: 30,
+  fjernvarme: 30,
+  naboer: 30,
+  vurdering: 30,
+  byggeanalyse: 60,
+  billedanalyse: 60,
+  husDna: 60,
+};
+
+/**
+ * Beregn datakilde-status ud fra om feltet findes + projektets updated_at.
+ * `value` er truthy hvis kilden er gendannet fra DB. `lastFetchedIso` er
+ * projects.updated_at (sidste skrivning til DB) — bruges som proxy for friskhed.
+ */
+export function deriveSourceStatus(
+  kind: DataSourceKind,
+  value: unknown,
+  lastFetchedIso: string | null,
+): DataSourceStatus {
+  const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
+  if (!hasValue) return "missing";
+  if (!lastFetchedIso) return "fresh";
+  const ageMs = Date.now() - new Date(lastFetchedIso).getTime();
+  const staleMs = STALE_DAYS[kind] * 24 * 60 * 60 * 1000;
+  return ageMs > staleMs ? "stale" : "fresh";
+}
+
 type ParsedComplianceData = {
   bbr: BbrKompliantData | null;
   flags: ComplianceFlag[];
