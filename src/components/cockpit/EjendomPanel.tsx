@@ -10,7 +10,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { useProject, type ComplianceFlag } from "@/lib/project-store";
+import { useProject, type ComplianceFlag, type PipelineServiceState, PIPELINE_SERVICE_STATE_LABELS } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 
 export function EjendomPanel() {
@@ -26,6 +26,7 @@ export function EjendomPanel() {
     bebygget_areal_m2,
     is_fredet,
     bfe_nr,
+    serviceStates,
   } = useProject();
   const [showFlags, setShowFlags] = useState(false);
   const [showDatakilder, setShowDatakilder] = useState(false);
@@ -100,6 +101,7 @@ export function EjendomPanel() {
         {noegletal.map((n, i) => (
           <motion.div
             key={n.label}
+            data-testid={`stat-card-${n.label.toLowerCase().replace(/\s+/g, "-")}`}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06 }}
@@ -108,7 +110,12 @@ export function EjendomPanel() {
               <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
                 {n.label}
               </div>
-              <div className="mt-1.5 text-2xl text-foreground">{n.value}</div>
+              <div
+                className="mt-1.5 text-2xl text-foreground"
+                data-testid={n.label === "GRUNDAREAL" ? "stat-grundareal-value" : undefined}
+              >
+                {n.value}
+              </div>
               <div className="mt-1 text-xs text-muted-foreground">{n.sub}</div>
             </Card>
           </motion.div>
@@ -238,57 +245,57 @@ export function EjendomPanel() {
             <DataRow
               label="Fredet (BBR byg070)"
               value={bbr?.fredet == null ? "—" : bbr.fredet ? "Ja" : "Nej"}
-              status={bbr == null ? "mangler" : "live"}
+              state={serviceStates.bbr ?? (bbr == null ? "not_run" : "success")}
+              data-testid="datarow-bbr-fredet"
             />
             <DataRow
               label="Strandbeskyttelse (MAT)"
-              value={
-                bbr?.mat_strandbeskyttelse == null ? "—" : bbr.mat_strandbeskyttelse ? "Ja" : "Nej"
-              }
-              status={bbr == null ? "mangler" : "live"}
+              value={bbr?.mat_strandbeskyttelse == null ? "—" : bbr.mat_strandbeskyttelse ? "Ja" : "Nej"}
+              state={serviceStates.bbr ?? (bbr == null ? "not_run" : "success")}
+              data-testid="datarow-mat-strandbeskyttelse"
             />
             <DataRow
               label="Fredskov (MAT)"
               value={bbr?.mat_fredskov == null ? "—" : bbr.mat_fredskov ? "Ja" : "Nej"}
-              status={bbr == null ? "mangler" : "live"}
+              state={serviceStates.bbr ?? (bbr == null ? "not_run" : "success")}
+              data-testid="datarow-mat-fredskov"
             />
             <DataRow
               label="Klitfredning (MAT)"
               value={bbr?.mat_klitfredning == null ? "—" : bbr.mat_klitfredning ? "Ja" : "Nej"}
-              status={bbr == null ? "mangler" : "live"}
+              state={serviceStates.bbr ?? (bbr == null ? "not_run" : "success")}
+              data-testid="datarow-mat-klitfredning"
             />
             <DataRow
               label="FBB-registrering"
               value={heritage_save_value != null ? `SAVE ${heritage_save_value}/9` : "Ikke SAVE-registreret"}
-              status={heritage_save_value != null ? "live" : "mangler"}
+              state={serviceStates.fbb ?? (heritage_save_value != null ? "success" : "not_run")}
+              data-testid="datarow-fbb"
             />
             <DataRow
               label="Ejendomsværdi (VUR)"
-              value={
-                vurderingData?.ejendomsvaerdi != null
-                  ? formatMio(vurderingData.ejendomsvaerdi)
-                  : "—"
-              }
-              status={vurderingData == null ? "mangler" : "live"}
+              value={vurderingData?.ejendomsvaerdi != null ? formatMio(vurderingData.ejendomsvaerdi) : "—"}
+              state={serviceStates.vurdering ?? (vurderingData == null ? "not_run" : "success")}
+              data-testid="datarow-vur-ejendom"
             />
             <DataRow
               label="Grundværdi (VUR)"
-              value={
-                vurderingData?.grundvaerdi != null ? formatMio(vurderingData.grundvaerdi) : "—"
-              }
-              status={vurderingData == null ? "mangler" : "live"}
+              value={vurderingData?.grundvaerdi != null ? formatMio(vurderingData.grundvaerdi) : "—"}
+              state={serviceStates.vurdering ?? (vurderingData == null ? "not_run" : "success")}
+              data-testid="datarow-vur-grund"
             />
             <DataRow
               label="Vurderingsår"
               value={vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"}
-              status={vurderingData == null ? "mangler" : "live"}
+              state={serviceStates.vurdering ?? (vurderingData == null ? "not_run" : "success")}
+              data-testid="datarow-vur-aar"
             />
             <DataRow
               label="BFE-nummer (EBR)"
               value={bfe_nr ?? "—"}
-              status={bfe_nr ? "live" : "mangler"}
+              state={serviceStates.bbr ?? (bfe_nr ? "success" : "not_run")}
+              data-testid="datarow-bfe"
             />
-
           </div>
         )}
       </Card>
@@ -432,27 +439,49 @@ function FlagRow({ flag }: { flag: ComplianceFlag }) {
 function DataRow({
   label,
   value,
-  status,
+  state,
+  "data-testid": testId,
 }: {
   label: string;
   value: string;
-  status: "live" | "mock" | "mangler";
+  state: PipelineServiceState | "live" | "mock" | "mangler";
+  "data-testid"?: string;
 }) {
-  const badge = {
-    live: "text-emerald-400 border-emerald-500/40",
-    mock: "text-yellow-400 border-yellow-500/40",
-    mangler: "text-muted-foreground border-border",
-  }[status];
+  // Map legacy string values to PipelineServiceState
+  const normalized: PipelineServiceState =
+    state === "live" ? "success"
+    : state === "mangler" ? "not_run"
+    : state === "mock" ? "mock"
+    : state;
+
+  const badgeStyle: Record<PipelineServiceState, string> = {
+    success:   "text-emerald-400 border-emerald-500/40",
+    cache_hit: "text-sky-400 border-sky-500/40",
+    no_hit:    "text-yellow-400 border-yellow-500/40",
+    mock:      "text-yellow-400 border-yellow-500/40",
+    error:     "text-danger border-danger/40",
+    skipped:   "text-muted-foreground border-border",
+    not_run:   "text-muted-foreground border-border",
+  };
+
+  const labelText = PIPELINE_SERVICE_STATE_LABELS[normalized];
 
   return (
-    <div className="flex items-center justify-between py-2 text-sm">
+    <div
+      className="flex items-center justify-between py-2 text-sm"
+      data-testid={testId}
+    >
       <div className="text-foreground">{label}</div>
       <div className="flex items-center gap-2 ml-2 shrink-0">
-        <span className="text-xs text-muted-foreground">{value}</span>
+        <span className="text-xs text-muted-foreground" data-testid={testId ? `${testId}-value` : undefined}>
+          {value}
+        </span>
         <span
-          className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em] ${badge}`}
+          className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em] ${badgeStyle[normalized]}`}
+          title={normalized}
+          data-testid={testId ? `${testId}-badge` : undefined}
         >
-          {status.toUpperCase()}
+          {labelText.toUpperCase()}
         </span>
       </div>
     </div>
