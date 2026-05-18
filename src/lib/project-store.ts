@@ -365,6 +365,7 @@ export const useProject = create<State>((set) => ({
       hard_stop: false,
       hard_stop_reason: null,
       budget_estimate: null,
+      bfe_nr: null,
     }),
 }));
 
