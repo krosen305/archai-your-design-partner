@@ -25,6 +25,7 @@ export function EjendomPanel() {
     grundareal_m2,
     bebygget_areal_m2,
     is_fredet,
+    bfe_nr,
   } = useProject();
   const [showFlags, setShowFlags] = useState(false);
   const [showDatakilder, setShowDatakilder] = useState(false);
