@@ -1,77 +1,121 @@
-## Problem 1 — "Slet projekt" mangler
+## Mål
 
-På `/projekt/start` viser `ProjektKort` kun en "Fortsæt"-knap. Der er ingen måde at slette et projekt på, og `projekt-service.ts` har ingen `deleteProjekt`/`serverDeleteProject` funktion. Relateret data ligger flere steder og skal ryddes samtidig:
+Når brugeren åbner et eksisterende projekt, skal cockpittet **vise alt vi har i databasen med det samme** — ingen 2,8 sek. loading-skærm, ingen orchestrator-kald. Sektioner uden data får en tydelig "ikke hentet"-tilstand med en **Genindlæs**-knap, så API-kald bliver et eksplicit valg pr. datakilde, ikke noget der sker automatisk ved hver genindlæsning.
 
-- `projects` (hovedrækken)
-- `design_iterations` (FK `project_id` — ingen DB-cascade)
-- `building_tasks` (FK `project_id` — ingen DB-cascade)
-- Storage: `inspirationsbilleder/{userId}/{projectId}/*` (kun den ene mappe)
-- `address_analysis` / `site_constraints` røres **ikke** — de er delt cache på tværs af brugere
+## Problemet med nuværende flow
 
-## Problem 2 — Fortsæt sender mig til `/projekt/adresse`
+Cockpit-routen har én stor gate (`bbrData && complianceDone` → vis; ellers → kør hele `fetchCompliance`-orchestratoren). Tre konsekvenser:
 
-Reproduktion (sample: `/projekt/0a3f50a6-34d8-32b8-e044-0003ba298018/cockpit`):
+1. Hvis ét felt mangler (fx `compliance_done = false` på et gammelt projekt, eller en ny datakilde der ikke fandtes da projektet blev gemt), kører **hele pipelinen** igen — selv om 90 % af data ligger i DB.
+2. Den kunstige `MIN_LOADING_MS = 2800` skærm bliver vist selv når restore er øjeblikkelig.
+3. Brugeren kan ikke se *hvilke* datakilder der er friske/forældede/manglende — alt er sort boks.
 
-1. `ProjektKort.handleFortsaet` kalder `reset()` → adresse ryddes
-2. `setCurrentProjectId(projekt.id)` + `navigate('/projekt/{adresse_dar_id}/cockpit?projectId=...')`
-3. Cockpit mounter, `restorePhase="pending"`, første `useEffect` kalder `restoreProject(pid, adresseId)`
-4. `restoreProject` lykkes og returnerer rækken, men i `CockpitContent` (lines 526–586) er adresse-population **gated** af:
-   ```ts
-   if (project?.address_full && project?.address_bbr) { … setAddress(…) }
-   ```
-   Hvis `address_bbr` er `null` i DB (nyere projekter persisterer kun `address_adresseid`), springes hele `setAddress`-blokken over.
-5. `restorePhase` sættes til `"checked"`, anden `useEffect` ser `currentAddress` = null og kalder `navigate({ to: "/projekt/adresse" })` (line 645–648).
+## Forslag
 
-Det er dén race brugeren oplever: URL'en skifter kort til cockpit-GUID'en og dumper så til adressefeltet, selvom projektet har en adresse.
+### 1. Fjern "alt eller intet"-gaten
 
-Sekundær årsag: hvis `restoreProject` returnerer en række hvor `address_adresseid` er sat men `address_bbr` er `null`, vil `routeMatchesAddress` desuden aldrig matche, fordi adressen aldrig blev sat i store.
+Cockpittet renderes altid med det restore har givet os. Vi bruger ikke længere `status: "loading" | "done" | "error"` til at skjule hele UI'et. `complianceDone`-flaget i store afgør kun *om "Genindlæs alt"-knappen er fremhævet*, ikke om sektionerne vises.
 
-## Plan
+### 2. Datakilde-status pr. sektion
 
-### 1. Tilføj sletning af projekt
+Vi introducerer en lille per-sektion model i `project-store.ts`:
 
-- `src/integrations/supabase/project-persistence.ts`: ny `deleteProject(accessToken, projectId)` som (i rækkefølge):
-  1. tjekker at projektet tilhører `auth.uid()` (via `supabaseAdmin` + `getUserId(accessToken)`)
-  2. lister og fjerner alle filer under `inspirationsbilleder/{userId}/{projectId}/`
-  3. sletter `design_iterations.project_id = id`
-  4. sletter `building_tasks.project_id = id`
-  5. sletter `projects` rækken
-- `src/lib/project-sync.ts`: tynd `serverDeleteProject = createServerFn({ method: "POST" })`-wrapper
-- `src/lib/projekt-service.ts`: client-side `sletProjekt(projectId)` der henter access token og kalder server fn (samme mønster som `serverCreateProject`)
-- `src/routes/projekt.start.tsx` (`ProjektKort`):
-  - tilføj papirkurv-ikon (Lucide `Trash2`) som diskret knap i højre øverste hjørne af kortet, til venstre for "Fortsæt"
-  - åbn AlertDialog (shadcn `alert-dialog`) med tekst "Slet projekt på {adresse}? Dette kan ikke fortrydes."
-  - ved bekræft: kald `sletProjekt`, opdater lokal `projekter`-state (filter id ud), vis kort toast på fejl
-  - hvis `currentProjectId === projekt.id` i store → `reset()` + `setCurrentProjectId(null)`
+```ts
+type SectionStatus = "fresh" | "stale" | "missing" | "loading" | "error";
 
-### 2. Fix Fortsæt-redirect
+dataStatus: {
+  bbr: SectionStatus;
+  lokalplaner: SectionStatus;
+  kommuneplanramme: SectionStatus;
+  fbb: SectionStatus;          // SAVE/fredning
+  naturbeskyttelse: SectionStatus;
+  geusRisk: SectionStatus;
+  servitutter: SectionStatus;
+  terrain: SectionStatus;
+  fjernvarme: SectionStatus;
+  naboer: SectionStatus;
+  vurdering: SectionStatus;
+  byggeanalyse: SectionStatus;
+  billedanalyse: SectionStatus;
+  husDna: SectionStatus;
+}
+```
 
-To koordinerede ændringer:
+Status afledes ved restore:
+- Felt findes i DB → `fresh` (med `updated_at`-tidsstempel)
+- Felt er `null` i DB → `missing`
+- Felt er ældre end TTL (samme regler som `address_analysis`-cachen i `src/integrations/cache/client.ts`: lokalplan 30d, servitut 7d, compliance 30d) → `stale`
 
-**a) `ProjektKort.handleFortsaet`** (`src/routes/projekt.start.tsx`):
-Sæt adressen i store **inden** navigationen — så cockpit har state med det samme og ikke afhænger af restore-racen:
-- erstat `reset()` med en målrettet `clearAnalysisState()` (eller eksplicit nulstilling af kun analyse-felter — bevar `currentProjectId` og `address`)
-- byg en minimal `Address` ud fra `projekt`-rækken (`adresse`, `adresse_dar_id`, eventuelt andre felter `listProjekter` returnerer) og kald `setAddress(...)`
-- hvis `listProjekter` ikke returnerer nok felter til at bygge `Address`, udvid SELECT'en + mapping så vi får `address_postnr`, `address_postnrnavn`, `address_kommune`, `address_koordinater`, `address_matrikel`, `address_ejerlavskode`, `address_matrikelnummer` med
+### 3. Granulære refresh-server-funktioner
 
-**b) `CockpitContent` restore-blok** (`src/routes/projekt.$id.cockpit.tsx` ~line 526):
-- løsn guarden: kør `setAddress(...)` hvis `project.address_full` findes OG (`project.address_adresseid` ELLER `project.address_bbr`) findes
-- brug `adresseid: project.address_adresseid ?? project.address_bbr ?? adresseId` (URL'en er sidste fallback)
-- sæt `adgangsadresseid` til samme fallback-kæde så `routeMatchesAddress` virker selv hvis kun ét id er gemt
-- bevar al øvrig population (compliance, hus_dna osv.)
+I dag har vi én monolitisk `fetchCompliance` der kører alt parallelt. Vi tilføjer pr.-datakilde server-funktioner (eller én `refreshDataSource(kind)`) der kun rammer den nødvendige integration og opdaterer både `address_analysis`-cache og `projects`-rækken:
 
-**c) Anden useEffect** (~line 645): inden redirect til `/projekt/adresse`, log warning med `adresseId` + `pid` så vi kan opdage fremtidige restore-huller, og brug `replace: true` på navigate (så browser-back ikke bouncer ind igen) — kun hvis vi reelt skal redirecte.
+- `refreshBbr` → BBR + MAT
+- `refreshLokalplaner` → Plandata + lokalplan-PDF-ekstraktion
+- `refreshServitutter` → Tinglysning
+- `refreshGeoRisk` → GEUS + SDFI terrain + naturbeskyttelse
+- `refreshFbb` → FBB SAVE/fredning
+- `refreshVurdering` → VUR
+- `refreshNaboer` → BBR neighbor-client
+- `refreshFjernvarme` → Plandata fjernvarme
+- `refreshByggeanalyse` → AI byggeanalyse (allerede separat via `runByggeanalyse`)
 
-### 3. Verification
+Den gamle `fetchCompliance` beholdes som "Genindlæs alt"-knap (én kommando der orchestrerer ovenstående parallelt) — nyttig ved første compliance-kørsel og ved totalrefresh.
 
-- Manuel test: log ind, vælg eksisterende projekt med `compliance_done=true` → lander direkte i cockpit-fanen ANALYSE uden tur over `/adresse`
-- Manuel test: klik papirkurv på et projekt → bekræft → projektet forsvinder fra listen, refresh viser samme; klik kort = nyt projekt-kort
-- DB-check via supabase read_query: `design_iterations` og `building_tasks` for det slettede `project_id` er væk
-- `bunx tsc --noEmit`, `bunx eslint .`, `bun test`
+### 4. UI: badge + knap pr. sektion
 
-### Tekniske detaljer
+Hver datakilde-blok i `EjendomPanel`, `OekonomiPanel`, lokalplan-sektionen, risiko-feed osv. får et lille header-element:
 
-- `project-store.ts` har allerede en `setAddress` action; tjek om der findes en partial reset eller om vi tilføjer `clearAnalysisState` (kun `bbrData`, `complianceFlags`, `lokalplaner`, `byggeanalyseResultat` etc.) ved siden af `reset()`. **`project-store.ts` er beskyttet fil** → marker PR med 🔒.
-- Bemærk: `restoreProject` har 5s in-flight cache, så __root.tsx og cockpit deler resultat — ingen dobbeltkald.
-- `inspirationsbilleder`-sti er `{userId}/{projectId}/...` (per `projekt-service.ts` line ~95), så vi kan liste mappen og fjerne alle filer i ét `.remove()`-kald.
-- Ingen DB-migration kræves; sletning sker via service-role klienten der bypasser RLS.
+```text
+┌─────────────────────────────────────────────┐
+│ LOKALPLANER          [Frisk · 3 dage siden] │
+│ ...                                         │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│ GEOTEKNISK RISIKO    [Mangler] [Genindlæs ↻]│
+│ Ingen data hentet endnu                     │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│ NABODATA             [Forældet · 45 dage]   │
+│ ...                              [Opdatér ↻]│
+└─────────────────────────────────────────────┘
+```
+
+Status-pillen bruger eksisterende design-tokens (`accent`, `warning`, `danger`, `muted`). Loading-tilstand pr. sektion = lille spinner i pillen, ikke fuld-skærm.
+
+### 5. Auto-trigger kun ved "missing" + brugerens valg
+
+Vi tilføjer en preference-toggle i toppen af cockpittet:
+- **Vis cachet data** (default) — ingen automatiske API-kald
+- **Hent altid friske data** — kører "Genindlæs alt" ved hvert besøg
+
+Vi fjerner den implicitte auto-orchestrator. Hvis et projekt aldrig har kørt compliance (`compliance_done = false`), vises et tydeligt banner: *"Compliance-analyse er ikke kørt endnu — [Start analyse]"*, så det er et bevidst klik.
+
+### 6. Fjern `MIN_LOADING_MS = 2800`
+
+Den kunstige forsinkelse fjernes. Hvis vi virkelig kører API-kald, viser sektionens egen loading-pille det.
+
+## Tekniske detaljer
+
+**Filer der ændres:**
+
+- `src/lib/project-store.ts` — tilføj `dataStatus`-felt + setter pr. kilde (beskyttet fil — kræver review).
+- `src/integrations/supabase/project-persistence.ts` — `loadProject` returnerer `updated_at` pr. felt (eller vi læser fra `address_analysis.*_at`-kolonnerne der allerede findes). Beskyttet fil — kræver review.
+- `src/lib/project-sync.ts` — `syncPatch` opdaterer status til `fresh` når der skrives.
+- `src/routes/projekt.$id.cockpit.tsx` — fjern stor loading-gate, render direkte, fjern `MIN_LOADING_MS`. Tilføj `refreshSource(kind)` callback. Beskyttet fil (orchestrator-niveau) — kræver review.
+- `src/components/cockpit/EjendomPanel.tsx`, `OekonomiPanel.tsx`, `RisikoFeed.tsx`, `ComplianceFeed.tsx` — tilføj `<DataSourceStatus kind="..." />`-header.
+- **Ny komponent**: `src/components/cockpit/DataSourceStatus.tsx` — pille + refresh-knap, læser status fra store, kalder `refreshSource`.
+- **Nye server-fns**: én pr. integration (kan bo i `src/lib/refresh.functions.ts` eller splittes pr. integration).
+
+**Beholder vi**: `address_analysis`-cachen og dens TTLs er den rigtige sandhedskilde — vi bruger blot `*_at`-kolonnerne til at afgøre `fresh` vs. `stale` i UI.
+
+**Datakontrakt**: Status er afledt — gemmes IKKE som typed kolonne i `projects`. Den beregnes ved restore baseret på (a) om feltet er null og (b) `address_analysis.*_at` tidsstempler.
+
+## Hvad jeg gerne vil have afklaret før implementering
+
+1. Skal "Genindlæs alt"-knappen være synlig hele tiden i toppen, eller kun når mindst én kilde er `stale`/`missing`?
+2. Hvilken TTL skal udløse `stale`-tilstand i UI'et? De nuværende cache-TTLs (lokalplan 30d, servitut 7d, compliance 30d) er fra `cache/client.ts` — skal vi bruge samme værdier, eller mere aggressive (fx 7d for alt) til UI-markering?
+3. Skal AI-genererede kilder (byggeanalyse, billedanalyse, husDna) have refresh-knapper? De er dyrere at regenerere — måske kun "Forny analyse"-knap når input (byggeoenske, inspirationsbilleder) ændres.
+4. Preference-toggle ("Vis cachet" vs. "Hent altid friske") — skal den gemmes pr. bruger (profil) eller pr. projekt?
