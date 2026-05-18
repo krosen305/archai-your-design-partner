@@ -18,7 +18,7 @@ import {
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { useProject, deriveComplianceFlags, parseComplianceData, deriveSourceStatus } from "@/lib/project-store";
-import type { DataSourceKind, DataSourceStatus } from "@/lib/project-store";
+
 import { CockpitStatusBar } from "@/components/cockpit/CockpitStatusBar";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -593,6 +593,27 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           if (project.hus_dna) {
             store.setHusDna(project.hus_dna as import("@/lib/project-store").HusDna);
           }
+
+          // Beregn datakilde-status ud fra hvad der blev gendannet fra DB.
+          const lastFetched = project.updated_at ?? null;
+          const s = useProject.getState();
+          store.setDataLastFetchedAt(lastFetched);
+          store.setDataStatusBulk({
+            bbr: deriveSourceStatus("bbr", s.bbrData, lastFetched),
+            lokalplaner: deriveSourceStatus("lokalplaner", s.lokalplaner, lastFetched),
+            kommuneplanramme: deriveSourceStatus("kommuneplanramme", s.kommuneplanramme, lastFetched),
+            fbb: deriveSourceStatus("fbb", objectField(project.compliance_data, "fbbData"), lastFetched),
+            naturbeskyttelse: deriveSourceStatus("naturbeskyttelse", objectField(project.compliance_data, "naturbeskyttelse"), lastFetched),
+            geusRisk: deriveSourceStatus("geusRisk", objectField(project.compliance_data, "geusRisk"), lastFetched),
+            servitutter: deriveSourceStatus("servitutter", objectField(project.compliance_data, "servitutter"), lastFetched),
+            terrain: deriveSourceStatus("terrain", objectField(project.compliance_data, "terrain"), lastFetched),
+            fjernvarme: deriveSourceStatus("fjernvarme", objectField(project.compliance_data, "fjernvarme"), lastFetched),
+            naboer: deriveSourceStatus("naboer", objectField(project.compliance_data, "naboer"), lastFetched),
+            vurdering: deriveSourceStatus("vurdering", s.vurderingData, lastFetched),
+            byggeanalyse: deriveSourceStatus("byggeanalyse", s.byggeanalyseResultat, lastFetched),
+            billedanalyse: deriveSourceStatus("billedanalyse", project.billedanalyse, lastFetched),
+            husDna: deriveSourceStatus("husDna", project.hus_dna, lastFetched),
+          });
         }
       } catch (e) {
         logger.warn("[Cockpit] restore-by-url fejlede:", (e as Error).message);
@@ -644,7 +665,10 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   useEffect(() => {
     if (restorePhase !== "checked") return;
     const currentAddress = useProject.getState().address;
-    if (bbrData && complianceDone && routeMatchesAddress(currentAddress, adresseId)) {
+
+    // Hvis vi har bbrData og adressen matcher → vis cockpit straks (uanset
+    // complianceDone). Eventuelle manglende kilder vises i CockpitStatusBar.
+    if (bbrData && routeMatchesAddress(currentAddress, adresseId)) {
       if (lokalplanerLocal.length === 0 && lokalplaner.length > 0) {
         setLokalplanerLocal(lokalplaner);
       }
@@ -664,24 +688,18 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     if (analysisStartedRef.current) return;
     analysisStartedRef.current = true;
 
-    const MIN_LOADING_MS = 2800;
-    const startTime = Date.now();
-
     (async () => {
       const { getSession, isGuest } = await import("@/lib/auth");
       const session = await getSession();
 
       if (!session) {
         const guest = isGuest();
-        const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
-        setTimeout(() => {
-          setFetchError(
-            guest
-              ? "Start fra adresse-trinnet som gæst for at hente grunddata."
-              : "Login krævet - log ind for at hente analyse.",
-          );
-          setStatus("error");
-        }, remaining);
+        setFetchError(
+          guest
+            ? "Start fra adresse-trinnet som gæst for at hente grunddata."
+            : "Login krævet - log ind for at hente analyse.",
+        );
+        setStatus("error");
         return;
       }
 
@@ -743,19 +761,32 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             analysisRunId: result.analysisRunId,
           });
 
-          const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
-          setTimeout(() => setStatus("done"), remaining);
+          // Marker alle nyligt hentede kilder som friske.
+          const nowIso = new Date().toISOString();
+          const store = useProject.getState();
+          store.setDataLastFetchedAt(nowIso);
+          store.setDataStatusBulk({
+            bbr: result.bbr ? "fresh" : "missing",
+            lokalplaner: result.lokalplaner.length > 0 ? "fresh" : "missing",
+            kommuneplanramme: result.kommuneplanramme ? "fresh" : "missing",
+            fbb: result.fbbData ? "fresh" : "missing",
+            naturbeskyttelse: result.naturbeskyttelse ? "fresh" : "missing",
+            geusRisk: result.geusRisk ? "fresh" : "missing",
+            servitutter: result.servitutter ? "fresh" : "missing",
+            terrain: result.terrain ? "fresh" : "missing",
+            fjernvarme: result.fjernvarme ? "fresh" : "missing",
+            naboer: result.naboer ? "fresh" : "missing",
+            vurdering: result.vurderingData ? "fresh" : "missing",
+          });
+          setStatus("done");
         })
         .catch((e: unknown) => {
           const msg = e instanceof Error ? e.message : String(e);
           logger.error("[Compliance] pipeline fejlede:", msg);
-          const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - startTime));
-          setTimeout(() => {
-            setFetchError(
-              msg.startsWith("ArchAI: manglende") ? msg : "BBR-data kunne ikke hentes. Prøv igen.",
-            );
-            setStatus("error");
-          }, remaining);
+          setFetchError(
+            msg.startsWith("ArchAI: manglende") ? msg : "BBR-data kunne ikke hentes. Prøv igen.",
+          );
+          setStatus("error");
         });
     })();
   }, [
@@ -777,6 +808,13 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     setPhase,
     setVurderingData,
   ]);
+
+  const runRefreshAll = useCallback(() => {
+    analysisStartedRef.current = false;
+    setComplianceDone(false);
+    setBbrData(null);
+    setStatus("loading");
+  }, [setBbrData, setComplianceDone]);
 
   return (
     <PageTransition>
@@ -804,6 +842,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
         {status === "done" && bbrData && (
           <>
+            <CockpitStatusBar onRefreshAll={runRefreshAll} isRefreshing={false} />
+
             {/* Tab navigation med animeret underline */}
             <div className="flex gap-1 mb-6 border-b border-border/40">
               {(
