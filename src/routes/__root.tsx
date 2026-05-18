@@ -103,6 +103,7 @@ function RootComponent() {
     setBebyggetAreal,
     setHardStop,
     setBudgetEstimate,
+    setBfeNr,
   } = useProject();
 
   // Gendan projekt-state for indloggede brugere ved første sideopload
