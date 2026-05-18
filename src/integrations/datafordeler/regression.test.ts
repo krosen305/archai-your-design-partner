@@ -76,14 +76,16 @@ function hasselvejDarResponses() {
     {
       data: {
         DAR_Adresse: {
-          nodes: [{
-            id_lokalId: HASSELVEJ_ADRESSE_ID,
-            adressebetegnelse: "Hasselvej 48, 2830 Virum",
-            husnummer: HASSELVEJ_HUSNUMMER_ID,
-            etagebetegnelse: null,
-            doerbetegnelse: null,
-            status: "Gældende",
-          }],
+          nodes: [
+            {
+              id_lokalId: HASSELVEJ_ADRESSE_ID,
+              adressebetegnelse: "Hasselvej 48, 2830 Virum",
+              husnummer: HASSELVEJ_HUSNUMMER_ID,
+              etagebetegnelse: null,
+              doerbetegnelse: null,
+              status: "Gældende",
+            },
+          ],
         },
       },
     },
@@ -91,28 +93,40 @@ function hasselvejDarResponses() {
     {
       data: {
         DAR_Husnummer: {
-          nodes: [{
-            id_lokalId: HASSELVEJ_HUSNUMMER_ID,
-            adgangsadressebetegnelse: "Hasselvej 48",
-            husnummertekst: "48",
-            adgangspunkt: "adgp-virum",
-            postnummer: "pnr-2830",
-            kommuneinddeling: "kom-lyngby",
-            navngivenVej: "vej-hasselvej",
-            jordstykke: "2468837",
-            status: "Gældende",
-          }],
+          nodes: [
+            {
+              id_lokalId: HASSELVEJ_HUSNUMMER_ID,
+              adgangsadressebetegnelse: "Hasselvej 48",
+              husnummertekst: "48",
+              adgangspunkt: "adgp-virum",
+              postnummer: "pnr-2830",
+              kommuneinddeling: "kom-lyngby",
+              navngivenVej: "vej-hasselvej",
+              jordstykke: "2468837",
+              status: "Gældende",
+            },
+          ],
         },
       },
     },
     // 3a: DAR_Postnummer (parallel)
     { data: { DAR_Postnummer: { nodes: [{ postnr: "2830", navn: "Virum" }] } } },
     // 3b: DAR_Adressepunkt (parallel)
-    { data: { DAR_Adressepunkt: { nodes: [{ position: { wkt: "POINT(723000.00 6176000.00)" } }] } } },
+    {
+      data: { DAR_Adressepunkt: { nodes: [{ position: { wkt: "POINT(723000.00 6176000.00)" } }] } },
+    },
     // 3c: MAT_Jordstykke (parallel)
-    { data: { MAT_Jordstykke: { nodes: [{ matrikelnummer: "5fo", ejerlavLokalId: "12352", registreretAreal: 441 }] } } },
+    {
+      data: {
+        MAT_Jordstykke: {
+          nodes: [{ matrikelnummer: "5fo", ejerlavLokalId: "12352", registreretAreal: 441 }],
+        },
+      },
+    },
     // 4: MAT_Ejerlav
-    { data: { MAT_Ejerlav: { nodes: [{ ejerlavskode: 12352, ejerlavsnavn: "Virum By, Virum" }] } } },
+    {
+      data: { MAT_Ejerlav: { nodes: [{ ejerlavskode: 12352, ejerlavsnavn: "Virum By, Virum" }] } },
+    },
   ];
 }
 
@@ -123,7 +137,9 @@ describe("Regression: Hasselvej 48, 2830 Virum", () => {
 
     // Find DAR_Husnummer-kaldet robust uanset call-order
     const husnummerCall = spy.mock.calls.find(([, init]) =>
-      (JSON.parse(String((init as RequestInit).body ?? "{}"))?.query ?? "").includes("DAR_Husnummer"),
+      (JSON.parse(String((init as RequestInit).body ?? "{}"))?.query ?? "").includes(
+        "DAR_Husnummer",
+      ),
     ) as [string, RequestInit] | undefined;
     expect(husnummerCall).toBeDefined();
     const body = JSON.parse(husnummerCall![1].body as string);
@@ -161,18 +177,35 @@ describe("Regression: Hasselvej 48, 2830 Virum", () => {
   });
 
   it("FBB: SAVE 3 vinder over bevaringsvaerdi=-1 (vælgBedsteBygning ekskluderer -1)", async () => {
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () =>
-        JSON.stringify({
-          features: [
-            { properties: { bygningsid: 4600919, bygningsnummer: 1, bevaringsvaerdi: -1, fredet: false } },
-            { properties: { bygningsid: 4602381, bygningsnummer: 2, bevaringsvaerdi: 3, fredet: false } },
-          ],
-        }),
-    }) as any) as any;
+    globalThis.fetch = mock(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          text: async () =>
+            JSON.stringify({
+              features: [
+                {
+                  properties: {
+                    bygningsid: 4600919,
+                    bygningsnummer: 1,
+                    bevaringsvaerdi: -1,
+                    fredet: false,
+                  },
+                },
+                {
+                  properties: {
+                    bygningsid: 4602381,
+                    bygningsnummer: 2,
+                    bevaringsvaerdi: 3,
+                    fredet: false,
+                  },
+                },
+              ],
+            }),
+        }) as any,
+    ) as any;
 
     const result = await FbbService.getSaveData([
       "ad5eb0d3-e365-4eb7-ab41-23ff21c67598",
@@ -193,15 +226,20 @@ describe("Regression: Hasselvej 48, 2830 Virum", () => {
 
 describe("Regression: Vindegade 142 — ejerlejlighed EBR dual-mode", () => {
   it("EbrService.getBfeNr: husnummer-rute finder BFE 100206145 (ARCH-225)", async () => {
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () =>
-        JSON.stringify({
-          data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "100206145" }] } },
-        }),
-    }) as any) as any;
+    globalThis.fetch = mock(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          text: async () =>
+            JSON.stringify({
+              data: {
+                EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "100206145" }] },
+              },
+            }),
+        }) as any,
+    ) as any;
 
     const result = await EbrService.getBfeNr("vinde-husnummer-id", EBR_CONFIG);
     expect(result.bfeNr).toBe("100206145");
@@ -209,15 +247,20 @@ describe("Regression: Vindegade 142 — ejerlejlighed EBR dual-mode", () => {
   });
 
   it("EbrService.getBfeNrByAdresse: adresse-rute finder BFE 100263362 for ejerlejlighed (ARCH-225)", async () => {
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () =>
-        JSON.stringify({
-          data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "100263362" }] } },
-        }),
-    }) as any) as any;
+    globalThis.fetch = mock(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          text: async () =>
+            JSON.stringify({
+              data: {
+                EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "100263362" }] },
+              },
+            }),
+        }) as any,
+    ) as any;
 
     const result = await EbrService.getBfeNrByAdresse("vinde-adresse-id", EBR_CONFIG);
     expect(result.bfeNr).toBe("100263362");
@@ -234,15 +277,17 @@ describe("Regression: Vindegade 142 — ejerlejlighed EBR dual-mode", () => {
       {
         data: {
           MAT_Jordstykke: {
-            nodes: [{
-              id_lokalId: "js-vinde",
-              matrikelnummer: "5fo",
-              ejerlavLokalId: "e-vinde",
-              registreretAreal: 1703,
-              strandbeskyttelse_omfang: null,
-              fredskov_omfang: null,
-              klitfredning_omfang: null,
-            }],
+            nodes: [
+              {
+                id_lokalId: "js-vinde",
+                matrikelnummer: "5fo",
+                ejerlavLokalId: "e-vinde",
+                registreretAreal: 1703,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+            ],
           },
         },
       },
@@ -278,15 +323,17 @@ describe("Regression: Østerlunden 10 — adresse-only EBR fallback", () => {
       {
         data: {
           MAT_Jordstykke: {
-            nodes: [{
-              id_lokalId: "js-ost",
-              matrikelnummer: "10st",
-              ejerlavLokalId: "e-ost",
-              registreretAreal: 3580,
-              strandbeskyttelse_omfang: null,
-              fredskov_omfang: null,
-              klitfredning_omfang: null,
-            }],
+            nodes: [
+              {
+                id_lokalId: "js-ost",
+                matrikelnummer: "10st",
+                ejerlavLokalId: "e-ost",
+                registreretAreal: 3580,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+            ],
           },
         },
       },
@@ -345,18 +392,35 @@ describe("Regression: Toldbodgade 31 — FBB SAVE via ois_id", () => {
   });
 
   it("FBB: SAVE 3 aggregeres, bevaringsvaerdi=-1 ekskluderes fra fbb_bedste_bygning", async () => {
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () =>
-        JSON.stringify({
-          features: [
-            { properties: { bygningsid: 111, bygningsnummer: 1, bevaringsvaerdi: -1, fredet: false } },
-            { properties: { bygningsid: 222, bygningsnummer: 2, bevaringsvaerdi: 3, fredet: false } },
-          ],
-        }),
-    }) as any) as any;
+    globalThis.fetch = mock(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          text: async () =>
+            JSON.stringify({
+              features: [
+                {
+                  properties: {
+                    bygningsid: 111,
+                    bygningsnummer: 1,
+                    bevaringsvaerdi: -1,
+                    fredet: false,
+                  },
+                },
+                {
+                  properties: {
+                    bygningsid: 222,
+                    bygningsnummer: 2,
+                    bevaringsvaerdi: 3,
+                    fredet: false,
+                  },
+                },
+              ],
+            }),
+        }) as any,
+    ) as any;
 
     const result = await FbbService.getSaveData(["toldbod-uuid-1", "toldbod-uuid-2"]);
     expect(result.fbb_bedste_bygning?.bevaringsvaerdi).toBe(3);
@@ -384,8 +448,18 @@ const MOCK_BBR_BASE = {
 
 describe("Regression: Rækkehus med sekundære bygninger (ARCH-227)", () => {
   const RAEKKEHUS_BYGNINGER = [
-    { ...MOCK_BBR_BASE, id_lokalId: "byg-bolig", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 130 },
-    { ...MOCK_BBR_BASE, id_lokalId: "byg-garage", byg021BygningensAnvendelse: "910", byg041BebyggetAreal: 25 },
+    {
+      ...MOCK_BBR_BASE,
+      id_lokalId: "byg-bolig",
+      byg021BygningensAnvendelse: "120",
+      byg041BebyggetAreal: 130,
+    },
+    {
+      ...MOCK_BBR_BASE,
+      id_lokalId: "byg-garage",
+      byg021BygningensAnvendelse: "910",
+      byg041BebyggetAreal: 25,
+    },
   ];
 
   it("bebygget_areal = 130 (garage kode 910 ekskluderet)", () => {
@@ -412,9 +486,24 @@ describe("Regression: Rækkehus med sekundære bygninger (ARCH-227)", () => {
 
 describe("Regression: 3 BBR-bygninger med dublet id_lokalId (ARCH-227)", () => {
   const BYGNINGER_MED_DUBLET = [
-    { ...MOCK_BBR_BASE, id_lokalId: "byg-a", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 200 },
-    { ...MOCK_BBR_BASE, id_lokalId: "byg-b", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 80 },
-    { ...MOCK_BBR_BASE, id_lokalId: "byg-a", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 200 }, // dublet
+    {
+      ...MOCK_BBR_BASE,
+      id_lokalId: "byg-a",
+      byg021BygningensAnvendelse: "120",
+      byg041BebyggetAreal: 200,
+    },
+    {
+      ...MOCK_BBR_BASE,
+      id_lokalId: "byg-b",
+      byg021BygningensAnvendelse: "120",
+      byg041BebyggetAreal: 80,
+    },
+    {
+      ...MOCK_BBR_BASE,
+      id_lokalId: "byg-a",
+      byg021BygningensAnvendelse: "120",
+      byg041BebyggetAreal: 200,
+    }, // dublet
   ];
 
   it("bebygget_areal = 280, ikke 480 — dublet tæller ikke dobbelt", () => {
@@ -440,38 +529,56 @@ describe("Regression: Enfamiliehus — DAR jordstykke direkte", () => {
       {
         data: {
           DAR_Adresse: {
-            nodes: [{
-              id_lokalId: "bredgade-adr-id",
-              adressebetegnelse: "Bredgade 6, 1260 København K",
-              husnummer: "bredgade-hnr-id",
-              etagebetegnelse: null,
-              doerbetegnelse: null,
-              status: "Gældende",
-            }],
+            nodes: [
+              {
+                id_lokalId: "bredgade-adr-id",
+                adressebetegnelse: "Bredgade 6, 1260 København K",
+                husnummer: "bredgade-hnr-id",
+                etagebetegnelse: null,
+                doerbetegnelse: null,
+                status: "Gældende",
+              },
+            ],
           },
         },
       },
       {
         data: {
           DAR_Husnummer: {
-            nodes: [{
-              id_lokalId: "bredgade-hnr-id",
-              adgangsadressebetegnelse: "Bredgade 6",
-              husnummertekst: "6",
-              adgangspunkt: "adgp-2",
-              postnummer: "pnr-2",
-              kommuneinddeling: "kom-2",
-              navngivenVej: "vej-2",
-              jordstykke: "js-bredgade",
-              status: "Gældende",
-            }],
+            nodes: [
+              {
+                id_lokalId: "bredgade-hnr-id",
+                adgangsadressebetegnelse: "Bredgade 6",
+                husnummertekst: "6",
+                adgangspunkt: "adgp-2",
+                postnummer: "pnr-2",
+                kommuneinddeling: "kom-2",
+                navngivenVej: "vej-2",
+                jordstykke: "js-bredgade",
+                status: "Gældende",
+              },
+            ],
           },
         },
       },
       { data: { DAR_Postnummer: { nodes: [{ postnr: "1260", navn: "København K" }] } } },
-      { data: { DAR_Adressepunkt: { nodes: [{ position: { wkt: "POINT(725000.00 6175000.00)" } }] } } },
-      { data: { MAT_Jordstykke: { nodes: [{ matrikelnummer: "12a", ejerlavLokalId: "e-kbh", registreretAreal: 580 }] } } },
-      { data: { MAT_Ejerlav: { nodes: [{ ejerlavskode: 1150, ejerlavsnavn: "Kbh. Frimands Kvt." }] } } },
+      {
+        data: {
+          DAR_Adressepunkt: { nodes: [{ position: { wkt: "POINT(725000.00 6175000.00)" } }] },
+        },
+      },
+      {
+        data: {
+          MAT_Jordstykke: {
+            nodes: [{ matrikelnummer: "12a", ejerlavLokalId: "e-kbh", registreretAreal: 580 }],
+          },
+        },
+      },
+      {
+        data: {
+          MAT_Ejerlav: { nodes: [{ ejerlavskode: 1150, ejerlavsnavn: "Kbh. Frimands Kvt." }] },
+        },
+      },
     ]);
 
     const result = await DarService.getAddressDetails("bredgade-adr-id", DAR_CONFIG);
@@ -514,15 +621,17 @@ describe("Regression: Ejerlejlighed — EBR adresse-BFE og GrundarealResolver (A
       {
         data: {
           MAT_Jordstykke: {
-            nodes: [{
-              id_lokalId: "js-vest",
-              matrikelnummer: "5a",
-              ejerlavLokalId: "e-vest",
-              registreretAreal: 800,
-              strandbeskyttelse_omfang: null,
-              fredskov_omfang: null,
-              klitfredning_omfang: null,
-            }],
+            nodes: [
+              {
+                id_lokalId: "js-vest",
+                matrikelnummer: "5a",
+                ejerlavLokalId: "e-vest",
+                registreretAreal: 800,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+            ],
           },
         },
       },
@@ -543,12 +652,15 @@ describe("Regression: Ejerlejlighed — EBR adresse-BFE og GrundarealResolver (A
 
 describe("Regression: Adresse uden FBB-hit (Strandvejen 100 fixture)", () => {
   it("FBB: tom features-liste → fbb_bedste_bygning=null", async () => {
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () => JSON.stringify({ features: [] }),
-    }) as any) as any;
+    globalThis.fetch = mock(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          text: async () => JSON.stringify({ features: [] }),
+        }) as any,
+    ) as any;
 
     const result = await FbbService.getSaveData(["uuid-strand-1"]);
     expect(result.fbb_bedste_bygning).toBeNull();
@@ -556,17 +668,27 @@ describe("Regression: Adresse uden FBB-hit (Strandvejen 100 fixture)", () => {
   });
 
   it("FBB: alle bevaringsvaerdi=-1 → fbb_bedste_bygning=null (ingen reel SAVE)", async () => {
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () =>
-        JSON.stringify({
-          features: [
-            { properties: { bygningsid: 999, bygningsnummer: 1, bevaringsvaerdi: -1, fredet: false } },
-          ],
-        }),
-    }) as any) as any;
+    globalThis.fetch = mock(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          text: async () =>
+            JSON.stringify({
+              features: [
+                {
+                  properties: {
+                    bygningsid: 999,
+                    bygningsnummer: 1,
+                    bevaringsvaerdi: -1,
+                    fredet: false,
+                  },
+                },
+              ],
+            }),
+        }) as any,
+    ) as any;
 
     const result = await FbbService.getSaveData(["uuid-minus-1"]);
     expect(result.fbb_bedste_bygning).toBeNull();
@@ -595,7 +717,11 @@ const planRamme = (bebygpct: number | null, maxetager: number | null = null): Ko
   plandokumentLink: null,
 });
 
-const planLokalplan = (status: string | null, datoVedtaget: string | null, planid: string): Lokalplan => ({
+const planLokalplan = (
+  status: string | null,
+  datoVedtaget: string | null,
+  planid: string,
+): Lokalplan => ({
   planid,
   plannavn: "Test",
   plannr: null,
@@ -637,10 +763,7 @@ describe("Regression: 2 Plandata-features — deterministiske selektorer (ARCH-2
   });
 
   it("selectPrimaryLokalplanForPdf: nyeste vedtagne vælges ved to vedtagne", () => {
-    const liste = [
-      planLokalplan("V", "20180101", "gammel"),
-      planLokalplan("V", "20220101", "ny"),
-    ];
+    const liste = [planLokalplan("V", "20180101", "gammel"), planLokalplan("V", "20220101", "ny")];
     expect(selectPrimaryLokalplanForPdf(liste)?.planid).toBe("ny");
   });
 });
@@ -714,42 +837,30 @@ describe("Forbidden endpoints", () => {
 const LIVE = process.env.RUN_LIVE_DATAFORDELER_SMOKE === "true";
 
 describe.if(LIVE)("Live smoke — Datafordeler live (ARCH-230)", () => {
-  it(
-    "Hasselvej 48: grundareal=441, matrikelnummer='5fo', ejerlavskode=12352",
-    async () => {
-      const result = await DarService.getAddressDetails(HASSELVEJ_ADRESSE_ID);
-      expect(result.grundareal).toBe(441);
-      expect(result.matrikelnummer).toBe("5fo");
-      expect(result.ejerlavskode).toBe(12352);
-    },
-    30_000,
-  );
+  it("Hasselvej 48: grundareal=441, matrikelnummer='5fo', ejerlavskode=12352", async () => {
+    const result = await DarService.getAddressDetails(HASSELVEJ_ADRESSE_ID);
+    expect(result.grundareal).toBe(441);
+    expect(result.matrikelnummer).toBe("5fo");
+    expect(result.ejerlavskode).toBe(12352);
+  }, 30_000);
 
-  it(
-    "Hasselvej 48: FBB SAVE=3 via ois_id (bevaringsvaerdi=-1 ekskluderes)",
-    async () => {
-      const fbb = await FbbService.getSaveData([
-        "ad5eb0d3-e365-4eb7-ab41-23ff21c67598",
-        "cb2f89dc-7278-4802-a53e-188cb7120f56",
-      ]);
-      expect(fbb.fbb_bedste_bygning?.bevaringsvaerdi).toBe(3);
-    },
-    30_000,
-  );
+  it("Hasselvej 48: FBB SAVE=3 via ois_id (bevaringsvaerdi=-1 ekskluderes)", async () => {
+    const fbb = await FbbService.getSaveData([
+      "ad5eb0d3-e365-4eb7-ab41-23ff21c67598",
+      "cb2f89dc-7278-4802-a53e-188cb7120f56",
+    ]);
+    expect(fbb.fbb_bedste_bygning?.bevaringsvaerdi).toBe(3);
+  }, 30_000);
 
-  it(
-    "Østerlunden 10: grundareal=3580 via ebr_adresse_ejerlejlighed-rute",
-    async () => {
-      // adgangsadresseid (husnummer ID) og adresseid for Østerlunden 10 skal verificeres
-      // mod live DAR-opslag hvis de ændrer sig.
-      // Kendte værdier fra ARCH-230 audit:
-      const result = await GrundarealResolver.resolve({
-        adgangsadresseid: "0a3f507d-3f01-32b8-e044-0003ba298018",
-        adresseid: "0a3f50a6-3ecf-32b8-e044-0003ba298018",
-      });
-      expect(result.grundareal).toBe(3580);
-      expect(result.source).toBe("ebr_adresse_ejerlejlighed");
-    },
-    30_000,
-  );
+  it("Østerlunden 10: grundareal=3580 via ebr_adresse_ejerlejlighed-rute", async () => {
+    // adgangsadresseid (husnummer ID) og adresseid for Østerlunden 10 skal verificeres
+    // mod live DAR-opslag hvis de ændrer sig.
+    // Kendte værdier fra ARCH-230 audit:
+    const result = await GrundarealResolver.resolve({
+      adgangsadresseid: "0a3f507d-3f01-32b8-e044-0003ba298018",
+      adresseid: "0a3f50a6-3ecf-32b8-e044-0003ba298018",
+    });
+    expect(result.grundareal).toBe(3580);
+    expect(result.source).toBe("ebr_adresse_ejerlejlighed");
+  }, 30_000);
 });
