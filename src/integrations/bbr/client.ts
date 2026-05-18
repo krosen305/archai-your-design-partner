@@ -349,9 +349,14 @@ export class BbrService {
       const tag_kode: string | null = primærBygning.byg033Tagdaekningsmateriale?.toString() ?? null;
 
       // FBB: saml alle bygnings-UUIDs — bruges til SAVE-opslag (ARCH-131)
-      const alle_bygning_lokal_ids: string[] = bygninger
-        .map((b: any) => b.id_lokalId as string | null)
-        .filter((id): id is string => !!id);
+      // Deduplikér på id_lokalId for at undgå redundante FBB-opslag ved bitemporal-dubletter
+      const alle_bygning_lokal_ids: string[] = [
+        ...new Set(
+          bygninger
+            .map((b: any) => b.id_lokalId as string | null)
+            .filter((id): id is string => !!id),
+        ),
+      ];
 
       return {
         byggeaar: primærBygning.byg026Opfoerelsesaar?.toString() ?? null,
