@@ -160,7 +160,7 @@ export function EjendomPanel() {
             <Field label="Etager" value={bbr?.antal_etager != null ? `${bbr.antal_etager}` : "—"} />
             <Field label="Anvendelse" value={bbr?.anvendelse_tekst ?? "—"} />
             <SaveField
-              hasFbbRegistration={Boolean(bbr?.fbb_reference)}
+              hasFbbRegistration={heritage_save_value != null}
               heritageSaveValue={heritage_save_value}
             />
           </div>
@@ -258,8 +258,8 @@ export function EjendomPanel() {
             />
             <DataRow
               label="FBB-registrering"
-              value={bbr?.fbb_reference ? "Registreret" : "—"}
-              status={bbr == null ? "mangler" : bbr.fbb_reference ? "live" : "mangler"}
+              value={heritage_save_value != null ? `SAVE ${heritage_save_value}/9` : "Ikke SAVE-registreret"}
+              status={heritage_save_value != null ? "live" : "mangler"}
             />
             <DataRow
               label="Ejendomsværdi (VUR)"

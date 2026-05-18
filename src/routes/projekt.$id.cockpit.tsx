@@ -113,7 +113,7 @@ const runByggeanalyse = createServerFn({ method: "POST" })
         geusRisk: analysisInput.geusRisk ?? null,
         servitutter: analysisInput.servitutter ?? null,
         terrain: analysisInput.terrain ?? null,
-        fbbData: null,
+        fbbData: analysisInput.fbbData ?? null,
         byggeoenske: analysisInput.byggeoenske,
         municipality: analysisInput.municipality ?? "",
         kommunekode: analysisInput.kommunekode ?? "",
