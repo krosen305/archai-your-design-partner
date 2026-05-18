@@ -221,6 +221,12 @@ type State = {
   budget_estimate: number | null; // ARCH-163: projektbudget estimat
   bfe_nr: string | null; // BFE-nummer (Bestemt Fast Ejendom) via EBR
 
+  // Datakilde-status — bruges af cockpittet til at vise fresh/stale/missing
+  // pr. kilde og tilbyde manuel genindlæsning. Status er afledt — gemmes IKKE
+  // i DB; den beregnes ved restore baseret på om feltet findes + updated_at.
+  dataStatus: Record<DataSourceKind, DataSourceStatus>;
+  dataLastFetchedAt: string | null; // projects.updated_at fra seneste restore
+
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: BbrKompliantData | null) => void;
