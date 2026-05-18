@@ -17,7 +17,9 @@ import {
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { useProject, deriveComplianceFlags, parseComplianceData } from "@/lib/project-store";
+import { useProject, deriveComplianceFlags, parseComplianceData, deriveSourceStatus } from "@/lib/project-store";
+import type { DataSourceKind, DataSourceStatus } from "@/lib/project-store";
+import { CockpitStatusBar } from "@/components/cockpit/CockpitStatusBar";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import { PageTransition, Card } from "@/components/wizard-ui";
