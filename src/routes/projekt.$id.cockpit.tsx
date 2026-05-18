@@ -809,6 +809,13 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     setVurderingData,
   ]);
 
+  const runRefreshAll = useCallback(() => {
+    analysisStartedRef.current = false;
+    setComplianceDone(false);
+    setBbrData(null);
+    setStatus("loading");
+  }, [setBbrData, setComplianceDone]);
+
   return (
     <PageTransition>
       <div
@@ -835,6 +842,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 
         {status === "done" && bbrData && (
           <>
+            <CockpitStatusBar onRefreshAll={runRefreshAll} isRefreshing={false} />
+
             {/* Tab navigation med animeret underline */}
             <div className="flex gap-1 mb-6 border-b border-border/40">
               {(
