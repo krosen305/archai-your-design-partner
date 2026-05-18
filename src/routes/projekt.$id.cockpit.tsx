@@ -608,8 +608,9 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
         return;
       }
       const state = useProject.getState();
-      const lpNavn =
-        state.lokalplaner[0]?.plannavn ?? state.lokalplaner[0]?.plannr ?? "Ukendt lokalplan";
+      const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/client");
+      const primaryLp = selectPrimaryLokalplanForPdf(state.lokalplaner);
+      const lpNavn = primaryLp?.plannavn ?? primaryLp?.plannr ?? "Ukendt lokalplan";
       const analyse = await runByggeanalyse({
         data: {
           token: session.access_token,
