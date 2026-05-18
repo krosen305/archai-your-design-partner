@@ -219,6 +219,7 @@ type State = {
   hard_stop: boolean; // aggregeret bloker-flag
   hard_stop_reason: string | null; // menneskelæsbar årsag
   budget_estimate: number | null; // ARCH-163: projektbudget estimat
+  bfe_nr: string | null; // BFE-nummer (Bestemt Fast Ejendom) via EBR
 
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
