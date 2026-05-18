@@ -32,11 +32,30 @@ describe("GrundarealResolver (ARCH-223)", () => {
       // MAT SFE → id_lokalId
       { data: { MAT_SamletFastEjendom: { nodes: [{ id_lokalId: "sfe-123" }] } } },
       // MAT Jordstykke
-      { data: { MAT_Jordstykke: { nodes: [{ id_lokalId: "js-1", matrikelnummer: "48a", ejerlavLokalId: "ejl-1", registreretAreal: 441, strandbeskyttelse_omfang: null, fredskov_omfang: null, klitfredning_omfang: null }] } } },
+      {
+        data: {
+          MAT_Jordstykke: {
+            nodes: [
+              {
+                id_lokalId: "js-1",
+                matrikelnummer: "48a",
+                ejerlavLokalId: "ejl-1",
+                registreretAreal: 441,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+            ],
+          },
+        },
+      },
     ]);
 
     const result = await GrundarealResolver.resolve(
-      { adgangsadresseid: "0a3f507d-4cf9-32b8-e044-0003ba298018", adresseid: "0a3f50a6-34da-32b8-e044-0003ba298018" },
+      {
+        adgangsadresseid: "0a3f507d-4cf9-32b8-e044-0003ba298018",
+        adresseid: "0a3f50a6-34da-32b8-e044-0003ba298018",
+      },
       MOCK_CONFIG,
     );
 
@@ -54,8 +73,24 @@ describe("GrundarealResolver (ARCH-223)", () => {
         data: {
           MAT_Jordstykke: {
             nodes: [
-              { id_lokalId: "js-1", matrikelnummer: "1a", ejerlavLokalId: "e1", registreretAreal: 300, strandbeskyttelse_omfang: null, fredskov_omfang: null, klitfredning_omfang: null },
-              { id_lokalId: "js-2", matrikelnummer: "1b", ejerlavLokalId: "e1", registreretAreal: 141, strandbeskyttelse_omfang: null, fredskov_omfang: null, klitfredning_omfang: null },
+              {
+                id_lokalId: "js-1",
+                matrikelnummer: "1a",
+                ejerlavLokalId: "e1",
+                registreretAreal: 300,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+              {
+                id_lokalId: "js-2",
+                matrikelnummer: "1b",
+                ejerlavLokalId: "e1",
+                registreretAreal: 141,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
             ],
           },
         },
@@ -79,7 +114,23 @@ describe("GrundarealResolver (ARCH-223)", () => {
       // MAT Ejerlejlighed → samletFastEjendomLokalId
       { data: { MAT_Ejerlejlighed: { nodes: [{ samletFastEjendomLokalId: "sfe-parent" }] } } },
       // MAT Jordstykke via SFE
-      { data: { MAT_Jordstykke: { nodes: [{ id_lokalId: "js-ej", matrikelnummer: "10st", ejerlavLokalId: "e2", registreretAreal: 3580, strandbeskyttelse_omfang: null, fredskov_omfang: null, klitfredning_omfang: null }] } } },
+      {
+        data: {
+          MAT_Jordstykke: {
+            nodes: [
+              {
+                id_lokalId: "js-ej",
+                matrikelnummer: "10st",
+                ejerlavLokalId: "e2",
+                registreretAreal: 3580,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+            ],
+          },
+        },
+      },
     ]);
 
     const result = await GrundarealResolver.resolve(
@@ -111,7 +162,23 @@ describe("GrundarealResolver (ARCH-223)", () => {
     mockFetchSequence([
       { data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "1111" }] } } },
       { data: { MAT_SamletFastEjendom: { nodes: [{ id_lokalId: "sfe-s" }] } } },
-      { data: { MAT_Jordstykke: { nodes: [{ id_lokalId: "js-s", matrikelnummer: "1a", ejerlavLokalId: "e1", registreretAreal: 500, strandbeskyttelse_omfang: "Hele arealet", fredskov_omfang: null, klitfredning_omfang: null }] } } },
+      {
+        data: {
+          MAT_Jordstykke: {
+            nodes: [
+              {
+                id_lokalId: "js-s",
+                matrikelnummer: "1a",
+                ejerlavLokalId: "e1",
+                registreretAreal: 500,
+                strandbeskyttelse_omfang: "Hele arealet",
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+            ],
+          },
+        },
+      },
     ]);
 
     const result = await GrundarealResolver.resolve(
@@ -130,8 +197,24 @@ describe("GrundarealResolver (ARCH-223)", () => {
         data: {
           MAT_Jordstykke: {
             nodes: [
-              { id_lokalId: "js-dup", matrikelnummer: "1a", ejerlavLokalId: "e1", registreretAreal: 200, strandbeskyttelse_omfang: null, fredskov_omfang: null, klitfredning_omfang: null },
-              { id_lokalId: "js-dup", matrikelnummer: "1a", ejerlavLokalId: "e1", registreretAreal: 200, strandbeskyttelse_omfang: null, fredskov_omfang: null, klitfredning_omfang: null },
+              {
+                id_lokalId: "js-dup",
+                matrikelnummer: "1a",
+                ejerlavLokalId: "e1",
+                registreretAreal: 200,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
+              {
+                id_lokalId: "js-dup",
+                matrikelnummer: "1a",
+                ejerlavLokalId: "e1",
+                registreretAreal: 200,
+                strandbeskyttelse_omfang: null,
+                fredskov_omfang: null,
+                klitfredning_omfang: null,
+              },
             ],
           },
         },

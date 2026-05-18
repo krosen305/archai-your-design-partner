@@ -66,7 +66,12 @@ export async function fetchBbrWithMat(input: {
       if (grundareal === null && mat.registreretAreal !== null) grundareal = mat.registreretAreal;
       if (mat.fejl) console.warn("[Layer1] MAT fejl:", mat.fejl);
       if (grundareal === null && !mat.fejl)
-        console.error("[Layer1] MatService returnerede null registreretAreal for ejerlavskode:", ejerlavskode, "matrikelnummer:", matrikelnummer);
+        console.error(
+          "[Layer1] MatService returnerede null registreretAreal for ejerlavskode:",
+          ejerlavskode,
+          "matrikelnummer:",
+          matrikelnummer,
+        );
       mat_strandbeskyttelse = mat.strandbeskyttelse;
       mat_fredskov = mat.fredskov;
       mat_klitfredning = mat.klitfredning;
@@ -84,15 +89,18 @@ export async function fetchBbrWithMat(input: {
         );
         if (resolved.grundareal !== null) {
           grundareal = resolved.grundareal;
-          mat_strandbeskyttelse = resolved.jordstykker.length > 0
-            ? resolved.jordstykker.some((j) => j.strandbeskyttelse === true)
-            : null;
-          mat_fredskov = resolved.jordstykker.length > 0
-            ? resolved.jordstykker.some((j) => j.fredskov === true)
-            : null;
-          mat_klitfredning = resolved.jordstykker.length > 0
-            ? resolved.jordstykker.some((j) => j.klitfredning === true)
-            : null;
+          mat_strandbeskyttelse =
+            resolved.jordstykker.length > 0
+              ? resolved.jordstykker.some((j) => j.strandbeskyttelse === true)
+              : null;
+          mat_fredskov =
+            resolved.jordstykker.length > 0
+              ? resolved.jordstykker.some((j) => j.fredskov === true)
+              : null;
+          mat_klitfredning =
+            resolved.jordstykker.length > 0
+              ? resolved.jordstykker.some((j) => j.klitfredning === true)
+              : null;
           // Gem primær jordstykke-ID til MatrikelMap (ARCH-229)
           jordstykkeLokalId = resolved.jordstykker[0]?.id_lokalId ?? null;
         } else {

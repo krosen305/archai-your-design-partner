@@ -212,6 +212,7 @@ async function analyseAddressWithTrace(
     const [bbrResult, plandataResult, vurderingResult] = await Promise.all([
       fetchBbrWithMat({
         adgangsadresseid,
+        adresseid: addressId,
         ejerlavskode,
         matrikelnummer,
         grundareal: preFetchedGrundareal,

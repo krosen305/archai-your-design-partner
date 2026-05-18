@@ -18,9 +18,7 @@ import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 // Output-typer (eksporterede — bruges af compliance-layer1 og MatrikelMap)
 // ---------------------------------------------------------------------------
 
-export type GrundarealSource =
-  | "ebr_husnummer_sfe"
-  | "ebr_adresse_ejerlejlighed";
+export type GrundarealSource = "ebr_husnummer_sfe" | "ebr_adresse_ejerlejlighed";
 
 export type GrundarealJordstykke = {
   id_lokalId: string;
@@ -228,7 +226,9 @@ export class GrundarealResolver {
     // --- Rute 1: EBR husnummer → MAT SFE ---
     try {
       const ebrData = await gqlFetch(
-        ebrEndpoint, apiKey, EBR_BY_HUSNUMMER,
+        ebrEndpoint,
+        apiKey,
+        EBR_BY_HUSNUMMER,
         { husnummerLokalId: input.adgangsadresseid, ...bitemporalArgs },
         "EBR_husnummer",
         trace,
@@ -238,7 +238,9 @@ export class GrundarealResolver {
 
       if (bfeNr) {
         const sfeData = await gqlFetch(
-          matEndpoint, apiKey, MAT_SFE_BY_BFE,
+          matEndpoint,
+          apiKey,
+          MAT_SFE_BY_BFE,
           { bfe: bfeNr, ...bitemporalArgs },
           "MAT_SFE",
           trace,
@@ -248,7 +250,9 @@ export class GrundarealResolver {
 
         if (sfeLokalId) {
           const jsData = await gqlFetch(
-            matEndpoint, apiKey, MAT_JORDSTYKKER_BY_SFE,
+            matEndpoint,
+            apiKey,
+            MAT_JORDSTYKKER_BY_SFE,
             { sfeLokalId, ...bitemporalArgs },
             "MAT_Jordstykker",
             trace,
@@ -274,7 +278,9 @@ export class GrundarealResolver {
     // --- Rute 2: EBR adresse → MAT Ejerlejlighed → SFE ---
     try {
       const ebrData = await gqlFetch(
-        ebrEndpoint, apiKey, EBR_BY_ADRESSE,
+        ebrEndpoint,
+        apiKey,
+        EBR_BY_ADRESSE,
         { adresseLokalId: input.adresseid, ...bitemporalArgs },
         "EBR_adresse",
         trace,
@@ -284,7 +290,9 @@ export class GrundarealResolver {
 
       if (bfeNr) {
         const ejData = await gqlFetch(
-          matEndpoint, apiKey, MAT_EJERLEJLIGHED_BY_BFE,
+          matEndpoint,
+          apiKey,
+          MAT_EJERLEJLIGHED_BY_BFE,
           { bfe: bfeNr, ...bitemporalArgs },
           "MAT_Ejerlejlighed",
           trace,
@@ -294,7 +302,9 @@ export class GrundarealResolver {
 
         if (sfeLokalId) {
           const jsData = await gqlFetch(
-            matEndpoint, apiKey, MAT_JORDSTYKKER_BY_SFE,
+            matEndpoint,
+            apiKey,
+            MAT_JORDSTYKKER_BY_SFE,
             { sfeLokalId, ...bitemporalArgs },
             "MAT_Jordstykker_ej",
             trace,
