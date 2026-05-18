@@ -126,6 +126,7 @@ async function runPreCheckAdresse(
   const [layer1Settled, naturSettled] = await Promise.allSettled([
     fetchLayer1({
       adgangsadresseid,
+      adresseid: data.adresseid,
       ejerlavskode,
       matrikelnummer,
       koordinater,

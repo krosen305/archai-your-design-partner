@@ -8,6 +8,7 @@ import { traceStep } from "@/lib/analysis-tracing";
 
 export type Layer1Input = {
   adgangsadresseid: string;
+  adresseid?: string;
   ejerlavskode: number | null;
   matrikelnummer: string | null;
   koordinater: { lat: number; lng: number } | null;
@@ -24,7 +25,7 @@ export type Layer1Result = {
 
 export async function fetchLayer1(input: Layer1Input): Promise<Layer1Result> {
   const [bbr, plandata, vurderingData] = await Promise.all([
-    fetchBbrWithMat(input),
+    fetchBbrWithMat({ ...input }),
     fetchPlandata(input.koordinater, input.trace),
     fetchVurViaEbr(input.adgangsadresseid, input.trace),
   ]);
@@ -39,6 +40,7 @@ export async function fetchLayer1(input: Layer1Input): Promise<Layer1Result> {
 
 export async function fetchBbrWithMat(input: {
   adgangsadresseid: string;
+  adresseid?: string;
   ejerlavskode: number | null;
   matrikelnummer: string | null;
   grundareal?: number | null;
@@ -51,6 +53,7 @@ export async function fetchBbrWithMat(input: {
     let mat_strandbeskyttelse: boolean | null = null;
     let mat_fredskov: boolean | null = null;
     let mat_klitfredning: boolean | null = null;
+    let jordstykkeLokalId: string | null = null;
 
     if (ejerlavskode && matrikelnummer) {
       const { MatService } = await import("@/integrations/mat/client");
@@ -67,8 +70,37 @@ export async function fetchBbrWithMat(input: {
       mat_strandbeskyttelse = mat.strandbeskyttelse;
       mat_fredskov = mat.fredskov;
       mat_klitfredning = mat.klitfredning;
-    } else if (!ejerlavskode || !matrikelnummer) {
-      console.warn("[Layer1] Mangler ejerlavskode/matrikelnummer — MatService-fallback springes over", { ejerlavskode, matrikelnummer });
+    } else {
+      // Mangler ejerlavskode/matrikelnummer — forsøg GrundarealResolver (ARCH-222 option B)
+      try {
+        const { GrundarealResolver } = await import("@/integrations/mat/grundareal-resolver");
+        const resolved = await GrundarealResolver.resolve(
+          {
+            adgangsadresseid: input.adgangsadresseid,
+            adresseid: input.adresseid ?? "",
+          },
+          undefined,
+          input.trace,
+        );
+        if (resolved.grundareal !== null) {
+          grundareal = resolved.grundareal;
+          mat_strandbeskyttelse = resolved.jordstykker.length > 0
+            ? resolved.jordstykker.some((j) => j.strandbeskyttelse === true)
+            : null;
+          mat_fredskov = resolved.jordstykker.length > 0
+            ? resolved.jordstykker.some((j) => j.fredskov === true)
+            : null;
+          mat_klitfredning = resolved.jordstykker.length > 0
+            ? resolved.jordstykker.some((j) => j.klitfredning === true)
+            : null;
+          // Gem primær jordstykke-ID til MatrikelMap (ARCH-229)
+          jordstykkeLokalId = resolved.jordstykker[0]?.id_lokalId ?? null;
+        } else {
+          console.warn("[Layer1] GrundarealResolver fejlede:", resolved.fejl);
+        }
+      } catch (e) {
+        console.warn("[Layer1] GrundarealResolver exception:", (e as Error).message);
+      }
     }
 
     const { BbrService } = await import("@/integrations/bbr/client");
@@ -82,6 +114,7 @@ export async function fetchBbrWithMat(input: {
       bbr.mat_strandbeskyttelse = mat_strandbeskyttelse;
       bbr.mat_fredskov = mat_fredskov;
       bbr.mat_klitfredning = mat_klitfredning;
+      bbr.jordstykke_lokal_id = jordstykkeLokalId;
     }
     return bbr;
   } catch (e) {

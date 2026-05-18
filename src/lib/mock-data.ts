@@ -55,6 +55,7 @@ export const MOCK_BBR: BbrKompliantData = {
   fbb_reference: null,
   alle_bygning_lokal_ids: [],
   alle_bbr_public_ids: [],
+  jordstykke_lokal_id: null,
 };
 
 // ---------------------------------------------------------------------------
