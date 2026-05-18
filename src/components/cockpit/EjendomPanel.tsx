@@ -283,6 +283,11 @@ export function EjendomPanel() {
               value={vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"}
               status={vurderingData == null ? "mangler" : "live"}
             />
+            <DataRow
+              label="BFE-nummer (EBR)"
+              value={bfe_nr ?? "—"}
+              status={bfe_nr ? "live" : "mangler"}
+            />
 
           </div>
         )}
