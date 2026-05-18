@@ -25,6 +25,7 @@ export function EjendomPanel() {
     grundareal_m2,
     bebygget_areal_m2,
     is_fredet,
+    bfe_nr,
   } = useProject();
   const [showFlags, setShowFlags] = useState(false);
   const [showDatakilder, setShowDatakilder] = useState(false);
@@ -282,6 +283,11 @@ export function EjendomPanel() {
               value={vurderingData?.vurderingsaar != null ? `${vurderingData.vurderingsaar}` : "—"}
               status={vurderingData == null ? "mangler" : "live"}
             />
+            <DataRow
+              label="BFE-nummer (EBR)"
+              value={bfe_nr ?? "—"}
+              status={bfe_nr ? "live" : "mangler"}
+            />
 
           </div>
         )}
@@ -295,7 +301,7 @@ export function EjendomPanel() {
         <CopyField label="BYGNING UUID" value={address?.bbrId ?? null} />
         <CopyField label="MATRIKELNUMMER" value={address?.matrikelnummer ?? null} />
         <CopyField label="KOMMUNEKODE" value={address?.kommunekode ?? null} />
-        <CopyField label="BFE-NUMMER" value={null} placeholder="Hentes via EBR" />
+        <CopyField label="BFE-NUMMER" value={bfe_nr} placeholder="Hentes via EBR" />
       </div>
     </div>
   );
