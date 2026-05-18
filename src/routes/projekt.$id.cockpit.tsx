@@ -593,6 +593,27 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           if (project.hus_dna) {
             store.setHusDna(project.hus_dna as import("@/lib/project-store").HusDna);
           }
+
+          // Beregn datakilde-status ud fra hvad der blev gendannet fra DB.
+          const lastFetched = project.updated_at ?? null;
+          const s = useProject.getState();
+          store.setDataLastFetchedAt(lastFetched);
+          store.setDataStatusBulk({
+            bbr: deriveSourceStatus("bbr", s.bbrData, lastFetched),
+            lokalplaner: deriveSourceStatus("lokalplaner", s.lokalplaner, lastFetched),
+            kommuneplanramme: deriveSourceStatus("kommuneplanramme", s.kommuneplanramme, lastFetched),
+            fbb: deriveSourceStatus("fbb", objectField(project.compliance_data, "fbbData"), lastFetched),
+            naturbeskyttelse: deriveSourceStatus("naturbeskyttelse", objectField(project.compliance_data, "naturbeskyttelse"), lastFetched),
+            geusRisk: deriveSourceStatus("geusRisk", objectField(project.compliance_data, "geusRisk"), lastFetched),
+            servitutter: deriveSourceStatus("servitutter", objectField(project.compliance_data, "servitutter"), lastFetched),
+            terrain: deriveSourceStatus("terrain", objectField(project.compliance_data, "terrain"), lastFetched),
+            fjernvarme: deriveSourceStatus("fjernvarme", objectField(project.compliance_data, "fjernvarme"), lastFetched),
+            naboer: deriveSourceStatus("naboer", objectField(project.compliance_data, "naboer"), lastFetched),
+            vurdering: deriveSourceStatus("vurdering", s.vurderingData, lastFetched),
+            byggeanalyse: deriveSourceStatus("byggeanalyse", s.byggeanalyseResultat, lastFetched),
+            billedanalyse: deriveSourceStatus("billedanalyse", project.billedanalyse, lastFetched),
+            husDna: deriveSourceStatus("husDna", project.hus_dna, lastFetched),
+          });
         }
       } catch (e) {
         logger.warn("[Cockpit] restore-by-url fejlede:", (e as Error).message);
