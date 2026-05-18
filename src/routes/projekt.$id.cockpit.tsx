@@ -761,6 +761,11 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             analysisRunId: result.analysisRunId,
           });
 
+          // Skriv serviceStates fra pipeline-resultatet til store.
+          if (result.serviceStates) {
+            useProject.setState({ serviceStates: result.serviceStates });
+          }
+
           // Marker alle nyligt hentede kilder som friske.
           const nowIso = new Date().toISOString();
           const store = useProject.getState();
