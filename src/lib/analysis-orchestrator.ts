@@ -196,7 +196,7 @@ async function analyseAddressWithTrace(
         phase: "cache",
         service: "Supabase",
         operation: "address_analysis.compliance_result.read",
-        inputSummary: `addressId=${addressId.slice(0, 8)}`,
+        inputSummary: `adresseid=${addressId.slice(0, 8)}`,
       },
       () => getCachedCompliance(addressId),
       {
