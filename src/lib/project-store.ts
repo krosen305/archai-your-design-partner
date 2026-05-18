@@ -230,6 +230,30 @@ const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
 };
 
 // ---------------------------------------------------------------------------
+// Pipeline-servicetilstand — hvad skete der da pipelinen senest kørte for
+// denne datakilde? Bruges i UI til at forklare "mangler data" eksplicit.
+// ---------------------------------------------------------------------------
+
+export type PipelineServiceState =
+  | "success" // data hentet og fundet
+  | "no_hit" // kald lykkedes, men ingen data fundet for denne adresse
+  | "error" // kald fejlede med en teknisk fejl
+  | "skipped" // trin sprunget over (hard-stop-gate eller betingelse ikke opfyldt)
+  | "mock" // IS_MOCK=true — syntetisk data returneret
+  | "cache_hit" // data serveret fra cache
+  | "not_run"; // pipelinen er ikke kørt endnu for denne session
+
+export const PIPELINE_SERVICE_STATE_LABELS: Record<PipelineServiceState, string> = {
+  success: "Live",
+  no_hit: "Ingen hit",
+  error: "Fejl",
+  skipped: "Sprunget over",
+  mock: "Mock",
+  cache_hit: "Cache",
+  not_run: "Ikke kørt",
+};
+
+// ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
 
@@ -284,6 +308,9 @@ type State = {
   // i DB; den beregnes ved restore baseret på om feltet findes + updated_at.
   dataStatus: Record<DataSourceKind, DataSourceStatus>;
   dataLastFetchedAt: string | null; // projects.updated_at fra seneste restore
+
+  // Pipeline-servicetilstand — hvad skete der da pipelinen senest kørte
+  serviceStates: Partial<Record<DataSourceKind, PipelineServiceState>>;
 
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
@@ -373,6 +400,7 @@ export const useProject = create<State>((set) => ({
   bfe_nr: null,
   dataStatus: { ...DEFAULT_DATA_STATUS },
   dataLastFetchedAt: null,
+  serviceStates: {},
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -444,6 +472,7 @@ export const useProject = create<State>((set) => ({
       bfe_nr: null,
       dataStatus: { ...DEFAULT_DATA_STATUS },
       dataLastFetchedAt: null,
+      serviceStates: {},
     }),
 }));
 

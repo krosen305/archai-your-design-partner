@@ -79,6 +79,7 @@ export type ComplianceResult = {
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
   analysisRunId?: string | null;
+  serviceStates?: Partial<Record<import("@/lib/project-store").DataSourceKind, import("@/lib/project-store").PipelineServiceState>>;
 };
 
 // ---------------------------------------------------------------------------
