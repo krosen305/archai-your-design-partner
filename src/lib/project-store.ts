@@ -325,6 +325,10 @@ type State = {
   setBudgetEstimate: (v: number | null) => void;
   setBfeNr: (v: string | null) => void;
 
+  setDataStatus: (kind: DataSourceKind, status: DataSourceStatus) => void;
+  setDataStatusBulk: (patch: Partial<Record<DataSourceKind, DataSourceStatus>>) => void;
+  setDataLastFetchedAt: (iso: string | null) => void;
+
   reset: () => void;
 };
 
