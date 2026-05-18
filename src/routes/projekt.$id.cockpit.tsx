@@ -576,10 +576,11 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             store.setHeritageSaveValue(project.heritage_save_value);
           if (project.is_fredet != null) store.setIsFredet(project.is_fredet);
           store.setHardStop(project.hard_stop ?? false, project.hard_stop_reason ?? null);
-          const { setGrundareal, setBebyggetAreal, setBudgetEstimate } = useProject.getState();
+          const { setGrundareal, setBebyggetAreal, setBudgetEstimate, setBfeNr } = useProject.getState();
           if (project.grundareal_m2 != null) setGrundareal(project.grundareal_m2);
           if (project.bebygget_areal_m2 != null) setBebyggetAreal(project.bebygget_areal_m2);
           if (project.budget_estimate != null) setBudgetEstimate(project.budget_estimate);
+          setBfeNr(project.bfe_nr ?? null);
 
           // ARCH-190/197: restore AI artifacts after reload.
           if (project.billedanalyse) {
