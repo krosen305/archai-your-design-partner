@@ -172,6 +172,64 @@ export type BoligoenskeValidering = {
 };
 
 // ---------------------------------------------------------------------------
+// Datakilde-status — bruges af cockpittet til at vise hvilke kilder der er
+// friske, forældede, manglende eller under genindlæsning, og til at tilbyde
+// manuel refresh pr. kilde.
+// ---------------------------------------------------------------------------
+
+export type DataSourceStatus = "fresh" | "stale" | "missing" | "loading" | "error";
+
+export type DataSourceKind =
+  | "bbr"
+  | "lokalplaner"
+  | "kommuneplanramme"
+  | "fbb"
+  | "naturbeskyttelse"
+  | "geusRisk"
+  | "servitutter"
+  | "terrain"
+  | "fjernvarme"
+  | "naboer"
+  | "vurdering"
+  | "byggeanalyse"
+  | "billedanalyse"
+  | "husDna";
+
+export const DATA_SOURCE_LABELS: Record<DataSourceKind, string> = {
+  bbr: "BBR & matrikel",
+  lokalplaner: "Lokalplaner",
+  kommuneplanramme: "Kommuneplanramme",
+  fbb: "SAVE & fredning (FBB)",
+  naturbeskyttelse: "Naturbeskyttelse",
+  geusRisk: "Geoteknisk risiko",
+  servitutter: "Servitutter",
+  terrain: "Terræn (DHM)",
+  fjernvarme: "Fjernvarme",
+  naboer: "Nabobygninger",
+  vurdering: "Ejendomsvurdering",
+  byggeanalyse: "AI byggeanalyse",
+  billedanalyse: "AI billedanalyse",
+  husDna: "Hus-DNA",
+};
+
+const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
+  bbr: "missing",
+  lokalplaner: "missing",
+  kommuneplanramme: "missing",
+  fbb: "missing",
+  naturbeskyttelse: "missing",
+  geusRisk: "missing",
+  servitutter: "missing",
+  terrain: "missing",
+  fjernvarme: "missing",
+  naboer: "missing",
+  vurdering: "missing",
+  byggeanalyse: "missing",
+  billedanalyse: "missing",
+  husDna: "missing",
+};
+
+// ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
 
@@ -221,6 +279,12 @@ type State = {
   budget_estimate: number | null; // ARCH-163: projektbudget estimat
   bfe_nr: string | null; // BFE-nummer (Bestemt Fast Ejendom) via EBR
 
+  // Datakilde-status — bruges af cockpittet til at vise fresh/stale/missing
+  // pr. kilde og tilbyde manuel genindlæsning. Status er afledt — gemmes IKKE
+  // i DB; den beregnes ved restore baseret på om feltet findes + updated_at.
+  dataStatus: Record<DataSourceKind, DataSourceStatus>;
+  dataLastFetchedAt: string | null; // projects.updated_at fra seneste restore
+
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: BbrKompliantData | null) => void;
@@ -260,6 +324,10 @@ type State = {
   setHardStop: (v: boolean, reason: string | null) => void;
   setBudgetEstimate: (v: number | null) => void;
   setBfeNr: (v: string | null) => void;
+
+  setDataStatus: (kind: DataSourceKind, status: DataSourceStatus) => void;
+  setDataStatusBulk: (patch: Partial<Record<DataSourceKind, DataSourceStatus>>) => void;
+  setDataLastFetchedAt: (iso: string | null) => void;
 
   reset: () => void;
 };
@@ -303,6 +371,8 @@ export const useProject = create<State>((set) => ({
   hard_stop_reason: null,
   budget_estimate: null,
   bfe_nr: null,
+  dataStatus: { ...DEFAULT_DATA_STATUS },
+  dataLastFetchedAt: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -335,6 +405,12 @@ export const useProject = create<State>((set) => ({
   setBudgetEstimate: (budget_estimate) => set({ budget_estimate }),
   setBfeNr: (bfe_nr) => set({ bfe_nr }),
 
+  setDataStatus: (kind, status) =>
+    set((s) => ({ dataStatus: { ...s.dataStatus, [kind]: status } })),
+  setDataStatusBulk: (patch) =>
+    set((s) => ({ dataStatus: { ...s.dataStatus, ...patch } })),
+  setDataLastFetchedAt: (dataLastFetchedAt) => set({ dataLastFetchedAt }),
+
   reset: () =>
     set({
       address: null,
@@ -366,6 +442,8 @@ export const useProject = create<State>((set) => ({
       hard_stop_reason: null,
       budget_estimate: null,
       bfe_nr: null,
+      dataStatus: { ...DEFAULT_DATA_STATUS },
+      dataLastFetchedAt: null,
     }),
 }));
 
@@ -380,6 +458,43 @@ export function isHusDna(v: unknown): v is HusDna {
     typeof (v as Record<string, unknown>).stil === "string" &&
     typeof (v as Record<string, unknown>).confidence === "number"
   );
+}
+
+// Stale-tærskler pr. kilde (dage). Spejler cache-TTL i src/integrations/cache/client.ts
+// og bruges KUN i UI'et til at vise "Forældet"-pille — ikke til at invalidere cachen.
+const STALE_DAYS: Record<DataSourceKind, number> = {
+  bbr: 30,
+  lokalplaner: 30,
+  kommuneplanramme: 30,
+  fbb: 30,
+  naturbeskyttelse: 30,
+  geusRisk: 30,
+  servitutter: 7,
+  terrain: 30,
+  fjernvarme: 30,
+  naboer: 30,
+  vurdering: 30,
+  byggeanalyse: 60,
+  billedanalyse: 60,
+  husDna: 60,
+};
+
+/**
+ * Beregn datakilde-status ud fra om feltet findes + projektets updated_at.
+ * `value` er truthy hvis kilden er gendannet fra DB. `lastFetchedIso` er
+ * projects.updated_at (sidste skrivning til DB) — bruges som proxy for friskhed.
+ */
+export function deriveSourceStatus(
+  kind: DataSourceKind,
+  value: unknown,
+  lastFetchedIso: string | null,
+): DataSourceStatus {
+  const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
+  if (!hasValue) return "missing";
+  if (!lastFetchedIso) return "fresh";
+  const ageMs = Date.now() - new Date(lastFetchedIso).getTime();
+  const staleMs = STALE_DAYS[kind] * 24 * 60 * 60 * 1000;
+  return ageMs > staleMs ? "stale" : "fresh";
 }
 
 type ParsedComplianceData = {
