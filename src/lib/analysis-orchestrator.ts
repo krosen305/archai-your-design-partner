@@ -276,7 +276,9 @@ async function analyseAddressWithTrace(
   // ── Layers 2 + 3 + 4: kører parallelt — ingen indbyrdes afhængighed ──────
   // Layer 2 (lokalplan PDF), Layer 3 (servitutter) og Layer 4 (geodata)
   // behøver alle kun Layer 1's output. Parallel Promise.all sparer ~2s live.
-  const primaryPdfUrl = complianceBase.lokalplaner[0]?.plandokumentLink ?? null;
+  const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/client");
+  const primaryLokalplan = selectPrimaryLokalplanForPdf(complianceBase.lokalplaner);
+  const primaryPdfUrl = primaryLokalplan?.plandokumentLink ?? null;
 
   const [lokalplanExtract, servitutter, layer4] = await Promise.all([
     // ── Layer 2: lokalplan_extracted ────────────────────────────────────

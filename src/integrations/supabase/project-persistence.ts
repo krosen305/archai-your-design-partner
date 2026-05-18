@@ -13,6 +13,7 @@ type BuildingTaskInsert = Database["public"]["Tables"]["building_tasks"]["Insert
 
 import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project-store";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
+import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/client";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
@@ -148,7 +149,7 @@ function deriveSiteConstraintsPatch(
 
   if (patch.lokalplaner !== undefined) {
     hasConstraintField = true;
-    sitePatch.source_lokalplan_id = patch.lokalplaner[0]?.planid ?? null;
+    sitePatch.source_lokalplan_id = selectPrimaryLokalplanForPdf(patch.lokalplaner)?.planid ?? null;
   }
 
   if (patch.fbbData !== undefined) {
