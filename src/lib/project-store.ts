@@ -405,6 +405,12 @@ export const useProject = create<State>((set) => ({
   setBudgetEstimate: (budget_estimate) => set({ budget_estimate }),
   setBfeNr: (bfe_nr) => set({ bfe_nr }),
 
+  setDataStatus: (kind, status) =>
+    set((s) => ({ dataStatus: { ...s.dataStatus, [kind]: status } })),
+  setDataStatusBulk: (patch) =>
+    set((s) => ({ dataStatus: { ...s.dataStatus, ...patch } })),
+  setDataLastFetchedAt: (dataLastFetchedAt) => set({ dataLastFetchedAt }),
+
   reset: () =>
     set({
       address: null,
