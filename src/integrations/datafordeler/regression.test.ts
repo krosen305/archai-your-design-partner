@@ -183,3 +183,137 @@ describe("Regression: Hasselvej 48, 2830 Virum", () => {
     expect(result.fbb_er_fredet).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 2. Vindegade 142 — ejerlejlighed, EBR dual-mode BFE
+//    - EBR husnummer-rute: BFE 100206145 (SFE)
+//    - EBR adresse-rute: BFE 100263362 (ejerlejlighed)
+//    - GrundarealResolver: grundareal=1703 via husnummer→SFE-rute
+// ---------------------------------------------------------------------------
+
+describe("Regression: Vindegade 142 — ejerlejlighed EBR dual-mode", () => {
+  it("EbrService.getBfeNr: husnummer-rute finder BFE 100206145 (ARCH-225)", async () => {
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      text: async () =>
+        JSON.stringify({
+          data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "100206145" }] } },
+        }),
+    }) as any) as any;
+
+    const result = await EbrService.getBfeNr("vinde-husnummer-id", EBR_CONFIG);
+    expect(result.bfeNr).toBe("100206145");
+    expect(result.fejl).toBeNull();
+  });
+
+  it("EbrService.getBfeNrByAdresse: adresse-rute finder BFE 100263362 for ejerlejlighed (ARCH-225)", async () => {
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      text: async () =>
+        JSON.stringify({
+          data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "100263362" }] } },
+        }),
+    }) as any) as any;
+
+    const result = await EbrService.getBfeNrByAdresse("vinde-adresse-id", EBR_CONFIG);
+    expect(result.bfeNr).toBe("100263362");
+    expect(result.fejl).toBeNull();
+  });
+
+  it("GrundarealResolver: grundareal=1703 via husnummer→SFE-rute (ARCH-223)", async () => {
+    mockFetch([
+      // 1: EBR husnummer → BFE 100206145
+      { data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "100206145" }] } } },
+      // 2: MAT_SamletFastEjendom → SFE
+      { data: { MAT_SamletFastEjendom: { nodes: [{ id_lokalId: "sfe-vindegade" }] } } },
+      // 3: MAT_Jordstykke → grundareal
+      {
+        data: {
+          MAT_Jordstykke: {
+            nodes: [{
+              id_lokalId: "js-vinde",
+              matrikelnummer: "5fo",
+              ejerlavLokalId: "e-vinde",
+              registreretAreal: 1703,
+              strandbeskyttelse_omfang: null,
+              fredskov_omfang: null,
+              klitfredning_omfang: null,
+            }],
+          },
+        },
+      },
+    ]);
+
+    const result = await GrundarealResolver.resolve(
+      { adgangsadresseid: "vinde-husnummer-id", adresseid: "vinde-adresse-id" },
+      GR_CONFIG,
+    );
+    expect(result.grundareal).toBe(1703);
+    expect(result.source).toBe("ebr_husnummer_sfe");
+    expect(result.bfeNr).toBe("100206145");
+    expect(result.fejl).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. Østerlunden 10 — ejerlejlighed uden husnummer-BFE
+//    - Husnummer-rute returnerer tom → fallback til adresse-rute
+//    - EBR adresse-rute → BFE 289814 → MAT_Ejerlejlighed → grundareal=3580
+// ---------------------------------------------------------------------------
+
+describe("Regression: Østerlunden 10 — adresse-only EBR fallback", () => {
+  it("GrundarealResolver: husnummer tom → adresse-rute bruges, source='ebr_adresse_ejerlejlighed' (ARCH-223)", async () => {
+    mockFetch([
+      // 1: EBR husnummer → ingen BFE
+      { data: { EBR_Ejendomsbeliggenhed: { nodes: [] } } },
+      // 2: EBR adresse → BFE 289814
+      { data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "289814" }] } } },
+      // 3: MAT_Ejerlejlighed → SFE
+      { data: { MAT_Ejerlejlighed: { nodes: [{ samletFastEjendomLokalId: "sfe-8226704" }] } } },
+      // 4: MAT_Jordstykke → grundareal
+      {
+        data: {
+          MAT_Jordstykke: {
+            nodes: [{
+              id_lokalId: "js-ost",
+              matrikelnummer: "10st",
+              ejerlavLokalId: "e-ost",
+              registreretAreal: 3580,
+              strandbeskyttelse_omfang: null,
+              fredskov_omfang: null,
+              klitfredning_omfang: null,
+            }],
+          },
+        },
+      },
+    ]);
+
+    const result = await GrundarealResolver.resolve(
+      { adgangsadresseid: "ost-husnummer-id", adresseid: "ost-adresse-id" },
+      GR_CONFIG,
+    );
+    expect(result.grundareal).toBe(3580);
+    expect(result.source).toBe("ebr_adresse_ejerlejlighed");
+    expect(result.bfeNr).toBe("289814");
+    expect(result.samletFastEjendomLokalId).toBe("sfe-8226704");
+    expect(result.fejl).toBeNull();
+  });
+
+  it("GrundarealResolver: returnerer fejl når ingen rute finder BFE", async () => {
+    mockFetch([
+      { data: { EBR_Ejendomsbeliggenhed: { nodes: [] } } }, // husnummer: ingen
+      { data: { EBR_Ejendomsbeliggenhed: { nodes: [] } } }, // adresse: ingen
+    ]);
+
+    const result = await GrundarealResolver.resolve(
+      { adgangsadresseid: "ingen-id", adresseid: "ingen-id" },
+      GR_CONFIG,
+    );
+    expect(result.grundareal).toBeNull();
+    expect(result.fejl).toBeTruthy();
+  });
+});
