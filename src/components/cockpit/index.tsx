@@ -773,7 +773,14 @@ function MatrikelCanvas({
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
 }) {
-  return <MatrikelMap bbr={bbr} metrics={metrics} naboer={naboer} />;
+  return (
+    <MatrikelMap
+      bbr={bbr}
+      metrics={metrics}
+      naboer={naboer}
+      jordstykkeLokalId={bbr?.jordstykke_lokal_id ?? null}
+    />
+  );
 }
 
 // ===========================================================================

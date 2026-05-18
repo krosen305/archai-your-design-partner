@@ -9,6 +9,7 @@ import { useProject } from "@/lib/project-store";
 import {
   fetchMatriklenPreview,
   fetchParcelGeometry,
+  fetchParcelGeometryById,
   fetchSkærmkortTile,
 } from "@/routes/api.map-tiles";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -20,11 +21,12 @@ export type MatrikelMapProps = {
   bbr: BbrKompliantData | null;
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
+  jordstykkeLokalId?: string | null;
 };
 
 type ParcelFeatureCollection = GeoJSON.FeatureCollection | null;
 
-export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
+export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId }: MatrikelMapProps) {
   const { address, complianceFlags, setAddress } = useProject();
   const geo = address?.centroid ?? address?.koordinater ?? null;
   const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
@@ -51,6 +53,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
   const [dragHint, setDragHint] = useState("Træk bygningen for at flytte den");
 
   const loadParcelGeometry = useServerFn(fetchParcelGeometry);
+  const loadParcelGeometryById = useServerFn(fetchParcelGeometryById);
   const loadParcelPreview = useServerFn(fetchMatriklenPreview);
   const loadTile = useServerFn(fetchSkærmkortTile);
   const loadTileRef = useRef(loadTile);
@@ -72,9 +75,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
   const buildingArea =
     address?.footprintAreaM2 ?? bbr?.bebygget_areal ?? metrics?.currentBygningsareal ?? null;
   const hasAddress = hasValidGeo;
-  const baseCenter: [number, number] = geo
-    ? [geo.lng, geo.lat]
-    : [10, 56];
+  const baseCenter: [number, number] = geo ? [geo.lng, geo.lat] : [10, 56];
 
   useEffect(() => {
     setRotationDeg(address?.rotationDeg ?? 0);
@@ -100,17 +101,41 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
       setParcelStatus("loading");
 
       try {
-        const geometry = await loadParcelGeometry({
-          data: {
-            point: geo,
-            adresseid: address?.adresseid ?? null,
-            bufferMeters: 180,
-          },
-        });
-        if (cancelled) return;
-
-        setParcelGeojson(geometry.featureCollection);
-        setParcelStatus(geometry.featureCollection?.features.length ? "ready" : "missing");
+        // ARCH-229: brug specifik jordstykke-geometri når ID er tilgængeligt
+        if (jordstykkeLokalId) {
+          const result = await loadParcelGeometryById({
+            data: { jordstykkeLokalId },
+          });
+          if (cancelled) return;
+          if (result.featureCollection) {
+            setParcelGeojson(result.featureCollection);
+            setParcelStatus("ready");
+          } else {
+            // ID-opslag fandt intet — forsøg bbox-fallback
+            const fallback = await loadParcelGeometry({
+              data: {
+                point: geo,
+                adresseid: address?.adresseid ?? null,
+                bufferMeters: 180,
+              },
+            });
+            if (cancelled) return;
+            setParcelGeojson(fallback.featureCollection);
+            setParcelStatus(fallback.featureCollection?.features.length ? "ready" : "missing");
+          }
+        } else {
+          // Bbox-fallback når jordstykke-ID ikke kendes
+          const geometry = await loadParcelGeometry({
+            data: {
+              point: geo,
+              adresseid: address?.adresseid ?? null,
+              bufferMeters: 180,
+            },
+          });
+          if (cancelled) return;
+          setParcelGeojson(geometry.featureCollection);
+          setParcelStatus(geometry.featureCollection?.features.length ? "ready" : "missing");
+        }
 
         const preview = await loadParcelPreview({
           data: {
@@ -149,7 +174,9 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
     address?.adresseid,
     geo?.lat,
     geo?.lng,
+    jordstykkeLokalId,
     loadParcelGeometry,
+    loadParcelGeometryById,
     loadParcelPreview,
   ]);
 
@@ -393,9 +420,7 @@ export function MatrikelMap({ bbr, metrics, naboer }: MatrikelMapProps) {
 
       footprintSourceRef.current.clear();
 
-      const center =
-        footprintCenterRef.current ??
-        (geo ? [geo.lng, geo.lat] : [10, 56]);
+      const center = footprintCenterRef.current ?? (geo ? [geo.lng, geo.lat] : [10, 56]);
       const center3857 = fromLonLat(center as [number, number]);
       const area = Math.max(28, buildingArea ?? 60);
       const side = Math.sqrt(area);

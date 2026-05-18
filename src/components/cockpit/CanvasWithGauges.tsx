@@ -16,10 +16,12 @@ export function CanvasWithGauges({
   bbr,
   metrics,
   naboer,
+  jordstykkeLokalId,
 }: {
   bbr: BbrKompliantData | null;
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
+  jordstykkeLokalId?: string | null;
 }) {
   const { byggeoenske } = useProject();
 
@@ -55,7 +57,12 @@ export function CanvasWithGauges({
         </div>
       )}
 
-      <MatrikelMap bbr={bbr} metrics={metrics} naboer={naboer} />
+      <MatrikelMap
+        bbr={bbr}
+        metrics={metrics}
+        naboer={naboer}
+        jordstykkeLokalId={jordstykkeLokalId}
+      />
 
       {/* Gauge-strip — bund-overlay */}
       <div className="border-t border-border/40 bg-[#0c0c0c] grid grid-cols-2 md:grid-cols-4 divide-x divide-border/40">

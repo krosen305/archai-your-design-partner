@@ -157,7 +157,8 @@ function routeMatchesAddress(
 ) {
   return (
     !!currentAddress &&
-    (currentAddress.adresseid === routeAddressId || currentAddress.adgangsadresseid === routeAddressId)
+    (currentAddress.adresseid === routeAddressId ||
+      currentAddress.adgangsadresseid === routeAddressId)
   );
 }
 
@@ -173,9 +174,10 @@ export const Route = createFileRoute("/projekt/$id/cockpit")({
     const tab = search.tab;
     const projectId = search.projectId;
     return {
-      tab: typeof tab === "string" && (VALID_TABS as readonly string[]).includes(tab)
-        ? (tab as CockpitTab)
-        : ("analyse" as CockpitTab),
+      tab:
+        typeof tab === "string" && (VALID_TABS as readonly string[]).includes(tab)
+          ? (tab as CockpitTab)
+          : ("analyse" as CockpitTab),
       projectId: typeof projectId === "string" && projectId.trim() ? projectId : undefined,
     };
   },
@@ -538,11 +540,10 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             matrikel: project.address_matrikel,
             adgangsadresseid: resolvedAdgangsadresseid,
             grundareal: project.grundareal_m2 ?? null,
-            koordinater:
-              (project.address_koordinater as { lat: number; lng: number } | null) ?? {
-                lat: 0,
-                lng: 0,
-              },
+            koordinater: (project.address_koordinater as { lat: number; lng: number } | null) ?? {
+              lat: 0,
+              lng: 0,
+            },
             bbrId: null,
             ejerlavskode: project.address_ejerlavskode ?? null,
             matrikelnummer: project.address_matrikelnummer ?? null,
@@ -559,9 +560,13 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             if (project.compliance_done) store.setComplianceDone(true);
           }
           setGeusRiskLocal(objectField<GeusRiskData>(project.compliance_data, "geusRisk"));
-          setServitutterLocal(objectField<TinglysningResult>(project.compliance_data, "servitutter"));
+          setServitutterLocal(
+            objectField<TinglysningResult>(project.compliance_data, "servitutter"),
+          );
           setTerrainLocal(objectField<TerrainData>(project.compliance_data, "terrain"));
-          setFjernvarmeLocal(objectField<FjernvarmeResultat>(project.compliance_data, "fjernvarme"));
+          setFjernvarmeLocal(
+            objectField<FjernvarmeResultat>(project.compliance_data, "fjernvarme"),
+          );
           setNaboerLocal(objectField<NeighborBuildingData>(project.compliance_data, "naboer"));
           setFbbDataLocal(objectField<FbbResultat>(project.compliance_data, "fbbData"));
           setNaturbeskyttelsesLocal(
@@ -1045,10 +1050,7 @@ function AnalyseTab({
                 </div>
               ))}
               {forslag.map((lp) => (
-                <div
-                  key={lp.planid}
-                  className="flex items-start justify-between gap-3 opacity-70"
-                >
+                <div key={lp.planid} className="flex items-start justify-between gap-3 opacity-70">
                   <div className="min-w-0">
                     <div className="text-sm text-foreground truncate">
                       {lp.plannr ? `${lp.plannr} – ` : ""}
@@ -1081,21 +1083,23 @@ function AnalyseTab({
       label: "TERRÆN & KOTER",
       content: <TerrainSektion data={terrain} />,
     },
-    servitutter && servitutter.servitutter.length > 0 && {
-      id: "servitutter",
-      label: `SERVITUTTER (${servitutter.servitutter.length})`,
-      content: <ServitutterSektion data={servitutter} />,
-    },
+    servitutter &&
+      servitutter.servitutter.length > 0 && {
+        id: "servitutter",
+        label: `SERVITUTTER (${servitutter.servitutter.length})`,
+        content: <ServitutterSektion data={servitutter} />,
+      },
     fjernvarme && {
       id: "fjernvarme",
       label: "FJERNVARMEDÆKNING",
       content: <FjernvarmeSektion data={fjernvarme} />,
     },
-    naboer && naboer.count > 0 && {
-      id: "naboer",
-      label: `NABOBYGNINGER (${naboer.count})`,
-      content: <NaboerSektion data={naboer} />,
-    },
+    naboer &&
+      naboer.count > 0 && {
+        id: "naboer",
+        label: `NABOBYGNINGER (${naboer.count})`,
+        content: <NaboerSektion data={naboer} />,
+      },
     vurderingData && {
       id: "vurdering",
       label: "EJENDOMSVURDERING",
@@ -1163,7 +1167,12 @@ function AnalyseTab({
         </aside>
 
         <section className="flex-1 min-w-0 space-y-4">
-          <CanvasWithGauges bbr={data} metrics={metrics} naboer={naboer} />
+          <CanvasWithGauges
+            bbr={data}
+            metrics={metrics}
+            naboer={naboer}
+            jordstykkeLokalId={data.jordstykke_lokal_id ?? null}
+          />
           <RisikoFeed onOpenDetails={() => openDrawer()} />
         </section>
       </div>

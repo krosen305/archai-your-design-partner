@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import {
   fetchMatriklenPreviewProxy,
+  fetchParcelGeometryByJordstykkeId,
   fetchParcelGeometryProxy,
   fetchSkærmkortTileProxy,
   type ParcelGeometryRequest,
@@ -16,6 +17,10 @@ export const fetchParcelGeometry = createServerFn({ method: "POST" })
 export const fetchMatriklenPreview = createServerFn({ method: "POST" })
   .inputValidator((data: ParcelPreviewRequest) => data)
   .handler(async ({ data }) => fetchMatriklenPreviewProxy(data));
+
+export const fetchParcelGeometryById = createServerFn({ method: "POST" })
+  .inputValidator((data: { jordstykkeLokalId: string }) => data)
+  .handler(async ({ data }) => fetchParcelGeometryByJordstykkeId(data.jordstykkeLokalId));
 
 export const fetchSkærmkortTile = createServerFn({ method: "GET" })
   .inputValidator((data: TileRequest) => data)

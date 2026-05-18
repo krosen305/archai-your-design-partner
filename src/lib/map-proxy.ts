@@ -190,6 +190,44 @@ export async function fetchParcelGeometryProxy(
   }
 }
 
+/**
+ * Henter parcel-geometri for ét specifikt jordstykke via id_lokalId.
+ * Returnerer `source: "wfs"` ved fund, `source: "notfound"` ellers.
+ * Brugt af MatrikelMap (ARCH-229) for at vise korrekt matrikel uden naboer.
+ */
+export async function fetchParcelGeometryByJordstykkeId(
+  jordstykkeLokalId: string,
+): Promise<{ featureCollection: GeoJSON.FeatureCollection | null; source: "wfs" | "notfound" }> {
+  if (!jordstykkeLokalId.trim()) return { featureCollection: null, source: "notfound" };
+
+  try {
+    const apiKey = ensureApiKey();
+    // CQL_FILTER på id_lokalId returnerer præcis ét jordstykke
+    const filter = encodeURIComponent(`id_lokalId='${jordstykkeLokalId}'`);
+    const url =
+      `${MAT_WFS_URL}?apikey=${apiKey}&service=WFS&version=2.0.0&request=GetFeature` +
+      `&typenames=mat:Jordstykke_Gaeldende&srsname=urn:ogc:def:crs:EPSG::25832` +
+      `&outputFormat=application/json` +
+      `&CQL_FILTER=${filter}`;
+
+    const res = await fetch(url, {
+      headers: { Accept: "application/json, application/geo+json;q=0.9, */*;q=0.8" },
+    });
+    if (!res.ok) return { featureCollection: null, source: "notfound" };
+
+    const text = await res.text();
+    if (!text.trim()) return { featureCollection: null, source: "notfound" };
+
+    const fc = JSON.parse(text) as GeoJSON.FeatureCollection;
+    if (!fc?.features?.length) return { featureCollection: null, source: "notfound" };
+
+    return { featureCollection: fc, source: "wfs" };
+  } catch (e) {
+    console.warn("[MapProxy] fetchParcelGeometryByJordstykkeId fejlede:", (e as Error).message);
+    return { featureCollection: null, source: "notfound" };
+  }
+}
+
 export async function fetchMatriklenPreviewProxy(
   request: ParcelPreviewRequest,
 ): Promise<ProxiedMapImage | null> {
