@@ -490,7 +490,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   } = useProject();
 
   const [status, setStatus] = useState<Status>(
-    routeMatchesAddress(address, adresseId) && bbrData && complianceDone ? "done" : "loading",
+    routeMatchesAddress(address, adresseId) && bbrData ? "done" : "loading",
   );
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lokalplanerLocal, setLokalplanerLocal] = useState<Lokalplan[]>(() =>
