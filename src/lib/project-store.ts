@@ -333,6 +333,7 @@ export const useProject = create<State>((set) => ({
   setBebyggetAreal: (bebygget_areal_m2) => set({ bebygget_areal_m2 }),
   setHardStop: (hard_stop, hard_stop_reason) => set({ hard_stop, hard_stop_reason }),
   setBudgetEstimate: (budget_estimate) => set({ budget_estimate }),
+  setBfeNr: (bfe_nr) => set({ bfe_nr }),
 
   reset: () =>
     set({
