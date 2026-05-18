@@ -172,6 +172,64 @@ export type BoligoenskeValidering = {
 };
 
 // ---------------------------------------------------------------------------
+// Datakilde-status — bruges af cockpittet til at vise hvilke kilder der er
+// friske, forældede, manglende eller under genindlæsning, og til at tilbyde
+// manuel refresh pr. kilde.
+// ---------------------------------------------------------------------------
+
+export type DataSourceStatus = "fresh" | "stale" | "missing" | "loading" | "error";
+
+export type DataSourceKind =
+  | "bbr"
+  | "lokalplaner"
+  | "kommuneplanramme"
+  | "fbb"
+  | "naturbeskyttelse"
+  | "geusRisk"
+  | "servitutter"
+  | "terrain"
+  | "fjernvarme"
+  | "naboer"
+  | "vurdering"
+  | "byggeanalyse"
+  | "billedanalyse"
+  | "husDna";
+
+export const DATA_SOURCE_LABELS: Record<DataSourceKind, string> = {
+  bbr: "BBR & matrikel",
+  lokalplaner: "Lokalplaner",
+  kommuneplanramme: "Kommuneplanramme",
+  fbb: "SAVE & fredning (FBB)",
+  naturbeskyttelse: "Naturbeskyttelse",
+  geusRisk: "Geoteknisk risiko",
+  servitutter: "Servitutter",
+  terrain: "Terræn (DHM)",
+  fjernvarme: "Fjernvarme",
+  naboer: "Nabobygninger",
+  vurdering: "Ejendomsvurdering",
+  byggeanalyse: "AI byggeanalyse",
+  billedanalyse: "AI billedanalyse",
+  husDna: "Hus-DNA",
+};
+
+const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
+  bbr: "missing",
+  lokalplaner: "missing",
+  kommuneplanramme: "missing",
+  fbb: "missing",
+  naturbeskyttelse: "missing",
+  geusRisk: "missing",
+  servitutter: "missing",
+  terrain: "missing",
+  fjernvarme: "missing",
+  naboer: "missing",
+  vurdering: "missing",
+  byggeanalyse: "missing",
+  billedanalyse: "missing",
+  husDna: "missing",
+};
+
+// ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
 
