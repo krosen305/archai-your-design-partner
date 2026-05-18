@@ -121,9 +121,13 @@ describe("Regression: Hasselvej 48, 2830 Virum", () => {
     const spy = mockFetch(hasselvejDarResponses());
     await DarService.getAddressDetails(HASSELVEJ_ADRESSE_ID, DAR_CONFIG);
 
-    // Kald index 1 er DAR_Husnummer — her var den historiske node-fejl
-    const [, init] = spy.mock.calls[1] as [string, RequestInit];
-    const body = JSON.parse(init.body as string);
+    // Find DAR_Husnummer-kaldet robust uanset call-order
+    const husnummerCall = spy.mock.calls.find(([, init]) =>
+      (JSON.parse(String((init as RequestInit).body ?? "{}"))?.query ?? "").includes("DAR_Husnummer"),
+    ) as [string, RequestInit] | undefined;
+    expect(husnummerCall).toBeDefined();
+    const body = JSON.parse(husnummerCall![1].body as string);
+    expect(body.variables.virkningstid).toBeDefined();
     expect(body.variables.registreringstid).toBeDefined();
     expect(body.variables.registreringstid).toBe(body.variables.virkningstid);
     expect(body.query).toContain("registreringstid");
