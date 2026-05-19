@@ -305,8 +305,20 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
 describe("deriveBbrSummary (ARCH-227)", () => {
   it("bebygget_areal er canonical buildings footprint, ikke summen af alle", () => {
     const bygninger = [
-      { ...MOCK_BYGNING, id_lokalId: "uuid-a", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120, byg026Opfoerelsesaar: 1992 },
-      { ...MOCK_BYGNING, id_lokalId: "uuid-b", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 40, byg026Opfoerelsesaar: 1990 },
+      {
+        ...MOCK_BYGNING,
+        id_lokalId: "uuid-a",
+        byg021BygningensAnvendelse: "120",
+        byg041BebyggetAreal: 120,
+        byg026Opfoerelsesaar: 1992,
+      },
+      {
+        ...MOCK_BYGNING,
+        id_lokalId: "uuid-b",
+        byg021BygningensAnvendelse: "120",
+        byg041BebyggetAreal: 40,
+        byg026Opfoerelsesaar: 1990,
+      },
     ];
     const { bebygget_areal, aggregated_bebygget_areal_all_primary } = deriveBbrSummary(bygninger);
     expect(bebygget_areal).toBe(120); // canonical (newer, higher footprint)
@@ -323,8 +335,18 @@ describe("deriveBbrSummary (ARCH-227)", () => {
   });
 
   it("canonicalBuilding er ikke-sekundær uanset rækkefølge i array", () => {
-    const garage = { ...MOCK_BYGNING, id_lokalId: "uuid-g", byg021BygningensAnvendelse: "910", byg026Opfoerelsesaar: 2000 };
-    const bolig = { ...MOCK_BYGNING, id_lokalId: "uuid-b", byg021BygningensAnvendelse: "120", byg026Opfoerelsesaar: 1992 };
+    const garage = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-g",
+      byg021BygningensAnvendelse: "910",
+      byg026Opfoerelsesaar: 2000,
+    };
+    const bolig = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-b",
+      byg021BygningensAnvendelse: "120",
+      byg026Opfoerelsesaar: 1992,
+    };
     const { canonicalBuilding } = deriveBbrSummary([garage, bolig]);
     expect(canonicalBuilding!.byg021BygningensAnvendelse).toBe("120");
   });

@@ -181,7 +181,7 @@ export type BbrKompliantData = {
   mat_fredskov: boolean | null;
   mat_klitfredning: boolean | null;
   // FBB-opslag (ARCH-131) — sættes af BbrService, bruges af FbbService
-  bygning_lokal_id: string | null; // BBR UUID for primær bygning (= FBB bygningLokalId)
+  bygning_lokal_id: string | null; // BBR UUID for canonical bygning (= FBB bygningLokalId)
   fbb_reference: string | null; // byg071 — URI-link til FBB-registrering (null = ikke i FBB)
   alle_bygning_lokal_ids: string[]; // UUIDs for alle bygninger på adressen (inkl. sekundære)
   alle_bbr_public_ids: string[]; // FBB ois_id værdier afledt direkte fra BBR id_lokalId (ARCH-166)
@@ -513,10 +513,13 @@ export class BbrService {
       }
 
       const anv_kode: string | null = canonicalBuilding.byg021BygningensAnvendelse ?? null;
-      const varme_kode: string | null = canonicalBuilding.byg056Varmeinstallation?.toString() ?? null;
+      const varme_kode: string | null =
+        canonicalBuilding.byg056Varmeinstallation?.toString() ?? null;
       const opv_kode: string | null = canonicalBuilding.byg057Opvarmningsmiddel?.toString() ?? null;
-      const yv_kode: string | null = canonicalBuilding.byg032YdervaeggensMateriale?.toString() ?? null;
-      const tag_kode: string | null = canonicalBuilding.byg033Tagdaekningsmateriale?.toString() ?? null;
+      const yv_kode: string | null =
+        canonicalBuilding.byg032YdervaeggensMateriale?.toString() ?? null;
+      const tag_kode: string | null =
+        canonicalBuilding.byg033Tagdaekningsmateriale?.toString() ?? null;
 
       // FBB: saml alle bygnings-UUIDs — bruges til SAVE-opslag (ARCH-131)
       // Deduplikér på id_lokalId for at undgå redundante FBB-opslag ved bitemporal-dubletter
