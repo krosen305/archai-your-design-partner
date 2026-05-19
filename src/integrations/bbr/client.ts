@@ -127,6 +127,35 @@ const TAGDAEKNING_KODER: Record<string, string> = {
 // Output type
 // ---------------------------------------------------------------------------
 
+export type BbrBygning = {
+  id_lokalId: string | null;
+  byg007Bygningsnummer: string | null;
+  byg021BygningensAnvendelse: string | null;
+  byg024AntalLejlighederMedKoekken: number | null;
+  byg025AntalLejlighederUdenKoekken: number | null;
+  byg026Opfoerelsesaar: number | null;
+  byg027OmTilbygningsaar: number | null;
+  byg029DatoForMidlertidigOpfoertBygning: string | null;
+  byg032YdervaeggensMateriale: string | null;
+  byg033Tagdaekningsmateriale: string | null;
+  byg038SamletBygningsareal: number | null;
+  byg039BygningensSamledeBoligAreal: number | null;
+  byg040BygningensSamledeErhvervsAreal: number | null;
+  byg041BebyggetAreal: number | null;
+  byg054AntalEtager: number | null;
+  byg055AfvigendeEtager: string | null;
+  byg056Varmeinstallation: string | null;
+  byg057Opvarmningsmiddel: string | null;
+  byg070Fredning: string | null;
+  byg071BevaringsvaerdighedReference: string | null;
+  byg094Revisionsdato: string | null;
+  status: string | null;
+  registreringFra: string | null;
+  registreringTil: string | null;
+  virkningFra: string | null;
+  virkningTil: string | null;
+};
+
 export type BbrKompliantData = {
   // Eksisterende felter
   byggeaar: string | null;
@@ -157,6 +186,12 @@ export type BbrKompliantData = {
   alle_bygning_lokal_ids: string[]; // UUIDs for alle bygninger på adressen (inkl. sekundære)
   alle_bbr_public_ids: string[]; // FBB ois_id værdier afledt direkte fra BBR id_lokalId (ARCH-166)
   jordstykke_lokal_id: string | null; // primær MAT_Jordstykke id_lokalId til MatrikelMap (ARCH-223/229)
+  // Canonical building metadata — which building was selected and why
+  canonical_building_lokal_id: string | null;
+  canonical_selection_reason: string | null;
+  canonical_candidates_count: number;
+  aggregated_bebygget_areal_all_primary: number | null;
+  bygning_samlet_boligareal: number | null; // byg039BygningensSamledeBoligAreal from canonical
 };
 
 // ---------------------------------------------------------------------------
@@ -176,17 +211,31 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!, $registreringstid: D
   ) {
     nodes {
       id_lokalId
+      byg007Bygningsnummer
       byg021BygningensAnvendelse
+      byg024AntalLejlighederMedKoekken
+      byg025AntalLejlighederUdenKoekken
       byg026Opfoerelsesaar
+      byg027OmTilbygningsaar
+      byg029DatoForMidlertidigOpfoertBygning
       byg032YdervaeggensMateriale
       byg033Tagdaekningsmateriale
       byg038SamletBygningsareal
+      byg039BygningensSamledeBoligAreal
+      byg040BygningensSamledeErhvervsAreal
       byg041BebyggetAreal
       byg054AntalEtager
+      byg055AfvigendeEtager
       byg056Varmeinstallation
       byg057Opvarmningsmiddel
       byg070Fredning
       byg071BevaringsvaerdighedReference
+      byg094Revisionsdato
+      status
+      registreringFra
+      registreringTil
+      virkningFra
+      virkningTil
     }
   }
 }`;
