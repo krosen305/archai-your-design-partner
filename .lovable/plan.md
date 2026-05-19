@@ -8,13 +8,13 @@ Cockpit-routen har én stor gate (`bbrData && complianceDone` → vis; ellers �
 
 1. Hvis ét felt mangler (fx `compliance_done = false` på et gammelt projekt, eller en ny datakilde der ikke fandtes da projektet blev gemt), kører **hele pipelinen** igen — selv om 90 % af data ligger i DB.
 2. Den kunstige `MIN_LOADING_MS = 2800` skærm bliver vist selv når restore er øjeblikkelig.
-3. Brugeren kan ikke se *hvilke* datakilder der er friske/forældede/manglende — alt er sort boks.
+3. Brugeren kan ikke se _hvilke_ datakilder der er friske/forældede/manglende — alt er sort boks.
 
 ## Forslag
 
 ### 1. Fjern "alt eller intet"-gaten
 
-Cockpittet renderes altid med det restore har givet os. Vi bruger ikke længere `status: "loading" | "done" | "error"` til at skjule hele UI'et. `complianceDone`-flaget i store afgør kun *om "Genindlæs alt"-knappen er fremhævet*, ikke om sektionerne vises.
+Cockpittet renderes altid med det restore har givet os. Vi bruger ikke længere `status: "loading" | "done" | "error"` til at skjule hele UI'et. `complianceDone`-flaget i store afgør kun _om "Genindlæs alt"-knappen er fremhævet_, ikke om sektionerne vises.
 
 ### 2. Datakilde-status pr. sektion
 
@@ -27,7 +27,7 @@ dataStatus: {
   bbr: SectionStatus;
   lokalplaner: SectionStatus;
   kommuneplanramme: SectionStatus;
-  fbb: SectionStatus;          // SAVE/fredning
+  fbb: SectionStatus; // SAVE/fredning
   naturbeskyttelse: SectionStatus;
   geusRisk: SectionStatus;
   servitutter: SectionStatus;
@@ -42,6 +42,7 @@ dataStatus: {
 ```
 
 Status afledes ved restore:
+
 - Felt findes i DB → `fresh` (med `updated_at`-tidsstempel)
 - Felt er `null` i DB → `missing`
 - Felt er ældre end TTL (samme regler som `address_analysis`-cachen i `src/integrations/cache/client.ts`: lokalplan 30d, servitut 7d, compliance 30d) → `stale`
@@ -88,10 +89,11 @@ Status-pillen bruger eksisterende design-tokens (`accent`, `warning`, `danger`, 
 ### 5. Auto-trigger kun ved "missing" + brugerens valg
 
 Vi tilføjer en preference-toggle i toppen af cockpittet:
+
 - **Vis cachet data** (default) — ingen automatiske API-kald
 - **Hent altid friske data** — kører "Genindlæs alt" ved hvert besøg
 
-Vi fjerner den implicitte auto-orchestrator. Hvis et projekt aldrig har kørt compliance (`compliance_done = false`), vises et tydeligt banner: *"Compliance-analyse er ikke kørt endnu — [Start analyse]"*, så det er et bevidst klik.
+Vi fjerner den implicitte auto-orchestrator. Hvis et projekt aldrig har kørt compliance (`compliance_done = false`), vises et tydeligt banner: _"Compliance-analyse er ikke kørt endnu — [Start analyse]"_, så det er et bevidst klik.
 
 ### 6. Fjern `MIN_LOADING_MS = 2800`
 

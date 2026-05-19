@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { PlandataService, selectKommuneplanrammeForCompliance, selectPrimaryLokalplanForPdf } from "./client";
+import {
+  PlandataService,
+  selectKommuneplanrammeForCompliance,
+  selectPrimaryLokalplanForPdf,
+} from "./client";
 import type { Kommuneplanramme, Lokalplan } from "./client";
 
 describe("PlandataService", () => {
@@ -84,7 +88,11 @@ describe("selectKommuneplanrammeForCompliance (ARCH-228)", () => {
 });
 
 describe("selectPrimaryLokalplanForPdf (ARCH-228)", () => {
-  const lp = (status: string | null, datoVedtaget: string | null = null, planid = "1"): Lokalplan => ({
+  const lp = (
+    status: string | null,
+    datoVedtaget: string | null = null,
+    planid = "1",
+  ): Lokalplan => ({
     planid,
     plannavn: "Test",
     plannr: null,

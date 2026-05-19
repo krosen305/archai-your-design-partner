@@ -83,18 +83,18 @@ describe.if(LIVE)("Live smoke — kræver RUN_LIVE_DATAFORDELER_SMOKE=true")
 
 ## De 10 testadresser
 
-| # | Adresse | Primær regression |
-|---|---------|-------------------|
-| 1 | Hasselvej 48, 2830 Virum | DAR bitemporal: 2 nodes → vælg gældende; FBB SAVE 3 via ois_id |
-| 2 | Vindegade 142 (lejlighed) | EBR dual-mode: husnummer-BFE ≠ adresse-BFE |
-| 3 | Østerlunden 10 (lejlighed) | Husnummer-rute tom → adresse-BFE 289814, grundareal 3580 |
-| 4 | Toldbodgade 31 | FBB ois_id → SAVE 3, `-1` overrider ikke |
-| 5 | Bredgade 6, Kbh (fixture) | Enfamiliehus, DAR jordstykke direkte, ingen FBB |
-| 6 | Mosevej 12 (fixture) | Rækkehus: bolig + garage kode 910, bebygget_areal kun bolig |
-| 7 | Vesterbrogade 80 (fixture, lejlighed) | Adresse-BFE via EBR, MAT_Ejerlejlighed-rute |
-| 8 | Strandvejen 100 (fixture) | FBB returnerer 0 features → ingen SAVE |
-| 9 | Søndergade 5 (fixture) | 3 BBR-bygninger med dublet id_lokalId → dedupliceret |
-| 10 | Nørregade 15 (fixture) | 2 Plandata-features → selectKommuneplanrammeForCompliance vælger laveste bebygpct |
+| #   | Adresse                               | Primær regression                                                                 |
+| --- | ------------------------------------- | --------------------------------------------------------------------------------- |
+| 1   | Hasselvej 48, 2830 Virum              | DAR bitemporal: 2 nodes → vælg gældende; FBB SAVE 3 via ois_id                    |
+| 2   | Vindegade 142 (lejlighed)             | EBR dual-mode: husnummer-BFE ≠ adresse-BFE                                        |
+| 3   | Østerlunden 10 (lejlighed)            | Husnummer-rute tom → adresse-BFE 289814, grundareal 3580                          |
+| 4   | Toldbodgade 31                        | FBB ois_id → SAVE 3, `-1` overrider ikke                                          |
+| 5   | Bredgade 6, Kbh (fixture)             | Enfamiliehus, DAR jordstykke direkte, ingen FBB                                   |
+| 6   | Mosevej 12 (fixture)                  | Rækkehus: bolig + garage kode 910, bebygget_areal kun bolig                       |
+| 7   | Vesterbrogade 80 (fixture, lejlighed) | Adresse-BFE via EBR, MAT_Ejerlejlighed-rute                                       |
+| 8   | Strandvejen 100 (fixture)             | FBB returnerer 0 features → ingen SAVE                                            |
+| 9   | Søndergade 5 (fixture)                | 3 BBR-bygninger med dublet id_lokalId → dedupliceret                              |
+| 10  | Nørregade 15 (fixture)                | 2 Plandata-features → selectKommuneplanrammeForCompliance vælger laveste bebygpct |
 
 Adresser 5–10 bruger konstruerede fixtures (ingen ægte UUIDs/persondata).
 
@@ -111,15 +111,14 @@ Med bitemporal args sender klienten `registreringstid` til Datafordeler, som ser
 const DAR_HUSNUMMER_GAELDENDE = {
   data: {
     DAR_Husnummer: {
-      nodes: [
-        { id_lokalId: "husnr-gaeldende", jordstykke: "2468837", status: "Gældende" },
-      ],
+      nodes: [{ id_lokalId: "husnr-gaeldende", jordstykke: "2468837", status: "Gældende" }],
     },
   },
 };
 ```
 
 Test: Kald `DarService.getAddressDetails(...)`, capture mock-request body, assert:
+
 - `body.variables.registreringstid` er sat og lig `body.variables.virkningstid`
 - `body.query` indeholder `"registreringstid"`
 - `result.adgangsadresseid` er ikke null
@@ -131,8 +130,22 @@ Regression-testen fejler hvis `registreringstid` fjernes fra query-definitionen.
 ```typescript
 const FBB_SAVE_FIXTURE = {
   features: [
-    { properties: { bygningsid: 4600919, ois_id: "ad5eb0d3-...", bevaringsvaerdi: -1, fredet: false } },
-    { properties: { bygningsid: 4602381, ois_id: "cb2f89dc-...", bevaringsvaerdi: 3, fredet: false } },
+    {
+      properties: {
+        bygningsid: 4600919,
+        ois_id: "ad5eb0d3-...",
+        bevaringsvaerdi: -1,
+        fredet: false,
+      },
+    },
+    {
+      properties: {
+        bygningsid: 4602381,
+        ois_id: "cb2f89dc-...",
+        bevaringsvaerdi: 3,
+        fredet: false,
+      },
+    },
   ],
 };
 ```
@@ -144,7 +157,7 @@ Test: `FbbService.getSaveData(["ad5eb0d3-...", "cb2f89dc-..."])` → `fbb_bedste
 ```typescript
 const BBR_RAEKKEHUS = [
   { id_lokalId: "byg-1", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 130 }, // bolig
-  { id_lokalId: "byg-2", byg021BygningensAnvendelse: "910", byg041BebyggetAreal: 25 },  // garage
+  { id_lokalId: "byg-2", byg021BygningensAnvendelse: "910", byg041BebyggetAreal: 25 }, // garage
 ];
 ```
 
@@ -168,7 +181,7 @@ Test: `deriveBbrSummary(BBR_MED_DUBLET).bebygget_areal === 280` (ikke 480).
 
 Testes ved at mocke fetch, kalde servicen, og assertere at den URL der sendes IKKE indeholder forbudte endpoints:
 
-```typescript
+````typescript
 it("FBB-client bruger ikke api.dataforsyningen.dk/bbr", async () => {
   let capturedUrl = "";
   globalThis.fetch = mock(async (url: string) => {
@@ -197,9 +210,10 @@ describe.if(LIVE)("Live smoke", () => {
     expect(fbb.fbb_bedste_bygning?.bevaringsvaerdi).toBe(3);
   }, 30_000); // 30s timeout for live
 });
-```
+````
 
 Smoke-tests springes over i normal CI. Kør lokalt med:
+
 ```bash
 RUN_LIVE_DATAFORDELER_SMOKE=true bun test src/integrations/datafordeler/regression.test.ts
 ```
@@ -208,14 +222,14 @@ RUN_LIVE_DATAFORDELER_SMOKE=true bun test src/integrations/datafordeler/regressi
 
 ## Services der importeres
 
-| Service | Import |
-|---------|--------|
-| `DarService` | `@/integrations/dar/client` |
-| `BbrService` + `deriveBbrSummary` | `@/integrations/bbr/client` |
-| `FbbService` | `@/integrations/fbb/client` |
-| `EbrService` | `@/integrations/ebr/client` |
-| `GrundarealResolver` | `@/integrations/mat/grundareal-resolver` |
-| `selectKommuneplanrammeForCompliance`, `selectPrimaryLokalplanForPdf` | `@/integrations/plandata/client` |
+| Service                                                               | Import                                   |
+| --------------------------------------------------------------------- | ---------------------------------------- |
+| `DarService`                                                          | `@/integrations/dar/client`              |
+| `BbrService` + `deriveBbrSummary`                                     | `@/integrations/bbr/client`              |
+| `FbbService`                                                          | `@/integrations/fbb/client`              |
+| `EbrService`                                                          | `@/integrations/ebr/client`              |
+| `GrundarealResolver`                                                  | `@/integrations/mat/grundareal-resolver` |
+| `selectKommuneplanrammeForCompliance`, `selectPrimaryLokalplanForPdf` | `@/integrations/plandata/client`         |
 
 ---
 

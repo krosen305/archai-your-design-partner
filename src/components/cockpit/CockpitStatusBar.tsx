@@ -51,7 +51,11 @@ export function CockpitStatusBar({
           size={14}
           className={cn(
             "mt-0.5 shrink-0",
-            allFresh ? "text-accent" : missing.length > 0 ? "text-warning" : "text-muted-foreground",
+            allFresh
+              ? "text-accent"
+              : missing.length > 0
+                ? "text-warning"
+                : "text-muted-foreground",
           )}
         />
         <div className="min-w-0">

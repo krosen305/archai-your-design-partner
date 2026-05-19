@@ -117,7 +117,8 @@ function RootComponent() {
       typeof window !== "undefined"
         ? window.location.pathname.match(/^\/projekt\/([^/]+)\/cockpit$/)?.[1]
         : null;
-    const restoreAddressId = selectedAddressId && selectedAddressId !== "frit" ? selectedAddressId : null;
+    const restoreAddressId =
+      selectedAddressId && selectedAddressId !== "frit" ? selectedAddressId : null;
 
     if (selectedProjectId) {
       setCurrentProjectId(selectedProjectId);

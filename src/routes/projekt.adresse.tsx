@@ -267,9 +267,7 @@ function AddressStep() {
               aria-autocomplete="list"
               aria-expanded={showDropdown}
               aria-activedescendant={
-                showDropdown && suggestions[highlightIdx]
-                  ? `addr-sugg-${highlightIdx}`
-                  : undefined
+                showDropdown && suggestions[highlightIdx] ? `addr-sugg-${highlightIdx}` : undefined
               }
               className="w-full rounded-sm border border-[#333333] bg-[#111111] pl-10 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-all"
             />

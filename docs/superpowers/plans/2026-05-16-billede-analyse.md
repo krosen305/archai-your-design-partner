@@ -14,16 +14,16 @@
 
 ## Filstruktur
 
-| Fil | Handling |
-|-----|----------|
-| `src/lib/billede-analyse-vocabulary.ts` | Ny — typer, vocab-katalog, system-prompt |
-| `src/integrations/ai/billede-analyse.ts` | Ny — BilledeAnalyseService (Haiku + mock) |
-| `src/lib/billede-analyse.functions.ts` | Ny — `uploadBillede` + `analyserBillederFn` createServerFns |
-| `supabase/migrations/20260516000000_add_billedanalyse.sql` | Ny — ALTER TABLE projects |
-| `src/lib/project-store.ts` | Udvid — `billedanalyse` felt + setter **(beskyttet fil)** |
-| `src/integrations/supabase/project-persistence.ts` | Udvid — ProjectPatch + save/load |
-| `src/lib/feature-flags.ts` | Udvid — `billedanalyseMock` flag |
-| `src/components/cockpit/AiDesignHero.tsx` | Omskriv — upload, analyse-trigger, validerings-UI |
+| Fil                                                        | Handling                                                    |
+| ---------------------------------------------------------- | ----------------------------------------------------------- |
+| `src/lib/billede-analyse-vocabulary.ts`                    | Ny — typer, vocab-katalog, system-prompt                    |
+| `src/integrations/ai/billede-analyse.ts`                   | Ny — BilledeAnalyseService (Haiku + mock)                   |
+| `src/lib/billede-analyse.functions.ts`                     | Ny — `uploadBillede` + `analyserBillederFn` createServerFns |
+| `supabase/migrations/20260516000000_add_billedanalyse.sql` | Ny — ALTER TABLE projects                                   |
+| `src/lib/project-store.ts`                                 | Udvid — `billedanalyse` felt + setter **(beskyttet fil)**   |
+| `src/integrations/supabase/project-persistence.ts`         | Udvid — ProjectPatch + save/load                            |
+| `src/lib/feature-flags.ts`                                 | Udvid — `billedanalyseMock` flag                            |
+| `src/components/cockpit/AiDesignHero.tsx`                  | Omskriv — upload, analyse-trigger, validerings-UI           |
 
 ---
 
@@ -34,6 +34,7 @@
 **Depends on:** ingen
 
 **Files:**
+
 - Create: `src/lib/billede-analyse-vocabulary.ts`
 - Create: `src/lib/billede-analyse-vocabulary.test.ts`
 
@@ -49,7 +50,15 @@ import {
 } from "./billede-analyse-vocabulary";
 
 describe("BILLEDE_ANALYSE_VOCAB", () => {
-  const KATEGORIER = ["facade", "tagform", "vinduer", "materialer", "saerligeTraek", "farver", "stil"] as const;
+  const KATEGORIER = [
+    "facade",
+    "tagform",
+    "vinduer",
+    "materialer",
+    "saerligeTraek",
+    "farver",
+    "stil",
+  ] as const;
 
   test("alle 7 kategorier eksisterer", () => {
     for (const k of KATEGORIER) {
@@ -105,37 +114,114 @@ Forventet: `Cannot find module './billede-analyse-vocabulary'`
 // src/lib/billede-analyse-vocabulary.ts
 
 export type BilledeAnalyseKategorier = {
-  facade:        string[];
-  tagform:       string[];
-  vinduer:       string[];
-  materialer:    string[];
+  facade: string[];
+  tagform: string[];
+  vinduer: string[];
+  materialer: string[];
   saerligeTraek: string[];
-  farver:        string[];
-  stil:          string[];
+  farver: string[];
+  stil: string[];
 };
 
 export type BilledeAnalyseKonflikt = {
-  kategori:    keyof BilledeAnalyseKategorier;
-  muligheder:  string[][];
+  kategori: keyof BilledeAnalyseKategorier;
+  muligheder: string[][];
   billedAntal: number[];
 };
 
 export type BilledeAnalyseResultat = {
-  kategorier:  BilledeAnalyseKategorier;
-  konflikter:  BilledeAnalyseKonflikt[];
-  ekstraTags:  string[];
-  confidence:  number;
-  kilde:       "haiku" | "mock";
+  kategorier: BilledeAnalyseKategorier;
+  konflikter: BilledeAnalyseKonflikt[];
+  ekstraTags: string[];
+  confidence: number;
+  kilde: "haiku" | "mock";
 };
 
 export const BILLEDE_ANALYSE_VOCAB: Record<keyof BilledeAnalyseKategorier, string[]> = {
-  facade:        ["pudset", "tegl", "træbeklædning", "beton", "zink", "fiber-cement", "natursten", "cortenstål", "bindingsværk", "glas-facade"],
-  tagform:       ["fladt tag", "sadeltag", "ensidig hældning", "mansardtag", "valmet tag", "tøndetag", "sedum-tag", "taghave"],
-  vinduer:       ["store formater", "vinduesbånd", "taglys", "kviste", "franske døre", "hjørnevinduer", "facadeglas", "smalt format", "ovenlys"],
-  materialer:    ["beton", "glas", "træ", "stål", "mursten", "zink", "kobber", "keramik", "komposit", "natursten"],
-  saerligeTraek: ["integreret carport", "fritstående carport", "overdækket terrasse", "altan", "taghave", "pool", "solceller", "udestue", "anneks", "udvendig trappe", "dobbelthøjt rum", "gennemgående plan"],
-  farver:        ["hvid", "sort", "antracit", "mørkegrå", "lysegrå", "beige", "sandfarvet", "terracotta", "mørk træ", "lys træ", "rød tegl", "grøn patina"],
-  stil:          ["minimalistisk", "moderne", "skandinavisk", "klassisk", "industriel", "organisk", "rustikt", "bæredygtigt", "nordisk"],
+  facade: [
+    "pudset",
+    "tegl",
+    "træbeklædning",
+    "beton",
+    "zink",
+    "fiber-cement",
+    "natursten",
+    "cortenstål",
+    "bindingsværk",
+    "glas-facade",
+  ],
+  tagform: [
+    "fladt tag",
+    "sadeltag",
+    "ensidig hældning",
+    "mansardtag",
+    "valmet tag",
+    "tøndetag",
+    "sedum-tag",
+    "taghave",
+  ],
+  vinduer: [
+    "store formater",
+    "vinduesbånd",
+    "taglys",
+    "kviste",
+    "franske døre",
+    "hjørnevinduer",
+    "facadeglas",
+    "smalt format",
+    "ovenlys",
+  ],
+  materialer: [
+    "beton",
+    "glas",
+    "træ",
+    "stål",
+    "mursten",
+    "zink",
+    "kobber",
+    "keramik",
+    "komposit",
+    "natursten",
+  ],
+  saerligeTraek: [
+    "integreret carport",
+    "fritstående carport",
+    "overdækket terrasse",
+    "altan",
+    "taghave",
+    "pool",
+    "solceller",
+    "udestue",
+    "anneks",
+    "udvendig trappe",
+    "dobbelthøjt rum",
+    "gennemgående plan",
+  ],
+  farver: [
+    "hvid",
+    "sort",
+    "antracit",
+    "mørkegrå",
+    "lysegrå",
+    "beige",
+    "sandfarvet",
+    "terracotta",
+    "mørk træ",
+    "lys træ",
+    "rød tegl",
+    "grøn patina",
+  ],
+  stil: [
+    "minimalistisk",
+    "moderne",
+    "skandinavisk",
+    "klassisk",
+    "industriel",
+    "organisk",
+    "rustikt",
+    "bæredygtigt",
+    "nordisk",
+  ],
 };
 
 const VOCAB_LINES = (
@@ -202,6 +288,7 @@ git commit -m "feat(ARCH-XXX): billede-analyse typer og vocab-katalog"
 **Depends on:** ingen
 
 **Files:**
+
 - Create: `supabase/migrations/20260516000000_add_billedanalyse.sql`
 
 - [ ] **Step 1: Opret migrationsfil**
@@ -240,6 +327,7 @@ git commit -m "feat(ARCH-XXX): tilføj billedanalyse JSONB kolonne til projects"
 **Depends on:** Task 1
 
 **Files:**
+
 - Create: `src/integrations/ai/billede-analyse.ts`
 - Create: `src/integrations/ai/billede-analyse.test.ts`
 - Modify: `src/lib/feature-flags.ts`
@@ -255,7 +343,7 @@ export const FEATURE_FLAGS = {
   husDnaMock: false,
   byggeanalyseMock: false,
   fjernvarmeMock: false,
-  billedanalyseMock: false,  // ← tilføj denne
+  billedanalyseMock: false, // ← tilføj denne
 } as const;
 ```
 
@@ -267,7 +355,15 @@ import { describe, test, expect } from "bun:test";
 import { BilledeAnalyseService } from "./billede-analyse";
 import type { BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
 
-const KATEGORIER = ["facade", "tagform", "vinduer", "materialer", "saerligeTraek", "farver", "stil"] as const;
+const KATEGORIER = [
+  "facade",
+  "tagform",
+  "vinduer",
+  "materialer",
+  "saerligeTraek",
+  "farver",
+  "stil",
+] as const;
 
 describe("BilledeAnalyseService.analyser (mock)", () => {
   test("returnerer mock-resultat uden API-nøgle", async () => {
@@ -310,7 +406,7 @@ Forventet: `Cannot find module './billede-analyse'`
 
 - [ ] **Step 4: Implementér servicen**
 
-```typescript
+````typescript
 // src/integrations/ai/billede-analyse.ts
 // SERVER-SIDE ONLY — Anthropic API-nøgle må aldrig nå browseren.
 // BilledeAnalyseService — analysér inspirationsbilleder for arkitektoniske kendetegn.
@@ -333,18 +429,18 @@ const IS_MOCK = FEATURE_FLAGS.billedanalyseMock;
 
 const MOCK_RESULT: BilledeAnalyseResultat = {
   kategorier: {
-    facade:        ["pudset", "hvid"],
-    tagform:       ["fladt tag"],
-    vinduer:       ["store formater", "vinduesbånd"],
-    materialer:    ["beton", "glas"],
+    facade: ["pudset", "hvid"],
+    tagform: ["fladt tag"],
+    vinduer: ["store formater", "vinduesbånd"],
+    materialer: ["beton", "glas"],
     saerligeTraek: ["integreret carport"],
-    farver:        ["hvid", "antracit"],
-    stil:          ["minimalistisk"],
+    farver: ["hvid", "antracit"],
+    stil: ["minimalistisk"],
   },
-  konflikter:  [],
-  ekstraTags:  ["sydvendt atrium"],
-  confidence:  87,
-  kilde:       "mock",
+  konflikter: [],
+  ekstraTags: ["sydvendt atrium"],
+  confidence: 87,
+  kilde: "mock",
 };
 
 // ---------------------------------------------------------------------------
@@ -352,26 +448,34 @@ const MOCK_RESULT: BilledeAnalyseResultat = {
 // ---------------------------------------------------------------------------
 
 const KategorierSchema = z.object({
-  facade:        z.array(z.string()).default([]),
-  tagform:       z.array(z.string()).default([]),
-  vinduer:       z.array(z.string()).default([]),
-  materialer:    z.array(z.string()).default([]),
+  facade: z.array(z.string()).default([]),
+  tagform: z.array(z.string()).default([]),
+  vinduer: z.array(z.string()).default([]),
+  materialer: z.array(z.string()).default([]),
   saerligeTraek: z.array(z.string()).default([]),
-  farver:        z.array(z.string()).default([]),
-  stil:          z.array(z.string()).default([]),
+  farver: z.array(z.string()).default([]),
+  stil: z.array(z.string()).default([]),
 });
 
 const KonfliktSchema = z.object({
-  kategori:    z.enum(["facade", "tagform", "vinduer", "materialer", "saerligeTraek", "farver", "stil"]),
-  muligheder:  z.array(z.array(z.string())),
+  kategori: z.enum([
+    "facade",
+    "tagform",
+    "vinduer",
+    "materialer",
+    "saerligeTraek",
+    "farver",
+    "stil",
+  ]),
+  muligheder: z.array(z.array(z.string())),
   billedAntal: z.array(z.number()),
 });
 
 const ApiResponseSchema = z.object({
-  kategorier:  KategorierSchema,
-  konflikter:  z.array(KonfliktSchema).default([]),
-  ekstraTags:  z.array(z.string()).default([]),
-  confidence:  z.number().min(0).max(100).default(70),
+  kategorier: KategorierSchema,
+  konflikter: z.array(KonfliktSchema).default([]),
+  ekstraTags: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(100).default(70),
 });
 
 // ---------------------------------------------------------------------------
@@ -463,7 +567,7 @@ async function callHaiku(apiKey: string, billedUrls: string[]): Promise<BilledeA
 
   throw new Error("Haiku: max retries exceeded");
 }
-```
+````
 
 - [ ] **Step 5: Kør test — verificer at de består**
 
@@ -493,10 +597,11 @@ git commit -m "feat(ARCH-XXX): BilledeAnalyseService — Haiku med mock-fallback
 ## Task 4: project-store + persistence
 
 **Linear:** ARCH-XXX — `feat: billedanalyse i project-store og persistence`
-**Label:** `needs-architecture` *(rører beskyttet fil: project-store.ts)*
+**Label:** `needs-architecture` _(rører beskyttet fil: project-store.ts)_
 **Depends on:** Task 1, Task 2
 
 **Files:**
+
 - Modify: `src/lib/project-store.ts` **(beskyttet)**
 - Modify: `src/integrations/supabase/project-persistence.ts`
 
@@ -559,7 +664,7 @@ Find `loadProject`-funktionen. Find den lange `.select(...)` streng og tilføj `
 // Find linjen der starter med:
 // "id, address_full, address_kommune, ..."
 // og tilføj billedanalyse til sidst:
-", billedanalyse"
+", billedanalyse";
 ```
 
 Find stedet i `loadProject` hvor den returnerede data mappes til projektstate (eller PersistedProject-typen returneres direkte). Tilsvarende restore-logik i `restoreProject` / `project-sync.ts` skal køre:
@@ -567,9 +672,11 @@ Find stedet i `loadProject` hvor den returnerede data mappes til projektstate (e
 ```typescript
 // I den funktion der kalder setBilledanalyse efter loadProject:
 if (data.billedanalyse) {
-  useProject.getState().setBilledanalyse(
-    data.billedanalyse as import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat
-  );
+  useProject
+    .getState()
+    .setBilledanalyse(
+      data.billedanalyse as import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat,
+    );
 }
 ```
 
@@ -609,6 +716,7 @@ git commit -m "feat(ARCH-XXX): billedanalyse felt i project-store og persistence
 Server functions der bruges af komponenter skal ligge i en functions-fil (samme mønster som `@/lib/ai-design.functions.ts` brugt af AiDesignHero). Komponenten importerer direkte fra denne fil.
 
 **Files:**
+
 - Create: `src/lib/billede-analyse.functions.ts`
 
 - [ ] **Step 1: Opret functions-filen**
@@ -628,9 +736,9 @@ import type { BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
 // ---------------------------------------------------------------------------
 
 const uploadBilledeSchema = z.object({
-  base64:      z.string().min(1),
-  mimeType:    z.enum(["image/jpeg", "image/png"]),
-  projektId:   z.string().uuid(),
+  base64: z.string().min(1),
+  mimeType: z.enum(["image/jpeg", "image/png"]),
+  projektId: z.string().uuid(),
   accessToken: z.string().min(1),
 });
 
@@ -640,10 +748,7 @@ export const uploadBillede = createServerFn({ method: "POST" })
     const { createClient } = await import("@supabase/supabase-js");
     const { getEnv } = await import("@/lib/env");
 
-    const supabaseAdmin = createClient(
-      getEnv("SUPABASE_URL"),
-      getEnv("SUPABASE_SERVICE_ROLE_KEY"),
-    );
+    const supabaseAdmin = createClient(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_ROLE_KEY"));
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
     if (authError || !authData.user) throw new Response("Unauthorized", { status: 401 });
@@ -708,6 +813,7 @@ git commit -m "feat(ARCH-XXX): uploadBillede + analyserBilleder server functions
 **Depends on:** Task 5
 
 **Files:**
+
 - Modify: `src/components/cockpit/AiDesignHero.tsx`
 
 - [ ] **Step 1: Tilføj state machine og upload-logik**
@@ -716,12 +822,20 @@ Erstat den eksisterende `handleFiles`-funktion og relaterede state med følgende
 
 ```typescript
 // Ny state øverst i AiDesignHero-funktionen — tilføj efter eksisterende useState-kald:
-type AnalyseState = "idle" | "uploading" | "ready" | "analysing" | "conflict" | "validated" | "saved" | "error";
+type AnalyseState =
+  | "idle"
+  | "uploading"
+  | "ready"
+  | "analysing"
+  | "conflict"
+  | "validated"
+  | "saved"
+  | "error";
 const [analyseState, setAnalyseState] = useState<AnalyseState>(
-  useProject.getState().billedanalyse ? "saved" : "idle"
+  useProject.getState().billedanalyse ? "saved" : "idle",
 );
 const [analyse, setAnalyse] = useState<BilledeAnalyseResultat | null>(
-  useProject.getState().billedanalyse ?? null
+  useProject.getState().billedanalyse ?? null,
 );
 const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -772,10 +886,10 @@ const handleFiles = async (files: FileList | null) => {
 
   // Gem stier og URLs i store
   const existingPaths = useProject.getState().byggeoenske.inspirationsbilledePaths ?? [];
-  const existingUrls  = useProject.getState().byggeoenske.inspirationsbilleder ?? [];
+  const existingUrls = useProject.getState().byggeoenske.inspirationsbilleder ?? [];
   setByggeoenske({
     inspirationsbilledePaths: [...existingPaths, ...newPaths],
-    inspirationsbilleder:     [...existingUrls,  ...newSignedUrls],
+    inspirationsbilleder: [...existingUrls, ...newSignedUrls],
   });
 
   setAnalyseState("ready");
@@ -819,9 +933,13 @@ Find knap-området i return-blokken (ved siden af upload-knappen) og tilføj:
   className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5 font-mono text-[11px] text-foreground hover:border-accent/50 transition-colors disabled:opacity-50"
 >
   {analyseState === "analysing" ? (
-    <><Loader2 size={12} className="animate-spin" /> Analyserer…</>
+    <>
+      <Loader2 size={12} className="animate-spin" /> Analyserer…
+    </>
   ) : (
-    <><Sparkles size={12} /> Analyser billeder</>
+    <>
+      <Sparkles size={12} /> Analyser billeder
+    </>
   )}
 </button>
 ```
@@ -861,6 +979,7 @@ git commit -m "feat(ARCH-XXX): AiDesignHero upload til Supabase og analyse-trigg
 **Depends on:** Task 6
 
 **Files:**
+
 - Modify: `src/components/cockpit/AiDesignHero.tsx`
 
 - [ ] **Step 1: Tilføj hjælpefunktioner til tag-manipulation**
@@ -868,10 +987,7 @@ git commit -m "feat(ARCH-XXX): AiDesignHero upload til Supabase og analyse-trigg
 Tilføj disse rene funktioner øverst i filen (udenfor komponenten):
 
 ```typescript
-import {
-  uploadBillede,
-  analyserBillederFn,
-} from "@/lib/billede-analyse.functions";
+import { uploadBillede, analyserBillederFn } from "@/lib/billede-analyse.functions";
 import type {
   BilledeAnalyseResultat,
   BilledeAnalyseKategorier,
@@ -939,126 +1055,131 @@ const handleGem = () => {
 Tilføj følgende blok i return-JSX, efter upload-sektionen og før design-forslagene:
 
 ```tsx
-{analyse && (analyseState === "conflict" || analyseState === "validated" || analyseState === "saved") && (
-  <div className="px-5 pb-2 space-y-4">
-
-    {/* Konflikter */}
-    {analyse.konflikter.map((konflikt) => (
-      <div key={konflikt.kategori} className="rounded-md border border-warning/40 bg-warning/5 p-4">
-        <div className="font-mono text-[10px] text-warning uppercase tracking-wider mb-2">
-          Dine billeder trækker i to retninger for{" "}
-          <span className="text-foreground">{konflikt.kategori}</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {konflikt.muligheder.map((tags, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => {
-                const updated = resolveKonflikt(konflikt.kategori, tags, analyse);
-                setAnalyse(updated);
-                setAnalyseState(updated.konflikter.length > 0 ? "conflict" : "validated");
-              }}
-              className="rounded-md border border-border/60 bg-[#111] p-3 text-left hover:border-accent/50 transition-colors"
-            >
-              <div className="font-mono text-[11px] text-foreground mb-1">
-                Retning {String.fromCharCode(65 + i)}
-              </div>
-              <div className="text-xs text-muted-foreground">{tags.join(" · ")}</div>
-              <div className="font-mono text-[10px] text-muted-foreground/60 mt-1">
-                {konflikt.billedAntal[i]} billede{konflikt.billedAntal[i] !== 1 ? "r" : ""}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    ))}
-
-    {/* Enige tags per kategori */}
-    {(Object.entries(analyse.kategorier) as [keyof BilledeAnalyseKategorier, string[]][])
-      .filter(([, tags]) => tags.length > 0)
-      .map(([kategori, tags]) => (
-        <div key={kategori}>
-          <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
-            {kategori}
+{
+  analyse &&
+    (analyseState === "conflict" || analyseState === "validated" || analyseState === "saved") && (
+      <div className="px-5 pb-2 space-y-4">
+        {/* Konflikter */}
+        {analyse.konflikter.map((konflikt) => (
+          <div
+            key={konflikt.kategori}
+            className="rounded-md border border-warning/40 bg-warning/5 p-4"
+          >
+            <div className="font-mono text-[10px] text-warning uppercase tracking-wider mb-2">
+              Dine billeder trækker i to retninger for{" "}
+              <span className="text-foreground">{konflikt.kategori}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {konflikt.muligheder.map((tags, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    const updated = resolveKonflikt(konflikt.kategori, tags, analyse);
+                    setAnalyse(updated);
+                    setAnalyseState(updated.konflikter.length > 0 ? "conflict" : "validated");
+                  }}
+                  className="rounded-md border border-border/60 bg-[#111] p-3 text-left hover:border-accent/50 transition-colors"
+                >
+                  <div className="font-mono text-[11px] text-foreground mb-1">
+                    Retning {String.fromCharCode(65 + i)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{tags.join(" · ")}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground/60 mt-1">
+                    {konflikt.billedAntal[i]} billede{konflikt.billedAntal[i] !== 1 ? "r" : ""}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 items-center">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 font-mono text-[11px] text-accent"
-              >
-                {tag}
-                {analyseState !== "saved" && (
-                  <button
-                    type="button"
-                    onClick={() => setAnalyse(removeTag(kategori, tag, analyse))}
-                    className="opacity-60 hover:opacity-100 ml-0.5"
-                    aria-label={`Fjern ${tag}`}
+        ))}
+
+        {/* Enige tags per kategori */}
+        {(Object.entries(analyse.kategorier) as [keyof BilledeAnalyseKategorier, string[]][])
+          .filter(([, tags]) => tags.length > 0)
+          .map(([kategori, tags]) => (
+            <div key={kategori}>
+              <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
+                {kategori}
+              </div>
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 font-mono text-[11px] text-accent"
                   >
-                    <X size={9} />
-                  </button>
+                    {tag}
+                    {analyseState !== "saved" && (
+                      <button
+                        type="button"
+                        onClick={() => setAnalyse(removeTag(kategori, tag, analyse))}
+                        className="opacity-60 hover:opacity-100 ml-0.5"
+                        aria-label={`Fjern ${tag}`}
+                      >
+                        <X size={9} />
+                      </button>
+                    )}
+                  </span>
+                ))}
+                {analyseState !== "saved" && (
+                  <input
+                    type="text"
+                    placeholder="+ tilføj"
+                    className="w-20 bg-transparent font-mono text-[11px] text-muted-foreground border-b border-border/40 focus:outline-none focus:border-accent/60 pb-0.5"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const val = e.currentTarget.value.trim();
+                        if (val) {
+                          setAnalyse(addTag(kategori, val, analyse));
+                          e.currentTarget.value = "";
+                        }
+                      }
+                    }}
+                  />
                 )}
-              </span>
-            ))}
-            {analyseState !== "saved" && (
-              <input
-                type="text"
-                placeholder="+ tilføj"
-                className="w-20 bg-transparent font-mono text-[11px] text-muted-foreground border-b border-border/40 focus:outline-none focus:border-accent/60 pb-0.5"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const val = e.currentTarget.value.trim();
-                    if (val) {
-                      setAnalyse(addTag(kategori, val, analyse));
-                      e.currentTarget.value = "";
-                    }
-                  }
-                }}
-              />
-            )}
-          </div>
-        </div>
-      ))}
-
-    {/* ekstraTags */}
-    {analyse.ekstraTags.length > 0 && (
-      <div>
-        <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
-          Yderligere detaljer
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {analyse.ekstraTags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-[#111] px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground"
-            >
-              {tag}
-            </span>
+              </div>
+            </div>
           ))}
-        </div>
-      </div>
-    )}
 
-    {/* Gem-knap */}
-    {analyseState !== "saved" && (
-      <button
-        type="button"
-        onClick={handleGem}
-        disabled={analyse.konflikter.length > 0}
-        className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-mono text-[11px] text-accent-foreground hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <Check size={12} /> Gem analyse
-      </button>
-    )}
+        {/* ekstraTags */}
+        {analyse.ekstraTags.length > 0 && (
+          <div>
+            <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
+              Yderligere detaljer
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {analyse.ekstraTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-[#111] px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
-    {analyseState === "saved" && (
-      <div className="font-mono text-[11px] text-accent flex items-center gap-1.5">
-        <Check size={12} /> Analyse gemt
+        {/* Gem-knap */}
+        {analyseState !== "saved" && (
+          <button
+            type="button"
+            onClick={handleGem}
+            disabled={analyse.konflikter.length > 0}
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-mono text-[11px] text-accent-foreground hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Check size={12} /> Gem analyse
+          </button>
+        )}
+
+        {analyseState === "saved" && (
+          <div className="font-mono text-[11px] text-accent flex items-center gap-1.5">
+            <Check size={12} /> Analyse gemt
+          </div>
+        )}
       </div>
-    )}
-  </div>
-)}
+    );
+}
 ```
 
 - [ ] **Step 4: Typecheck**
@@ -1106,6 +1227,7 @@ Erstat ARCH-XXX med næste ledige numre. Nedenstående er klar til at oprette:
 ---
 
 ### ARCH-XXX: Billedanalyse — typer og vocab-katalog
+
 **Label:** `codex-safe`
 **Estimat:** S
 
@@ -1114,6 +1236,7 @@ Opret `src/lib/billede-analyse-vocabulary.ts` med `BilledeAnalyseKategorier`, `B
 ---
 
 ### ARCH-XXX: Billedanalyse — Supabase migration
+
 **Label:** `codex-safe`
 **Estimat:** XS
 **Depends on:** ingen
@@ -1123,6 +1246,7 @@ Opret `supabase/migrations/20260516000000_add_billedanalyse.sql` med `ALTER TABL
 ---
 
 ### ARCH-XXX: BilledeAnalyseService — Haiku med mock-fallback
+
 **Label:** `codex-safe`
 **Estimat:** M
 **Depends on:** ARCH-XXX (typer)
@@ -1132,6 +1256,7 @@ Opret `src/integrations/ai/billede-analyse.ts` med `BilledeAnalyseService.analys
 ---
 
 ### ARCH-XXX: Billedanalyse — project-store og persistence
+
 **Label:** `needs-architecture`
 **Estimat:** S
 **Depends on:** ARCH-XXX (typer), ARCH-XXX (migration)
@@ -1141,6 +1266,7 @@ Tilføj `billedanalyse: BilledeAnalyseResultat | null` og `setBilledanalyse` set
 ---
 
 ### ARCH-XXX: Billedanalyse — uploadBillede + analyserBilleder server functions
+
 **Label:** `codex-safe`
 **Estimat:** M
 **Depends on:** ARCH-XXX (service), ARCH-XXX (store)
@@ -1150,6 +1276,7 @@ Opret `src/lib/billede-analyse.functions.ts` med to `createServerFn` (samme møn
 ---
 
 ### ARCH-XXX: AiDesignHero — upload til Supabase og analyse-trigger
+
 **Label:** `codex-safe`
 **Estimat:** M
 **Depends on:** ARCH-XXX (server functions)
@@ -1159,6 +1286,7 @@ Udvid `AiDesignHero.tsx` med state machine (`idle|uploading|ready|analysing|conf
 ---
 
 ### ARCH-XXX: AiDesignHero — validerings-UI med tags og konfliktløsning
+
 **Label:** `codex-safe`
 **Estimat:** L
 **Depends on:** ARCH-XXX (upload og trigger)

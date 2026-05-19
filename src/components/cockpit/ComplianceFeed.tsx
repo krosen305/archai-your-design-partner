@@ -31,10 +31,7 @@ export function ComplianceFeed() {
   const [expanded, setExpanded] = useState(true);
 
   const sorted = useMemo(
-    () =>
-      [...complianceFlags].sort(
-        (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
-      ),
+    () => [...complianceFlags].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]),
     [complianceFlags],
   );
 
@@ -104,10 +101,7 @@ export function ComplianceFeed() {
           >
             <div className="relative pl-4 pr-4 py-2">
               {/* vertikal akse */}
-              <span
-                aria-hidden
-                className="absolute left-[26px] top-3 bottom-3 w-px bg-border/40"
-              />
+              <span aria-hidden className="absolute left-[26px] top-3 bottom-3 w-px bg-border/40" />
               {sorted.map((flag, idx) => (
                 <FeedItem key={flag.id ?? `${flag.label}-${idx}`} flag={flag} />
               ))}

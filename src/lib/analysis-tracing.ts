@@ -179,7 +179,16 @@ export async function recordAnalysisEvent(
 
 export async function traceStep<T>(
   trace: AnalysisTraceContext | null | undefined,
-  input: Omit<EventInput, "status" | "durationMs" | "errorMessage" | "cacheHit" | "metadata" | "outputSummary" | "decisionSummary">,
+  input: Omit<
+    EventInput,
+    | "status"
+    | "durationMs"
+    | "errorMessage"
+    | "cacheHit"
+    | "metadata"
+    | "outputSummary"
+    | "decisionSummary"
+  >,
   fn: () => Promise<T>,
   options?: TraceStepOptions<T>,
 ): Promise<T> {

@@ -4,9 +4,7 @@ import { useProject } from "@/lib/project-store";
 
 function TeknikPage() {
   const { address } = useProject();
-  const backTo = address?.adresseid
-    ? `/projekt/${address.adresseid}/cockpit`
-    : "/projekt/start";
+  const backTo = address?.adresseid ? `/projekt/${address.adresseid}/cockpit` : "/projekt/start";
   return (
     <PhaseComingSoon
       step={3}

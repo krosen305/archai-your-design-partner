@@ -17,7 +17,12 @@ import {
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { useProject, deriveComplianceFlags, parseComplianceData, deriveSourceStatus } from "@/lib/project-store";
+import {
+  useProject,
+  deriveComplianceFlags,
+  parseComplianceData,
+  deriveSourceStatus,
+} from "@/lib/project-store";
 
 import { CockpitStatusBar } from "@/components/cockpit/CockpitStatusBar";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
@@ -531,7 +536,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           const store = useProject.getState();
           store.setCurrentProjectId(project.id);
           const resolvedAdresseid = project.address_adresseid ?? project.address_bbr ?? adresseId;
-          const resolvedAdgangsadresseid = project.address_bbr ?? project.address_adresseid ?? adresseId;
+          const resolvedAdgangsadresseid =
+            project.address_bbr ?? project.address_adresseid ?? adresseId;
           store.setAddress({
             adresseid: resolvedAdresseid,
             adresse: project.address_full,
@@ -578,7 +584,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             store.setHeritageSaveValue(project.heritage_save_value);
           if (project.is_fredet != null) store.setIsFredet(project.is_fredet);
           store.setHardStop(project.hard_stop ?? false, project.hard_stop_reason ?? null);
-          const { setGrundareal, setBebyggetAreal, setBudgetEstimate, setBfeNr } = useProject.getState();
+          const { setGrundareal, setBebyggetAreal, setBudgetEstimate, setBfeNr } =
+            useProject.getState();
           if (project.grundareal_m2 != null) setGrundareal(project.grundareal_m2);
           if (project.bebygget_areal_m2 != null) setBebyggetAreal(project.bebygget_areal_m2);
           if (project.budget_estimate != null) setBudgetEstimate(project.budget_estimate);
@@ -601,14 +608,46 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           store.setDataStatusBulk({
             bbr: deriveSourceStatus("bbr", s.bbrData, lastFetched),
             lokalplaner: deriveSourceStatus("lokalplaner", s.lokalplaner, lastFetched),
-            kommuneplanramme: deriveSourceStatus("kommuneplanramme", s.kommuneplanramme, lastFetched),
-            fbb: deriveSourceStatus("fbb", objectField(project.compliance_data, "fbbData"), lastFetched),
-            naturbeskyttelse: deriveSourceStatus("naturbeskyttelse", objectField(project.compliance_data, "naturbeskyttelse"), lastFetched),
-            geusRisk: deriveSourceStatus("geusRisk", objectField(project.compliance_data, "geusRisk"), lastFetched),
-            servitutter: deriveSourceStatus("servitutter", objectField(project.compliance_data, "servitutter"), lastFetched),
-            terrain: deriveSourceStatus("terrain", objectField(project.compliance_data, "terrain"), lastFetched),
-            fjernvarme: deriveSourceStatus("fjernvarme", objectField(project.compliance_data, "fjernvarme"), lastFetched),
-            naboer: deriveSourceStatus("naboer", objectField(project.compliance_data, "naboer"), lastFetched),
+            kommuneplanramme: deriveSourceStatus(
+              "kommuneplanramme",
+              s.kommuneplanramme,
+              lastFetched,
+            ),
+            fbb: deriveSourceStatus(
+              "fbb",
+              objectField(project.compliance_data, "fbbData"),
+              lastFetched,
+            ),
+            naturbeskyttelse: deriveSourceStatus(
+              "naturbeskyttelse",
+              objectField(project.compliance_data, "naturbeskyttelse"),
+              lastFetched,
+            ),
+            geusRisk: deriveSourceStatus(
+              "geusRisk",
+              objectField(project.compliance_data, "geusRisk"),
+              lastFetched,
+            ),
+            servitutter: deriveSourceStatus(
+              "servitutter",
+              objectField(project.compliance_data, "servitutter"),
+              lastFetched,
+            ),
+            terrain: deriveSourceStatus(
+              "terrain",
+              objectField(project.compliance_data, "terrain"),
+              lastFetched,
+            ),
+            fjernvarme: deriveSourceStatus(
+              "fjernvarme",
+              objectField(project.compliance_data, "fjernvarme"),
+              lastFetched,
+            ),
+            naboer: deriveSourceStatus(
+              "naboer",
+              objectField(project.compliance_data, "naboer"),
+              lastFetched,
+            ),
             vurdering: deriveSourceStatus("vurdering", s.vurderingData, lastFetched),
             byggeanalyse: deriveSourceStatus("byggeanalyse", s.byggeanalyseResultat, lastFetched),
             billedanalyse: deriveSourceStatus("billedanalyse", project.billedanalyse, lastFetched),

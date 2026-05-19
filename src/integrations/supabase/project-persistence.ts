@@ -501,10 +501,7 @@ export async function createProject(accessToken: string): Promise<string | null>
 // building_tasks). address_analysis / site_constraints er delt cache og røres ikke.
 // ---------------------------------------------------------------------------
 
-export async function deleteProject(
-  accessToken: string,
-  projectId: string,
-): Promise<void> {
+export async function deleteProject(accessToken: string, projectId: string): Promise<void> {
   const userId = await getUserId(accessToken);
   if (!userId) throw new Error("[Persistence] deleteProject: ikke autoriseret");
   if (!projectId?.trim()) throw new Error("[Persistence] deleteProject: projectId mangler");
@@ -517,7 +514,10 @@ export async function deleteProject(
     .eq("user_id", userId)
     .maybeSingle();
   if (ownErr) throw new Error(`[Persistence] deleteProject: ${ownErr.message}`);
-  if (!owned) throw new Error("[Persistence] deleteProject: projekt findes ikke eller tilhører ikke brugeren");
+  if (!owned)
+    throw new Error(
+      "[Persistence] deleteProject: projekt findes ikke eller tilhører ikke brugeren",
+    );
 
   // 1. Storage: fjern alle inspirationsbilleder for projektet
   const folder = `${userId}/${projectId}`;
@@ -528,7 +528,10 @@ export async function deleteProject(
       await supabaseAdmin.storage.from("inspirationsbilleder").remove(paths);
     }
   } catch (e) {
-    console.warn("[Persistence] deleteProject: storage cleanup fejlede (ikke kritisk):", (e as Error).message);
+    console.warn(
+      "[Persistence] deleteProject: storage cleanup fejlede (ikke kritisk):",
+      (e as Error).message,
+    );
   }
 
   // 2. design_iterations — ingen DB-cascade

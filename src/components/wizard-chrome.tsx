@@ -1,5 +1,16 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Menu, LogOut, FolderOpen, LogIn, Check, Lock, AlertTriangle, Eye, Wrench } from "lucide-react";
+import {
+  ArrowLeft,
+  Menu,
+  LogOut,
+  FolderOpen,
+  LogIn,
+  Check,
+  Lock,
+  AlertTriangle,
+  Eye,
+  Wrench,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";

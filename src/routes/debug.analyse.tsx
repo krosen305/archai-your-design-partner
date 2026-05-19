@@ -67,7 +67,7 @@ const getAnalysisRuns = createServerFn({ method: "GET" })
            id, event_type, phase, service, operation, status,
            cache_hit, http_status, duration_ms, error_message,
            input_summary, output_summary, decision_summary, created_at
-         )`
+         )`,
       )
       .order("started_at", { ascending: false })
       .limit(20);
@@ -81,8 +81,7 @@ const getAnalysisRuns = createServerFn({ method: "GET" })
     return (runs ?? []).map((r: any) => ({
       ...r,
       events: (r.analysis_events ?? []).sort(
-        (a: any, b: any) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       ),
     }));
   });
@@ -125,9 +124,7 @@ function DebugAnalysePage() {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="font-mono text-sm tracking-widest text-foreground">
-          DEBUG / ANALYSE LOG
-        </h1>
+        <h1 className="font-mono text-sm tracking-widest text-foreground">DEBUG / ANALYSE LOG</h1>
         <p className="text-xs text-muted-foreground mt-1">
           Intern visning af analysekørsler — kun tilgængelig i dev/staging.
         </p>
@@ -177,9 +174,7 @@ function DebugAnalysePage() {
             key={run.id}
             run={run}
             expanded={expandedRun === run.id}
-            onToggle={() =>
-              setExpandedRun(expandedRun === run.id ? null : run.id)
-            }
+            onToggle={() => setExpandedRun(expandedRun === run.id ? null : run.id)}
           />
         ))}
       </div>
@@ -204,10 +199,7 @@ function RunCard({
         : "text-yellow-400";
 
   return (
-    <div
-      className="rounded border border-border p-4 space-y-2"
-      data-testid="debug-run-card"
-    >
+    <div className="rounded border border-border p-4 space-y-2" data-testid="debug-run-card">
       <button type="button" onClick={onToggle} className="w-full text-left space-y-1">
         <div className="flex items-center justify-between">
           <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
@@ -224,9 +216,7 @@ function RunCard({
           {run.duration_ms != null && <span>{run.duration_ms}ms</span>}
           <span>{new Date(run.started_at).toLocaleTimeString("da-DK")}</span>
         </div>
-        {run.error_message && (
-          <div className="text-xs text-danger">{run.error_message}</div>
-        )}
+        {run.error_message && <div className="text-xs text-danger">{run.error_message}</div>}
       </button>
 
       {expanded && (
@@ -266,9 +256,7 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
         {event.decision_summary && (
           <div className="text-yellow-400">⚠ {event.decision_summary}</div>
         )}
-        {event.error_message && (
-          <div className="text-danger">✗ {event.error_message}</div>
-        )}
+        {event.error_message && <div className="text-danger">✗ {event.error_message}</div>}
         <div className="text-muted-foreground/50">
           {event.phase && `${event.phase} · `}
           {event.duration_ms != null && `${event.duration_ms}ms`}

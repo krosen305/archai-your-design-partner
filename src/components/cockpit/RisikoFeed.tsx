@@ -190,10 +190,7 @@ export function RisikoFeed({ onOpenDetails }: { onOpenDetails: () => void }) {
           </li>
         ) : (
           <div className="relative pl-4 pr-3 py-2">
-            <span
-              aria-hidden
-              className="absolute left-[26px] top-3 bottom-3 w-px bg-border/40"
-            />
+            <span aria-hidden className="absolute left-[26px] top-3 bottom-3 w-px bg-border/40" />
             {visible.map((flag, idx) => (
               <FeedItem key={flag.id ?? `${flag.label}-${idx}`} flag={flag} />
             ))}

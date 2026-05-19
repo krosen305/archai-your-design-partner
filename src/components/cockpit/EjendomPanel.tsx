@@ -10,7 +10,12 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { useProject, type ComplianceFlag, type PipelineServiceState, PIPELINE_SERVICE_STATE_LABELS } from "@/lib/project-store";
+import {
+  useProject,
+  type ComplianceFlag,
+  type PipelineServiceState,
+  PIPELINE_SERVICE_STATE_LABELS,
+} from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
 
 export function EjendomPanel() {
@@ -35,15 +40,14 @@ export function EjendomPanel() {
   const k = adressePreCheck?.kontekst;
   const bbr = bbrData ?? adressePreCheck?.bbr ?? null;
 
-  const grundareal = grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
+  const grundareal =
+    grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
   const bebyggetAreal = bebygget_areal_m2 ?? bbr?.bebygget_areal ?? null;
   const remaining = complianceMetrics?.remainingBygningsareal ?? k?.restBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
   const currentPct =
     complianceMetrics?.currentBebyggelsesprocent ??
-    (grundareal && bebyggetAreal
-      ? Math.round((bebyggetAreal / grundareal) * 1000) / 10
-      : null) ??
+    (grundareal && bebyggetAreal ? Math.round((bebyggetAreal / grundareal) * 1000) / 10 : null) ??
     bbrData?.bebyggelsesprocent ??
     k?.bebyggelsesprocent ??
     null;
@@ -91,7 +95,9 @@ export function EjendomPanel() {
         <div className="flex items-center gap-2 rounded-md border border-danger/40 bg-danger/5 px-3 py-2">
           <AlertTriangle size={13} className="text-danger shrink-0" />
           <div>
-            <span className="font-mono text-[10px] tracking-[0.15em] text-danger">FREDET BYGNING</span>
+            <span className="font-mono text-[10px] tracking-[0.15em] text-danger">
+              FREDET BYGNING
+            </span>
             <span className="ml-2 text-xs text-muted-foreground">— kilde: FBB / BBR byg070</span>
           </div>
         </div>
@@ -250,7 +256,9 @@ export function EjendomPanel() {
             />
             <DataRow
               label="Strandbeskyttelse (MAT)"
-              value={bbr?.mat_strandbeskyttelse == null ? "—" : bbr.mat_strandbeskyttelse ? "Ja" : "Nej"}
+              value={
+                bbr?.mat_strandbeskyttelse == null ? "—" : bbr.mat_strandbeskyttelse ? "Ja" : "Nej"
+              }
               state={serviceStates.bbr ?? (bbr == null ? "not_run" : "success")}
               data-testid="datarow-mat-strandbeskyttelse"
             />
@@ -268,19 +276,29 @@ export function EjendomPanel() {
             />
             <DataRow
               label="FBB-registrering"
-              value={heritage_save_value != null ? `SAVE ${heritage_save_value}/9` : "Ikke SAVE-registreret"}
+              value={
+                heritage_save_value != null
+                  ? `SAVE ${heritage_save_value}/9`
+                  : "Ikke SAVE-registreret"
+              }
               state={serviceStates.fbb ?? (heritage_save_value != null ? "success" : "not_run")}
               data-testid="datarow-fbb"
             />
             <DataRow
               label="Ejendomsværdi (VUR)"
-              value={vurderingData?.ejendomsvaerdi != null ? formatMio(vurderingData.ejendomsvaerdi) : "—"}
+              value={
+                vurderingData?.ejendomsvaerdi != null
+                  ? formatMio(vurderingData.ejendomsvaerdi)
+                  : "—"
+              }
               state={serviceStates.vurdering ?? (vurderingData == null ? "not_run" : "success")}
               data-testid="datarow-vur-ejendom"
             />
             <DataRow
               label="Grundværdi (VUR)"
-              value={vurderingData?.grundvaerdi != null ? formatMio(vurderingData.grundvaerdi) : "—"}
+              value={
+                vurderingData?.grundvaerdi != null ? formatMio(vurderingData.grundvaerdi) : "—"
+              }
               state={serviceStates.vurdering ?? (vurderingData == null ? "not_run" : "success")}
               data-testid="datarow-vur-grund"
             />
@@ -449,31 +467,34 @@ function DataRow({
 }) {
   // Map legacy string values to PipelineServiceState
   const normalized: PipelineServiceState =
-    state === "live" ? "success"
-    : state === "mangler" ? "not_run"
-    : state === "mock" ? "mock"
-    : state;
+    state === "live"
+      ? "success"
+      : state === "mangler"
+        ? "not_run"
+        : state === "mock"
+          ? "mock"
+          : state;
 
   const badgeStyle: Record<PipelineServiceState, string> = {
-    success:   "text-emerald-400 border-emerald-500/40",
+    success: "text-emerald-400 border-emerald-500/40",
     cache_hit: "text-sky-400 border-sky-500/40",
-    no_hit:    "text-yellow-400 border-yellow-500/40",
-    mock:      "text-yellow-400 border-yellow-500/40",
-    error:     "text-danger border-danger/40",
-    skipped:   "text-muted-foreground border-border",
-    not_run:   "text-muted-foreground border-border",
+    no_hit: "text-yellow-400 border-yellow-500/40",
+    mock: "text-yellow-400 border-yellow-500/40",
+    error: "text-danger border-danger/40",
+    skipped: "text-muted-foreground border-border",
+    not_run: "text-muted-foreground border-border",
   };
 
   const labelText = PIPELINE_SERVICE_STATE_LABELS[normalized];
 
   return (
-    <div
-      className="flex items-center justify-between py-2 text-sm"
-      data-testid={testId}
-    >
+    <div className="flex items-center justify-between py-2 text-sm" data-testid={testId}>
       <div className="text-foreground">{label}</div>
       <div className="flex items-center gap-2 ml-2 shrink-0">
-        <span className="text-xs text-muted-foreground" data-testid={testId ? `${testId}-value` : undefined}>
+        <span
+          className="text-xs text-muted-foreground"
+          data-testid={testId ? `${testId}-value` : undefined}
+        >
           {value}
         </span>
         <span

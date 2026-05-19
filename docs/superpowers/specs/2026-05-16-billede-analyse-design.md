@@ -40,27 +40,27 @@ Upload (≤4 billeder)
 
 ```typescript
 type BilledeAnalyseKategorier = {
-  facade:        string[];
-  tagform:       string[];
-  vinduer:       string[];
-  materialer:    string[];
+  facade: string[];
+  tagform: string[];
+  vinduer: string[];
+  materialer: string[];
   saerligeTraek: string[];
-  farver:        string[];
-  stil:          string[];
+  farver: string[];
+  stil: string[];
 };
 
 type BilledeAnalyseKonflikt = {
-  kategori:   keyof BilledeAnalyseKategorier;
-  muligheder: string[][];  // én array per retning, f.eks. [["minimalistisk"], ["rustikt", "varmt"]]
-  billedAntal: number[];   // antal billeder per retning
+  kategori: keyof BilledeAnalyseKategorier;
+  muligheder: string[][]; // én array per retning, f.eks. [["minimalistisk"], ["rustikt", "varmt"]]
+  billedAntal: number[]; // antal billeder per retning
 };
 
 type BilledeAnalyseResultat = {
-  kategorier:  BilledeAnalyseKategorier;  // kun enige/løste tags
-  konflikter:  BilledeAnalyseKonflikt[];  // uløste konflikter (tomt array når klar til gem)
-  ekstraTags:  string[];                  // detaljer Claude ser som ikke findes i vocab
-  confidence:  number;                    // 0–100
-  kilde:       "haiku" | "mock";
+  kategorier: BilledeAnalyseKategorier; // kun enige/løste tags
+  konflikter: BilledeAnalyseKonflikt[]; // uløste konflikter (tomt array når klar til gem)
+  ekstraTags: string[]; // detaljer Claude ser som ikke findes i vocab
+  confidence: number; // 0–100
+  kilde: "haiku" | "mock";
 };
 ```
 
@@ -71,30 +71,36 @@ type BilledeAnalyseResultat = {
 ## AI-prompt strategi
 
 ### Model
+
 `claude-haiku-4-5-20251001` — fuldt tilstrækkeligt til struktureret udtræk med predefineret ordforråd.
 
 ### Token-budget (per analyse)
-| Post | Tokens |
-|------|--------|
-| System-prompt med vocab (cache hit) | 0 (cachet) |
-| System-prompt med vocab (cache miss) | ~800 |
-| Brugerbesked + billedblokke (4 billeder) | ~1.200 |
-| Output JSON | ~250 |
-| **Total ved cache hit** | **~1.450** |
-| **Total ved cache miss** | **~2.250** |
+
+| Post                                     | Tokens     |
+| ---------------------------------------- | ---------- |
+| System-prompt med vocab (cache hit)      | 0 (cachet) |
+| System-prompt med vocab (cache miss)     | ~800       |
+| Brugerbesked + billedblokke (4 billeder) | ~1.200     |
+| Output JSON                              | ~250       |
+| **Total ved cache hit**                  | **~1.450** |
+| **Total ved cache miss**                 | **~2.250** |
 
 System-prompten caches med `cache_control: { type: "ephemeral" }` — gyldigt i 5 min. Ved sekventielle uploads i samme session er cache hit sandsynligt.
 
 `max_tokens: 400` — tilstrækkeligt til JSON-output, forhindrer løbsk output.
 
 ### Billedformat
+
 Billeder sendes som URL-referencer (ikke base64):
+
 ```json
 { "type": "image", "source": { "type": "url", "url": "<signedUrl>" } }
 ```
+
 Supabase signed URLs er offentligt tilgængelige (token i query string) — ingen server-side fetch eller base64-konvertering nødvendig.
 
 ### System-prompt skabelon
+
 ```
 Du er arkitektonisk billedanalysatør for et dansk byggesagsystem.
 
@@ -137,6 +143,7 @@ stil:          [minimalistisk, moderne, skandinavisk, klassisk, industriel, orga
 ```
 
 ### Fejlhåndtering i service
+
 - Ingen `ANTHROPIC_API_KEY` → returnér mock-data (`kilde: "mock"`)
 - HTTP 429 → exponential backoff: 10s, 20s, 40s (max 3 forsøg), som `pdf-extractor.ts`
 - Ugyldig JSON i svar → log warning, returnér mock-data
@@ -147,16 +154,19 @@ stil:          [minimalistisk, moderne, skandinavisk, klassisk, industriel, orga
 ## Lagring
 
 ### Supabase: ny kolonne
+
 ```sql
 ALTER TABLE projects ADD COLUMN billedanalyse JSONB;
 ```
 
 Kolonnen er JSONB fordi:
+
 - Indholdet er AI-output der arkiveres (som `inspection_payload` — ikke compliance-data)
 - Kategorierne er faste, men værdierne er dynamiske og kan udvides
 - Ingen regel-engine læser fra denne kolonne direkte
 
 ### project-store.ts
+
 ```typescript
 // Tilføjes til ProjectState
 billedanalyse?: BilledeAnalyseResultat;
@@ -164,6 +174,7 @@ setBilledanalyse: (result: BilledeAnalyseResultat) => void;
 ```
 
 ### project-persistence.ts
+
 Læs `billedanalyse` fra Supabase ved `restoreProject`, skriv ved `syncPatch`.
 
 ---
@@ -171,6 +182,7 @@ Læs `billedanalyse` fra Supabase ved `restoreProject`, skriv ved `syncPatch`.
 ## UI — AiDesignHero.tsx
 
 ### States
+
 ```
 idle         → upload-knap synlig, "Analyser billeder" disabled
 uploading    → spinner per billede
@@ -183,23 +195,28 @@ error        → fejlbesked med mulighed for retry
 ```
 
 ### Valideringsvisning
+
 **Enige tags** (grøn sektion per kategori):
+
 - Tags som chips med ✕-knap (fjern)
 - Fritekstinput med autocomplete fra vocab (tilføj)
 - Kategorier uden tags vises ikke
 
 **Konflikter** (orange sektion, én per kategori med konflikt):
+
 - Overskrift: "Dine billeder trækker i to retninger for [kategori]"
 - To kort side om side (Retning A / Retning B) med tags og billedantal
 - Klik vælger retning — vinderens tags flettes ind i kategorier
 - Løst konflikt forsvinder fra orange sektion
 
 **ekstraTags** (neutral sektion):
+
 - Vises som chips under "Yderligere detaljer"
 - Kan fjernes af bruger
 - Kan ikke redigeres (er fritekst fra AI)
 
 **Gem-knap:**
+
 - Disabled så længe `konflikter.length > 0`
 - Label: "Gem analyse" (ikke "Gem og anvend på Byggeoenske")
 - Ved gem: `syncPatch({ billedanalyse: validatedResult })`
@@ -208,15 +225,15 @@ error        → fejlbesked med mulighed for retry
 
 ## Nye og ændrede filer
 
-| Fil | Handling | Note |
-|-----|----------|------|
-| `src/integrations/ai/billede-analyse.ts` | Ny | Haiku-service, mock-fallback |
-| `src/lib/billede-analyse-vocabulary.ts` | Ny | Vocab-katalog + konfliktdetekterings-prompt |
-| `src/components/cockpit/AiDesignHero.tsx` | Udvid | Analyse-UI, states, validering |
-| `src/routes/projekt.$id.cockpit.tsx` | Udvid | `analyserBilleder` createServerFn |
-| `src/lib/project-store.ts` | Udvid | `billedanalyse` felt + setter |
-| `src/integrations/supabase/project-persistence.ts` | Udvid | Læs/skriv `billedanalyse` |
-| `supabase/migrations/20260516_add_billedanalyse.sql` | Ny | ALTER TABLE projects |
+| Fil                                                  | Handling | Note                                        |
+| ---------------------------------------------------- | -------- | ------------------------------------------- |
+| `src/integrations/ai/billede-analyse.ts`             | Ny       | Haiku-service, mock-fallback                |
+| `src/lib/billede-analyse-vocabulary.ts`              | Ny       | Vocab-katalog + konfliktdetekterings-prompt |
+| `src/components/cockpit/AiDesignHero.tsx`            | Udvid    | Analyse-UI, states, validering              |
+| `src/routes/projekt.$id.cockpit.tsx`                 | Udvid    | `analyserBilleder` createServerFn           |
+| `src/lib/project-store.ts`                           | Udvid    | `billedanalyse` felt + setter               |
+| `src/integrations/supabase/project-persistence.ts`   | Udvid    | Læs/skriv `billedanalyse`                   |
+| `supabase/migrations/20260516_add_billedanalyse.sql` | Ny       | ALTER TABLE projects                        |
 
 **Beskyttede filer der ikke røres:** `analysis-orchestrator.ts`, `pre-check-adresse.ts`, `reactive-compliance.ts`
 

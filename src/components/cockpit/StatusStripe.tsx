@@ -26,8 +26,7 @@ export function StatusStripe({
   }, [complianceFlags]);
 
   const total = counts.blocker + counts.advarsel + counts.ok;
-  const dominant =
-    counts.blocker > 0 ? "blocker" : counts.advarsel > 0 ? "advarsel" : "ok";
+  const dominant = counts.blocker > 0 ? "blocker" : counts.advarsel > 0 ? "advarsel" : "ok";
 
   const accentBorder = {
     blocker: "border-danger/40 bg-danger/5",

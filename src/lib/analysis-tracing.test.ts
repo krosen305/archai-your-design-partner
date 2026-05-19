@@ -1,10 +1,6 @@
 // src/lib/analysis-tracing.test.ts
 import { describe, it, expect } from "bun:test";
-import {
-  traceStep,
-  recordAnalysisEvent,
-  type AnalysisTraceContext,
-} from "./analysis-tracing";
+import { traceStep, recordAnalysisEvent, type AnalysisTraceContext } from "./analysis-tracing";
 
 describe("analysis-tracing: summary fields", () => {
   it("traceStep accepts outputSummary callback and returns value", async () => {

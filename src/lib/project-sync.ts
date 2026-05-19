@@ -21,7 +21,9 @@ export const serverSaveProject = createServerFn({ method: "POST" })
   });
 
 export const serverLoadProject = createServerFn({ method: "POST" })
-  .inputValidator((data: { accessToken: string; projectId?: string | null; addressId?: string | null }) => data)
+  .inputValidator(
+    (data: { accessToken: string; projectId?: string | null; addressId?: string | null }) => data,
+  )
   .handler(async ({ data }): Promise<PersistedProject | null> => {
     const { loadProject } = await import("@/integrations/supabase/project-persistence");
     return loadProject(data.accessToken, data.projectId, data.addressId);
@@ -57,10 +59,7 @@ export async function syncPatch(patch: ProjectPatch): Promise<void> {
 // In-flight + short-lived cache for restoreProject — undgår dobbeltkald når både
 // __root.tsx (app-mount) og cockpit-route restorer samme projekt indenfor få sekunder.
 const RESTORE_CACHE_TTL_MS = 5000;
-const restoreCache = new Map<
-  string,
-  { promise: Promise<PersistedProject | null>; ts: number }
->();
+const restoreCache = new Map<string, { promise: Promise<PersistedProject | null>; ts: number }>();
 
 export async function restoreProject(
   projectId?: string | null,

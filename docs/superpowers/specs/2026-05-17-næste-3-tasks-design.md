@@ -25,13 +25,17 @@ De tre valgte tasks dækker: data integrity (ARCH-163), brugervendt økonomi (AR
 **Filer:** `src/components/cockpit/EjendomPanel.tsx` + `src/components/cockpit/OekonomiPanel.tsx`
 
 **Fallback-kæde (begge paneler):**
+
 ```typescript
-const grundareal = grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
+const grundareal =
+  grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
 const bebyggetAreal = bebygget_areal_m2 ?? bbrData?.bebygget_areal ?? null;
 ```
+
 `grundareal_m2` og `bebygget_areal_m2` sættes først — de er SSOT fra Supabase og korrekte ved restore uden pipeline.
 
 **Nyt i EjendomPanel:**
+
 - SAVE-bevaringsværdi-felt fra `heritage_save_value`:
   - Rød badge: 1–3 (høj bevaringsværdi — nedrivning kræver dispensation)
   - Gul badge: 4–6 (middel)
@@ -39,12 +43,14 @@ const bebyggetAreal = bebygget_areal_m2 ?? bbrData?.bebygget_areal ?? null;
 - Fredningsstatus-badge (`is_fredet === true`) med link til relevant myndighed
 
 **Nyt i OekonomiPanel:**
+
 - Bebyggelsesprocent beregnes fra `grundareal_m2` + `bebygget_areal_m2`
 - `budget_estimate` (BIGINT fra `projects`) vises formateret: `Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 })`
 
 **Scope:** Kun disse to filer. Ingen store-ændringer, ingen migrations, ingen server functions.
 
 ### Acceptkriterier
+
 - [ ] EjendomPanel viser SAVE-bevaringsværdi med rød/gul/grøn badge fra `heritage_save_value`
 - [ ] EjendomPanel viser fredningsstatus-badge fra `is_fredet`
 - [ ] OekonomiPanel beregner bebyggelsesprocent fra typede felter
@@ -68,38 +74,45 @@ Private bygherrer undervurderer totalomkostninger med 30–50% fordi nedrivning,
 #### 4 kategorier
 
 **1. Nedrivning** (auto fra store, redigerbar):
+
 - Input: `bebygget_areal_m2` (auto) + asbest-flag (auto: `parseInt(bbrData.byggeaar ?? '0') < 1978` — byggeaar er `string | null`)
 - Sats: 800–1.200 kr/m², +200 kr/m² ved asbest-risiko
 - Resultat: min/max range
 
 **2. Forsyningsafkobling** (fast estimat, redigerbar toggle per forsyningstype):
+
 - El: 15.000–25.000 kr
 - Vand: 10.000–20.000 kr
 - Kloak: 20.000–50.000 kr
 - Gas (vises kun hvis `bbrData.opvarmningsmiddel === 'naturgas'`): 10.000–15.000 kr
 
 **3. Geoteknik** (bruger-valgt kategori, GEUS er MOCK):
+
 - Dropdown: Kategori 1 (god grund) / Kategori 2 (variabel) / Kategori 3 (dårlig/pæl)
 - Range: 0–50k / 50k–200k / 200k–500k kr
 - Badge: "Baseret på GEUS-estimat (eksempeldata)"
 
 **4. Nybyg** (auto fra Byggeoenske, redigerbar):
+
 - Input: `byggeoenske.oensketAreal` + energiklasse + kælder-flag
 - Sats: 22.000–26.000 kr/m², +2.000 kr/m² lavenergi, +5.000 kr/m² kælder
 - Resultat: min/max range
 
 #### Output
+
 - Vandfaldsbar (Recharts `BarChart`, akkumulerede lag) — min/typisk/max per kategori
 - Total: min / typisk / max formateret som DKK
 - Sammenligning: "Projektet koster [X–Y gange] mere end ejendomsværdien" (fra `vurderingData.ejendomsvaerdi`)
 
 #### Arkitektur
+
 - Lokal `useState` for bruger-overrides (geoteknik-kategori, forsyningstype-toggles, areal-overrides)
 - Pure computation — ingen API-kald, ingen store-ændringer
 - Recharts er allerede i bundle via shadcn
 - `OekonomiPanel.tsx` importerer og renderer `<BudgetKalkulator />`
 
 ### Acceptkriterier
+
 - [ ] Nedrivning auto-beregnet fra `bebygget_areal_m2` med asbest-flag ved byggeår < 1978
 - [ ] Forsyningsafkobling viser gas-linje kun ved naturgas-opvarmning
 - [ ] Geoteknik har MOCK-disclaimer
@@ -116,6 +129,7 @@ Private bygherrer undervurderer totalomkostninger med 30–50% fordi nedrivning,
 ### Opdateret analyse (2026-05-17)
 
 `MatrikelMap.tsx` er allerede en fuldt implementeret OpenLayers-komponent:
+
 - Skærmkort WMTS basemap ✅
 - Matriklen2 WFS parcel geometry (`fetchParcelGeometry`) ✅
 - Matriklen2 WMS preview (`fetchMatriklenPreview`) ✅
@@ -131,12 +145,14 @@ Private bygherrer undervurderer totalomkostninger med 30–50% fordi nedrivning,
 ### Design
 
 **Filer:**
+
 - Ny migration: `supabase/migrations/YYYYMMDD_add_jordstykke_polygon.sql`
 - Modificér: `src/lib/map-proxy.ts` — `fetchParcelGeometryProxy` udvides med cache-read/write
 - Modificér: `src/routes/api.map-tiles.ts` — `fetchParcelGeometry` inputvalidator udvides med `adresseid`
 - Modificér: `src/components/cockpit/MatrikelMap.tsx` — sender `adresseid` med til server function
 
 #### Migration
+
 ```sql
 ALTER TABLE public.address_analysis
   ADD COLUMN IF NOT EXISTS jordstykke_polygon JSONB,
@@ -144,6 +160,7 @@ ALTER TABLE public.address_analysis
 ```
 
 #### Cache-logik i `fetchParcelGeometryProxy`
+
 Input udvides: `{ point: MapPoint, adresseid?: string | null, bufferMeters?: number }`
 
 1. Hvis `adresseid`: check `address_analysis.jordstykke_polygon` for cached polygon
@@ -151,6 +168,7 @@ Input udvides: `{ point: MapPoint, adresseid?: string | null, bufferMeters?: num
 3. Cache miss → fetch WFS → skriv til `address_analysis.jordstykke_polygon` → returner
 
 ### Acceptkriterier
+
 - [ ] Jordstykke-polygon gemmes i `address_analysis.jordstykke_polygon` efter første WFS-kald
 - [ ] Andet besøg på samme adresse bruger cached polygon (ingen ny WFS-request)
 - [ ] `adresseid` sendes fra `MatrikelMap.tsx` til `fetchParcelGeometry`

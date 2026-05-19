@@ -79,7 +79,12 @@ export type ComplianceResult = {
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
   analysisRunId?: string | null;
-  serviceStates?: Partial<Record<import("@/lib/project-store").DataSourceKind, import("@/lib/project-store").PipelineServiceState>>;
+  serviceStates?: Partial<
+    Record<
+      import("@/lib/project-store").DataSourceKind,
+      import("@/lib/project-store").PipelineServiceState
+    >
+  >;
 };
 
 // ---------------------------------------------------------------------------
@@ -201,7 +206,8 @@ async function analyseAddressWithTrace(
       () => getCachedCompliance(addressId),
       {
         cacheHit: (value) => !!value,
-        outputSummary: (v) => (v ? `cache_hit=true bbr=${v.bbr ? "present" : "null"}` : "cache_hit=false"),
+        outputSummary: (v) =>
+          v ? `cache_hit=true bbr=${v.bbr ? "present" : "null"}` : "cache_hit=false",
       },
     );
     if (cached) {
@@ -210,10 +216,11 @@ async function analyseAddressWithTrace(
       const canRecoverGrundareal =
         preFetchedGrundareal !== null || (ejerlavskode !== null && matrikelnummer !== null);
       if (cached.bbr?.grundareal === null && canRecoverGrundareal) {
-        console.warn(
-          "[Orchestrator] Stale cache bypassed — grundareal mangler, genberegner",
-          { preFetchedGrundareal, ejerlavskode, matrikelnummer },
-        );
+        console.warn("[Orchestrator] Stale cache bypassed — grundareal mangler, genberegner", {
+          preFetchedGrundareal,
+          ejerlavskode,
+          matrikelnummer,
+        });
       } else {
         complianceBase = cached;
         states.bbr = "cache_hit";

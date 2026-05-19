@@ -435,8 +435,7 @@ export const useProject = create<State>((set) => ({
 
   setDataStatus: (kind, status) =>
     set((s) => ({ dataStatus: { ...s.dataStatus, [kind]: status } })),
-  setDataStatusBulk: (patch) =>
-    set((s) => ({ dataStatus: { ...s.dataStatus, ...patch } })),
+  setDataStatusBulk: (patch) => set((s) => ({ dataStatus: { ...s.dataStatus, ...patch } })),
   setDataLastFetchedAt: (dataLastFetchedAt) => set({ dataLastFetchedAt }),
 
   reset: () =>

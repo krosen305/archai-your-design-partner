@@ -57,16 +57,18 @@ export function DataSourceStatus({
         <StatusIcon status={status} />
         {showLabel && label}
       </span>
-      {onRefresh && status !== "loading" && (status === "missing" || status === "stale" || status === "error") && (
-        <button
-          type="button"
-          onClick={onRefresh}
-          aria-label={`Genindlæs ${kind}`}
-          className="inline-flex items-center justify-center rounded-full border border-border/60 p-1 text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors"
-        >
-          <RefreshCw size={10} />
-        </button>
-      )}
+      {onRefresh &&
+        status !== "loading" &&
+        (status === "missing" || status === "stale" || status === "error") && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            aria-label={`Genindlæs ${kind}`}
+            className="inline-flex items-center justify-center rounded-full border border-border/60 p-1 text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors"
+          >
+            <RefreshCw size={10} />
+          </button>
+        )}
     </span>
   );
 }

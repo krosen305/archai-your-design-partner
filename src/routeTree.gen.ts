@@ -15,6 +15,7 @@ import { Route as ProjektTeknikRouteImport } from './routes/projekt.teknik'
 import { Route as ProjektStartRouteImport } from './routes/projekt.start'
 import { Route as ProjektDatacheckRouteImport } from './routes/projekt.datacheck'
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
+import { Route as DebugAnalyseRouteImport } from './routes/debug.analyse'
 import { Route as ApiMapTilesRouteImport } from './routes/api.map-tiles'
 import { Route as ProjektIdCockpitRouteImport } from './routes/projekt.$id.cockpit'
 
@@ -48,6 +49,11 @@ const ProjektAdresseRoute = ProjektAdresseRouteImport.update({
   path: '/projekt/adresse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DebugAnalyseRoute = DebugAnalyseRouteImport.update({
+  id: '/debug/analyse',
+  path: '/debug/analyse',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMapTilesRoute = ApiMapTilesRouteImport.update({
   id: '/api/map-tiles',
   path: '/api/map-tiles',
@@ -62,6 +68,7 @@ const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
+  '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
+  '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
+  '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
   '/projekt/datacheck': typeof ProjektDatacheckRoute
   '/projekt/start': typeof ProjektStartRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/map-tiles'
+    | '/debug/analyse'
     | '/projekt/adresse'
     | '/projekt/datacheck'
     | '/projekt/start'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/map-tiles'
+    | '/debug/analyse'
     | '/projekt/adresse'
     | '/projekt/datacheck'
     | '/projekt/start'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/api/map-tiles'
+    | '/debug/analyse'
     | '/projekt/adresse'
     | '/projekt/datacheck'
     | '/projekt/start'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiMapTilesRoute: typeof ApiMapTilesRoute
+  DebugAnalyseRoute: typeof DebugAnalyseRoute
   ProjektAdresseRoute: typeof ProjektAdresseRoute
   ProjektDatacheckRoute: typeof ProjektDatacheckRoute
   ProjektStartRoute: typeof ProjektStartRoute
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjektAdresseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/debug/analyse': {
+      id: '/debug/analyse'
+      path: '/debug/analyse'
+      fullPath: '/debug/analyse'
+      preLoaderRoute: typeof DebugAnalyseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/map-tiles': {
       id: '/api/map-tiles'
       path: '/api/map-tiles'
@@ -198,6 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiMapTilesRoute: ApiMapTilesRoute,
+  DebugAnalyseRoute: DebugAnalyseRoute,
   ProjektAdresseRoute: ProjektAdresseRoute,
   ProjektDatacheckRoute: ProjektDatacheckRoute,
   ProjektStartRoute: ProjektStartRoute,
@@ -208,3 +229,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

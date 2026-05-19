@@ -152,6 +152,7 @@ Se `docs/INTEGRATIONS.md` for fuld tabel og Datafordeler GraphQL-constraints.
 DAWA (Danmarks Adressers Web API) er udfaset og lukker. Brug aldrig `api.dataforsyningen.dk` til compliance-/registerdata — hverken som primær kilde eller fallback. Al adresse- og matrikeldata hentes udelukkende fra Datafordeler (DAR, MAT, BBR).
 
 **Godkendte undtagelser (ARCH-226):**
+
 - `GSearch v2` (`api.dataforsyningen.dk/rest/gsearch/v2.0`): Tilladt som søge-UX til adresse-autocomplete. Bruges IKKE som compliance-kilde — alt compliance-data hentes fra Datafordeler.
 - `Skærmkort WMTS` (`api.dataforsyningen.dk/...wmts`): Tilladt som baggrundskort-tiles. Geometri er ikke compliance-data.
 

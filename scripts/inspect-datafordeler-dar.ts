@@ -50,7 +50,8 @@ function installFetchInspector() {
   const originalFetch = globalThis.fetch.bind(globalThis);
 
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const urlRaw = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    const urlRaw =
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const interesting =
       urlRaw.includes("datafordeler.dk") || urlRaw.includes("dataforsyningen.dk/adresser");
 
@@ -119,7 +120,7 @@ async function resolveAdresseId(addressQuery: string): Promise<string> {
 async function main() {
   const input = parseCliArgs(process.argv.slice(2));
   if (!input.addressQuery && !input.adresseId) {
-    console.error("Brug enten --address \"<vej nr, postnr by>\" eller --adresseid \"<uuid>\".");
+    console.error('Brug enten --address "<vej nr, postnr by>" eller --adresseid "<uuid>".');
     process.exit(1);
   }
 
@@ -128,7 +129,10 @@ async function main() {
   const adresseId = input.adresseId ?? (await resolveAdresseId(input.addressQuery as string));
 
   console.log("\n=== SERVICE INPUTS ===");
-  console.log("DarService.getAddressDetails:", JSON.stringify({ darAdresseLokalId: adresseId }, null, 2));
+  console.log(
+    "DarService.getAddressDetails:",
+    JSON.stringify({ darAdresseLokalId: adresseId }, null, 2),
+  );
 
   const dar = await DarService.getAddressDetails(adresseId);
   console.log("\n=== SERVICE OUTPUT: DAR ===");
@@ -147,7 +151,11 @@ async function main() {
     console.log("\n=== SERVICE INPUTS ===");
     console.log(
       "MatService.getGrundareal:",
-      JSON.stringify({ ejerlavskode: dar.ejerlavskode, matrikelnummer: dar.matrikelnummer }, null, 2),
+      JSON.stringify(
+        { ejerlavskode: dar.ejerlavskode, matrikelnummer: dar.matrikelnummer },
+        null,
+        2,
+      ),
     );
     const mat = await MatService.getGrundareal(dar.ejerlavskode, dar.matrikelnummer);
     console.log("\n=== SERVICE OUTPUT: MAT ===");

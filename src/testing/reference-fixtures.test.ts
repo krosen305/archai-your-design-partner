@@ -1,8 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import {
-  GOLDEN_REFERENCE_FIXTURES,
-  type ReferenceFixture,
-} from "./reference-fixtures";
+import { GOLDEN_REFERENCE_FIXTURES, type ReferenceFixture } from "./reference-fixtures";
 
 describe("GOLDEN_REFERENCE_FIXTURES", () => {
   it("har mindst 5 cases", () => {

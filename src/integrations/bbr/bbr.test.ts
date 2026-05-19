@@ -269,8 +269,16 @@ describe("deriveBbrSummary (ARCH-227)", () => {
   });
 
   it("primærBygning er første ikke-sekundære uanset rækkefølge i array", () => {
-    const garage = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "910", byg026Opfoerelsesaar: 2000 };
-    const bolig = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg026Opfoerelsesaar: 1992 };
+    const garage = {
+      ...MOCK_BYGNING,
+      byg021BygningensAnvendelse: "910",
+      byg026Opfoerelsesaar: 2000,
+    };
+    const bolig = {
+      ...MOCK_BYGNING,
+      byg021BygningensAnvendelse: "120",
+      byg026Opfoerelsesaar: 1992,
+    };
     const { primærBygning } = deriveBbrSummary([garage, bolig]);
     expect(primærBygning.byg021BygningensAnvendelse).toBe("120");
   });
@@ -296,8 +304,18 @@ describe("deriveBbrSummary (ARCH-227)", () => {
   });
 
   it("historisk dublet påvirker ikke bebygget_areal (node-order-uafhængig)", () => {
-    const b1 = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120, id_lokalId: "uuid-1" };
-    const b2 = { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120, id_lokalId: "uuid-1" }; // dublet
+    const b1 = {
+      ...MOCK_BYGNING,
+      byg021BygningensAnvendelse: "120",
+      byg041BebyggetAreal: 120,
+      id_lokalId: "uuid-1",
+    };
+    const b2 = {
+      ...MOCK_BYGNING,
+      byg021BygningensAnvendelse: "120",
+      byg041BebyggetAreal: 120,
+      id_lokalId: "uuid-1",
+    }; // dublet
     const { bebygget_areal } = deriveBbrSummary([b1, b2]);
     // Duplikater deduplikeres — kun én tæller
     expect(bebygget_areal).toBe(120);
