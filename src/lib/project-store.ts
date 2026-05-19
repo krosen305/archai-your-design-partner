@@ -185,6 +185,7 @@ export type DataSourceKind =
   | "kommuneplanramme"
   | "fbb"
   | "naturbeskyttelse"
+  | "dkjord"
   | "geusRisk"
   | "servitutter"
   | "terrain"
@@ -201,6 +202,7 @@ export const DATA_SOURCE_LABELS: Record<DataSourceKind, string> = {
   kommuneplanramme: "Kommuneplanramme",
   fbb: "SAVE & fredning (FBB)",
   naturbeskyttelse: "Naturbeskyttelse",
+  dkjord: "Jordforurening (DK-Jord)",
   geusRisk: "Geoteknisk risiko",
   servitutter: "Servitutter",
   terrain: "Terræn (DHM)",
@@ -218,6 +220,7 @@ const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
   kommuneplanramme: "missing",
   fbb: "missing",
   naturbeskyttelse: "missing",
+  dkjord: "missing",
   geusRisk: "missing",
   servitutter: "missing",
   terrain: "missing",
@@ -496,6 +499,7 @@ const STALE_DAYS: Record<DataSourceKind, number> = {
   kommuneplanramme: 30,
   fbb: 30,
   naturbeskyttelse: 30,
+  dkjord: 30,
   geusRisk: 30,
   servitutter: 7,
   terrain: 30,

@@ -57,6 +57,8 @@ import {
   traceStep,
   type AnalysisTraceContext,
 } from "@/lib/analysis-tracing";
+import { summarizeSourceResult } from "@/lib/source-result";
+import type { SourceResult } from "@/lib/source-result";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -518,8 +520,18 @@ async function analyseAddressWithTrace(
                   phase: "layer4",
                   service: "DK-Jord WFS",
                   operation: "getTilstand",
+                  inputSummary: `koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
                 },
                 () => DkJordService.getTilstand(koordinater),
+                {
+                  outputSummary: (r) =>
+                    summarizeSourceResult(r, (d) => `v1=${d.v1Kortlagt} v2=${d.v2Kortlagt}`),
+                  metadata: (r) => ({
+                    source: r.kilde,
+                    isMock: r.isMock,
+                    feature_count: r.rawFeatureCount,
+                  }),
+                },
               ),
             )
             .catch((e: Error) => {
@@ -597,7 +609,19 @@ async function analyseAddressWithTrace(
             }),
         ]);
         naturbeskyttelse = natur;
-        dkjord = jord;
+        dkjord = jord?.data ?? null;
+        states.dkjord =
+          jord == null
+            ? "error"
+            : jord.status === "mock"
+            ? "mock"
+            : jord.status === "error"
+            ? "error"
+            : jord.status === "skipped"
+            ? "skipped"
+            : jord.data != null
+            ? "success"
+            : "no_hit";
         geusRisk = geus;
         terrain = terr;
         naboer = nabo;
@@ -613,7 +637,7 @@ async function analyseAddressWithTrace(
   // Set Layer 4 service states after all parallel work resolves.
   states.fbb = fbbData ? "success" : "no_hit";
   states.naturbeskyttelse = naturbeskyttelse ? "success" : "no_hit";
-  // geus and terrain are IS_MOCK=true services; dkjord has no DataSourceKind entry.
+  // geus and terrain are IS_MOCK=true services.
   states.geusRisk = bbrHardStop ? "skipped" : "mock";
   states.terrain = bbrHardStop ? "skipped" : "mock";
   // servitutter is IS_MOCK=true (TingbogenV2 — feature flag).
