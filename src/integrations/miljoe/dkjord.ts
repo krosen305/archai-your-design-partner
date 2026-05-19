@@ -4,6 +4,10 @@
 // V2-kortlagt grund kan koste 500.000 kr.+ i oprensning inden byggeri.
 //
 // ⚠️  IS_MOCK=true — live API afventer netværksadgang til dkjord.mst.dk.
+// Flip IS_MOCK = false i ARCH-241 (DK-Jord live).
+//
+// Reference implementation for the SourceResult<T> contract (ARCH-239).
+// New services should follow this pattern exactly.
 //
 // API: Miljøstyrelsen DK-Jord WFS
 //   Endpoint:  https://dkjord.mst.dk/wfs
@@ -14,18 +18,25 @@
 //     dkjord:V2         — dokumenteret forurening (oprensning kræves)
 //     dkjord:olietank   — gammel olietank (prøvetagning kræves)
 //     dkjord:omraadet   — områdeklassificering (krav om jordsundhedsattest)
-//
-// Aktiver live API: sæt IS_MOCK = false.
+
+import { makeOkResult, makeErrorResult, makeMockResult } from "@/lib/source-result";
+import type { SourceResult } from "@/lib/source-result";
 
 const IS_MOCK = true;
 
 const DKJORD_WFS = "https://dkjord.mst.dk/wfs";
+const SOURCE_URL = `${DKJORD_WFS}?SERVICE=WFS&VERSION=2.0.0&TYPENAMES=dkjord:V1,dkjord:V2,dkjord:olietank,dkjord:omraadet`;
 
 export type DkJordResultat = {
-  v1Kortlagt: boolean;
-  v2Kortlagt: boolean;
-  olietank: { eksisterer: boolean; driftsstatus: string | null };
+  // Tri-state: true = kortlagt, false = ikke kortlagt, null = ukendt/API-fejl
+  v1Kortlagt: boolean | null;
+  v2Kortlagt: boolean | null;
+  olietank: {
+    eksisterer: boolean | null; // null = ukendt
+    driftsstatus: string | null;
+  };
   omraadeklassificering: string | null;
+  // Kept for backward compatibility — project-store.ts checks kilde === "mock"
   kilde: "dkjord" | "mock";
 };
 
@@ -58,38 +69,54 @@ async function getFeatures(typename: string, koordinat: Koordinat): Promise<WfsJ
 }
 
 export class DkJordService {
-  static async getTilstand(koordinat: Koordinat): Promise<DkJordResultat> {
+  static async getTilstand(koordinat: Koordinat): Promise<SourceResult<DkJordResultat>> {
     if (IS_MOCK) {
       // Realistisk resultat for Hasselvej 48, Skovlunde (jf. Resights-data)
-      return {
-        v1Kortlagt: false,
-        v2Kortlagt: false,
-        olietank: { eksisterer: true, driftsstatus: "ikke i drift" },
-        omraadeklassificering: "Lettere forurenet",
-        kilde: "mock",
-      };
+      return makeMockResult<DkJordResultat>(
+        {
+          v1Kortlagt: false,
+          v2Kortlagt: false,
+          olietank: { eksisterer: true, driftsstatus: "ikke i drift" },
+          omraadeklassificering: "Lettere forurenet",
+          kilde: "mock",
+        },
+        { kilde: "dkjord", sourceUrl: DKJORD_WFS, rawFeatureCount: 0 },
+      );
     }
 
-    const [v1Data, v2Data, olietankData, omraadeData] = await Promise.all([
-      getFeatures("dkjord:V1", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
-      getFeatures("dkjord:V2", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
-      getFeatures("dkjord:olietank", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
-      getFeatures("dkjord:omraadet", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
-    ]);
+    try {
+      const [v1Data, v2Data, olietankData, omraadeData] = await Promise.all([
+        getFeatures("dkjord:V1", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
+        getFeatures("dkjord:V2", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
+        getFeatures("dkjord:olietank", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
+        getFeatures("dkjord:omraadet", koordinat).catch((): WfsJsonResponse => ({ features: [] })),
+      ]);
 
-    const olietankFeature = olietankData.features?.[0];
-    const omraadeFeature = omraadeData.features?.[0];
+      const olietankFeature = olietankData.features?.[0];
+      const omraadeFeature = omraadeData.features?.[0];
+      const totalFeatures =
+        (v1Data.totalFeatures ?? v1Data.features?.length ?? 0) +
+        (v2Data.totalFeatures ?? v2Data.features?.length ?? 0) +
+        (olietankData.totalFeatures ?? olietankData.features?.length ?? 0) +
+        (omraadeData.totalFeatures ?? omraadeData.features?.length ?? 0);
 
-    return {
-      v1Kortlagt: (v1Data.totalFeatures ?? v1Data.features?.length ?? 0) > 0,
-      v2Kortlagt: (v2Data.totalFeatures ?? v2Data.features?.length ?? 0) > 0,
-      olietank: {
-        eksisterer: (olietankData.totalFeatures ?? olietankData.features?.length ?? 0) > 0,
-        driftsstatus: (olietankFeature?.properties?.["driftsstatus"] as string | undefined) ?? null,
-      },
-      omraadeklassificering:
-        (omraadeFeature?.properties?.["omraadenavn"] as string | undefined) ?? null,
-      kilde: "dkjord",
-    };
+      return makeOkResult<DkJordResultat>(
+        {
+          v1Kortlagt: (v1Data.totalFeatures ?? v1Data.features?.length ?? 0) > 0,
+          v2Kortlagt: (v2Data.totalFeatures ?? v2Data.features?.length ?? 0) > 0,
+          olietank: {
+            eksisterer: (olietankData.totalFeatures ?? olietankData.features?.length ?? 0) > 0,
+            driftsstatus:
+              (olietankFeature?.properties?.["driftsstatus"] as string | undefined) ?? null,
+          },
+          omraadeklassificering:
+            (omraadeFeature?.properties?.["omraadenavn"] as string | undefined) ?? null,
+          kilde: "dkjord",
+        },
+        { kilde: "dkjord", sourceUrl: SOURCE_URL, rawFeatureCount: totalFeatures },
+      );
+    } catch (e) {
+      return makeErrorResult<DkJordResultat>(e, { kilde: "dkjord", sourceUrl: DKJORD_WFS });
+    }
   }
 }
