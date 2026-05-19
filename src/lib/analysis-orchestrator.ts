@@ -161,7 +161,7 @@ async function analyseAddressWithTrace(
           phase: "address_enrichment",
           service: "DAR",
           operation: "getAddressDetails",
-          inputSummary: `adresseid=${addressId.slice(0, 8)}`,
+          inputSummary: `adresseid=${addressId}`,
         },
         () => DarService.getAddressDetails(addressId, undefined, trace),
         {
@@ -201,7 +201,7 @@ async function analyseAddressWithTrace(
         phase: "cache",
         service: "Supabase",
         operation: "address_analysis.compliance_result.read",
-        inputSummary: `adresseid=${addressId.slice(0, 8)}`,
+        inputSummary: `adresseid=${addressId}`,
       },
       () => getCachedCompliance(addressId),
       {
