@@ -1,5 +1,10 @@
 MASTER USER JOURNEY
 Nedrivning → Nybyg (Den komplette reference)
+
+Note: Dette dokument beskriver den brede kunde-/livscyklusrejse. Dets FASE-numre
+er ikke de samme som produktets fire Builder's Cockpit-faser: Sandkassen,
+Matriklen, Maskinrummet og Myndighed.
+
 META: Hvad denne rejse er
 
 Denne rejse beskriver en privat bygherres proces fra første idé til livet efter indflytning, når et eksisterende hus købes for at blive nedrevet og erstattet af et nybygget hus i Danmark.

@@ -19,15 +19,8 @@ EVAL_LIVE=true bun run evals
 EVAL_UPDATE_SNAPSHOTS=true bun run evals
 ```
 
-Tilføj til `package.json`:
-
-```json
-"scripts": {
-  "evals": "bun run evals/runner.ts",
-  "evals:live": "EVAL_LIVE=true bun run evals/runner.ts",
-  "evals:update": "EVAL_UPDATE_SNAPSHOTS=true bun run evals/runner.ts"
-}
-```
+`package.json` har i dag kun `evals`-scriptet. Brug env-vars som vist ovenfor
+til live-kørsel og snapshot-opdatering.
 
 ## Mappestruktur
 

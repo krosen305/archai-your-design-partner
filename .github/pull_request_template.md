@@ -9,7 +9,9 @@
 ## Test-steps
 
 - [ ] `bun dev` — golden path virker end-to-end
-- [ ] `bun build` — ingen type-fejl
+- [ ] `bunx tsc --noEmit` — ingen type-fejl
 - [ ] `bun test` — ingen fejlende tests
 - [ ] `bunx eslint .` — ingen nye fejl
+- [ ] `bun run build` — ingen build-fejl
 - [ ] Ingen `console.log` eller debug-kode tilbage
+- [ ] Hvis PR'en rører protected files: `🔒 Rører beskyttet fil — kræver review`

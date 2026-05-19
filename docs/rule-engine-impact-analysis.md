@@ -2,6 +2,12 @@
 
 > **ARCH-106** — Blocker for ARCH-107, ARCH-108, ARCH-109, ARCH-110.
 > Ingen produktionskode er skrevet her — kun analyse og konkrete anbefalinger.
+>
+> **Status 2026-05-19:** Historisk konsekvensanalyse. Den beskriver gaps fra før
+> `site_constraints`, FBB/SAVE, MAT hard-stop flags og `address_source_results`
+> blev etableret. Brug `src/lib/rule-engine/`, `AGENTS.md`,
+> `CLAUDE.md`, `docs/INTEGRATIONS.md` og `docs/data-ingestion-contract.md` som
+> aktuelle kilder.
 
 ---
 

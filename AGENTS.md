@@ -2,7 +2,7 @@
 
 **ArchAI — The Builder's Cockpit.** AI-powered platform for private residential construction in Denmark. TanStack Start (React SSR) on Cloudflare Workers. Bun as runtime and package manager.
 
-> Dette projekt har to AI-agenter: **Claude Code** (arkitektonisk opsyn) og **Codex** (implementering). Claude Code ejer CLAUDE.md og AGENTS.md. Codex opdaterer dem **IKKE** autonomt.
+> Dette projekt har to AI-agenter: **Claude Code** (arkitektonisk opsyn) og **Codex** (implementering). Claude Code ejer CLAUDE.md og AGENTS.md. Codex opdaterer dem **IKKE** autonomt uden en eksplicit brugeropgave og efterfølgende human review.
 
 ---
 
@@ -45,9 +45,15 @@ Kunderejsen er **ikke lineær**. Den er opdelt i 4 faser. Brug altid disse navne
 
 - `src/server.ts` — Sentry-wrapper. Mangler den, crasher `wrangler.toml` til default entry.
 
-### DAWA er forbudt
+### DAWA som compliance-kilde er forbudt
 
-Brug **aldrig** `api.dataforsyningen.dk` (DAWA) — hverken som primær kilde eller fallback. DAWA er udfaset og lukker. Al adresse- og matrikeldata hentes udelukkende fra Datafordeler (DAR, MAT, BBR). Hvis DAR mangler jordstykke-FK for en adresse, returneres `null` — ingen fallback.
+Brug **aldrig** DAWA/Dataforsyningen REST som compliance- eller registerkilde — hverken som primær kilde eller fallback. DAWA er udfaset og lukker. Al adresse-, matrikel-, BBR- og grundarealdata hentes fra Datafordeler (DAR, MAT, BBR, EBR/VUR). Hvis DAR/MAT mangler en nøgle eller et felt, returneres `null` eller brug en godkendt Datafordeler-baseret resolver — ingen DAWA-fallback.
+
+Tilladte undtagelser:
+
+- `api.dataforsyningen.dk/rest/gsearch/v2.0` må bruges til adresse-autocomplete. Det er kun søge-UX; alle registerdata enriches efterfølgende fra DAR.
+- Dataforsyningen/SDFI kort-tiles (fx WMTS) må bruges som baggrundskort. De må ikke være SSOT for compliance.
+- `src/integrations/bbr/neighbor-client.ts` returnerer tom liste, indtil en godkendt Datafordeler/GeoDanmark-kilde til radius-naboer findes.
 
 ### Server boundary
 
@@ -118,15 +124,16 @@ Disse tærskler er defineret i `src/lib/rule-engine/rules/stop-rules.ts` og i `s
 
 Kend disse tabeller. `projekter` eksisterer **ikke** længere — den er droppet i migration `20260515100000`.
 
-| Tabel               | Formål                                                          | Nøgle                                     |
-| ------------------- | --------------------------------------------------------------- | ----------------------------------------- |
-| `projects`          | SSOT for alle projekt-data — inkl. typede compliance-kolonner   | `id UUID`, `user_id`                      |
-| `address_analysis`  | Delt cache for compliance-resultater (alle brugere, én adresse) | `address_id TEXT`                         |
-| `site_constraints`  | Typede plot-begrænsninger til Validation Engine                 | `address_id TEXT` FK → `address_analysis` |
-| `design_iterations` | Versionerede brugerdesigns (én aktiv pr. projekt)               | `project_id UUID` FK → `projects`         |
-| `building_tasks`    | Bruger-vendt Building Timeline (Sandkassen → Myndighed)         | `project_id UUID`, `task_key TEXT`        |
-| `agent_sessions`    | AI-agent teknisk log (service_role kun)                         | `id TEXT`                                 |
-| `agent_tasks`       | Opgave-log pr. session (service_role kun)                       | `session_id TEXT`                         |
+| Tabel                    | Formål                                                          | Nøgle                                     |
+| ------------------------ | --------------------------------------------------------------- | ----------------------------------------- |
+| `projects`               | SSOT for alle projekt-data — inkl. typede compliance-kolonner   | `id UUID`, `user_id`                      |
+| `address_analysis`       | Delt cache for compliance-resultater (alle brugere, én adresse) | `address_id TEXT`                         |
+| `site_constraints`       | Typede plot-begrænsninger til Validation Engine                 | `address_id TEXT` FK → `address_analysis` |
+| `address_source_results` | Per-source cache for ikke-SSOT screeningsresultater             | `address_id TEXT`, `source_kind TEXT`     |
+| `design_iterations`      | Versionerede brugerdesigns (én aktiv pr. projekt)               | `project_id UUID` FK → `projects`         |
+| `building_tasks`         | Bruger-vendt Building Timeline (Sandkassen → Myndighed)         | `project_id UUID`, `task_key TEXT`        |
+| `agent_sessions`         | AI-agent teknisk log (service_role kun)                         | `id TEXT`                                 |
+| `agent_tasks`            | Opgave-log pr. session (service_role kun)                       | `session_id TEXT`                         |
 
 **Skriv aldrig til `projekter`** — tabellen eksisterer ikke i produktions-DB.
 
@@ -165,7 +172,8 @@ Disse areas kræver **ikke** review for merge, men verification checklist nedenf
 
 - **UI-komponenter** — `src/components/` (følg shadcn + Lucide mønstre)
 - **Cockpit-faner og panels** — `src/components/cockpit/` (læs fra `useProject()`, ingen lokal compliance-state)
-- **Stub-routes** — `src/routes/projekt.oekonomi.tsx`, `teknik.tsx`, `udbud.tsx`
+- **Stub-routes** — `src/routes/projekt.teknik.tsx`, `src/routes/projekt.udbud.tsx`
+- **Cockpit økonomi-tab** — `src/components/cockpit/OekonomiPanel.tsx`
 - **Regel-engine regler** — `src/lib/rule-engine/rules/` (pure functions, ingen I/O)
 - **Integrationsklienter** — `src/integrations/*/` (kopier eksisterende klientmønster)
 - **IS_MOCK=true services** → live implementation

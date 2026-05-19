@@ -12,6 +12,7 @@ import { syncPatch } from "@/lib/project-sync";
 import { MOCK_ADRESSE } from "@/lib/mock-data";
 import { preCheckAdresse } from "@/lib/pre-check-adresse";
 import { logger } from "@/lib/logger";
+import { kommunenavnFraKode } from "@/lib/kommuner";
 import {
   Dialog,
   DialogContent,
@@ -312,7 +313,7 @@ function AddressStep() {
                       <div className="text-sm text-foreground font-medium">{s.tekst}</div>
                       {s.postnrnavn && (
                         <div className="text-xs text-muted-foreground italic mt-0.5">
-                          {s.postnrnavn} · {s.kommunekode}
+                          {s.postnrnavn} · {kommunenavnFraKode(s.kommunekode)}
                         </div>
                       )}
                     </button>

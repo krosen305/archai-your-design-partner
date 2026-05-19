@@ -7,6 +7,7 @@
 ```
 CLOUDFLARE_API_TOKEN         # Workers:Edit permission
 DATAFORDELER_API_KEY
+DATAFORSYNINGEN_TOKEN       # valgfri, men anbefalet til GSearch autocomplete
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 SUPABASE_PUBLISHABLE_KEY
@@ -104,3 +105,9 @@ Tilføj til `package.json`:
 ```json
 "db:types": "supabase gen types typescript --local > src/types/supabase.ts"
 ```
+
+## Dokumentationsnoter
+
+- PR-template skal afspejle CI: `bunx tsc --noEmit`, `bunx eslint .`, `bun test`, `bun run build`.
+- `README.md`'s integrationsoversigt vedligeholdes manuelt sammen med `docs/INTEGRATIONS.md`. Den gamle LLM-baserede README-tabel må ikke bruges som autoritativ kilde.
+- Aktive Supabase-tabeller dokumenteres i `AGENTS.md`/`CLAUDE.md`; nævn ikke den droppede `projekter`-tabel som live schema.

@@ -1,5 +1,9 @@
 # ArchAI - Datapunkt-rapport
 
+> Historisk fixture-rapport fra 14. maj 2026. Brug den til regressionsforståelse
+> af Hasselvej 48, ikke som aktuel integrationsstatus. Den autoritative
+> integrationsstatus findes i `docs/INTEGRATIONS.md`.
+
 **Adresse:** Hasselvej 48, 2830 Virum  
 **adresseid:** `0a3f50a6-34da-32b8-e044-0003ba298018`  
 **adgangsadresseid:** `0a3f507d-4cf9-32b8-e044-0003ba298018`  
@@ -15,8 +19,8 @@
 
 | Datapunkt            | Kildesystem          | Status | Bruges til              | Hasselvej 48                           |
 | -------------------- | -------------------- | ------ | ----------------------- | -------------------------------------- |
-| adresseid (DAR UUID) | DAR/DAWA             | LIVE   | Cache-nøgle, DAR-opslag | `0a3f50a6-34da-32b8-e044-0003ba298018` |
-| adgangsadresseid     | DAR/DAWA             | LIVE   | BBR/EBR-opslag          | `0a3f507d-4cf9-32b8-e044-0003ba298018` |
+| adresseid (DAR UUID) | DAR                  | LIVE   | Cache-nøgle, DAR-opslag | `0a3f50a6-34da-32b8-e044-0003ba298018` |
+| adgangsadresseid     | DAR                  | LIVE   | BBR/EBR-opslag          | `0a3f507d-4cf9-32b8-e044-0003ba298018` |
 | Adressetekst         | Adresse test fixture | LIVE   | UI-display              | Hasselvej 48, 2830 Virum               |
 | Ejerlavskode         | MAT/DAR              | LIVE   | MAT-opslag              | 12352                                  |
 | Matrikelnummer       | MAT/DAR              | LIVE   | MAT-opslag              | 5fo                                    |
@@ -26,20 +30,20 @@
 
 ## 2. BBR
 
-| Datapunkt            | Kildesystem                        | Status | Bruges til          | Hasselvej 48                         |
-| -------------------- | ---------------------------------- | ------ | ------------------- | ------------------------------------ |
-| Antal bygninger      | BBR v2 GraphQL                     | LIVE   | Bygningsvalg        | 8                                    |
-| BBR Public IDs       | api.dataforsyningen.dk/bbr/bygning | FEJL   | FBB-opslag          | ingen                                |
-| Primær bygning UUID  | BBR v2 GraphQL                     | LIVE   | Sporbarhed          | cb2f89dc-7278-4802-a53e-188cb7120f56 |
-| Byggeår              | BBR v2 GraphQL                     | LIVE   | Renoveringsbehov    | 1937                                 |
-| Bebygget areal       | BBR v2 GraphQL                     | LIVE   | Bebyggelsesprocent  | 68 m2                                |
-| Samlet bygningsareal | BBR v2 GraphQL                     | LIVE   | Typologi            | 121 m2                               |
-| Antal etager         | BBR v2 GraphQL                     | LIVE   | Planvalidering      | 2                                    |
-| Anvendelseskode      | BBR v2 GraphQL                     | LIVE   | Boligklassificering | 130                                  |
-| Varmeinstallation    | BBR v2 byg056                      | LIVE   | Energibaseline      | 2                                    |
-| Opvarmningsmiddel    | BBR v2 byg057                      | LIVE   | Energibaseline      | 3                                    |
-| Fredet               | BBR v2 byg070                      | LIVE   | Fredningsflag       | null                                 |
-| FBB reference        | BBR v2 byg071                      | LIVE   | FBB-sporbarhed      | null                                 |
+| Datapunkt                       | Kildesystem           | Status | Bruges til          | Hasselvej 48                         |
+| ------------------------------- | --------------------- | ------ | ------------------- | ------------------------------------ |
+| Antal bygninger                 | BBR v2 GraphQL        | LIVE   | Bygningsvalg        | 8                                    |
+| Historisk BBR Public REST-check | Forbudt i aktuel kode | FEJL   | Må ikke genindføres | ingen                                |
+| Primær bygning UUID             | BBR v2 GraphQL        | LIVE   | Sporbarhed          | cb2f89dc-7278-4802-a53e-188cb7120f56 |
+| Byggeår                         | BBR v2 GraphQL        | LIVE   | Renoveringsbehov    | 1937                                 |
+| Bebygget areal                  | BBR v2 GraphQL        | LIVE   | Bebyggelsesprocent  | 68 m2                                |
+| Samlet bygningsareal            | BBR v2 GraphQL        | LIVE   | Typologi            | 121 m2                               |
+| Antal etager                    | BBR v2 GraphQL        | LIVE   | Planvalidering      | 2                                    |
+| Anvendelseskode                 | BBR v2 GraphQL        | LIVE   | Boligklassificering | 130                                  |
+| Varmeinstallation               | BBR v2 byg056         | LIVE   | Energibaseline      | 2                                    |
+| Opvarmningsmiddel               | BBR v2 byg057         | LIVE   | Energibaseline      | 3                                    |
+| Fredet                          | BBR v2 byg070         | LIVE   | Fredningsflag       | null                                 |
+| FBB reference                   | BBR v2 byg071         | LIVE   | FBB-sporbarhed      | null                                 |
 
 ---
 
@@ -55,7 +59,7 @@
 
 **FBB-noter**
 
-- BBR Public Service gav ingen IDs; bruger FBB adressefallback: 4602381, 4600919
+- Historisk REST-check gav ingen IDs; FBB brugte adressefallback: 4602381, 4600919
 - FBB WFS HTTP 200
 - Input BBR/FBB bygningsids: 4602381, 4600919
 - Rå WFS features: 2
@@ -112,12 +116,12 @@
 
 ### Alle testnoter
 
-#### BBR v2 GraphQL + BBR Public Service - LIVE
+#### BBR v2 GraphQL + historisk BBR Public REST-check
 
-- BBR Public Service ID-opslag fejlede: BBR Public Service HTTP 404: <!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"><title>Dataforsyningen API Gateway</title><style>body{font-family:Roboto,sans-serif;font-size:11px;}h1{margin-bottom:.3rem;font-size:.75rem;line-height:.875rem;letter-spacing:.06rem;text-transform:uppercase;font-weight:700;}</style></head><b
+- Historisk BBR Public REST-check fejlede med HTTP 404. Dette endpoint må ikke genindføres; FBB-kandidater skal findes via Datafordeler/FBB-flow.
 - 8 Datafordeler-bygninger fundet
-- 0 BBR Public Service integer IDs fundet
-- BBR Public IDs: ingen
+- 0 historiske REST integer IDs fundet
+- Historiske REST IDs: ingen
 - Primær bygning UUID: cb2f89dc-7278-4802-a53e-188cb7120f56
 - Byggeår: 1937
 - Bebygget areal: 68 m2
@@ -133,7 +137,7 @@
 
 #### FBB GeoServer WFS (FbbService) - LIVE
 
-- BBR Public Service gav ingen IDs; bruger FBB adressefallback: 4602381, 4600919
+- Historisk REST-check gav ingen IDs; FBB brugte adressefallback: 4602381, 4600919
 - FBB WFS HTTP 200
 - Input BBR/FBB bygningsids: 4602381, 4600919
 - Rå WFS features: 2

@@ -46,8 +46,8 @@ Vis den oprettede issue-URL når den er oprettet.
 
 - Framework: TanStack Start (React SSR) på Cloudflare Workers
 - Sprog: TypeScript, runtime: Bun
-- DB/Auth: Supabase (projekter, address_analysis tabeller)
+- DB/Auth: Supabase (`projects`, `address_analysis`, `site_constraints`, `address_source_results`, `design_iterations`, `building_tasks`)
 - AI: Anthropic Claude (pdf-extractor, hus-dna-generator, byggeanalyse)
-- Integrationer: Datafordeler GraphQL (BBR, MAT, DAR), Plandata WFS, DAWA REST
+- Integrationer: Datafordeler GraphQL (BBR, MAT, DAR, EBR, VUR), Plandata WFS, DAI WFS, FBB WFS. GSearch v2 er kun adresse-autocomplete, ikke compliance-kilde.
 - Linear team: ARCH. Kodebase: archai-your-design-partner.
 - Alle server-side kald i `createServerFn` — aldrig i top-level route imports.

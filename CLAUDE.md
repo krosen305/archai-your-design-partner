@@ -32,6 +32,7 @@ bun dev                                        # Dev server
 bun build                                      # Production (Cloudflare Workers)
 bun test                                       # Alle tests
 bun test src/integrations/bbr/bbr.test.ts      # Én testfil
+bunx tsc --noEmit                              # Type check
 bunx eslint .                                  # Lint
 bunx prettier --write .                        # Format
 ```
@@ -102,10 +103,10 @@ Hard Stops are non-negotiable blocking conditions. The severity ladder:
 Current Hard Stop triggers (source: `src/lib/rule-engine/rules/stop-rules.ts`):
 
 - `saveValue <= 3` → fredning/dispensation_required (Slots- og Kulturstyrelsen)
-- `saveValue === 4` → demolition warning (add this — currently missing, see Blocker 3 below)
-- `strandbeskyttelse === true` → absolute stop
-- `fredskov === true` → absolute stop
-- `klitfredning === true` → absolute stop
+- `saveValue === 4` → demolition warning (§14-risk)
+- `strandbeskyttelse === true` → dispensation required
+- `fredskov === true` → dispensation required
+- `klitfredning === true` → dispensation required
 - `listedBuilding === true` → illegal
 
 When implementing new compliance rules, always add a corresponding `ComplianceFlag` entry so the UI surfaces the violation with its `kilde` and `dispensationMyndighed`.
@@ -115,7 +116,7 @@ When implementing new compliance rules, always add a corresponding `ComplianceFl
 The codebase has accumulated vibe-coded JSON blobs that violate the Data-Driven Architecture north star. Prune in this order:
 
 **Prune pattern — JSONB → typed columns:**
-When you encounter a field being read from `compliance_data JSONB` or `projekter.bbr_data JSONB` for a domain-critical value, migrate it:
+When you encounter a field being read from `compliance_data JSONB` or another JSONB blob for a domain-critical value, migrate it:
 
 1. Write a Supabase migration adding the typed column
 2. Backfill from the JSONB field in the same migration
@@ -123,8 +124,8 @@ When you encounter a field being read from `compliance_data JSONB` or `projekter
 4. Remove the JSONB read path once the typed column is confirmed stable
 5. Do NOT delete the JSONB column until the backfill has been verified in production
 
-**Prune pattern — duplicate project tables:**
-`projects` and `projekter` are two tables serving overlapping purposes (see Blocker 2 below). New features must not add data to `projekter` — use `projects`. The consolidation migration is tracked as a Linear issue.
+**Prune pattern — legacy project table:**
+`projekter` no longer exists in production. It was consolidated into `projects` and dropped in migration `20260515100000_building_platform_schema.sql`. New features must only read/write `projects`, `design_iterations`, `building_tasks`, `site_constraints`, `address_analysis`, and `address_source_results`.
 
 **Never add new JSONB fields for compliance data.** If you're tempted to add `compliance_data->>'new_value'`, add a typed column instead. The one exception is `inspection_payload` — raw API response archiving is intentionally untyped.
 
@@ -168,6 +169,20 @@ IS_MOCK=true services (live API afventer verifikation):
 - `DhmService` — ARCH-102 (DHM WCS)
 
 **OBS:** `mat_strandbeskyttelse`, `mat_fredskov`, `mat_klitfredning` i `BbrKompliantData` er **live** data fra MAT_Jordstykke og erstatter delvist NaturbeskyttelseService for disse tre typer.
+
+## Supabase tables
+
+| Table                            | Role                                                                  |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `projects`                       | Single Source of Truth for project state and typed compliance columns |
+| `address_analysis`               | Shared address-level compliance cache                                 |
+| `site_constraints`               | Typed plot constraints consumed by the Validation Engine              |
+| `address_source_results`         | Per-source cache for raw/non-SSOT screening data                      |
+| `design_iterations`              | Versioned user designs; only one active row per project               |
+| `building_tasks`                 | User-facing Building Timeline tasks                                   |
+| `agent_sessions` / `agent_tasks` | Technical AI-agent logs                                               |
+
+Never write to `projekter`; the table was dropped in `20260515100000`.
 
 ## Env vars (server-side — ingen `VITE_` prefix)
 
@@ -252,14 +267,15 @@ Claude Code har arkitektonisk opsyn. Codex implementerer.
 **Konfliktforebyggelse:**
 
 - Codex rører aldrig beskyttede filer uden `🔒 Rører beskyttet fil — kræver review` i PR
-- Begge agenter kører `bunx tsc --noEmit && bun test` inden de erklærer sig færdige
-- Beskyttede filer: `project-store.ts`, `analysis-orchestrator.ts`, `pre-check-adresse.ts`, `reactive-compliance.ts`, `AGENTS.md`, `CLAUDE.md`, `package.json`, `wrangler.toml`
+- Begge agenter kører `bunx tsc --noEmit`, `bun test`, `bunx eslint .` og `bun run build` inden de erklærer sig færdige
+- Beskyttede filer: `project-store.ts`, `analysis-orchestrator.ts`, `pre-check-adresse.ts`, `reactive-compliance.ts`, `project-persistence.ts`, `AGENTS.md`, `CLAUDE.md`, `package.json`, `wrangler.toml`
 
 ## Definition of done
 
 - [ ] Feature virker end-to-end i `bun dev`
 - [ ] `bun build` — ingen type-fejl
-- [ ] `bun test` — ingen failing/skipped tests
+- [ ] `bunx tsc --noEmit` — ingen type errors
+- [ ] `bun test` — ingen failures
 - [ ] `bunx eslint .` — ingen nye fejl
 - [ ] Ingen `console.log` eller debug-kode
 - [ ] Nye env-variabler dokumenteret herover

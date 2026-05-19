@@ -73,8 +73,13 @@ export function EjendomPanel() {
       sub: maxBygningsareal != null ? `Max ${maxBygningsareal} m² tilladt` : "Ingen ramme",
     },
     {
-      label: "EJENDOMSVÆRDI",
-      value: formatMio(vurderingData?.ejendomsvaerdi),
+      label: "SAMLET VURDERING",
+      value: (() => {
+        const e = vurderingData?.ejendomsvaerdi;
+        const g = vurderingData?.grundvaerdi;
+        const samlet = e != null || g != null ? (e ?? 0) + (g ?? 0) : null;
+        return formatMio(samlet);
+      })(),
       sub:
         vurderingData?.vurderingsaar != null
           ? `Vurderet ${vurderingData.vurderingsaar}`

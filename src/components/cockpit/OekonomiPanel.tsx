@@ -1,6 +1,6 @@
 import { useProject } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
-import { Building2, TrendingUp, AreaChart, Clock } from "lucide-react";
+import { Building2, AreaChart, Clock } from "lucide-react";
 import { BudgetKalkulator } from "@/components/cockpit/BudgetKalkulator";
 
 function formatKr(beloeb: number | null): string {
@@ -41,27 +41,32 @@ export function OekonomiPanel() {
 
         {vurderingData && !vurderingData.fejl ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-md border border-border bg-[#111] p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Building2 size={14} />
-                  <span className="font-mono text-[10px] tracking-[0.1em]">EJENDOMSVÆRDI</span>
+            {(() => {
+              const e = vurderingData.ejendomsvaerdi;
+              const g = vurderingData.grundvaerdi;
+              const samlet = e != null || g != null ? (e ?? 0) + (g ?? 0) : null;
+              return (
+                <div className="rounded-md border border-border bg-[#111] p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Building2 size={14} />
+                    <span className="font-mono text-[10px] tracking-[0.1em]">
+                      SAMLET EJENDOMSVURDERING
+                    </span>
+                  </div>
+                  <p className="text-xl font-medium text-foreground">{formatKr(samlet)}</p>
+                  <div className="mt-2 flex gap-4">
+                    <span className="text-xs text-muted-foreground">
+                      Ejendomsværdi:{" "}
+                      <span className="text-foreground/70">{formatKr(e)}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Grundværdi:{" "}
+                      <span className="text-foreground/70">{formatKr(g)}</span>
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xl font-medium text-foreground">
-                  {formatKr(vurderingData.ejendomsvaerdi)}
-                </p>
-              </div>
-
-              <div className="rounded-md border border-border bg-[#111] p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <TrendingUp size={14} />
-                  <span className="font-mono text-[10px] tracking-[0.1em]">GRUNDVÆRDI</span>
-                </div>
-                <p className="text-xl font-medium text-foreground">
-                  {formatKr(vurderingData.grundvaerdi)}
-                </p>
-              </div>
-            </div>
+              );
+            })()}
 
             <div className="grid grid-cols-2 gap-4">
               {vurderingData.vurderetAreal !== null && (
