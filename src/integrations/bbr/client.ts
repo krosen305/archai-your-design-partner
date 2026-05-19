@@ -296,6 +296,87 @@ async function gqlFetch(
 
 const SECONDARY_CODES = new Set(["910", "920", "930", "940"]);
 
+// ---------------------------------------------------------------------------
+// selectCanonicalBuilding — ARCH-task (Byledet 3 fix)
+// ---------------------------------------------------------------------------
+
+const BOLIG_KODER = new Set(["110", "120", "121", "122", "130", "140", "510"]);
+
+function scoreBygning(b: BbrBygning): number {
+  let score = 0;
+  if (BOLIG_KODER.has(b.byg021BygningensAnvendelse ?? "")) score += 1000;
+  if (b.byg039BygningensSamledeBoligAreal != null) score += 200;
+  if (b.byg038SamletBygningsareal != null) score += 150;
+  if (b.byg041BebyggetAreal != null) score += 100;
+  if (b.byg054AntalEtager != null) score += 80;
+  if (b.byg094Revisionsdato != null) score += 60;
+  if (b.byg026Opfoerelsesaar != null) score += 40;
+  return score;
+}
+
+function buildingIsActive(b: BbrBygning): boolean {
+  const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+  if (b.virkningTil != null && b.virkningTil <= now) return false;
+  if (b.registreringTil != null && b.registreringTil <= now) return false;
+  if (b.byg029DatoForMidlertidigOpfoertBygning != null && b.byg029DatoForMidlertidigOpfoertBygning < today) return false;
+  return true;
+}
+
+export function selectCanonicalBuilding(bygninger: BbrBygning[]): {
+  canonical: BbrBygning | null;
+  reason: string | null;
+} {
+  if (!bygninger.length) return { canonical: null, reason: null };
+
+  const nonSecondary = bygninger.filter(
+    (b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? ""),
+  );
+
+  const active = nonSecondary.filter(buildingIsActive);
+  const candidates = active.length > 0 ? active : nonSecondary;
+
+  if (!candidates.length) return { canonical: bygninger[0], reason: "fallback_no_primary" };
+  if (candidates.length === 1) return { canonical: candidates[0], reason: "only_candidate" };
+
+  const sorted = [...candidates].sort((a, b) => {
+    const diff = scoreBygning(b) - scoreBygning(a);
+    if (diff !== 0) return diff;
+
+    // Tie-break 1: newest revisionsdato
+    const revA = a.byg094Revisionsdato ?? "";
+    const revB = b.byg094Revisionsdato ?? "";
+    if (revA !== revB) return revB.localeCompare(revA);
+
+    // Tie-break 2: highest opfoerelsesaar
+    const aarA = a.byg026Opfoerelsesaar ?? 0;
+    const aarB = b.byg026Opfoerelsesaar ?? 0;
+    if (aarA !== aarB) return aarB - aarA;
+
+    // Tie-break 3: highest boligareal
+    const boligA = a.byg039BygningensSamledeBoligAreal ?? 0;
+    const boligB = b.byg039BygningensSamledeBoligAreal ?? 0;
+    if (boligA !== boligB) return boligB - boligA;
+
+    // Tie-break 4: highest samlet areal
+    const samletA = a.byg038SamletBygningsareal ?? 0;
+    const samletB = b.byg038SamletBygningsareal ?? 0;
+    if (samletA !== samletB) return samletB - samletA;
+
+    // Tie-break 5: highest bebygget areal
+    return (b.byg041BebyggetAreal ?? 0) - (a.byg041BebyggetAreal ?? 0);
+  });
+
+  const canonical = sorted[0];
+  const reason = canonical.byg094Revisionsdato
+    ? "newest_complete_residential"
+    : canonical.byg026Opfoerelsesaar
+      ? "newest_residential_by_year"
+      : "highest_score_residential";
+
+  return { canonical, reason };
+}
+
 /**
  * Aggregerer BBR-bygningsliste til compliance-summary.
  * Eksporteret for testbarhed uden netværk.

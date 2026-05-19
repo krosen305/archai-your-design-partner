@@ -3,7 +3,7 @@
  * Kør med: bun test
  */
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { BbrService, deriveBbrSummary } from "./client";
+import { BbrService, deriveBbrSummary, selectCanonicalBuilding } from "./client";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,17 +38,33 @@ function mockFetch(responses: MockResponse[]) {
   return mockedFetch;
 }
 
-const MOCK_BYGNING = {
-  byg026Opfoerelsesaar: 1992,
+const MOCK_BYGNING: import("./client").BbrBygning = {
+  id_lokalId: null,
+  byg007Bygningsnummer: null,
   byg021BygningensAnvendelse: "120",
+  byg024AntalLejlighederMedKoekken: null,
+  byg025AntalLejlighederUdenKoekken: null,
+  byg026Opfoerelsesaar: 1992,
+  byg027OmTilbygningsaar: null,
+  byg029DatoForMidlertidigOpfoertBygning: null,
   byg032YdervaeggensMateriale: "1",
   byg033Tagdaekningsmateriale: "1",
   byg038SamletBygningsareal: 185,
+  byg039BygningensSamledeBoligAreal: null,
+  byg040BygningensSamledeErhvervsAreal: null,
   byg041BebyggetAreal: 120,
   byg054AntalEtager: 1,
+  byg055AfvigendeEtager: null,
   byg056Varmeinstallation: "1",
   byg057Opvarmningsmiddel: "8",
   byg070Fredning: null,
+  byg071BevaringsvaerdighedReference: null,
+  byg094Revisionsdato: null,
+  status: null,
+  registreringFra: null,
+  registreringTil: null,
+  virkningFra: null,
+  virkningTil: null,
 };
 
 // Grundareal sendes nu udefra (fra MAT) – ikke fra BBR_Grund.
@@ -319,5 +335,94 @@ describe("deriveBbrSummary (ARCH-227)", () => {
     const { bebygget_areal } = deriveBbrSummary([b1, b2]);
     // Duplikater deduplikeres — kun én tæller
     expect(bebygget_areal).toBe(120);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// selectCanonicalBuilding — ARCH-task (Byledet 3 fix)
+// ---------------------------------------------------------------------------
+
+const BYLEDET_GAMMEL: import("./client").BbrBygning = {
+  ...MOCK_BYGNING,
+  id_lokalId: "762da78b-4c8d-4b8f-9f95-cd0b35bb83ed",
+  byg021BygningensAnvendelse: "120",
+  byg026Opfoerelsesaar: 1930,
+  byg038SamletBygningsareal: 110,
+  byg041BebyggetAreal: 110,
+  byg054AntalEtager: 1,
+};
+
+const BYLEDET_NYT: import("./client").BbrBygning = {
+  ...MOCK_BYGNING,
+  id_lokalId: "d175cf92-85eb-4b5b-aacf-d74ad658c1f7",
+  byg021BygningensAnvendelse: "120",
+  byg026Opfoerelsesaar: 2022,
+  byg038SamletBygningsareal: 271,
+  byg039BygningensSamledeBoligAreal: 271,
+  byg041BebyggetAreal: 140,
+  byg054AntalEtager: 2,
+};
+
+describe("selectCanonicalBuilding", () => {
+  it("returnerer null ved tomt array", () => {
+    expect(selectCanonicalBuilding([]).canonical).toBeNull();
+  });
+
+  it("returnerer den eneste kandidat direkte", () => {
+    const { canonical, reason } = selectCanonicalBuilding([MOCK_BYGNING]);
+    expect(canonical).toBe(MOCK_BYGNING);
+    expect(reason).toBe("only_candidate");
+  });
+
+  it("Byledet 3: vælger 2022-bygning frem for 1930-bygning via opfoerelsesaar tie-break", () => {
+    const { canonical } = selectCanonicalBuilding([BYLEDET_GAMMEL, BYLEDET_NYT]);
+    expect(canonical!.id_lokalId).toBe("d175cf92-85eb-4b5b-aacf-d74ad658c1f7");
+  });
+
+  it("Byledet 3: rækkefølge i input-array betyder ikke noget", () => {
+    const { canonical } = selectCanonicalBuilding([BYLEDET_NYT, BYLEDET_GAMMEL]);
+    expect(canonical!.id_lokalId).toBe("d175cf92-85eb-4b5b-aacf-d74ad658c1f7");
+  });
+
+  it("boligkode (120) slår ikke-klassificeret bygning (999)", () => {
+    const ukendt = { ...MOCK_BYGNING, id_lokalId: "uuid-unknown", byg021BygningensAnvendelse: "999" };
+    const bolig = { ...MOCK_BYGNING, id_lokalId: "uuid-bolig", byg021BygningensAnvendelse: "120" };
+    const { canonical } = selectCanonicalBuilding([ukendt, bolig]);
+    expect(canonical!.id_lokalId).toBe("uuid-bolig");
+  });
+
+  it("ekskluderer bygning med virkningTil i fortiden", () => {
+    const udloebet = { ...MOCK_BYGNING, id_lokalId: "uuid-old", virkningTil: "2020-01-01T00:00:00.000Z" };
+    const aktiv = { ...MOCK_BYGNING, id_lokalId: "uuid-active", virkningTil: null };
+    const { canonical } = selectCanonicalBuilding([udloebet, aktiv]);
+    expect(canonical!.id_lokalId).toBe("uuid-active");
+  });
+
+  it("ekskluderer bygning med registreringTil i fortiden", () => {
+    const udloebet = { ...MOCK_BYGNING, id_lokalId: "uuid-old", registreringTil: "2019-06-01T00:00:00.000Z" };
+    const aktiv = { ...MOCK_BYGNING, id_lokalId: "uuid-active", registreringTil: null };
+    const { canonical } = selectCanonicalBuilding([udloebet, aktiv]);
+    expect(canonical!.id_lokalId).toBe("uuid-active");
+  });
+
+  it("ekskluderer midlertidigt opfoert bygning med udloebet dato", () => {
+    const midlertidig = { ...MOCK_BYGNING, id_lokalId: "uuid-temp", byg029DatoForMidlertidigOpfoertBygning: "2021-01-01" };
+    const permanent = { ...MOCK_BYGNING, id_lokalId: "uuid-perm", byg029DatoForMidlertidigOpfoertBygning: null };
+    const { canonical } = selectCanonicalBuilding([midlertidig, permanent]);
+    expect(canonical!.id_lokalId).toBe("uuid-perm");
+  });
+
+  it("bygning med byg094Revisionsdato rangerer over bygning uden", () => {
+    const udenRev = { ...MOCK_BYGNING, id_lokalId: "uuid-a", byg026Opfoerelsesaar: 2010, byg094Revisionsdato: null };
+    const medRev = { ...MOCK_BYGNING, id_lokalId: "uuid-b", byg026Opfoerelsesaar: 2000, byg094Revisionsdato: "2024-01-01" };
+    const { canonical } = selectCanonicalBuilding([udenRev, medRev]);
+    expect(canonical!.id_lokalId).toBe("uuid-b");
+  });
+
+  it("garage (910) frasorteres — boligbygning vinder", () => {
+    const garage = { ...MOCK_BYGNING, id_lokalId: "uuid-garage", byg021BygningensAnvendelse: "910" };
+    const bolig = { ...MOCK_BYGNING, id_lokalId: "uuid-bolig", byg021BygningensAnvendelse: "120" };
+    const { canonical } = selectCanonicalBuilding([garage, bolig]);
+    expect(canonical!.id_lokalId).toBe("uuid-bolig");
   });
 });
