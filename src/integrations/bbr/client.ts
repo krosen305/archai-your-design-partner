@@ -319,7 +319,11 @@ function buildingIsActive(b: BbrBygning): boolean {
   const today = now.slice(0, 10);
   if (b.virkningTil != null && b.virkningTil <= now) return false;
   if (b.registreringTil != null && b.registreringTil <= now) return false;
-  if (b.byg029DatoForMidlertidigOpfoertBygning != null && b.byg029DatoForMidlertidigOpfoertBygning < today) return false;
+  if (
+    b.byg029DatoForMidlertidigOpfoertBygning != null &&
+    b.byg029DatoForMidlertidigOpfoertBygning < today
+  )
+    return false;
   return true;
 }
 

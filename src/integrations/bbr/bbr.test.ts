@@ -385,42 +385,76 @@ describe("selectCanonicalBuilding", () => {
   });
 
   it("boligkode (120) slår ikke-klassificeret bygning (999)", () => {
-    const ukendt = { ...MOCK_BYGNING, id_lokalId: "uuid-unknown", byg021BygningensAnvendelse: "999" };
+    const ukendt = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-unknown",
+      byg021BygningensAnvendelse: "999",
+    };
     const bolig = { ...MOCK_BYGNING, id_lokalId: "uuid-bolig", byg021BygningensAnvendelse: "120" };
     const { canonical } = selectCanonicalBuilding([ukendt, bolig]);
     expect(canonical!.id_lokalId).toBe("uuid-bolig");
   });
 
   it("ekskluderer bygning med virkningTil i fortiden", () => {
-    const udloebet = { ...MOCK_BYGNING, id_lokalId: "uuid-old", virkningTil: "2020-01-01T00:00:00.000Z" };
+    const udloebet = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-old",
+      virkningTil: "2020-01-01T00:00:00.000Z",
+    };
     const aktiv = { ...MOCK_BYGNING, id_lokalId: "uuid-active", virkningTil: null };
     const { canonical } = selectCanonicalBuilding([udloebet, aktiv]);
     expect(canonical!.id_lokalId).toBe("uuid-active");
   });
 
   it("ekskluderer bygning med registreringTil i fortiden", () => {
-    const udloebet = { ...MOCK_BYGNING, id_lokalId: "uuid-old", registreringTil: "2019-06-01T00:00:00.000Z" };
+    const udloebet = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-old",
+      registreringTil: "2019-06-01T00:00:00.000Z",
+    };
     const aktiv = { ...MOCK_BYGNING, id_lokalId: "uuid-active", registreringTil: null };
     const { canonical } = selectCanonicalBuilding([udloebet, aktiv]);
     expect(canonical!.id_lokalId).toBe("uuid-active");
   });
 
   it("ekskluderer midlertidigt opfoert bygning med udloebet dato", () => {
-    const midlertidig = { ...MOCK_BYGNING, id_lokalId: "uuid-temp", byg029DatoForMidlertidigOpfoertBygning: "2021-01-01" };
-    const permanent = { ...MOCK_BYGNING, id_lokalId: "uuid-perm", byg029DatoForMidlertidigOpfoertBygning: null };
+    const midlertidig = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-temp",
+      byg029DatoForMidlertidigOpfoertBygning: "2021-01-01",
+    };
+    const permanent = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-perm",
+      byg029DatoForMidlertidigOpfoertBygning: null,
+    };
     const { canonical } = selectCanonicalBuilding([midlertidig, permanent]);
     expect(canonical!.id_lokalId).toBe("uuid-perm");
   });
 
   it("bygning med byg094Revisionsdato rangerer over bygning uden", () => {
-    const udenRev = { ...MOCK_BYGNING, id_lokalId: "uuid-a", byg026Opfoerelsesaar: 2010, byg094Revisionsdato: null };
-    const medRev = { ...MOCK_BYGNING, id_lokalId: "uuid-b", byg026Opfoerelsesaar: 2000, byg094Revisionsdato: "2024-01-01" };
+    const udenRev = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-a",
+      byg026Opfoerelsesaar: 2010,
+      byg094Revisionsdato: null,
+    };
+    const medRev = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-b",
+      byg026Opfoerelsesaar: 2000,
+      byg094Revisionsdato: "2024-01-01",
+    };
     const { canonical } = selectCanonicalBuilding([udenRev, medRev]);
     expect(canonical!.id_lokalId).toBe("uuid-b");
   });
 
   it("garage (910) frasorteres — boligbygning vinder", () => {
-    const garage = { ...MOCK_BYGNING, id_lokalId: "uuid-garage", byg021BygningensAnvendelse: "910" };
+    const garage = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-garage",
+      byg021BygningensAnvendelse: "910",
+    };
     const bolig = { ...MOCK_BYGNING, id_lokalId: "uuid-bolig", byg021BygningensAnvendelse: "120" };
     const { canonical } = selectCanonicalBuilding([garage, bolig]);
     expect(canonical!.id_lokalId).toBe("uuid-bolig");
