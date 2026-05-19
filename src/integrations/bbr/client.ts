@@ -320,6 +320,9 @@ function buildingIsActive(b: BbrBygning): boolean {
   const today = now.slice(0, 10);
   if (b.virkningTil != null && b.virkningTil <= now) return false;
   if (b.registreringTil != null && b.registreringTil <= now) return false;
+  // Midlertidigt opført: exclude if the temporary status date is in the past (per spec).
+  // Note: BBR byg029 semantics are "dato for godkendelse af midlertidig bygning";
+  // a past date may mean the permit has expired. Confirm against BBR register if needed.
   if (
     b.byg029DatoForMidlertidigOpfoertBygning != null &&
     b.byg029DatoForMidlertidigOpfoertBygning < today
@@ -516,7 +519,7 @@ export class BbrService {
           ` reason=${canonicalReason}`,
       });
 
-      // samlet_areal: prefer byg039 (net residential area) over byg038 (gross total)
+      // byg039 = net boligareal (preferred); byg038 = gross total incl. utility areas (fallback)
       const samlet_areal: number | null =
         canonicalBuilding.byg039BygningensSamledeBoligAreal ??
         canonicalBuilding.byg038SamletBygningsareal ??
