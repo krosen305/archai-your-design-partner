@@ -14,6 +14,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import type * as GeoJSON from "geojson";
+import type { SourceResult, SourceStatus, SourceConfidence } from "@/lib/source-result";
 
 const DAYS_MS = (n: number) => n * 24 * 60 * 60 * 1000;
 
@@ -161,4 +162,80 @@ export async function setCachedJordstykkePolygon(
     jordstykke_polygon: featureCollection as any,
     jordstykke_polygon_at: new Date().toISOString(),
   });
+}
+
+// ---------------------------------------------------------------------------
+// address_source_results cache (ARCH-239)
+// ---------------------------------------------------------------------------
+
+const SOURCE_RESULT_TTL_DAYS: Partial<Record<string, number>> = {
+  dkjord: 30,
+  geus: 30,
+  hip: 30,
+  dhm: 30,
+  geodanmark_mat: 90,
+  dai_extended: 30,
+  plandata_ext: 14,
+};
+
+function sourceResultTtlDays(sourceKind: string): number {
+  return SOURCE_RESULT_TTL_DAYS[sourceKind] ?? 30;
+}
+
+export async function getCachedSourceResult<T>(
+  addressId: string,
+  sourceKind: string,
+): Promise<SourceResult<T> | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabaseAdmin.from as any)("address_source_results")
+    .select("*")
+    .eq("address_id", addressId)
+    .eq("source_kind", sourceKind)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+
+  if (error) throw new Error(`[SourceCache] select fejlede for ${addressId}/${sourceKind}: ${error.message}`);
+  if (!data) return null;
+
+  return {
+    status: data.status as SourceStatus,
+    confidence: data.confidence as SourceConfidence,
+    isMock: data.is_mock,
+    fetchedAt: data.fetched_at,
+    sourceUrl: data.source_url,
+    rawFeatureCount: data.raw_feature_count,
+    data: (data.payload ?? null) as T | null,
+    kilde: data.source_kind,
+  };
+}
+
+export async function setCachedSourceResult<T>(
+  addressId: string,
+  sourceKind: string,
+  result: SourceResult<T>,
+  ttlDaysOverride?: number,
+): Promise<void> {
+  const ttlDays = ttlDaysOverride ?? sourceResultTtlDays(sourceKind);
+  const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabaseAdmin.from as any)("address_source_results").upsert(
+    {
+      address_id: addressId,
+      source_kind: sourceKind,
+      status: result.status,
+      confidence: result.confidence,
+      is_mock: result.isMock,
+      fetched_at: result.fetchedAt,
+      source_url: result.sourceUrl,
+      raw_feature_count: result.rawFeatureCount,
+      payload: result.data as unknown as Json,
+      expires_at: expiresAt,
+    },
+    { onConflict: "address_id,source_kind" },
+  );
+
+  if (error) {
+    throw new Error(`[SourceCache] upsert fejlede for ${addressId}/${sourceKind}: ${error.message}`);
+  }
 }
