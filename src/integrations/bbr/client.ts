@@ -129,7 +129,7 @@ const TAGDAEKNING_KODER: Record<string, string> = {
 
 export type BbrBygning = {
   id_lokalId: string | null;
-  byg007Bygningsnummer: string | null;
+  byg007Bygningsnummer: number | null;
   byg021BygningensAnvendelse: string | null;
   byg024AntalLejlighederMedKoekken: number | null;
   byg025AntalLejlighederUdenKoekken: number | null;
