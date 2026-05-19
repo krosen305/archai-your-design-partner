@@ -23,6 +23,7 @@
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { recordAnalysisEvent } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 
 type BbrClientConfig = {
@@ -499,6 +500,21 @@ export class BbrService {
       if (!canonicalBuilding) {
         return this.getEmptyData("Ingen bygning fundet på adressen");
       }
+
+      await recordAnalysisEvent(trace, {
+        eventType: "pipeline_step",
+        phase: "layer1",
+        service: "BBR",
+        operation: "canonical_selection",
+        status: "ok",
+        outputSummary:
+          `building_count=${bygninger.length}` +
+          ` primary_candidates=${candidatesCount}` +
+          ` canonical=${canonicalBuilding.id_lokalId?.slice(0, 8) ?? "null"}` +
+          ` footprint_selected=${bebygget_areal}` +
+          ` footprint_aggregated=${aggregated_bebygget_areal_all_primary}` +
+          ` reason=${canonicalReason}`,
+      });
 
       // samlet_areal: prefer byg039 (net residential area) over byg038 (gross total)
       const samlet_areal: number | null =
