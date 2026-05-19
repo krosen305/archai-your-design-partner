@@ -100,7 +100,7 @@ type ComplianceTriggers = {
   strandbeskyttelse: boolean | null;
   fredskov: boolean | null;
   klitfredning: boolean | null;
-  soilContamination: "clean" | "registered" | "contaminated" | null;
+  soilContamination: "clean" | "registered" | "contaminated" | "unknown" | null;
 };
 
 type ExistingProjectSnapshot = {
@@ -186,10 +186,12 @@ function deriveSiteConstraintsPatch(
 
 function deriveSoilContaminationStatus(
   dkjord: DkJordResultat | null | undefined,
-): "clean" | "registered" | "contaminated" | null {
+): "clean" | "registered" | "contaminated" | "unknown" | null {
   if (!dkjord) return null;
-  if (dkjord.v2Kortlagt) return "contaminated";
-  if (dkjord.v1Kortlagt) return "registered";
+  // null means unknown/API error — do not treat as clean
+  if (dkjord.v2Kortlagt === null || dkjord.v1Kortlagt === null) return "unknown";
+  if (dkjord.v2Kortlagt === true) return "contaminated";
+  if (dkjord.v1Kortlagt === true) return "registered";
   return "clean";
 }
 
@@ -331,6 +333,22 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
       is_auto_generated: true,
       blocked_by_constraint: "soil_contamination_status",
       metadata: { kortlaeggingsklasse: t.soilContamination },
+    });
+  }
+
+  if (t.soilContamination === "unknown") {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.MILJOEUNDERSOEGELSE,
+      title: "DkJord-data utilgængeligt — jordforureningskortlægning påkrævet",
+      description:
+        "DkJord-opslaget kunne ikke gennemføres. En miljøundersøgelse af grunden er nødvendig for at fastlægge status for jordforurening inden byggestart.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 3,
+      is_auto_generated: true,
+      blocked_by_constraint: "soil_contamination_status",
+      metadata: { kortlaeggingsklasse: "unknown", reason: "dkjord_api_unavailable" },
     });
   }
 
