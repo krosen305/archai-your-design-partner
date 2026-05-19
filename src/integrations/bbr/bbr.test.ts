@@ -259,6 +259,43 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     expect(result.alle_bygning_lokal_ids).toEqual(["uuid-1", "uuid-2"]);
     expect(result.alle_bbr_public_ids).toEqual(["uuid-1", "uuid-2"]);
   });
+
+  it("Byledet 3: canonical er 2022-bygning, bebygget_areal=140, samlet_areal=271, aggregated=250", async () => {
+    const gammel = {
+      ...MOCK_BYGNING,
+      id_lokalId: "762da78b-4c8d-4b8f-9f95-cd0b35bb83ed",
+      byg021BygningensAnvendelse: "120",
+      byg026Opfoerelsesaar: 1930,
+      byg038SamletBygningsareal: 110,
+      byg039BygningensSamledeBoligAreal: null,
+      byg041BebyggetAreal: 110,
+      byg054AntalEtager: 1,
+    };
+    const nyt = {
+      ...MOCK_BYGNING,
+      id_lokalId: "d175cf92-85eb-4b5b-aacf-d74ad658c1f7",
+      byg021BygningensAnvendelse: "120",
+      byg026Opfoerelsesaar: 2022,
+      byg038SamletBygningsareal: 271,
+      byg039BygningensSamledeBoligAreal: 271,
+      byg041BebyggetAreal: 140,
+      byg054AntalEtager: 2,
+    };
+    mockFetch([okResponse([gammel, nyt])]);
+
+    const result = await BbrService.getKompliantData(
+      "0a3f507b-d32a-32b8-e044-0003ba298018",
+      1086,
+      MOCK_CONFIG,
+    );
+
+    expect(result.canonical_building_lokal_id).toBe("d175cf92-85eb-4b5b-aacf-d74ad658c1f7");
+    expect(result.bebygget_areal).toBe(140);
+    expect(result.samlet_areal).toBe(271); // byg039BygningensSamledeBoligAreal
+    expect(result.antal_etager).toBe(2);
+    expect(result.aggregated_bebygget_areal_all_primary).toBe(250); // 110 + 140
+    expect(result.grundareal).toBe(1086); // unchanged
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -266,13 +303,14 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
 // ---------------------------------------------------------------------------
 
 describe("deriveBbrSummary (ARCH-227)", () => {
-  it("bebygget_areal summerer ikke-sekundære bygninger", () => {
+  it("bebygget_areal er canonical buildings footprint, ikke summen af alle", () => {
     const bygninger = [
-      { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120 },
-      { ...MOCK_BYGNING, byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 40 },
+      { ...MOCK_BYGNING, id_lokalId: "uuid-a", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 120, byg026Opfoerelsesaar: 1992 },
+      { ...MOCK_BYGNING, id_lokalId: "uuid-b", byg021BygningensAnvendelse: "120", byg041BebyggetAreal: 40, byg026Opfoerelsesaar: 1990 },
     ];
-    const { bebygget_areal } = deriveBbrSummary(bygninger);
-    expect(bebygget_areal).toBe(160);
+    const { bebygget_areal, aggregated_bebygget_areal_all_primary } = deriveBbrSummary(bygninger);
+    expect(bebygget_areal).toBe(120); // canonical (newer, higher footprint)
+    expect(aggregated_bebygget_areal_all_primary).toBe(160); // 120 + 40
   });
 
   it("garage (910) er ekskluderet fra bebygget_areal", () => {
@@ -284,19 +322,11 @@ describe("deriveBbrSummary (ARCH-227)", () => {
     expect(bebygget_areal).toBe(120);
   });
 
-  it("primærBygning er første ikke-sekundære uanset rækkefølge i array", () => {
-    const garage = {
-      ...MOCK_BYGNING,
-      byg021BygningensAnvendelse: "910",
-      byg026Opfoerelsesaar: 2000,
-    };
-    const bolig = {
-      ...MOCK_BYGNING,
-      byg021BygningensAnvendelse: "120",
-      byg026Opfoerelsesaar: 1992,
-    };
-    const { primærBygning } = deriveBbrSummary([garage, bolig]);
-    expect(primærBygning.byg021BygningensAnvendelse).toBe("120");
+  it("canonicalBuilding er ikke-sekundær uanset rækkefølge i array", () => {
+    const garage = { ...MOCK_BYGNING, id_lokalId: "uuid-g", byg021BygningensAnvendelse: "910", byg026Opfoerelsesaar: 2000 };
+    const bolig = { ...MOCK_BYGNING, id_lokalId: "uuid-b", byg021BygningensAnvendelse: "120", byg026Opfoerelsesaar: 1992 };
+    const { canonicalBuilding } = deriveBbrSummary([garage, bolig]);
+    expect(canonicalBuilding!.byg021BygningensAnvendelse).toBe("120");
   });
 
   it("fredet = true hvis én bygning har byg070Fredning='F'", () => {

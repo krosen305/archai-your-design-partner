@@ -56,6 +56,11 @@ export const MOCK_BBR: BbrKompliantData = {
   alle_bygning_lokal_ids: [],
   alle_bbr_public_ids: [],
   jordstykke_lokal_id: null,
+  canonical_building_lokal_id: null,
+  canonical_selection_reason: null,
+  canonical_candidates_count: 0,
+  aggregated_bebygget_areal_all_primary: null,
+  bygning_samlet_boligareal: null,
 };
 
 // ---------------------------------------------------------------------------

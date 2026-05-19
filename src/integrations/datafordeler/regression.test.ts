@@ -467,9 +467,9 @@ describe("Regression: Rækkehus med sekundære bygninger (ARCH-227)", () => {
     expect(bebygget_areal).toBe(130);
   });
 
-  it("primærBygning er boligen (kode 120), ikke garagen (kode 910)", () => {
-    const { primærBygning } = deriveBbrSummary(RAEKKEHUS_BYGNINGER);
-    expect(primærBygning?.byg021BygningensAnvendelse).toBe("120");
+  it("canonicalBuilding er boligen (kode 120), ikke garagen (kode 910)", () => {
+    const { canonicalBuilding } = deriveBbrSummary(RAEKKEHUS_BYGNINGER);
+    expect(canonicalBuilding?.byg021BygningensAnvendelse).toBe("120");
   });
 
   it("sekundær i anden position ændrer ikke bebygget_areal", () => {
@@ -506,9 +506,9 @@ describe("Regression: 3 BBR-bygninger med dublet id_lokalId (ARCH-227)", () => {
     }, // dublet
   ];
 
-  it("bebygget_areal = 280, ikke 480 — dublet tæller ikke dobbelt", () => {
-    const { bebygget_areal } = deriveBbrSummary(BYGNINGER_MED_DUBLET);
-    expect(bebygget_areal).toBe(280);
+  it("aggregated_bebygget_areal_all_primary = 280, ikke 480 — dublet tæller ikke dobbelt", () => {
+    const { aggregated_bebygget_areal_all_primary } = deriveBbrSummary(BYGNINGER_MED_DUBLET);
+    expect(aggregated_bebygget_areal_all_primary).toBe(280);
   });
 
   it("er node-order-uafhængig", () => {
