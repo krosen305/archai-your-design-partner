@@ -56,12 +56,10 @@ export function OekonomiPanel() {
                   <p className="text-xl font-medium text-foreground">{formatKr(samlet)}</p>
                   <div className="mt-2 flex gap-4">
                     <span className="text-xs text-muted-foreground">
-                      Ejendomsværdi:{" "}
-                      <span className="text-foreground/70">{formatKr(e)}</span>
+                      Ejendomsværdi: <span className="text-foreground/70">{formatKr(e)}</span>
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      Grundværdi:{" "}
-                      <span className="text-foreground/70">{formatKr(g)}</span>
+                      Grundværdi: <span className="text-foreground/70">{formatKr(g)}</span>
                     </span>
                   </div>
                 </div>

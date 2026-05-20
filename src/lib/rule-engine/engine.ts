@@ -135,10 +135,19 @@ export function runRuleEngine(input: RuleEngineInput, missingFields: string[]): 
 
   // ── 4. Jordforurening ─────────────────────────────────────────────────────
   const jordforureningViolations = checkJordforureningRules(input);
-  checkedRules.push("jordforurening_v2", "jordforurening_v1", "jordforurening_omraadeklassificering");
+  checkedRules.push(
+    "jordforurening_v2",
+    "jordforurening_v1",
+    "jordforurening_omraadeklassificering",
+  );
 
   // ── 5. Sammensæt ──────────────────────────────────────────────────────────
-  const allViolations = [...stopViolations, ...calcViolations, ...energyViolations, ...jordforureningViolations];
+  const allViolations = [
+    ...stopViolations,
+    ...calcViolations,
+    ...energyViolations,
+    ...jordforureningViolations,
+  ];
   const status = aggregateStatus(allViolations, missingFields);
   const dispensationList = buildDispensationList(allViolations);
 

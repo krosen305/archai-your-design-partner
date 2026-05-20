@@ -14,9 +14,9 @@ export type NeighborBuildingData = {
   nearestDistanceM: number | null;
   buildings: NeighborBuilding[];
   fejl: string | null;
-  kilde: string | null;             // "geodanmark" | null — tri-state source tag
+  kilde: string | null; // "geodanmark" | null — tri-state source tag
   accessRoadNearby: boolean | null; // true/false/null — null = ukendt
-  roadDistanceM: number | null;     // meter til nærmeste vej, null = ukendt
+  roadDistanceM: number | null; // meter til nærmeste vej, null = ukendt
 };
 
 export class NaboService {

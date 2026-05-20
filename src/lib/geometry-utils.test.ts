@@ -11,15 +11,35 @@ import type * as GeoJSON from "geojson";
 // 100×100 m square in UTM32 near Copenhagen — area = 10 000 m²
 const SQUARE: GeoJSON.Polygon = {
   type: "Polygon",
-  coordinates: [[[724000, 6172000],[724100, 6172000],[724100, 6172100],[724000, 6172100],[724000, 6172000]]],
+  coordinates: [
+    [
+      [724000, 6172000],
+      [724100, 6172000],
+      [724100, 6172100],
+      [724000, 6172100],
+      [724000, 6172000],
+    ],
+  ],
 };
 
 // Square with a 10×10 m hole → area = 9 900 m²
 const SQUARE_WITH_HOLE: GeoJSON.Polygon = {
   type: "Polygon",
   coordinates: [
-    [[724000, 6172000],[724100, 6172000],[724100, 6172100],[724000, 6172100],[724000, 6172000]],
-    [[724045, 6172045],[724055, 6172045],[724055, 6172055],[724045, 6172055],[724045, 6172045]],
+    [
+      [724000, 6172000],
+      [724100, 6172000],
+      [724100, 6172100],
+      [724000, 6172100],
+      [724000, 6172000],
+    ],
+    [
+      [724045, 6172045],
+      [724055, 6172045],
+      [724055, 6172055],
+      [724045, 6172055],
+      [724045, 6172045],
+    ],
   ],
 };
 
@@ -35,7 +55,10 @@ describe("computePolygonAreaM2", () => {
     expect(computePolygonAreaM2(empty)).toBeNull();
   });
   it("håndterer MultiPolygon", () => {
-    const mp: GeoJSON.MultiPolygon = { type: "MultiPolygon", coordinates: [SQUARE.coordinates, SQUARE.coordinates] };
+    const mp: GeoJSON.MultiPolygon = {
+      type: "MultiPolygon",
+      coordinates: [SQUARE.coordinates, SQUARE.coordinates],
+    };
     expect(computePolygonAreaM2(mp)).toBeCloseTo(20000, 0);
   });
 });

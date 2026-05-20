@@ -5,7 +5,13 @@ import type { RuleEngineInput } from "@/lib/rule-engine/types";
 function baseInput(overrides: Partial<RuleEngineInput["geotechnical"]> = {}): RuleEngineInput {
   return {
     project: { type: "demolition_and_new", municipality: "København", kommunekode: "0101" },
-    plot: { areaM2: 800, zone: "urban", hasLocalplan: false, hasServitudes: false, localplanIds: [] },
+    plot: {
+      areaM2: 800,
+      zone: "urban",
+      hasLocalplan: false,
+      hasServitudes: false,
+      localplanIds: [],
+    },
     heritage: {
       listedBuilding: false,
       saveValue: null,
