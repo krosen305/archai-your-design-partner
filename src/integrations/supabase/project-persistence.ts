@@ -13,7 +13,7 @@ type BuildingTaskInsert = Database["public"]["Tables"]["building_tasks"]["Insert
 
 import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project-store";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
-import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/client";
+import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
@@ -26,7 +26,9 @@ import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import { BUILDING_TASK_KEYS } from "@/types/building-platform";
+import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
 import { recordAnalysisEvent, type AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { logServerEvent } from "@/lib/server-logger";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -204,23 +206,6 @@ function deriveSoilContaminationStatus(
   return "clean";
 }
 
-function deriveHardStopReason(opts: {
-  saveValue: number | null;
-  isFredet: boolean | null;
-  strandbeskyttelse: boolean | null;
-  fredskov: boolean | null;
-  klitfredning: boolean | null;
-}): string | null {
-  const reasons: string[] = [];
-  if (opts.isFredet === true) reasons.push("Fredet bygning (DAI WFS)");
-  if (opts.saveValue !== null && opts.saveValue <= 3)
-    reasons.push(`SAVE ${opts.saveValue} — dispensation kræves (Slots- og Kulturstyrelsen)`);
-  if (opts.strandbeskyttelse === true) reasons.push("Strandbeskyttelse");
-  if (opts.fredskov === true) reasons.push("Fredskov");
-  if (opts.klitfredning === true) reasons.push("Klitfredning");
-  return reasons.length > 0 ? reasons.join("; ") : null;
-}
-
 // ---------------------------------------------------------------------------
 // Building Tasks: auto-generering baseret på compliance-data
 // ---------------------------------------------------------------------------
@@ -228,7 +213,18 @@ function deriveHardStopReason(opts: {
 function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
   const tasks: BuildingTaskInsert[] = [];
 
-  if (t.isFredet === true) {
+  // Derive violations via canonical adapter — avoids hardcoded thresholds here.
+  const { violations } = evaluateHardStop({
+    saveValue: t.saveValue,
+    isFredet: t.isFredet,
+    strandbeskyttelse: t.strandbeskyttelse,
+    fredskov: t.fredskov,
+    klitfredning: t.klitfredning,
+    projectType: "demolition_and_new",
+  });
+  const violationRules = new Set(violations.map((v) => v.rule));
+
+  if (violationRules.has("listed_building_demolition")) {
     tasks.push({
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.FREDNING_JURIDISK,
@@ -244,7 +240,7 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
     });
   }
 
-  if (t.saveValue !== null && t.saveValue <= 3) {
+  if (violationRules.has("save_1_3_demolition")) {
     tasks.push({
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.SAVE_DISPENSATION,
@@ -259,7 +255,7 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
     });
   }
 
-  if (t.saveValue === 4) {
+  if (violationRules.has("save_4_paragraph14_risk")) {
     tasks.push({
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.SAVE_4_PARAGRAPH14,
@@ -279,7 +275,7 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
     });
   }
 
-  if (t.strandbeskyttelse === true) {
+  if (violationRules.has("protection_line_coastal")) {
     tasks.push({
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.STRANDBESKYTTELSE_DISPENSATION,
@@ -295,7 +291,7 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
     });
   }
 
-  if (t.fredskov === true) {
+  if (violationRules.has("protection_line_forest")) {
     tasks.push({
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.FREDSKOV_DISPENSATION,
@@ -311,7 +307,7 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
     });
   }
 
-  if (t.klitfredning === true) {
+  if (violationRules.has("protection_line_clitFredning")) {
     tasks.push({
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.KLITFREDNING_DISPENSATION,
@@ -426,7 +422,14 @@ async function syncBuildingTasks(
   });
 
   if (readError) {
-    console.warn("[Persistence] building_tasks select fejlede:", readError.message);
+    logServerEvent({
+      module: "project-persistence",
+      operation: "building_tasks.select_existing",
+      severity: "degraded",
+      message: "building_tasks select fejlede",
+      error: readError.message,
+      trace,
+    });
     return;
   }
 
@@ -461,7 +464,14 @@ async function syncBuildingTasks(
 
   if (error) {
     // Non-fatal: building_tasks sync failure must not block the main project save
-    console.warn("[Persistence] building_tasks sync fejlede:", error.message);
+    logServerEvent({
+      module: "project-persistence",
+      operation: "building_tasks.upsert",
+      severity: "degraded",
+      message: "building_tasks sync fejlede",
+      error: error.message,
+      trace,
+    });
   }
 }
 
@@ -491,7 +501,14 @@ async function syncSiteConstraints(
 
   if (error) {
     // Non-fatal: projects remains the SSOT; site_constraints powers validation/debugging.
-    console.warn("[Persistence] site_constraints sync fejlede:", error.message);
+    logServerEvent({
+      module: "project-persistence",
+      operation: "site_constraints.upsert",
+      severity: "degraded",
+      message: "site_constraints sync fejlede",
+      error: error.message,
+      trace,
+    });
   }
 }
 
@@ -589,10 +606,15 @@ export async function deleteProject(accessToken: string, projectId: string): Pro
       await supabaseAdmin.storage.from("inspirationsbilleder").remove(paths);
     }
   } catch (e) {
-    console.warn(
-      "[Persistence] deleteProject: storage cleanup fejlede (ikke kritisk):",
-      (e as Error).message,
-    );
+    logServerEvent({
+      module: "project-persistence",
+      operation: "deleteProject.storage_cleanup",
+      severity: "degraded",
+      message: "storage cleanup fejlede (ikke kritisk)",
+      error: e,
+      trace: null,
+      metadata: { projectId },
+    });
   }
 
   // 2. design_iterations — ingen DB-cascade
@@ -600,14 +622,34 @@ export async function deleteProject(accessToken: string, projectId: string): Pro
     .from("design_iterations")
     .delete()
     .eq("project_id", projectId);
-  if (diErr) console.warn("[Persistence] deleteProject: design_iterations:", diErr.message);
+  if (diErr) {
+    logServerEvent({
+      module: "project-persistence",
+      operation: "deleteProject.design_iterations",
+      severity: "degraded",
+      message: "deleteProject: design_iterations",
+      error: diErr.message,
+      trace: null,
+      metadata: { projectId },
+    });
+  }
 
   // 3. building_tasks — ingen DB-cascade
   const { error: btErr } = await supabaseAdmin
     .from("building_tasks")
     .delete()
     .eq("project_id", projectId);
-  if (btErr) console.warn("[Persistence] deleteProject: building_tasks:", btErr.message);
+  if (btErr) {
+    logServerEvent({
+      module: "project-persistence",
+      operation: "deleteProject.building_tasks",
+      severity: "degraded",
+      message: "deleteProject: building_tasks",
+      error: btErr.message,
+      trace: null,
+      metadata: { projectId },
+    });
+  }
 
   // 4. selve projektet
   const { error: pErr } = await supabaseAdmin
@@ -704,7 +746,14 @@ export async function saveProject(
     });
 
     if (existingReadError) {
-      console.warn("[Persistence] existing compliance read fejlede:", existingReadError.message);
+      logServerEvent({
+        module: "project-persistence",
+        operation: "projects.select_existing_compliance",
+        severity: "degraded",
+        message: "existing compliance read fejlede",
+        error: existingReadError.message,
+        trace,
+      });
     }
 
     const prev =
@@ -764,17 +813,16 @@ export async function saveProject(
       const fredskov = patch.bbrData?.mat_fredskov ?? null;
       const klitfredning = patch.bbrData?.mat_klitfredning ?? null;
 
-      const hardStop =
-        isFredet === true ||
-        (saveValue !== null && saveValue <= 3) ||
-        strandbeskyttelse === true ||
-        fredskov === true ||
-        klitfredning === true;
-
+      const { hardStop, hardStopReason } = evaluateHardStop({
+        saveValue,
+        isFredet,
+        strandbeskyttelse,
+        fredskov,
+        klitfredning,
+        projectType: "demolition_and_new",
+      });
       update.hard_stop = hardStop;
-      update.hard_stop_reason = hardStop
-        ? deriveHardStopReason({ saveValue, isFredet, strandbeskyttelse, fredskov, klitfredning })
-        : null;
+      update.hard_stop_reason = hardStop ? hardStopReason : null;
     }
   }
 
@@ -898,7 +946,15 @@ export async function loadProject(
   const { data, error } = await query.maybeSingle();
 
   if (error) {
-    console.warn("[Persistence] loadProject fejlede:", error.message);
+    logServerEvent({
+      module: "project-persistence",
+      operation: "projects.load",
+      severity: "degraded",
+      message: "loadProject fejlede",
+      error: error.message,
+      trace: null,
+      metadata: { projectId: projectId ?? null, addressId: addressId ?? null },
+    });
     return null;
   }
 

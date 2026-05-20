@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Layers, Plug, Users, Landmark, Waves, type LucideIcon } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { cn } from "@/lib/utils";
+import { SAVE_HARD_STOP_MAX, SAVE_WARNING_VALUE } from "@/lib/rule-engine/hard-stop-adapter";
 
 // ---------------------------------------------------------------------------
 // RiskOverview — visuel hierarki for de 5 kritiske risikokategorier
@@ -95,9 +96,9 @@ export function RiskOverview() {
     const fredningLevel: RiskLevel = is_fredet
       ? "kritisk"
       : heritage_save_value !== null && heritage_save_value !== undefined
-        ? heritage_save_value <= 3
+        ? heritage_save_value <= SAVE_HARD_STOP_MAX
           ? "kritisk"
-          : heritage_save_value === 4
+          : heritage_save_value === SAVE_WARNING_VALUE
             ? "advarsel"
             : "ok"
         : "ukendt";

@@ -9,6 +9,7 @@
  */
 
 import type { Tables } from "@/integrations/supabase/types";
+import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
 
 // =============================================================================
 // Re-exports with domain names
@@ -141,47 +142,49 @@ export type ValidationResult = {
  * Used to set projects.hard_stop = true in the compliance pipeline.
  */
 export function hasAbsoluteHardStop(sc: SiteConstraints): boolean {
-  // Strandbeskyttelse, fredskov, klitfredning are absolute stops for new construction
-  if (sc.strandbeskyttelse || sc.fredskov || sc.klitfredning) return true;
-  // Listed building (is_fredet) combined with demolition intent is illegal
-  if (sc.is_fredet === true) return true;
-  return false;
+  const { hardStop } = evaluateHardStop({
+    saveValue: sc.save_value,
+    isFredet: sc.is_fredet,
+    strandbeskyttelse: sc.strandbeskyttelse,
+    fredskov: sc.fredskov,
+    klitfredning: sc.klitfredning,
+    projectType: "demolition_and_new",
+  });
+  return hardStop;
 }
 
 /**
  * Returns the SAVE-driven Hard Stop severity for demolition projects.
  * Returns null if no heritage constraint applies.
  *
- * ARCH-159: SAVE 4 adds warning level (missing in stop-rules.ts prior to that fix).
+ * Thresholds are defined canonically in hard-stop-adapter.ts (SAVE_HARD_STOP_MAX / SAVE_WARNING_VALUE).
  */
 export function getSaveHardStop(sc: SiteConstraints): HardStopViolation | null {
   if (sc.save_value === null) return null;
 
-  if (sc.save_value <= 3) {
-    return {
-      rule: "save_1_3_demolition",
-      severity: "dispensation_required",
-      reason: `Bygningen har høj bevaringsværdi (SAVE ${sc.save_value}) — nedrivning kræver tilladelse fra Slots- og Kulturstyrelsen.`,
-      constraintField: "save_value",
-      constraintValue: sc.save_value,
-      dispensationMulig: true,
-      dispensationMyndighed: "Slots- og Kulturstyrelsen",
-    };
-  }
+  const { violations } = evaluateHardStop({
+    saveValue: sc.save_value,
+    isFredet: null, // only care about SAVE here
+    strandbeskyttelse: null,
+    fredskov: null,
+    klitfredning: null,
+    projectType: "demolition_and_new",
+  });
 
-  if (sc.save_value === 4) {
-    return {
-      rule: "save_4_demolition_warning",
-      severity: "warning",
-      reason: `Bygningen har bevaringsværdi SAVE 4 — kommunen kan nedlægge §14-forbud mod nedrivning.`,
-      constraintField: "save_value",
-      constraintValue: sc.save_value,
-      dispensationMulig: true,
-      dispensationMyndighed: "Kommunens tekniske forvaltning",
-    };
-  }
+  const saveViolation = violations.find(
+    (v) => v.rule === "save_1_3_demolition" || v.rule === "save_4_paragraph14_risk",
+  );
+  if (!saveViolation) return null;
 
-  return null;
+  return {
+    rule: saveViolation.rule,
+    severity: saveViolation.severity,
+    reason: saveViolation.reason,
+    constraintField: "save_value",
+    constraintValue: sc.save_value,
+    dispensationMulig: saveViolation.severity !== "illegal",
+    dispensationMyndighed: saveViolation.authority,
+  };
 }
 
 // =============================================================================

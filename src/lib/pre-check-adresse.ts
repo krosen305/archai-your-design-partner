@@ -18,6 +18,7 @@ import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import { fetchLayer1 } from "@/lib/compliance-layer1";
+import { isSaveDispensationRequired, isSaveWarning } from "@/lib/rule-engine/hard-stop-adapter";
 import {
   finishAnalysisRun,
   recordAnalysisEvent,
@@ -25,6 +26,7 @@ import {
   traceStep,
   type AnalysisTraceContext,
 } from "@/lib/analysis-tracing";
+import { logServerEvent } from "@/lib/server-logger";
 
 // ---------------------------------------------------------------------------
 // Input-validering (ARCH-173): strict Zod-schema forhindrer at serverfunctionen
@@ -154,7 +156,14 @@ async function runPreCheckAdresse(
   const labels = ["Layer1", "Naturbeskyttelse"];
   [layer1Settled, naturSettled].forEach((r, i) => {
     if (r.status === "rejected") {
-      console.warn(`[preCheckAdresse] ${labels[i]} fejlede:`, r.reason);
+      logServerEvent({
+        module: "pre-check-adresse",
+        operation: `${labels[i]}.settled_result`,
+        severity: "degraded",
+        message: `${labels[i]} fejlede`,
+        error: r.reason,
+        trace,
+      });
       void recordAnalysisEvent(trace, {
         eventType: "pipeline_step",
         phase: "precheck",
@@ -200,7 +209,14 @@ async function runPreCheckAdresse(
         ),
       )
       .catch((e: Error) => {
-        console.warn("[preCheckAdresse] FBB fejlede:", e.message);
+        logServerEvent({
+          module: "pre-check-adresse",
+          operation: "fbb.getSaveData",
+          severity: "degraded",
+          message: "FBB fejlede",
+          error: e,
+          trace,
+        });
         return null;
       });
   } else if (data.vejnavn && data.kommunenavn) {
@@ -218,7 +234,14 @@ async function runPreCheckAdresse(
         ),
       )
       .catch((e: Error) => {
-        console.warn("[preCheckAdresse] FBB adresse-fallback fejlede:", e.message);
+        logServerEvent({
+          module: "pre-check-adresse",
+          operation: "fbb.getSaveDataByAddress",
+          severity: "degraded",
+          message: "FBB adresse-fallback fejlede",
+          error: e,
+          trace,
+        });
         return null;
       });
   }
@@ -285,7 +308,7 @@ function buildPreCheckFlags(
 
   // SAVE-bevaringsværdi — konsistent med stop-rules.ts (ARCH-176, ARCH-159)
   const saveScore = fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
-  if (saveScore !== null && saveScore !== undefined && saveScore <= 3) {
+  if (isSaveDispensationRequired(saveScore)) {
     flags.push({
       id: "save-bevaringsvaerdi",
       label: `Høj bevaringsværdi (SAVE ${saveScore})`,
@@ -297,7 +320,7 @@ function buildPreCheckFlags(
       dispensationMulig: true,
       dispensationMyndighed: "Kommunen",
     });
-  } else if (saveScore === 4) {
+  } else if (isSaveWarning(saveScore)) {
     flags.push({
       id: "save-4-paragraph14",
       label: "Bevaringsværdi SAVE 4 — §14-forbud muligt",

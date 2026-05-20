@@ -51,6 +51,7 @@ import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskytt
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
+import { SAVE_HARD_STOP_MAX, SAVE_WARNING_VALUE } from "@/lib/rule-engine/hard-stop-adapter";
 import { cn } from "@/lib/utils";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 
@@ -874,7 +875,7 @@ function CompliancePanel({
   const storeRisici: typeof flagRisici = [];
   if (
     heritage_save_value !== null &&
-    heritage_save_value <= 3 &&
+    heritage_save_value <= SAVE_HARD_STOP_MAX &&
     !flagKeys.has("save-bevaringsvaerdi") &&
     !flagKeys.has("regelkerne-save_1_3_demolition")
   ) {
@@ -885,7 +886,10 @@ function CompliancePanel({
       detalje: "Nedrivning/ombygning kræver kommunens tilladelse (Planlovens §14).",
     });
   }
-  if (heritage_save_value === 4 && !flagKeys.has("regelkerne-save_4_paragraph14_risk")) {
+  if (
+    heritage_save_value === SAVE_WARNING_VALUE &&
+    !flagKeys.has("regelkerne-save_4_paragraph14_risk")
+  ) {
     storeRisici.push({
       key: "save-4",
       label: "SAVE 4/9 — §14-forbud risiko",
