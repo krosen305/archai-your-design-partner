@@ -578,17 +578,20 @@ async function analyseAddressWithTrace(
               return null;
             }),
           import("@/integrations/miljoe/dkjord")
-            .then(({ DkJordService }) =>
-              traceStep(
+            .then(async ({ DkJordService }) => {
+              const { getCachedJordstykkePolygon } = await import("@/integrations/cache/client");
+              const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+
+              return traceStep(
                 trace,
                 {
                   eventType: "api_call",
                   phase: "layer4",
                   service: "DK-Jord WFS",
                   operation: "getTilstand",
-                  inputSummary: `koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
+                  inputSummary: `koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)} polygon=${polygon ? "yes" : "no"}`,
                 },
-                () => DkJordService.getTilstand(koordinater),
+                () => DkJordService.getTilstand(koordinater, polygon),
                 {
                   outputSummary: (r) =>
                     summarizeSourceResult(r, (d) => `v1=${d.v1Kortlagt} v2=${d.v2Kortlagt}`),
@@ -598,8 +601,8 @@ async function analyseAddressWithTrace(
                     feature_count: r.rawFeatureCount,
                   }),
                 },
-              ),
-            )
+              );
+            })
             .catch((e: Error) => {
               console.warn("[Orchestrator] DK-Jord fejlede:", e.message);
               return null;
@@ -703,17 +706,7 @@ async function analyseAddressWithTrace(
         naturbeskyttelse = natur;
         dkjord = jord?.data ?? null;
         states.dkjord =
-          jord == null
-            ? "error"
-            : jord.status === "mock"
-              ? "mock"
-              : jord.status === "error"
-                ? "error"
-                : jord.status === "skipped"
-                  ? "skipped"
-                  : jord.data != null
-                    ? "success"
-                    : "no_hit";
+          jord === null ? "error" : jord.isMock ? "mock" : jord.data != null ? "success" : "no_hit";
         geusRisk = geus;
         terrain = terr;
         naboer = nabo?.data ?? null;
