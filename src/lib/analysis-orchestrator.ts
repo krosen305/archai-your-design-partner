@@ -36,6 +36,7 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
+import type { MatParcelGeometryPayload } from "@/integrations/mat/geometry";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
@@ -78,6 +79,7 @@ export type ComplianceResult = {
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
   fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi (1-9) + fredningsstatus fra FBB
+  matGeometri: MatParcelGeometryPayload | null; // ARCH-240: parcelpolygon + skel-metrics
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
   analysisRunId?: string | null;
@@ -192,6 +194,7 @@ async function analyseAddressWithTrace(
     | "naboer"
     | "fjernvarme"
     | "fbbData"
+    | "matGeometri"
     | "ruleEngine"
   >;
   let complianceBase: ComplianceBase | null = null;
@@ -298,6 +301,7 @@ async function analyseAddressWithTrace(
             naboer: null,
             fjernvarme: null,
             fbbData: null,
+            matGeometri: null,
             vurderingData: computedBase.vurderingData,
           }),
       );
@@ -436,6 +440,59 @@ async function analyseAddressWithTrace(
       let naboer: NeighborBuildingData | null = null;
       let fjernvarme: FjernvarmeResultat | null = null;
       let fbbData: FbbResultat | null = null;
+      let matGeometri: MatParcelGeometryPayload | null = null;
+
+      // MAT geometry: fetch canonical parcel polygon + compute metrics.
+      // Runs before the parallel block so bbox25832 is available for GeoDanmark.
+      const jordstykkeId = complianceBase.bbr?.jordstykke_lokal_id ?? null;
+      if (jordstykkeId) {
+        const matGeoResult = await traceStep(
+          trace,
+          {
+            eventType: "api_call",
+            phase: "layer4",
+            service: "Datafordeler MAT WFS",
+            operation: "MatGeometryService.getParcelGeometry",
+            inputSummary: `jordstykkeId=${jordstykkeId}`,
+          },
+          () =>
+            import("@/integrations/mat/geometry").then(({ MatGeometryService }) =>
+              MatGeometryService.getParcelGeometry(
+                jordstykkeId,
+                complianceBase.bbr?.grundareal ?? null,
+              ),
+            ),
+          {
+            outputSummary: (r) =>
+              summarizeSourceResult(
+                r,
+                (d) =>
+                  `area=${d.polygonAreaM2?.toFixed(0) ?? "null"} canonical=${d.hasCanonicalPolygon}`,
+              ),
+            metadata: (r) => ({
+              source: r.kilde,
+              isMock: r.isMock,
+              feature_count: r.rawFeatureCount,
+            }),
+          },
+        ).catch((e: Error) => {
+          console.warn("[Orchestrator] MatGeometryService fejlede:", e.message);
+          return null;
+        });
+        matGeometri = matGeoResult?.data ?? null;
+        (states as Record<string, unknown>).matGeometri =
+          matGeoResult == null
+            ? "error"
+            : matGeoResult.status === "mock"
+              ? "mock"
+              : matGeoResult.status === "error"
+                ? "error"
+                : matGeoResult.data != null
+                  ? "success"
+                  : "no_hit";
+      } else {
+        (states as Record<string, unknown>).matGeometri = "no_hit";
+      }
 
       // FBB: kræver integer BBR building IDs — kører altid (SAVE-værdi er nødvendig
       // selv på hard-stopped grunde for korrekt flag-visning)
@@ -489,7 +546,16 @@ async function analyseAddressWithTrace(
             )
             .catch(() => null);
         }
-        return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData };
+        return {
+          naturbeskyttelse,
+          dkjord,
+          geusRisk,
+          terrain,
+          naboer,
+          fjernvarme,
+          fbbData,
+          matGeometri,
+        };
       }
 
       if (koordinater) {
@@ -573,23 +639,49 @@ async function analyseAddressWithTrace(
               console.warn("[Orchestrator] DHM terrain fejlede:", e.message);
               return null;
             }),
-          import("@/integrations/bbr/neighbor-client")
-            .then(({ NaboService }) =>
-              traceStep(
-                trace,
-                {
-                  eventType: "api_call",
-                  phase: "layer4",
-                  service: "DAWA",
-                  operation: "naboer.getNaboer",
-                },
-                () => NaboService.getNaboer(koordinater.lat, koordinater.lng, adgangsadresseid),
-              ),
-            )
-            .catch((e: Error) => {
-              console.warn("[Orchestrator] NaboService fejlede:", e.message);
-              return null;
-            }),
+          (async () => {
+            const { createBboxAroundPoint } = await import("@/lib/map-proxy");
+            const fallbackBboxRaw = koordinater ? createBboxAroundPoint(koordinater, 150) : null;
+            if (!fallbackBboxRaw) return null;
+            const fallbackBbox: [number, number, number, number] = [
+              fallbackBboxRaw.minX,
+              fallbackBboxRaw.minY,
+              fallbackBboxRaw.maxX,
+              fallbackBboxRaw.maxY,
+            ];
+            return import("@/integrations/geodanmark/client")
+              .then(({ GeoDanmarkNaboService }) =>
+                traceStep(
+                  trace,
+                  {
+                    eventType: "api_call",
+                    phase: "layer4",
+                    service: "GeoDanmark WFS",
+                    operation: "getNabobygninger",
+                    inputSummary: `hasParcelBbox=${!!matGeometri?.bbox25832}`,
+                  },
+                  () =>
+                    GeoDanmarkNaboService.getNabobygninger(
+                      matGeometri?.bbox25832 ?? null,
+                      fallbackBbox,
+                      complianceBase.bbr?.jordstykke_lokal_id ?? null,
+                    ),
+                  {
+                    outputSummary: (r) =>
+                      summarizeSourceResult(r, (d) => `count=${d.count} kilde=${d.kilde}`),
+                    metadata: (r) => ({
+                      source: r.kilde,
+                      isMock: r.isMock,
+                      feature_count: r.rawFeatureCount,
+                    }),
+                  },
+                ),
+              )
+              .catch((e: Error) => {
+                console.warn("[Orchestrator] GeoDanmarkNaboService fejlede:", e.message);
+                return null;
+              });
+          })(),
           import("@/integrations/plandata/fjernvarme")
             .then(({ FjernvarmeService }) =>
               traceStep(
@@ -624,15 +716,35 @@ async function analyseAddressWithTrace(
                     : "no_hit";
         geusRisk = geus;
         terrain = terr;
-        naboer = nabo;
+        naboer = nabo?.data ?? null;
+        states.naboer =
+          nabo == null
+            ? "error"
+            : nabo.status === "mock"
+              ? "mock"
+              : nabo.status === "error"
+                ? "error"
+                : nabo.data != null
+                  ? "success"
+                  : "no_hit";
         fjernvarme = varme;
       }
 
-      return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData };
+      return {
+        naturbeskyttelse,
+        dkjord,
+        geusRisk,
+        terrain,
+        naboer,
+        fjernvarme,
+        fbbData,
+        matGeometri,
+      };
     })(),
   ]);
 
-  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData } = layer4;
+  const { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData, matGeometri } =
+    layer4;
 
   // Set Layer 4 service states after all parallel work resolves.
   states.fbb = fbbData ? "success" : "no_hit";
@@ -642,8 +754,6 @@ async function analyseAddressWithTrace(
   states.terrain = bbrHardStop ? "skipped" : "mock";
   // servitutter is IS_MOCK=true (TingbogenV2 — feature flag).
   states.servitutter = "mock";
-  // naboer is deactivated (ARCH-226).
-  states.naboer = bbrHardStop ? "skipped" : "no_hit";
   // fjernvarme is live.
   states.fjernvarme = fjernvarme ? "success" : "no_hit";
 
@@ -658,6 +768,7 @@ async function analyseAddressWithTrace(
     naboer,
     fjernvarme,
     fbbData,
+    matGeometri,
     vurderingData: complianceBase.vurderingData,
     serviceStates: states,
   };
