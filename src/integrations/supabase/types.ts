@@ -235,6 +235,7 @@ export type Database = {
           hard_stop: boolean | null;
           hard_stop_reason: string | null;
           heritage_save_value: number | null;
+          hus_dna: Json | null;
           id: string;
           inspirations: Json | null;
           is_fredet: boolean | null;
@@ -274,6 +275,7 @@ export type Database = {
           hard_stop?: boolean | null;
           hard_stop_reason?: string | null;
           heritage_save_value?: number | null;
+          hus_dna?: Json | null;
           id?: string;
           inspirations?: Json | null;
           is_fredet?: boolean | null;
@@ -313,6 +315,7 @@ export type Database = {
           hard_stop?: boolean | null;
           hard_stop_reason?: string | null;
           heritage_save_value?: number | null;
+          hus_dna?: Json | null;
           id?: string;
           inspirations?: Json | null;
           is_fredet?: boolean | null;
