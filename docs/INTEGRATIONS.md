@@ -23,6 +23,7 @@ Server-side integrations must not be imported directly in route files. Wrap call
 | `DarService`              | `dar/client.ts`              | ✅ Live         | Address, husnummer, adressepunkt, coordinates and MAT keys via DAR GraphQL v1.                 |
 | `BbrService`              | `bbr/client.ts`              | ✅ Live         | Canonical building selection, BBR areas/materials/heating/fredning via BBR GraphQL v2.         |
 | `MatService`              | `mat/client.ts`              | ✅ Live         | Plot area and MAT hard-stop flags from MAT_Jordstykke.                                         |
+| `MatGeometryService`      | `mat/geometry.ts`            | ✅ Live         | Parcel polygon + metrics (area, centroid, bbox) via MAT WFS CQL_FILTER on jordstykke id_lokalId. |
 | `GrundarealResolver`      | `mat/grundareal-resolver.ts` | ✅ Live         | Datafordeler-only fallback for plot area via EBR/BFE/SFE/MAT_Ejerlejlighed.                    |
 | `EbrService`              | `ebr/client.ts`              | ✅ Live         | BFE lookup from `husnummerLokalId`; feeds VUR and property context.                            |
 | `VurService`              | `vur/client.ts`              | ✅ Live         | Public property/land valuation via VUR GraphQL.                                                |
@@ -36,7 +37,8 @@ Server-side integrations must not be imported directly in route files. Wrap call
 | `HusDnaGeneratorService`  | `ai/hus-dna-generator.ts`    | ✅ Live         | Inspiration images/text to Hus-DNA via Claude, with feature-flag mock fallback.                |
 | `BilledeAnalyseService`   | `ai/billede-analyse.ts`      | ✅ Live         | Inspiration image analysis via Claude, with feature-flag mock fallback.                        |
 | `ByggeanalyseService`     | `ai/byggeanalyse.ts`         | ✅ Live         | AI building analysis with rule-engine context.                                                 |
-| `NaboService`             | `bbr/neighbor-client.ts`     | ⏸️ Disabled     | Returns empty result; DAWA neighbor lookup was removed in ARCH-226.                            |
+| `GeoDanmarkNaboService`   | `geodanmark/client.ts`       | 🟡 IS_MOCK=true | Nabobygninger og vejadgang via GeoDanmark Vektor WFS. Erstatter NaboService (ARCH-240). Aktivér ved at verificere typenames via GetCapabilities. |
+| `NaboService`             | `bbr/neighbor-client.ts`     | ⚠️ Superseded   | Returnerer tom liste. Superseded by GeoDanmarkNaboService (ARCH-240).                          |
 | `TinglysningService`      | `tinglysning/client.ts`      | 🟡 IS_MOCK=true | TingbogenV2 requires separate Datafordeler access/schema verification.                         |
 | `DkJordService`           | `miljoe/dkjord.ts`           | 🟡 IS_MOCK=true | Soil contamination model exists; live DK-Jord WFS remains to be verified.                      |
 | `GeusService`             | `geus/client.ts`             | 🟡 IS_MOCK=true | Geotechnical/radon/groundwater risk model; live GEUS layers need verification.                 |
