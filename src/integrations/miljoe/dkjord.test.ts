@@ -48,8 +48,15 @@ function mockFetchForScenario(scenario: "no_hit" | "v1_only" | "v2_hit") {
 // Eksisterende tests (mock-path)
 // ---------------------------------------------------------------------------
 
-describe("DkJordService.getTilstand — mock path", () => {
+describe("DkJordService.getTilstand — live path (fetch mocked)", () => {
+  let fetchSpy: ReturnType<typeof mockFetchForScenario>;
+
+  afterEach(() => {
+    fetchSpy?.mockRestore();
+  });
+
   it("returns SourceResult shape with status and data", async () => {
+    fetchSpy = mockFetchForScenario("no_hit");
     const result = await DkJordService.getTilstand({ lat: 55.7, lng: 12.5 });
     expect(result.status).toBeDefined();
     expect(["ok", "mock", "error", "skipped"]).toContain(result.status);
@@ -59,6 +66,7 @@ describe("DkJordService.getTilstand — mock path", () => {
   });
 
   it("result.data.nuancering and lokalitetsId are present in type", async () => {
+    fetchSpy = mockFetchForScenario("no_hit");
     const result = await DkJordService.getTilstand({ lat: 55.7, lng: 12.5 });
     expect(result.data).not.toBeNull();
     const data = result.data!;
@@ -67,6 +75,7 @@ describe("DkJordService.getTilstand — mock path", () => {
   });
 
   it("result.data has kilde field for backward compatibility", async () => {
+    fetchSpy = mockFetchForScenario("no_hit");
     const result = await DkJordService.getTilstand({ lat: 55.7, lng: 12.5 });
     expect(["dkjord", "mock"]).toContain(result.data?.kilde);
   });
