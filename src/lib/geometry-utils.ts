@@ -51,7 +51,9 @@ export function computeCentroidUtm32(
       : (geometry.coordinates[0]?.[0] as Ring | undefined);
   if (!ring?.length) return null;
   const n = ring.length;
-  let area = 0, cx = 0, cy = 0;
+  let area = 0,
+    cx = 0,
+    cy = 0;
   for (let i = 0; i < n; i++) {
     const [x1, y1] = ring[i]!;
     const [x2, y2] = ring[(i + 1) % n]!;
@@ -78,7 +80,10 @@ export function computeBbox25832(
       ? (geometry.coordinates[0] as Ring)
       : (geometry.coordinates[0]?.[0] as Ring | undefined);
   if (!ring?.length) return null;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const [x, y] of ring) {
     if (x < minX) minX = x;
     if (y < minY) minY = y;
@@ -102,11 +107,13 @@ export function minDistanceToBoundaryM(
   for (let i = 0; i < ring.length; i++) {
     const [ax, ay] = ring[i]!;
     const [bx, by] = ring[(i + 1) % ring.length]!;
-    const dx = bx - ax, dy = by - ay;
+    const dx = bx - ax,
+      dy = by - ay;
     const lenSq = dx * dx + dy * dy;
     let t = lenSq > 0 ? ((px - ax) * dx + (py - ay) * dy) / lenSq : 0;
     t = Math.max(0, Math.min(1, t));
-    const nearX = ax + t * dx, nearY = ay + t * dy;
+    const nearX = ax + t * dx,
+      nearY = ay + t * dy;
     const d = Math.sqrt((px - nearX) ** 2 + (py - nearY) ** 2);
     if (d < minDist) minDist = d;
   }

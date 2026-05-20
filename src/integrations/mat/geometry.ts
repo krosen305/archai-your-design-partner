@@ -26,8 +26,7 @@ export type MatParcelGeometryPayload = {
   hasCanonicalPolygon: boolean;
 };
 
-const SOURCE_URL =
-  "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
+const SOURCE_URL = "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 
 export class MatGeometryService {
   /**
@@ -60,14 +59,14 @@ export class MatGeometryService {
         );
       }
 
-      const geometry = featureCollection.features[0]
-        ?.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
+      const geometry = featureCollection.features[0]?.geometry as
+        | GeoJSON.Polygon
+        | GeoJSON.MultiPolygon
+        | null;
 
       const polygonAreaM2 = geometry ? computePolygonAreaM2(geometry) : null;
       const centroidUtm32 = geometry ? computeCentroidUtm32(geometry) : null;
-      const centroidWgs84 = centroidUtm32
-        ? utm32ToWgs84(centroidUtm32[0], centroidUtm32[1])
-        : null;
+      const centroidWgs84 = centroidUtm32 ? utm32ToWgs84(centroidUtm32[0], centroidUtm32[1]) : null;
       const bbox25832 = geometry ? computeBbox25832(geometry) : null;
       const areaDiscrepancyM2 =
         polygonAreaM2 !== null && registreretArealM2 !== null
