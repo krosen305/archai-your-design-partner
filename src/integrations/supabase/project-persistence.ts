@@ -101,6 +101,9 @@ type ComplianceTriggers = {
   fredskov: boolean | null;
   klitfredning: boolean | null;
   soilContamination: "clean" | "registered" | "contaminated" | "unknown" | null;
+  jordforureningV1: boolean | null;
+  jordforureningV2: boolean | null;
+  omraadeklassificering: string | null;
 };
 
 type ExistingProjectSnapshot = {
@@ -175,6 +178,12 @@ function deriveSiteConstraintsPatch(
   if (patch.dkjord !== undefined) {
     hasConstraintField = true;
     sitePatch.soil_contamination_status = deriveSoilContaminationStatus(patch.dkjord);
+    sitePatch.jordforurening_v1 = patch.dkjord?.v1Kortlagt ?? null;
+    sitePatch.jordforurening_v2 = patch.dkjord?.v2Kortlagt ?? null;
+    sitePatch.jordforurening_olietank = patch.dkjord?.olietank.eksisterer ?? null;
+    sitePatch.omraadeklassificering = patch.dkjord?.omraadeklassificering ?? null;
+    sitePatch.jordforurening_nuancering = patch.dkjord?.nuancering ?? null;
+    sitePatch.jordforurening_lokalitet_id = patch.dkjord?.lokalitetsId ?? null;
   }
 
   return hasConstraintField ? sitePatch : null;
@@ -318,21 +327,55 @@ function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
     });
   }
 
-  if (t.soilContamination === "contaminated" || t.soilContamination === "registered") {
+  if (t.jordforureningV2 === true) {
     tasks.push({
       project_id: t.projectId,
-      task_key: BUILDING_TASK_KEYS.MILJOEUNDERSOEGELSE,
-      title: "Miljøundersøgelse af grund påkrævet",
+      task_key: BUILDING_TASK_KEYS.JORDFORURENING_V2_UNDERSOEGELSE,
+      title: "Miljøteknisk undersøgelse af V2-kortlagt grund",
       description:
-        t.soilContamination === "contaminated"
-          ? "Grunden er V2-kortlagt (dokumenteret forurening). En miljøundersøgelse og evt. oprensning er nødvendig inden byggestart. Budgetér 200.000–500.000 kr+."
-          : "Grunden er V1-kortlagt (mulig forurening). En indledende miljøundersøgelse er nødvendig inden byggetilladelse kan opnås.",
+        "Grunden er V2-kortlagt (dokumenteret forurening). Oprensning kan koste 500.000 kr+. " +
+        "En miljøteknisk undersøgelse er påkrævet inden byggestart (Jordforureningslovens §72). " +
+        "Budgettér undersøgelse + oprensning som en separat post.",
       phase: "matriklen",
-      status: t.soilContamination === "contaminated" ? "blocked" : "pending",
+      status: "blocked",
+      priority: 1,
+      is_auto_generated: true,
+      blocked_by_constraint: "jordforurening_v2",
+      metadata: { kortlaeggingsklasse: "V2", myndighed: "Miljøstyrelsen" },
+    });
+  }
+
+  if (t.jordforureningV1 === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.JORDFORURENING_V1_SCREENING,
+      title: "Miljøscreening af V1-kortlagt grund",
+      description:
+        "Grunden er V1-kortlagt (mulig forurening). En indledende miljøscreening anbefales " +
+        "inden køb og er nødvendig inden nedrivningsansøgning.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "jordforurening_v1",
+      metadata: { kortlaeggingsklasse: "V1", myndighed: "Miljøstyrelsen" },
+    });
+  }
+
+  if (t.omraadeklassificering !== null) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.JORDFLYTNING_ATTEST,
+      title: "Indhent jordsundhedsattest inden jordflytning",
+      description:
+        `Grunden er i et områdeklassificeret område (${t.omraadeklassificering}). ` +
+        "Jordflytning fra grunden kræver jordsundhedsattest fra kommunen.",
+      phase: "maskinrummet",
+      status: "pending",
       priority: 3,
       is_auto_generated: true,
-      blocked_by_constraint: "soil_contamination_status",
-      metadata: { kortlaeggingsklasse: t.soilContamination },
+      blocked_by_constraint: "omraadeklassificering",
+      metadata: { omraadeklassificering: t.omraadeklassificering, myndighed: "Kommunen" },
     });
   }
 
@@ -813,6 +856,9 @@ export async function saveProject(
         fredskov: patch.bbrData?.mat_fredskov ?? null,
         klitfredning: patch.bbrData?.mat_klitfredning ?? null,
         soilContamination,
+        jordforureningV1: patch.dkjord?.v1Kortlagt ?? null,
+        jordforureningV2: patch.dkjord?.v2Kortlagt ?? null,
+        omraadeklassificering: patch.dkjord?.omraadeklassificering ?? null,
       },
       trace,
     );

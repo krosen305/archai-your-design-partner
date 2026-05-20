@@ -38,18 +38,21 @@ export const BUILDING_TASK_KEYS = {
   // Matriklen phase
   JORDBUNDSPROVE: "jordbundsprove",
   KORTLAEG_FORSYNINGER: "kortlaeg_forsyninger",
-  MILJOEUNDERSOEGELSE: "miljoeundersoegelse",
-  SAVE_4_PARAGRAPH14: "save_4_paragraph14", // SAVE 4 → §14-forbud risk
-  // Sandkassen phase
-  INSPIRATIONSARK: "inspirationsark",
-  DEFINER_BUDGET: "definer_budget",
+  MILJOEUNDERSOEGELSE: "miljoeundersoegelse", // beholdes for unknown/error-case
+  JORDFORURENING_V2_UNDERSOEGELSE: "jordforurening_v2_undersoegelse", // NY: V2-kortlagt
+  JORDFORURENING_V1_SCREENING: "jordforurening_v1_screening", // NY: V1-kortlagt
+  SAVE_4_PARAGRAPH14: "save_4_paragraph14",
   // Maskinrummet phase
+  JORDFLYTNING_ATTEST: "jordflytning_attest", // NY: omraadeklassificering
   ARKITEKTTEGNINGER: "arkitekttegninger",
   STATIK: "statik",
   LCA_BEREGNING: "lca_beregning",
-  // Myndighed phase — auto-generated from Hard Stop data
-  SAVE_DISPENSATION: "save_dispensation", // SAVE 1–3
-  FREDNING_JURIDISK: "fredning_juridisk", // is_fredet = true
+  // Sandkassen phase
+  INSPIRATIONSARK: "inspirationsark",
+  DEFINER_BUDGET: "definer_budget",
+  // Myndighed phase — auto-generated fra Hard Stop data
+  SAVE_DISPENSATION: "save_dispensation",
+  FREDNING_JURIDISK: "fredning_juridisk",
   STRANDBESKYTTELSE_DISPENSATION: "strandbeskyttelse_dispensation",
   FREDSKOV_DISPENSATION: "fredskov_dispensation",
   KLITFREDNING_DISPENSATION: "klitfredning_dispensation",
