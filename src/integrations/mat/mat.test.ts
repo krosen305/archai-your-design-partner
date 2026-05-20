@@ -19,6 +19,7 @@ const MOCK_CONFIG = {
 };
 
 const EJERLAV_LOKAL_ID = "mat-ejerlav-0000-0000-000000000001";
+const JORDSTYKKE_LOKAL_ID = "mat-jordstykke-0000-0000-000000000001";
 
 type MockJson = Record<string, unknown>;
 
@@ -42,7 +43,11 @@ const ejerlavResponse = (lokalId = EJERLAV_LOKAL_ID, navn = "Virum By, Virum") =
 });
 
 const jordstykkeResponse = (areal: number, matr = "48a") => ({
-  data: { MAT_Jordstykke: { nodes: [{ registreretAreal: areal, matrikelnummer: matr }] } },
+  data: {
+    MAT_Jordstykke: {
+      nodes: [{ id_lokalId: JORDSTYKKE_LOKAL_ID, registreretAreal: areal, matrikelnummer: matr }],
+    },
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -152,5 +157,17 @@ describe("MatService.getGrundareal", () => {
 
     const result = await MatService.getGrundareal(12352, "1a", MOCK_CONFIG);
     expect(result.registreretAreal).toBe(12500);
+  });
+
+  it("returnerer jordstykkeLokalId fra MAT_Jordstykke", async () => {
+    mockFetch([ejerlavResponse(), jordstykkeResponse(850)]);
+    const result = await MatService.getGrundareal(12352, "48a", MOCK_CONFIG);
+    expect(result.jordstykkeLokalId).toBe(JORDSTYKKE_LOKAL_ID);
+  });
+
+  it("returnerer jordstykkeLokalId null når MAT_Ejerlav ikke kendes", async () => {
+    mockFetch([{ data: { MAT_Ejerlav: { nodes: [] } } }]);
+    const result = await MatService.getGrundareal(12352, "48a", MOCK_CONFIG);
+    expect(result.jordstykkeLokalId).toBeNull();
   });
 });

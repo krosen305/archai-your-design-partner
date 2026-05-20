@@ -75,6 +75,7 @@ export async function fetchBbrWithMat(input: {
       mat_strandbeskyttelse = mat.strandbeskyttelse;
       mat_fredskov = mat.fredskov;
       mat_klitfredning = mat.klitfredning;
+      jordstykkeLokalId = mat.jordstykkeLokalId;
     } else {
       // Mangler ejerlavskode/matrikelnummer — forsøg GrundarealResolver (ARCH-222 option B)
       try {

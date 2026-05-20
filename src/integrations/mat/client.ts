@@ -92,6 +92,7 @@ query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virknin
     first: 1
   ) {
     nodes {
+      id_lokalId
       registreretAreal
       matrikelnummer
       strandbeskyttelse_omfang
@@ -159,6 +160,7 @@ export type MatGrundarealResult = {
   registreretAreal: number | null;
   ejerlavLokalId: string | null;
   ejerlavsnavn: string | null;
+  jordstykkeLokalId: string | null; // MAT_Jordstykke.id_lokalId — bruges til parcelpolygon WFS-opslag
   fejl: string | null;
   // Beskyttelseslinjer fra MAT_Jordstykke — null = ikke berørt eller data mangler
   strandbeskyttelse: boolean | null;
@@ -189,6 +191,7 @@ export class MatService {
         registreretAreal: null,
         ejerlavLokalId: null,
         ejerlavsnavn: null,
+        jordstykkeLokalId: null,
         fejl: "ejerlavskode og matrikelnummer er påkrævet",
         strandbeskyttelse: null,
         fredskov: null,
@@ -221,6 +224,7 @@ export class MatService {
           registreretAreal: null,
           ejerlavLokalId: null,
           ejerlavsnavn: null,
+          jordstykkeLokalId: null,
           fejl: `MAT_Ejerlav ikke fundet for ejerlavskode ${ejerlavskode}`,
           strandbeskyttelse: null,
           fredskov: null,
@@ -251,6 +255,7 @@ export class MatService {
           registreretAreal: null,
           ejerlavLokalId,
           ejerlavsnavn,
+          jordstykkeLokalId: null,
           fejl: `MAT_Jordstykke ikke fundet: ejerlav ${ejerlavLokalId}, matr ${matr}`,
           strandbeskyttelse: null,
           fredskov: null,
@@ -267,6 +272,7 @@ export class MatService {
         registreretAreal: js.registreretAreal ?? null,
         ejerlavLokalId,
         ejerlavsnavn,
+        jordstykkeLokalId: js.id_lokalId ?? null,
         fejl: null,
         strandbeskyttelse: omfangToBool(js.strandbeskyttelse_omfang),
         fredskov: omfangToBool(js.fredskov_omfang),
@@ -278,6 +284,7 @@ export class MatService {
         registreretAreal: null,
         ejerlavLokalId: null,
         ejerlavsnavn: null,
+        jordstykkeLokalId: null,
         fejl: (e as Error).message,
         strandbeskyttelse: null,
         fredskov: null,
