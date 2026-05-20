@@ -191,6 +191,7 @@ export type DataSourceKind =
   | "terrain"
   | "fjernvarme"
   | "naboer"
+  | "matGeometri"
   | "vurdering"
   | "byggeanalyse"
   | "billedanalyse"
@@ -208,6 +209,7 @@ export const DATA_SOURCE_LABELS: Record<DataSourceKind, string> = {
   terrain: "Terræn (DHM)",
   fjernvarme: "Fjernvarme",
   naboer: "Nabobygninger",
+  matGeometri: "Parcelgeometri (MAT WFS)",
   vurdering: "Ejendomsvurdering",
   byggeanalyse: "AI byggeanalyse",
   billedanalyse: "AI billedanalyse",
@@ -226,6 +228,7 @@ const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
   terrain: "missing",
   fjernvarme: "missing",
   naboer: "missing",
+  matGeometri: "missing",
   vurdering: "missing",
   byggeanalyse: "missing",
   billedanalyse: "missing",
@@ -505,6 +508,7 @@ const STALE_DAYS: Record<DataSourceKind, number> = {
   terrain: 30,
   fjernvarme: 30,
   naboer: 30,
+  matGeometri: 90,
   vurdering: 30,
   byggeanalyse: 60,
   billedanalyse: 60,
