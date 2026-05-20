@@ -48,6 +48,7 @@ import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
+import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ export type CockpitProps = {
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
   naturbeskyttelse: NaturbeskyttelsesResultat | null;
+  dkjord: DkJordResultat | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
 };
@@ -83,11 +85,12 @@ export function Cockpit({
   servitutter,
   terrain,
   naturbeskyttelse,
+  dkjord,
   isRecomputing,
 }: CockpitProps) {
   const reactiveContext = useMemo(
-    () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse }),
-    [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse],
+    () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord }),
+    [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord],
   );
 
   return (
@@ -126,6 +129,7 @@ export function ProjektDnaPanel({
     terrain: TerrainData | null;
     fbbData: FbbResultat | null;
     naturbeskyttelse: NaturbeskyttelsesResultat | null;
+    dkjord: DkJordResultat | null;
   };
 }) {
   return <ByggeoenskeAccordion reactiveContext={reactiveContext} />;
@@ -144,6 +148,7 @@ function ByggeoenskeAccordion({
     terrain: TerrainData | null;
     fbbData: FbbResultat | null;
     naturbeskyttelse: NaturbeskyttelsesResultat | null;
+    dkjord: DkJordResultat | null;
   };
 }) {
   const { byggeoenske, setByggeoenske } = useProject();
@@ -168,7 +173,7 @@ function ByggeoenskeAccordion({
         servitutter: reactiveContext.servitutter,
         terrain: reactiveContext.terrain,
         fbbData: reactiveContext.fbbData,
-        dkjord: null,
+        dkjord: reactiveContext.dkjord,
         byggeoenske: { ...state.byggeoenske, ...partial },
         municipality: state.address?.kommune ?? "",
         kommunekode: state.address?.kommunekode ?? "",

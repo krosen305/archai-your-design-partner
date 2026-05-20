@@ -38,6 +38,7 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
+import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
@@ -512,6 +513,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   const [fbbDataLocal, setFbbDataLocal] = useState<FbbResultat | null>(null);
   const [naturbeskyttelsesLocal, setNaturbeskyttelsesLocal] =
     useState<NaturbeskyttelsesResultat | null>(null);
+  const [dkjordLocal, setDkjordLocal] = useState<DkJordResultat | null>(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const [restorePhase, setRestorePhase] = useState<"pending" | "checked">(
     routeMatchesAddress(address, adresseId) ? "checked" : "pending",
@@ -581,6 +583,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           setNaturbeskyttelsesLocal(
             objectField<NaturbeskyttelsesResultat>(project.compliance_data, "naturbeskyttelse"),
           );
+          setDkjordLocal(objectField<DkJordResultat>(project.compliance_data, "dkjord"));
           if (project.heritage_save_value != null)
             store.setHeritageSaveValue(project.heritage_save_value);
           if (project.is_fredet != null) store.setIsFredet(project.is_fredet);
@@ -768,6 +771,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           setNaboerLocal(result.naboer ?? null);
           setFbbDataLocal(result.fbbData ?? null);
           setNaturbeskyttelsesLocal(result.naturbeskyttelse ?? null);
+          setDkjordLocal(result.dkjord ?? null);
           setVurderingData(result.vurderingData ?? null);
           const flags = deriveComplianceFlags(
             result.bbr,
@@ -943,6 +947,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
                   fjernvarme={fjernvarmeLocal}
                   naboer={naboerLocal}
                   naturbeskyttelse={naturbeskyttelsesLocal}
+                  dkjord={dkjordLocal}
                   isRecomputing={isRecomputing}
                   onRunAnalyse={runManualAnalyse}
                   onShowEjendom={() => setActiveTab("ejendom")}
@@ -1038,6 +1043,7 @@ function AnalyseTab({
   fjernvarme,
   naboer,
   naturbeskyttelse,
+  dkjord,
   isRecomputing,
   onRunAnalyse,
   onShowEjendom,
@@ -1056,6 +1062,7 @@ function AnalyseTab({
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
   naturbeskyttelse: NaturbeskyttelsesResultat | null;
+  dkjord: DkJordResultat | null;
   isRecomputing: boolean;
   onRunAnalyse: () => void;
   onShowEjendom: () => void;
@@ -1069,8 +1076,8 @@ function AnalyseTab({
   const closeDrawer = useCallback(() => setDrawerSection(null), []);
 
   const reactiveContext = useMemo(
-    () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse }),
-    [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse],
+    () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord }),
+    [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord],
   );
 
   const vedtagne = lokalplaner.filter(
