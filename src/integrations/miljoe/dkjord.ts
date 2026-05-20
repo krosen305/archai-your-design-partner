@@ -44,8 +44,7 @@ type WfsJsonResponse = {
 // Bygger WKT POLYGON fra første Polygon-feature i en GeoJSON FeatureCollection.
 // Returnerer null ved uventede geometrityper — caller falder tilbage til POINT.
 function wfsPolygonFilter(geojson: GeoJSON.Feature | GeoJSON.FeatureCollection): string | null {
-  const feature =
-    geojson.type === "FeatureCollection" ? geojson.features[0] : geojson;
+  const feature = geojson.type === "FeatureCollection" ? geojson.features[0] : geojson;
   if (!feature) return null;
 
   const geom = feature.geometry;
@@ -114,7 +113,7 @@ export class DkJordService {
       const totalFeatures = v1Count + v2Count + olietankCount + omraadeCount;
 
       // Udtræk nuancering og lokalitetsId fra første V2- eller V1-feature
-      const hitFeature = (v2Data.features?.[0] ?? v1Data.features?.[0]) ?? null;
+      const hitFeature = v2Data.features?.[0] ?? v1Data.features?.[0] ?? null;
       const nuancering = (hitFeature?.properties?.["nuancering"] as string | undefined) ?? null;
       const lokalitetsId = (hitFeature?.properties?.["lokalitet_id"] as string | undefined) ?? null;
 

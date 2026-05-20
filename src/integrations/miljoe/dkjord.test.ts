@@ -27,10 +27,14 @@ function mockFetchForScenario(scenario: "no_hit" | "v1_only" | "v2_hit") {
       if (scenario === "no_hit") {
         data = wfsResponse(0);
       } else if (scenario === "v1_only") {
-        data = isV1 ? wfsResponse(1, [{ nuancering: "Historisk", lokalitet_id: "LOK-001" }]) : wfsResponse(0);
+        data = isV1
+          ? wfsResponse(1, [{ nuancering: "Historisk", lokalitet_id: "LOK-001" }])
+          : wfsResponse(0);
       } else {
         // v2_hit
-        data = isV2 ? wfsResponse(1, [{ nuancering: "V2 Forurenet", lokalitet_id: "LOK-042" }]) : wfsResponse(0);
+        data = isV2
+          ? wfsResponse(1, [{ nuancering: "V2 Forurenet", lokalitet_id: "LOK-042" }])
+          : wfsResponse(0);
       }
 
       // olietank og omraadet returnerer altid 0 i disse scenarier
