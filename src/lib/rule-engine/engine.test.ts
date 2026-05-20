@@ -58,6 +58,9 @@ function baseInput(overrides: Partial<RuleEngineInput> = {}): RuleEngineInput {
       radonRisk: "low",
       groundwaterDepthM: null,
       slopePercent: null,
+      jordforureningV1: null,
+      jordforureningV2: null,
+      omraadeklassificering: null,
     },
     servituts: {
       hasCritical: false,

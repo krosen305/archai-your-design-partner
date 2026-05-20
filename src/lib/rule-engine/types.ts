@@ -119,11 +119,14 @@ export type RuleEngineInput = {
     heatingSource: string | null; // varmekilde
   } | null;
 
-  /** Geoteknisk risiko */
+  /** Geoteknisk risiko og jordforurening */
   geotechnical: {
     radonRisk: "low" | "medium" | "high" | "unknown";
     groundwaterDepthM: number | null;
     slopePercent: number | null;
+    jordforureningV1: boolean | null;      // null = ukendt/API-fejl — ingen violation
+    jordforureningV2: boolean | null;      // null = ukendt/API-fejl — ingen violation
+    omraadeklassificering: string | null;  // null = ikke klassificeret
   };
 
   /** Kritiske servitutter */
