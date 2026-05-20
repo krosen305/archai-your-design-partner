@@ -180,10 +180,10 @@ export function getSaveHardStop(sc: SiteConstraints): HardStopViolation | null {
     rule: saveViolation.rule,
     severity: saveViolation.severity,
     reason: saveViolation.reason,
-    constraintField: "save_value",
+    constraintField: "save_value" as keyof SiteConstraints,
     constraintValue: sc.save_value,
     dispensationMulig: saveViolation.severity !== "illegal",
-    dispensationMyndighed: saveViolation.authority,
+    dispensationMyndighed: saveViolation.authority ?? undefined,
   };
 }
 
