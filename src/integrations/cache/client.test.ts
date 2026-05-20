@@ -36,10 +36,10 @@ describe("setCachedSourceResult + getCachedSourceResult", () => {
     );
 
     await setCachedSourceResult(testAddress, "dkjord", result, 1);
-    const cached = await getCachedSourceResult<{ v1Kortlagt: boolean | null; v2Kortlagt: boolean | null }>(
-      testAddress,
-      "dkjord",
-    );
+    const cached = await getCachedSourceResult<{
+      v1Kortlagt: boolean | null;
+      v2Kortlagt: boolean | null;
+    }>(testAddress, "dkjord");
 
     expect(cached).not.toBeNull();
     expect(cached?.status).toBe("mock");

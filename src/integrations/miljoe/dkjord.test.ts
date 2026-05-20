@@ -24,9 +24,17 @@ describe("DkJordService.getTilstand", () => {
     const data = result.data;
     expect(data).not.toBeNull();
     // Must be boolean or null — never undefined
-    expect(data!.v1Kortlagt === true || data!.v1Kortlagt === false || data!.v1Kortlagt === null).toBe(true);
-    expect(data!.v2Kortlagt === true || data!.v2Kortlagt === false || data!.v2Kortlagt === null).toBe(true);
-    expect(data!.olietank.eksisterer === true || data!.olietank.eksisterer === false || data!.olietank.eksisterer === null).toBe(true);
+    expect(
+      data!.v1Kortlagt === true || data!.v1Kortlagt === false || data!.v1Kortlagt === null,
+    ).toBe(true);
+    expect(
+      data!.v2Kortlagt === true || data!.v2Kortlagt === false || data!.v2Kortlagt === null,
+    ).toBe(true);
+    expect(
+      data!.olietank.eksisterer === true ||
+        data!.olietank.eksisterer === false ||
+        data!.olietank.eksisterer === null,
+    ).toBe(true);
   });
 
   it("result.data has kilde field for backward compatibility", async () => {

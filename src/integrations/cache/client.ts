@@ -194,7 +194,10 @@ export async function getCachedSourceResult<T>(
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
 
-  if (error) throw new Error(`[SourceCache] select fejlede for ${addressId}/${sourceKind}: ${error.message}`);
+  if (error)
+    throw new Error(
+      `[SourceCache] select fejlede for ${addressId}/${sourceKind}: ${error.message}`,
+    );
   if (!data) return null;
 
   return {
@@ -236,6 +239,8 @@ export async function setCachedSourceResult<T>(
   );
 
   if (error) {
-    throw new Error(`[SourceCache] upsert fejlede for ${addressId}/${sourceKind}: ${error.message}`);
+    throw new Error(
+      `[SourceCache] upsert fejlede for ${addressId}/${sourceKind}: ${error.message}`,
+    );
   }
 }

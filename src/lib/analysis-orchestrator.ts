@@ -614,14 +614,14 @@ async function analyseAddressWithTrace(
           jord == null
             ? "error"
             : jord.status === "mock"
-            ? "mock"
-            : jord.status === "error"
-            ? "error"
-            : jord.status === "skipped"
-            ? "skipped"
-            : jord.data != null
-            ? "success"
-            : "no_hit";
+              ? "mock"
+              : jord.status === "error"
+                ? "error"
+                : jord.status === "skipped"
+                  ? "skipped"
+                  : jord.data != null
+                    ? "success"
+                    : "no_hit";
         geusRisk = geus;
         terrain = terr;
         naboer = nabo;
