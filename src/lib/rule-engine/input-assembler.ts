@@ -13,6 +13,7 @@ import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskytt
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
+import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { Byggeoenske, DesignPlacement } from "@/lib/project-store";
 import type {
   RuleEngineInput,
@@ -35,6 +36,7 @@ export type AssemblerParams = {
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
   fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi fra FBB
+  dkjord: DkJordResultat | null; // jordforurening V1/V2/omraadeklassificering
   byggeoenske: Byggeoenske | null; // null = serverside kørslen (Option A)
   designPlacement?: DesignPlacement | null; // ARCH-180: præcis footprint/skelafstand fra korteditor
   municipality: string;
@@ -137,6 +139,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     servitutter,
     terrain,
     fbbData,
+    dkjord,
     byggeoenske,
     designPlacement,
     municipality,
@@ -344,6 +347,9 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     radonRisk: geusRisk?.radonRisk ?? "unknown",
     groundwaterDepthM: geusRisk?.groundwaterDepthM ?? null,
     slopePercent: terrain?.slopePercent ?? null,
+    jordforureningV1: dkjord?.v1Kortlagt ?? null,
+    jordforureningV2: dkjord?.v2Kortlagt ?? null,
+    omraadeklassificering: dkjord?.omraadeklassificering ?? null,
   };
 
   // ── Servitutter ───────────────────────────────────────────────────────────

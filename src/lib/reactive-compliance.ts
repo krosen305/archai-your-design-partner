@@ -19,6 +19,7 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { FbbResultat } from "@/integrations/fbb/client";
+import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { Byggeoenske, ComplianceFlag } from "@/lib/project-store";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
@@ -33,6 +34,7 @@ export type PartialUpdateParams = {
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
   fbbData: FbbResultat | null;
+  dkjord: DkJordResultat | null;
   byggeoenske: Byggeoenske;
   municipality: string;
   kommunekode: string;
@@ -72,6 +74,7 @@ export function computePartialUpdate(params: PartialUpdateParams): PartialUpdate
     servitutter,
     terrain,
     fbbData,
+    dkjord: params.dkjord,
     byggeoenske,
     municipality,
     kommunekode,

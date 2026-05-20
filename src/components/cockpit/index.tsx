@@ -168,6 +168,7 @@ function ByggeoenskeAccordion({
         servitutter: reactiveContext.servitutter,
         terrain: reactiveContext.terrain,
         fbbData: reactiveContext.fbbData,
+        dkjord: null,
         byggeoenske: { ...state.byggeoenske, ...partial },
         municipality: state.address?.kommune ?? "",
         kommunekode: state.address?.kommunekode ?? "",
