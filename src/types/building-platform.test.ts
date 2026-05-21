@@ -77,6 +77,9 @@ describe("hasAbsoluteHardStop", () => {
   test("fredskov true → true", () => {
     expect(hasAbsoluteHardStop(mockSC({ fredskov: true }))).toBe(true);
   });
+  test("klitfredning true → true", () => {
+    expect(hasAbsoluteHardStop(mockSC({ klitfredning: true }))).toBe(true);
+  });
   test("no constraints → false", () => {
     expect(hasAbsoluteHardStop(mockSC())).toBe(false);
   });
