@@ -8,6 +8,54 @@ export type Database = {
   };
   public: {
     Tables: {
+      address_source_results: {
+        Row: {
+          id: string;
+          address_id: string;
+          source_kind: string;
+          status: string;
+          confidence: string;
+          is_mock: boolean;
+          fetched_at: string;
+          source_url: string | null;
+          raw_feature_count: number | null;
+          payload: Json | null;
+          expires_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          address_id: string;
+          source_kind: string;
+          status: string;
+          confidence: string;
+          is_mock?: boolean;
+          fetched_at?: string;
+          source_url?: string | null;
+          raw_feature_count?: number | null;
+          payload?: Json | null;
+          expires_at: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          address_id?: string;
+          source_kind?: string;
+          status?: string;
+          confidence?: string;
+          is_mock?: boolean;
+          fetched_at?: string;
+          source_url?: string | null;
+          raw_feature_count?: number | null;
+          payload?: Json | null;
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       address_analysis: {
         Row: {
           address_id: string;
@@ -15,6 +63,8 @@ export type Database = {
           compliance_result_at: string | null;
           created_at: string;
           id: string;
+          jordstykke_polygon: Json | null;
+          jordstykke_polygon_at: string | null;
           lokalplan_extracted: Json | null;
           lokalplan_extracted_at: string | null;
           lokalplan_pdf_url: string | null;
@@ -30,6 +80,8 @@ export type Database = {
           compliance_result_at?: string | null;
           created_at?: string;
           id?: string;
+          jordstykke_polygon?: Json | null;
+          jordstykke_polygon_at?: string | null;
           lokalplan_extracted?: Json | null;
           lokalplan_extracted_at?: string | null;
           lokalplan_pdf_url?: string | null;
@@ -45,6 +97,8 @@ export type Database = {
           compliance_result_at?: string | null;
           created_at?: string;
           id?: string;
+          jordstykke_polygon?: Json | null;
+          jordstykke_polygon_at?: string | null;
           lokalplan_extracted?: Json | null;
           lokalplan_extracted_at?: string | null;
           lokalplan_pdf_url?: string | null;
