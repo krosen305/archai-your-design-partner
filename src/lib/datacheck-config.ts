@@ -49,7 +49,7 @@ export type ReadinessScore = {
 // Felter
 // ---------------------------------------------------------------------------
 
-export const DATA_POINT_DEFS: DataPointDef[] = [
+export const DATA_POINT_DEFS = [
   // ── Sektion 3: Bygherrekrav ──────────────────────────────────────────────
   {
     id: "rumprogram",
@@ -632,7 +632,9 @@ export const DATA_POINT_DEFS: DataPointDef[] = [
     kritisk: true,
     phase: "udbud",
   },
-];
+] as const satisfies readonly DataPointDef[];
+
+export type DataPointId = (typeof DATA_POINT_DEFS)[number]["id"];
 
 // ---------------------------------------------------------------------------
 // Sektioner

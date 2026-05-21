@@ -19,9 +19,11 @@ import { BackLink } from "@/components/wizard-chrome";
 import {
   DATA_POINT_DEFS,
   SECTIONS,
+  dataStatusMapSchema,
   getReadinessScores,
   getRiskFlags,
   parsePersistedDataStatusMap,
+  type DataPointId,
   type DataPointStatus,
   type DataStatusMap,
 } from "@/lib/datacheck";
@@ -46,7 +48,7 @@ const loadDatacheck = createServerFn({ method: "POST" })
 
 const saveDatacheckSchema = z.object({
   addressId: z.string().min(1).max(64),
-  statusMap: z.record(z.string(), z.unknown()),
+  statusMap: dataStatusMapSchema,
   token: z.string().min(1),
   projectId: z.string().uuid().optional().nullable(),
 });
@@ -78,7 +80,7 @@ function DatacheckPage() {
   const [expandedSections, setExpandedSections] = useState<Set<number>>(
     new Set(SECTIONS.map((s) => s.nr)),
   );
-  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [expandedNotes, setExpandedNotes] = useState<Set<DataPointId>>(new Set());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<DataStatusMap | null>(null);
 
@@ -135,7 +137,7 @@ function DatacheckPage() {
     }, 600);
   }
 
-  function handleStatus(fieldId: string, status: DataPointStatus) {
+  function handleStatus(fieldId: DataPointId, status: DataPointStatus) {
     const now = new Date().toISOString();
     const updated: DataStatusMap = {
       ...statusMap,
@@ -145,7 +147,7 @@ function DatacheckPage() {
     scheduleSave(updated);
   }
 
-  function handleNote(fieldId: string, note: string) {
+  function handleNote(fieldId: DataPointId, note: string) {
     const now = new Date().toISOString();
     const existing = statusMap[fieldId];
     const updated: DataStatusMap = {
@@ -172,7 +174,7 @@ function DatacheckPage() {
       return next;
     });
 
-  const toggleNote = (id: string) =>
+  const toggleNote = (id: DataPointId) =>
     setExpandedNotes((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);

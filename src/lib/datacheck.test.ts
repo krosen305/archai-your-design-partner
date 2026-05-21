@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  dataStatusMapSchema,
   getReadinessScores,
   parsePersistedDataStatusMap,
   type DataStatusMap,
@@ -63,5 +64,23 @@ describe("datacheck", () => {
       expect(score.done).toBe(0);
       expect(score.pct).toBe(0);
     }
+  });
+
+  it("dataStatusMapSchema filtrerer ukendte ids fra persisted payload", () => {
+    const parsed = dataStatusMapSchema.parse({
+      rumprogram: {
+        fieldId: "rumprogram",
+        status: "done",
+        updatedAt: new Date().toISOString(),
+      },
+      ukendt: {
+        fieldId: "rumprogram",
+        status: "done",
+        updatedAt: new Date().toISOString(),
+      },
+    });
+
+    expect(parsed.rumprogram?.status).toBe("done");
+    expect("ukendt" in parsed).toBe(false);
   });
 });

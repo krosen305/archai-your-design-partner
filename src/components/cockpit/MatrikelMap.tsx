@@ -320,14 +320,7 @@ export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId, onPlaceme
         footprintCenterRef.current = [lng, lat];
         setDragHint("Placering opdateret");
 
-        if (address) {
-          const nextAddress = {
-            ...address,
-            centroid: { lat, lng },
-          };
-          setAddress(nextAddress);
-          onPlacementChange?.({ centroid: { lat, lng } });
-        }
+        onPlacementChange?.({ centroid: { lat, lng } });
       });
 
       const marker = new Feature({

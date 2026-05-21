@@ -1,20 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type {
-  AnalysisEventRow,
-  AnalysisRunRow,
-  TracingDatabase,
-} from "@/lib/analysis-tracing-types";
-import { getEnvOptional } from "@/lib/env";
-
-type AnalysisRunView = AnalysisRunRow & { events: AnalysisEventRow[] };
-type AnalysisRunWithRelation = AnalysisRunRow & { analysis_events: AnalysisEventRow[] | null };
-
-const tracingDb = supabaseAdmin as unknown as SupabaseClient<TracingDatabase>;
+import type { AnalysisEventRow, AnalysisRunView } from "@/lib/debug-analysis";
 
 const getAnalysisRunsSchema = z.object({
   addressId: z.string().nullable(),
@@ -25,44 +13,8 @@ const getAnalysisRunsSchema = z.object({
 const getAnalysisRuns = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => getAnalysisRunsSchema.parse(d))
   .handler(async ({ data }): Promise<AnalysisRunView[]> => {
-    if (getEnvOptional("ENVIRONMENT") === "production") {
-      throw new Error("403: Debug view er ikke tilgaengeligt i produktion");
-    }
-
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
-    if (authError || !authData.user) throw new Error("401: Ikke autentificeret");
-
-    const role = String(authData.user.app_metadata?.role ?? "");
-    if (role !== "admin" && role !== "service_role") {
-      throw new Error("403: Kun admin har adgang til debug analyse");
-    }
-
-    let query = tracingDb
-      .from("analysis_runs")
-      .select(
-        `id, run_kind, address_id, project_id, user_id, source, status,
-         started_at, completed_at, duration_ms, error_message, metadata,
-         analysis_events (
-           id, run_id, event_type, phase, service, operation, status,
-           cache_hit, attempt, http_status, duration_ms, error_message,
-           metadata, input_summary, output_summary, decision_summary, created_at
-         )`,
-      )
-      .order("started_at", { ascending: false })
-      .limit(20);
-
-    if (data.addressId) query = query.eq("address_id", data.addressId);
-    if (data.projectId) query = query.eq("project_id", data.projectId);
-
-    const { data: runs, error } = await query.returns<AnalysisRunWithRelation[]>();
-    if (error) throw new Error(`DB fejl: ${error.message}`);
-
-    return (runs ?? []).map((run) => ({
-      ...run,
-      events: [...(run.analysis_events ?? [])].sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      ),
-    }));
+    const { loadDebugAnalysisRuns } = await import("@/lib/debug-analysis");
+    return loadDebugAnalysisRuns(data);
   });
 
 export const Route = createFileRoute("/debug/analyse")({
@@ -101,10 +53,10 @@ function DebugAnalysePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-6">
       <div>
-        <h1 className="font-mono text-sm tracking-widest text-foreground">DEBUG / ANALYSE LOG</h1>
-        <p className="text-xs text-muted-foreground mt-1">
+        <h1 className="text-sm tracking-widest text-foreground font-mono">DEBUG / ANALYSE LOG</h1>
+        <p className="mt-1 text-xs text-muted-foreground">
           Intern visning af analysekorsler - kun tilgaengelig i dev/staging.
         </p>
       </div>
@@ -178,13 +130,13 @@ function RunCard({
         : "text-yellow-400";
 
   return (
-    <div className="rounded border border-border p-4 space-y-2" data-testid="debug-run-card">
-      <button type="button" onClick={onToggle} className="w-full text-left space-y-1">
+    <div className="space-y-2 rounded border border-border p-4" data-testid="debug-run-card">
+      <button type="button" onClick={onToggle} className="w-full space-y-1 text-left">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+          <span className="text-[10px] tracking-widest text-muted-foreground uppercase font-mono">
             {run.run_kind}
           </span>
-          <span className={`font-mono text-[10px] tracking-widest ${statusColor}`}>
+          <span className={`text-[10px] tracking-widest font-mono ${statusColor}`}>
             {run.status.toUpperCase()}
           </span>
         </div>
@@ -199,9 +151,9 @@ function RunCard({
       </button>
 
       {expanded && (
-        <div className="mt-3 border-t border-border pt-3 space-y-1">
-          {run.events.map((ev) => (
-            <EventRow key={ev.id} event={ev} />
+        <div className="mt-3 space-y-1 border-t border-border pt-3">
+          {run.events.map((event) => (
+            <EventRow key={event.id} event={event} />
           ))}
         </div>
       )}
@@ -223,7 +175,7 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
       data-testid="debug-event-row"
     >
       <span className={`font-mono ${statusColor}`}>{event.status.toUpperCase()}</span>
-      <span className="text-muted-foreground font-mono truncate">{event.service}</span>
+      <span className="truncate text-muted-foreground font-mono">{event.service}</span>
       <div className="space-y-0.5">
         <div className="text-foreground">{event.operation}</div>
         {event.input_summary && (
@@ -237,9 +189,9 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
         )}
         {event.error_message && <div className="text-danger">error: {event.error_message}</div>}
         <div className="text-muted-foreground/50">
-          {event.phase && `${event.phase} � `}
+          {event.phase && `${event.phase} | `}
           {event.duration_ms != null && `${event.duration_ms}ms`}
-          {event.cache_hit === true && " � cache-hit"}
+          {event.cache_hit === true && " | cache-hit"}
         </div>
       </div>
     </div>

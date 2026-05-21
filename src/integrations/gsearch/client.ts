@@ -1,5 +1,4 @@
 import { utm32ToWgs84 } from "@/lib/geometry-utils";
-import { getEnvOptional } from "@/lib/env";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { z } from "zod";
 
@@ -37,7 +36,7 @@ export class GsearchService {
     const q = query.trim();
     if (!q || q.length < 2) return [];
 
-    const token = tokenOverride ?? getEnvOptional("DATAFORSYNINGEN_TOKEN") ?? "";
+    const token = tokenOverride ?? runtimeConfig.integrations.dataforsyningenToken;
     const params = new URLSearchParams({
       q,
       limit: String(runtimeConfig.integrations.gsearch.resultLimit),

@@ -790,7 +790,8 @@ function MatrikelCanvas({
       naboer={naboer}
       jordstykkeLokalId={bbr?.jordstykke_lokal_id ?? null}
       onPlacementChange={({ centroid }) => {
-        const next = { ...address!, centroid };
+        if (!address) return;
+        const next = { ...address, centroid };
         setAddress(next);
         void syncPatch({ address: next });
       }}

@@ -5,58 +5,44 @@ import {
   MEDIUM_RISK_IDS,
   PHASE_LABELS,
   SECTIONS,
+  type DataPointDef,
+  type DataPointId,
+  type Phase,
+  type ReadinessScore,
+  type RiskFlag,
 } from "@/lib/datacheck-config";
 
 export { DATA_POINT_DEFS, PHASE_LABELS, SECTIONS };
+export type { DataPointDef, DataPointId, Phase, ReadinessScore, RiskFlag };
 
 export type DataPointStatus = "not_started" | "in_progress" | "done" | "not_applicable";
 
 export type DataPointEntry = {
-  fieldId: string;
+  fieldId: DataPointId;
   status: DataPointStatus;
   note?: string;
   updatedAt: string;
 };
 
-export type DataStatusMap = Record<string, DataPointEntry>;
-
-export type Phase = "skitse" | "myndighed" | "udbud";
-
-export type DataPointDef = {
-  id: string;
-  section: number;
-  sectionLabel: string;
-  label: string;
-  description: string;
-  kritisk: boolean;
-  phase: Phase;
-};
-
-export type RiskFlag = {
-  fieldId: string;
-  label: string;
-  severity: "high" | "medium";
-  message: string;
-};
-
-export type ReadinessScore = {
-  phase: Phase;
-  label: string;
-  done: number;
-  total: number;
-  pct: number;
-};
+export type DataStatusMap = Partial<Record<DataPointId, DataPointEntry>>;
 
 const statusSchema = z.enum(["not_started", "in_progress", "done", "not_applicable"]);
+const dataPointIdSchema = z.enum(
+  DATA_POINT_DEFS.map((def) => def.id) as [DataPointId, ...DataPointId[]],
+);
 
-const dataPointEntrySchema = z.object({
-  fieldId: z.string().min(1),
+export const dataPointEntrySchema = z.object({
+  fieldId: dataPointIdSchema,
   status: statusSchema,
   note: z.string().optional(),
   updatedAt: z.string().datetime(),
 });
 
-const knownDataPointIds = new Set(DATA_POINT_DEFS.map((def) => def.id));
+const knownDataPointIds = new Set<DataPointId>(DATA_POINT_DEFS.map((def) => def.id));
+
+export const dataStatusMapSchema = z
+  .record(z.string(), dataPointEntrySchema)
+  .transform((input) => parsePersistedDataStatusMap(input));
 
 export function parsePersistedDataStatusMap(input: unknown): DataStatusMap {
   if (!input || typeof input !== "object") return {};
@@ -64,10 +50,10 @@ export function parsePersistedDataStatusMap(input: unknown): DataStatusMap {
   const parsed: DataStatusMap = {};
 
   for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (!knownDataPointIds.has(key)) continue;
+    if (!knownDataPointIds.has(key as DataPointId)) continue;
     const result = dataPointEntrySchema.safeParse(value);
     if (!result.success) continue;
-    parsed[key] = result.data;
+    parsed[key as DataPointId] = result.data;
   }
 
   return parsed;

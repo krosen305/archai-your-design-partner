@@ -23,11 +23,12 @@
 // Beskyttelseslinjer hentes gratis i samme kald som grundareal og merges ind i
 // BbrKompliantData.mat_* af analysis-orchestrator.ts.
 
-import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import { logServerEvent } from "@/lib/server-logger";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -41,10 +42,7 @@ type MatClientConfig = {
 function getConfig(explicit?: MatClientConfig) {
   const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
-  const endpoint =
-    explicit?.endpoint ??
-    getEnvOptional("DATAFORDELER_MAT_ENDPOINT") ??
-    "https://graphql.datafordeler.dk/MAT/v2";
+  const endpoint = explicit?.endpoint ?? runtimeConfig.integrations.datafordeler.matEndpoint;
 
   if (!apiKey) {
     throw new Error(
@@ -152,7 +150,13 @@ async function gqlFetch(
   const parsed = JSON.parse(bodyText);
 
   if (parsed.errors?.length) {
-    logServerEvent({ module: "mat/client", operation: "graphqlFetch", severity: "fatal", message: "GraphQL-fejl", metadata: { errors: parsed.errors } });
+    logServerEvent({
+      module: "mat/client",
+      operation: "graphqlFetch",
+      severity: "fatal",
+      message: "GraphQL-fejl",
+      metadata: { errors: parsed.errors },
+    });
     throw new Error(parsed.errors[0].message);
   }
 
@@ -286,7 +290,13 @@ export class MatService {
         klitfredning: omfangToBool(js.klitfredning_omfang),
       };
     } catch (e) {
-      logServerEvent({ module: "mat/client", operation: "getGrundareal", severity: "fatal", message: "Service fejl", error: e });
+      logServerEvent({
+        module: "mat/client",
+        operation: "getGrundareal",
+        severity: "fatal",
+        message: "Service fejl",
+        error: e,
+      });
       return {
         registreretAreal: null,
         ejerlavLokalId: null,

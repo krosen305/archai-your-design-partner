@@ -8,6 +8,119 @@ export type Database = {
   };
   public: {
     Tables: {
+      analysis_events: {
+        Row: {
+          attempt: number | null;
+          cache_hit: boolean | null;
+          created_at: string;
+          decision_summary: string | null;
+          duration_ms: number | null;
+          error_message: string | null;
+          event_type: string;
+          http_status: number | null;
+          id: string;
+          input_summary: string | null;
+          metadata: Json | null;
+          operation: string;
+          output_summary: string | null;
+          phase: string | null;
+          run_id: string;
+          service: string;
+          status: string;
+        };
+        Insert: {
+          attempt?: number | null;
+          cache_hit?: boolean | null;
+          created_at?: string;
+          decision_summary?: string | null;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          event_type: string;
+          http_status?: number | null;
+          id?: string;
+          input_summary?: string | null;
+          metadata?: Json | null;
+          operation: string;
+          output_summary?: string | null;
+          phase?: string | null;
+          run_id: string;
+          service: string;
+          status?: string;
+        };
+        Update: {
+          attempt?: number | null;
+          cache_hit?: boolean | null;
+          created_at?: string;
+          decision_summary?: string | null;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          event_type?: string;
+          http_status?: number | null;
+          id?: string;
+          input_summary?: string | null;
+          metadata?: Json | null;
+          operation?: string;
+          output_summary?: string | null;
+          phase?: string | null;
+          run_id?: string;
+          service?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "analysis_events_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: false;
+            referencedRelation: "analysis_runs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      analysis_runs: {
+        Row: {
+          address_id: string | null;
+          completed_at: string | null;
+          duration_ms: number | null;
+          error_message: string | null;
+          id: string;
+          metadata: Json | null;
+          project_id: string | null;
+          run_kind: string;
+          source: string | null;
+          started_at: string;
+          status: string;
+          user_id: string | null;
+        };
+        Insert: {
+          address_id?: string | null;
+          completed_at?: string | null;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          project_id?: string | null;
+          run_kind: string;
+          source?: string | null;
+          started_at?: string;
+          status?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          address_id?: string | null;
+          completed_at?: string | null;
+          duration_ms?: number | null;
+          error_message?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          project_id?: string | null;
+          run_kind?: string;
+          source?: string | null;
+          started_at?: string;
+          status?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       address_source_results: {
         Row: {
           id: string;

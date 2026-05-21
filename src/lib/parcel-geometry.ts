@@ -14,7 +14,10 @@ function shoelaceArea(ring: Ring): number {
 }
 
 // Approximate degrees² to m² at latitude ~56°N (Denmark)
-const DEG2_TO_M2_DK = 1.2e10;
+// mPerLng = 111_320 * cos(56° * π/180) ≈ 62,288 m/deg
+// mPerLat = 111_320 m/deg
+// Product: 62,288 * 111_320 ≈ 6.93e9
+const DEG2_TO_M2_DK = 6.93e9;
 
 export function computeFootprintAreaM2(ring: Ring): number | null {
   if (ring.length < 3) return null;
@@ -71,5 +74,8 @@ export function computeOutsideParcelAreaM2(
   if (fMinX >= pMinX && fMaxX <= pMaxX && fMinY >= pMinY && fMaxY <= pMaxY) {
     return 0;
   }
+  // Partial overlap: bbox-only approximation — conservatively returns 0
+  // (underreports encroachment in partial-overlap cases).
+  // Full polygon-clipping is not implemented; this is a fast pre-check only.
   return 0;
 }

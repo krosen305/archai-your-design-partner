@@ -1,9 +1,7 @@
 // SERVER-SIDE ONLY - internal technical tracing for analysis/debugging.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { Json } from "@/integrations/supabase/types";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TracingDatabase } from "@/lib/analysis-tracing-types";
+import type { Json, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { logger } from "@/lib/logger";
 
 export type AnalysisRunKind =
@@ -66,7 +64,7 @@ type TraceStepOptions<T> = {
 };
 
 let persistenceDisabled = false;
-const tracingDb = supabaseAdmin as unknown as SupabaseClient<TracingDatabase>;
+const tracingDb = supabaseAdmin;
 
 function nowMs() {
   return Date.now();
@@ -104,7 +102,7 @@ export async function startAnalysisRun(input: StartRunInput): Promise<AnalysisTr
   if (persistenceDisabled) return context;
 
   try {
-    const { error } = await tracingDb.from("analysis_runs").insert({
+    const insert: TablesInsert<"analysis_runs"> = {
       id: fallbackId,
       run_kind: input.runKind,
       project_id: input.projectId ?? null,
@@ -112,7 +110,8 @@ export async function startAnalysisRun(input: StartRunInput): Promise<AnalysisTr
       user_id: input.userId ?? null,
       source: input.source ?? "server",
       metadata: asJson(input.metadata),
-    });
+    };
+    const { error } = await tracingDb.from("analysis_runs").insert(insert);
 
     if (error) throw error;
   } catch (e) {
@@ -132,14 +131,15 @@ export async function finishAnalysisRun(
   if (!trace?.runId || persistenceDisabled) return;
 
   try {
+    const update: TablesUpdate<"analysis_runs"> = {
+      status,
+      completed_at: new Date().toISOString(),
+      duration_ms: Math.max(0, nowMs() - startedAtMs),
+      error_message: error ? truncate(errorMessage(error)) : null,
+    };
     const { error: updateError } = await tracingDb
       .from("analysis_runs")
-      .update({
-        status,
-        completed_at: new Date().toISOString(),
-        duration_ms: Math.max(0, nowMs() - startedAtMs),
-        error_message: error ? truncate(errorMessage(error)) : null,
-      })
+      .update(update)
       .eq("id", trace.runId);
 
     if (updateError) throw updateError;
@@ -156,7 +156,7 @@ export async function recordAnalysisEvent(
   if (!trace?.runId || persistenceDisabled) return;
 
   try {
-    const { error } = await tracingDb.from("analysis_events").insert({
+    const insert: TablesInsert<"analysis_events"> = {
       run_id: trace.runId,
       event_type: input.eventType,
       phase: input.phase ?? null,
@@ -172,7 +172,8 @@ export async function recordAnalysisEvent(
       input_summary: input.inputSummary ? truncate(input.inputSummary, 500) : null,
       output_summary: input.outputSummary ? truncate(input.outputSummary, 500) : null,
       decision_summary: input.decisionSummary ? truncate(input.decisionSummary, 500) : null,
-    });
+    };
+    const { error } = await tracingDb.from("analysis_events").insert(insert);
 
     if (error) throw error;
   } catch (e) {

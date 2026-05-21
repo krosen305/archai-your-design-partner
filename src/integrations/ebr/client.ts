@@ -19,10 +19,11 @@
 // Konfiguration
 // ---------------------------------------------------------------------------
 
-import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { getEnvRequired } from "@/lib/env";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import { logServerEvent } from "@/lib/server-logger";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 type EbrClientConfig = {
   apiKey?: string;
@@ -32,10 +33,7 @@ type EbrClientConfig = {
 function getConfig(explicit?: EbrClientConfig) {
   const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
-  const endpoint =
-    explicit?.endpoint ??
-    getEnvOptional("DATAFORDELER_EBR_ENDPOINT") ??
-    "https://graphql.datafordeler.dk/EBR/v1";
+  const endpoint = explicit?.endpoint ?? runtimeConfig.integrations.datafordeler.ebrEndpoint;
 
   return { apiKey, endpoint };
 }
@@ -135,7 +133,13 @@ async function gqlFetch(
   const parsed = JSON.parse(bodyText);
 
   if (parsed.errors?.length) {
-    logServerEvent({ module: "ebr/client", operation: "graphqlFetch", severity: "fatal", message: "GraphQL-fejl", metadata: { errors: parsed.errors } });
+    logServerEvent({
+      module: "ebr/client",
+      operation: "graphqlFetch",
+      severity: "fatal",
+      message: "GraphQL-fejl",
+      metadata: { errors: parsed.errors },
+    });
     throw new Error(parsed.errors[0].message);
   }
 
@@ -183,7 +187,13 @@ export class EbrService {
       const bfeNr: string | null = nodes[0].bestemtFastEjendomBFENr ?? null;
       return { bfeNr, fejl: null };
     } catch (e) {
-      logServerEvent({ module: "ebr/client", operation: "getBfeNrByHusnummer", severity: "fatal", message: "Service fejl", error: e });
+      logServerEvent({
+        module: "ebr/client",
+        operation: "getBfeNrByHusnummer",
+        severity: "fatal",
+        message: "Service fejl",
+        error: e,
+      });
       return { bfeNr: null, fejl: (e as Error).message };
     }
   }
@@ -223,7 +233,13 @@ export class EbrService {
 
       return { bfeNr: nodes[0].bestemtFastEjendomBFENr ?? null, fejl: null };
     } catch (e) {
-      logServerEvent({ module: "ebr/client", operation: "getBfeNrByAdresse", severity: "fatal", message: "getBfeNrByAdresse fejl", error: e });
+      logServerEvent({
+        module: "ebr/client",
+        operation: "getBfeNrByAdresse",
+        severity: "fatal",
+        message: "getBfeNrByAdresse fejl",
+        error: e,
+      });
       return { bfeNr: null, fejl: (e as Error).message };
     }
   }

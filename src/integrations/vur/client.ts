@@ -6,10 +6,11 @@
 //   VUR_Ejendomsvurdering(id=recordId) → fkVurderingsejendomID (ejendoms-ID)
 //   VUR_Ejendomsvurdering(fkVurderingsejendomID) → hent historik, vælg nyeste
 
-import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { logServerEvent } from "@/lib/server-logger";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -147,7 +148,13 @@ export class VurService {
         fejl: null,
       };
     } catch (e) {
-      logServerEvent({ module: "vur/client", operation: "getVurData", severity: "fatal", message: "Service fejl", error: e });
+      logServerEvent({
+        module: "vur/client",
+        operation: "getVurData",
+        severity: "fatal",
+        message: "Service fejl",
+        error: e,
+      });
       return this.errorResult(bfeNr, (e as Error).message);
     }
   }
@@ -158,10 +165,7 @@ export class VurService {
 
   private static getConfig(explicit?: VurClientConfig) {
     const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
-    const endpoint =
-      explicit?.endpoint ??
-      getEnvOptional("DATAFORDELER_VUR_ENDPOINT") ??
-      "https://graphql.datafordeler.dk/VUR/v1";
+    const endpoint = explicit?.endpoint ?? runtimeConfig.integrations.datafordeler.vurEndpoint;
     return { apiKey, endpoint };
   }
 

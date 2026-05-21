@@ -9,11 +9,12 @@
 //   1. ebr_husnummer_sfe: EBR.husnummerLokalId → BFE → MAT_SFE → jordstykker
 //   2. ebr_adresse_ejerlejlighed: EBR.adresseLokalId → BFE → MAT_Ejerlejlighed → SFE → jordstykker
 
-import { getEnvRequired, getEnvOptional } from "@/lib/env";
+import { getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { logServerEvent } from "@/lib/server-logger";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 // ---------------------------------------------------------------------------
 // Output-typer (eksporterede — bruges af compliance-layer1 og MatrikelMap)
@@ -53,14 +54,8 @@ type ResolverConfig = {
 function getConfig(explicit?: ResolverConfig) {
   return {
     apiKey: explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY"),
-    ebrEndpoint:
-      explicit?.ebrEndpoint ??
-      getEnvOptional("DATAFORDELER_EBR_ENDPOINT") ??
-      "https://graphql.datafordeler.dk/EBR/v1",
-    matEndpoint:
-      explicit?.matEndpoint ??
-      getEnvOptional("DATAFORDELER_MAT_ENDPOINT") ??
-      "https://graphql.datafordeler.dk/MAT/v2",
+    ebrEndpoint: explicit?.ebrEndpoint ?? runtimeConfig.integrations.datafordeler.ebrEndpoint,
+    matEndpoint: explicit?.matEndpoint ?? runtimeConfig.integrations.datafordeler.matEndpoint,
   };
 }
 
@@ -273,7 +268,13 @@ export class GrundarealResolver {
         }
       }
     } catch (e) {
-      logServerEvent({ module: "mat/grundareal-resolver", operation: "resolve", severity: "degraded", message: "Rute 1 (EBR husnummer) fejlede", error: e });
+      logServerEvent({
+        module: "mat/grundareal-resolver",
+        operation: "resolve",
+        severity: "degraded",
+        message: "Rute 1 (EBR husnummer) fejlede",
+        error: e,
+      });
     }
 
     // --- Rute 2: EBR adresse → MAT Ejerlejlighed → SFE ---
@@ -325,7 +326,13 @@ export class GrundarealResolver {
         }
       }
     } catch (e) {
-      logServerEvent({ module: "mat/grundareal-resolver", operation: "resolve", severity: "degraded", message: "Rute 2 (EBR adresse) fejlede", error: e });
+      logServerEvent({
+        module: "mat/grundareal-resolver",
+        operation: "resolve",
+        severity: "degraded",
+        message: "Rute 2 (EBR adresse) fejlede",
+        error: e,
+      });
     }
 
     return {

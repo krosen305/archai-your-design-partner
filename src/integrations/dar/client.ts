@@ -22,12 +22,13 @@
 //   - kommunenavn: IKKE i DAR direkte – kommuneinddeling er FK udenfor DAR
 //   - Koordinater: EPSG:25832 WKT på DAR_Adressepunkt.position.wkt – kræver UTM→WGS84 konvertering
 
-import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import { logServerEvent } from "@/lib/server-logger";
 import { utm32ToWgs84 } from "@/lib/geometry-utils";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -41,10 +42,7 @@ type DarClientConfig = {
 function getConfig(explicit?: DarClientConfig) {
   const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
-  const endpoint =
-    explicit?.endpoint ??
-    getEnvOptional("DATAFORDELER_DAR_ENDPOINT") ??
-    "https://graphql.datafordeler.dk/DAR/v1";
+  const endpoint = explicit?.endpoint ?? runtimeConfig.integrations.datafordeler.darEndpoint;
 
   if (!apiKey) {
     throw new Error(
@@ -239,7 +237,13 @@ async function gqlFetch(
 
   const parsed = JSON.parse(bodyText);
   if (parsed.errors?.length) {
-    logServerEvent({ module: "dar/client", operation: "graphqlFetch", severity: "fatal", message: "GraphQL-fejl", metadata: { errors: parsed.errors } });
+    logServerEvent({
+      module: "dar/client",
+      operation: "graphqlFetch",
+      severity: "fatal",
+      message: "GraphQL-fejl",
+      metadata: { errors: parsed.errors },
+    });
     throw new Error(parsed.errors[0].message);
   }
 
@@ -251,9 +255,7 @@ async function gqlFetch(
 // ---------------------------------------------------------------------------
 
 function getMatUrl(apiKey: string): URL {
-  const matEndpoint =
-    getEnvOptional("DATAFORDELER_MAT_ENDPOINT") ?? "https://graphql.datafordeler.dk/MAT/v2";
-  const url = new URL(matEndpoint);
+  const url = new URL(runtimeConfig.integrations.datafordeler.matEndpoint);
   url.searchParams.set("apiKey", apiKey);
   return url;
 }
@@ -351,11 +353,23 @@ export class DarService {
             "MAT_Jordstykke_by_id",
             trace,
           ).catch((e: Error) => {
-            logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "fatal", message: "MAT_Jordstykke fejlede for jordstykkeFK", metadata: { jordstykkeFK }, error: e });
+            logServerEvent({
+              module: "dar/client",
+              operation: "getAddressDetails",
+              severity: "fatal",
+              message: "MAT_Jordstykke fejlede for jordstykkeFK",
+              metadata: { jordstykkeFK },
+              error: e,
+            });
             return null;
           })
         : (() => {
-            logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "degraded", message: "DAR_Husnummer.jordstykke er tom — grundareal og matrikeldata utilgængeligt" });
+            logServerEvent({
+              module: "dar/client",
+              operation: "getAddressDetails",
+              severity: "degraded",
+              message: "DAR_Husnummer.jordstykke er tom — grundareal og matrikeldata utilgængeligt",
+            });
             return Promise.resolve(null);
           })(),
     ]);
@@ -364,7 +378,13 @@ export class DarService {
     const adressepunktNode = adressepunktData?.DAR_Adressepunkt?.nodes?.[0] ?? null;
     const jordstykkeNode = jordstykkeData?.MAT_Jordstykke?.nodes?.[0] ?? null;
     if (jordstykkeFK && !jordstykkeNode) {
-      logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "fatal", message: "MAT_Jordstykke returnerede ingen nodes — id_lokalId matchede ingenting", metadata: { jordstykkeFK } });
+      logServerEvent({
+        module: "dar/client",
+        operation: "getAddressDetails",
+        severity: "fatal",
+        message: "MAT_Jordstykke returnerede ingen nodes — id_lokalId matchede ingenting",
+        metadata: { jordstykkeFK },
+      });
     }
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
@@ -386,7 +406,13 @@ export class DarService {
         );
         ejerlavskode = ejerlavData?.MAT_Ejerlav?.nodes?.[0]?.ejerlavskode ?? null;
       } catch (e) {
-        logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "degraded", message: "MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null", error: e });
+        logServerEvent({
+          module: "dar/client",
+          operation: "getAddressDetails",
+          severity: "degraded",
+          message: "MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null",
+          error: e,
+        });
       }
     }
 

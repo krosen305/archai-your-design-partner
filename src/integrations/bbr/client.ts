@@ -20,12 +20,13 @@
 // Konfiguration
 // ---------------------------------------------------------------------------
 
-import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { recordAnalysisEvent } from "@/lib/analysis-tracing";
 import { logServerEvent } from "@/lib/server-logger";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
+import { runtimeConfig } from "@/lib/runtime-config";
 import {
   anvendelseLabel,
   opvarmningsmiddelLabel,
@@ -47,10 +48,7 @@ type BbrClientConfig = {
 function getConfig(explicit?: BbrClientConfig) {
   const apiKey = explicit?.apiKey ?? getEnvRequired("DATAFORDELER_API_KEY");
 
-  const endpoint =
-    explicit?.endpoint ??
-    getEnvOptional("DATAFORDELER_BBR_ENDPOINT") ??
-    "https://graphql.datafordeler.dk/BBR/v2";
+  const endpoint = explicit?.endpoint ?? runtimeConfig.integrations.datafordeler.bbrEndpoint;
 
   if (!apiKey) {
     throw new Error(
@@ -228,7 +226,13 @@ async function gqlFetch(
   const parsed = JSON.parse(bodyText);
 
   if (parsed.errors?.length) {
-    logServerEvent({ module: "bbr/client", operation: "graphqlFetch", severity: "fatal", message: "GraphQL-fejl", metadata: { errors: parsed.errors } });
+    logServerEvent({
+      module: "bbr/client",
+      operation: "graphqlFetch",
+      severity: "fatal",
+      message: "GraphQL-fejl",
+      metadata: { errors: parsed.errors },
+    });
     throw new Error(parsed.errors[0].message);
   }
 
@@ -371,7 +375,13 @@ export class BbrService {
         bygning_samlet_boligareal: canonicalBuilding.byg039BygningensSamledeBoligAreal ?? null,
       };
     } catch (e) {
-      logServerEvent({ module: "bbr/client", operation: "getBbrData", severity: "fatal", message: "Service fejl", error: e });
+      logServerEvent({
+        module: "bbr/client",
+        operation: "getBbrData",
+        severity: "fatal",
+        message: "Service fejl",
+        error: e,
+      });
       return this.getEmptyData((e as Error).message);
     }
   }
