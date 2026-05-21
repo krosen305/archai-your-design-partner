@@ -37,8 +37,8 @@ import {
   type Option,
 } from "@/lib/byggeoenske-steps";
 import { syncPatch } from "@/lib/project-sync";
-import { supabase } from "@/integrations/supabase/client";
-import { uploadInspirationsbillede } from "@/lib/projekt-service";
+import { useCockpitByggeoensker, type ReactiveContext } from "@/lib/use-cockpit-byggeoensker";
+import { useCockpitUpload } from "@/lib/use-cockpit-upload";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
@@ -50,7 +50,7 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import { computePartialUpdate } from "@/lib/reactive-compliance";
+
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { SAVE_HARD_STOP_MAX, SAVE_WARNING_VALUE } from "@/lib/rule-engine/hard-stop-adapter";
 import { cn } from "@/lib/utils";
@@ -144,95 +144,11 @@ export function ProjektDnaPanel({
 function ByggeoenskeAccordion({
   reactiveContext,
 }: {
-  reactiveContext: {
-    geusRisk: GeusRiskData | null;
-    servitutter: TinglysningResult | null;
-    terrain: TerrainData | null;
-    fbbData: FbbResultat | null;
-    naturbeskyttelse: NaturbeskyttelsesResultat | null;
-    dkjord: DkJordResultat | null;
-  };
+  reactiveContext: ReactiveContext;
 }) {
-  const { byggeoenske, setByggeoenske } = useProject();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { byggeoenske } = useProject();
+  const { patch } = useCockpitByggeoensker(reactiveContext);
   const [dispensationFor, setDispensationFor] = useState<"etager" | "areal" | null>(null);
-
-  // Debounced patch: opdater store straks (UI reaktiv) — vent 500ms før sync + re-analyse.
-  // computePartialUpdate kører øjeblikkeligt client-side (ingen API-kald) så Gauge-felterne
-  // opdateres i realtid mens brugeren justerer byggeønsker.
-  const patch = (partial: Partial<Byggeoenske>) => {
-    setByggeoenske(partial);
-
-    const state = useProject.getState();
-    if (state.bbrData) {
-      const { complianceMetrics: cm, complianceFlags } = computePartialUpdate({
-        bbr: state.bbrData,
-        ramme: state.kommuneplanramme,
-        lokalplanExtract: state.lokalplanExtract,
-        lokalplaner: state.lokalplaner,
-        naturbeskyttelse: reactiveContext.naturbeskyttelse,
-        geusRisk: reactiveContext.geusRisk,
-        servitutter: reactiveContext.servitutter,
-        terrain: reactiveContext.terrain,
-        fbbData: reactiveContext.fbbData,
-        dkjord: reactiveContext.dkjord,
-        byggeoenske: { ...state.byggeoenske, ...partial },
-        municipality: state.address?.kommune ?? "",
-        kommunekode: state.address?.kommunekode ?? "",
-      });
-      state.setComplianceMetrics(cm);
-      state.setComplianceFlags(complianceFlags);
-    }
-
-    // Beregn boligoenske-validering (etager + areal) mod plangrænser
-    const k = state.adressePreCheck?.kontekst;
-    const merged = { ...state.byggeoenske, ...partial };
-    const valgtEtager = typeof merged.antalEtager === "number" ? merged.antalEtager : null;
-    const valgtAreal = typeof merged.oensketAreal === "number" ? merged.oensketAreal : null;
-    const eksAreal = state.bbrData?.bebygget_areal ?? 0;
-    const grundareal = k?.grundareal ?? state.complianceMetrics?.grundareal ?? null;
-    const samletAreal =
-      merged.byggetype === "tilbyg" ? eksAreal + (valgtAreal ?? 0) : (valgtAreal ?? eksAreal);
-    const beregnetPct = grundareal && grundareal > 0 ? (samletAreal / grundareal) * 100 : null;
-    const maxPct =
-      k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
-    const maxEtager = k?.maxEtager ?? state.complianceMetrics?.maxEtager ?? null;
-    const etagerStatus: "ok" | "dispensation" | "ingen_data" =
-      valgtEtager == null || maxEtager == null
-        ? "ingen_data"
-        : valgtEtager > maxEtager
-          ? "dispensation"
-          : "ok";
-    const arealStatus: "ok" | "dispensation" | "ingen_data" =
-      valgtAreal == null || maxPct == null || beregnetPct == null
-        ? "ingen_data"
-        : beregnetPct > maxPct
-          ? "dispensation"
-          : "ok";
-    const prev = state.boligoenskeValidering;
-    state.setBoligoenskeValidering({
-      etagerStatus,
-      arealStatus,
-      beregnetBebyggelsespct: beregnetPct,
-      etagerDispensationAcknowledged:
-        etagerStatus === "dispensation" ? (prev?.etagerDispensationAcknowledged ?? false) : false,
-      arealDispensationAcknowledged:
-        arealStatus === "dispensation" ? (prev?.arealDispensationAcknowledged ?? false) : false,
-    });
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      const next = { ...useProject.getState().byggeoenske };
-      syncPatch({ byggeoenske: next });
-    }, 500);
-  };
-
-  useEffect(
-    () => () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    },
-    [],
-  );
 
   const filledCount = STEPS.filter((s) => byggeoenske[s.key] !== undefined).length;
 
@@ -677,50 +593,11 @@ function ToggleField({
 
 function UploadField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const { currentProjectId, byggeoenske, setByggeoenske } = useProject();
+  const { uploading, handleFiles: uploadFiles } = useCockpitUpload();
 
   const handleFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
-      const uploadedUrls: string[] = [];
-      const uploadedPaths: string[] = [];
-      for (const file of Array.from(files).slice(0, 8 - value.length)) {
-        if (userId) {
-          if (!currentProjectId) continue;
-          try {
-            // ARCH-174: gem path (til URL-fornyelse) + signedUrl (til visning)
-            const { path, signedUrl } = await uploadInspirationsbillede(currentProjectId, file);
-            uploadedUrls.push(signedUrl);
-            uploadedPaths.push(path);
-          } catch {
-            continue;
-          }
-        } else {
-          const reader = new FileReader();
-          const b64 = await new Promise<string>((resolve, reject) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          uploadedUrls.push(b64);
-        }
-      }
-      onChange([...value, ...uploadedUrls]);
-      if (uploadedPaths.length > 0) {
-        setByggeoenske({
-          inspirationsbilledePaths: [
-            ...(byggeoenske.inspirationsbilledePaths ?? []),
-            ...uploadedPaths,
-          ],
-        });
-      }
-    } finally {
-      setUploading(false);
-    }
+    const newUrls = await uploadFiles(files, value);
+    if (newUrls.length > 0) onChange([...value, ...newUrls]);
   };
 
   return (
