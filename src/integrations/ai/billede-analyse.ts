@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { logServerEvent } from "@/lib/server-logger";
 import {
   type BilledeAnalyseResultat,
   BILLEDE_ANALYSE_SYSTEM_PROMPT,
@@ -78,14 +79,25 @@ export class BilledeAnalyseService {
 
     const apiKey = runtimeConfig.ai.anthropicApiKey;
     if (!apiKey) {
-      console.warn("[BilledeAnalyse] ANTHROPIC_API_KEY mangler — returnerer mock");
+      logServerEvent({
+        module: "billede-analyse",
+        operation: "analyser",
+        severity: "degraded",
+        message: "ANTHROPIC_API_KEY mangler — returnerer mock",
+      });
       return { ...MOCK_RESULT };
     }
 
     try {
       return await callHaiku(apiKey, billedUrls);
     } catch (e) {
-      console.warn("[BilledeAnalyse] Haiku-kald fejlede — returnerer mock:", (e as Error).message);
+      logServerEvent({
+        module: "billede-analyse",
+        operation: "analyser",
+        severity: "degraded",
+        message: "Haiku-kald fejlede — returnerer mock",
+        error: e,
+      });
       return { ...MOCK_RESULT };
     }
   }

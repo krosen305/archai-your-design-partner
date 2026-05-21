@@ -10,6 +10,7 @@
 
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { logServerEvent } from "@/lib/server-logger";
 const IS_MOCK = FEATURE_FLAGS.pdfExtractorMock;
 
 // ---------------------------------------------------------------------------
@@ -159,7 +160,12 @@ export class PdfExtractorService {
 
     const apiKey = runtimeConfig.ai.anthropicApiKey;
     if (!apiKey) {
-      console.warn("[PdfExtractor] ANTHROPIC_API_KEY mangler — returnerer mock");
+      logServerEvent({
+        module: "pdf-extractor",
+        operation: "extractLokalplan",
+        severity: "degraded",
+        message: "ANTHROPIC_API_KEY mangler — returnerer mock",
+      });
       return MOCK_EXTRACT;
     }
 
@@ -227,9 +233,12 @@ export class PdfExtractorService {
 
       // Eksponentiel backoff: 10s, 20s, 40s
       const delayMs = 10_000 * Math.pow(2, attempt);
-      console.warn(
-        `[PdfExtractor] Rate limit (429) — venter ${delayMs / 1000}s før retry ${attempt + 1}/3`,
-      );
+      logServerEvent({
+        module: "pdf-extractor",
+        operation: "extractLokalplan",
+        severity: "degraded",
+        message: `Rate limit (429) — venter ${delayMs / 1000}s før retry ${attempt + 1}/3`,
+      });
       await new Promise((r) => setTimeout(r, delayMs));
     }
 

@@ -13,6 +13,7 @@
 import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { logServerEvent } from "@/lib/server-logger";
 const IS_MOCK = FEATURE_FLAGS.husDnaMock;
 
 // ---------------------------------------------------------------------------
@@ -94,14 +95,25 @@ export class HusDnaGeneratorService {
 
     const apiKey = runtimeConfig.ai.anthropicApiKey;
     if (!apiKey) {
-      console.warn("[HusDna] ANTHROPIC_API_KEY mangler — returnerer mock");
+      logServerEvent({
+        module: "hus-dna-generator",
+        operation: "generate",
+        severity: "degraded",
+        message: "ANTHROPIC_API_KEY mangler — returnerer mock",
+      });
       return { ...MOCK_RESULT };
     }
 
     try {
       return await callAnthropic(apiKey, input);
     } catch (e) {
-      console.warn("[HusDna] Anthropic-kald fejlede — returnerer mock:", (e as Error).message);
+      logServerEvent({
+        module: "hus-dna-generator",
+        operation: "generate",
+        severity: "degraded",
+        message: "Anthropic-kald fejlede — returnerer mock",
+        error: e,
+      });
       return { ...MOCK_RESULT };
     }
   }
