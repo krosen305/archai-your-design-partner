@@ -24,11 +24,11 @@
 // BbrKompliantData.mat_* af analysis-orchestrator.ts.
 
 import { getEnvRequired } from "@/lib/env";
-import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import { logServerEvent } from "@/lib/server-logger";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -101,67 +101,15 @@ query GetJordstykke($ejerlavLokalId: String!, $matrikelnummer: String!, $virknin
   }
 }`;
 
-// ---------------------------------------------------------------------------
-// Hjælpefunktion: GraphQL-kald
-// ---------------------------------------------------------------------------
-
-async function gqlFetch(
-  url: URL,
-  query: string,
-  variables: Record<string, unknown>,
-  operation: string,
-  trace?: AnalysisTraceContext | null,
-): Promise<any> {
-  const response = await fetchWithRetry(
-    url.toString(),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables }),
-    },
-    { timeoutMs: 12_000 },
-    {
-      trace,
-      service: "Datafordeler MAT",
-      operation,
-      phase: "layer1",
-      metadata: { endpoint: "MAT/v2" },
-    },
-  );
-
-  const bodyText = await response.text();
-
-  if (!response.ok) {
-    const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
-    logServerEvent({
-      module: "mat/client",
-      operation: "graphqlFetch",
-      severity: "fatal",
-      message: "HTTP-fejl",
-      metadata: {
-        status: response.status,
-        keyHint: `${keyHint}…`,
-        body: bodyText.slice(0, 500),
-      },
-    });
-    throw new Error(`MAT Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
-  }
-
-  const parsed = JSON.parse(bodyText);
-
-  if (parsed.errors?.length) {
-    logServerEvent({
-      module: "mat/client",
-      operation: "graphqlFetch",
-      severity: "fatal",
-      message: "GraphQL-fejl",
-      metadata: { errors: parsed.errors },
-    });
-    throw new Error(parsed.errors[0].message);
-  }
-
-  return parsed.data;
-}
+type MatEjerlavNode = { id_lokalId: string | null; ejerlavsnavn: string | null };
+type MatJordstykkeNode = {
+  id_lokalId: string | null;
+  registreretAreal: number | null;
+  matrikelnummer: string | null;
+  strandbeskyttelse_omfang: string | null;
+  fredskov_omfang: string | null;
+  klitfredning_omfang: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // MatService
@@ -218,18 +166,15 @@ export class MatService {
 
     try {
       // ---- Trin 1: Find MAT_Ejerlav via ejerlavskode ----
-      const ejerlavData = await gqlFetch(
+      const ejerlavData = await datafordelerGraphqlFetch<{ MAT_Ejerlav: { nodes: MatEjerlavNode[] } }>(
         url,
         EJERLAV_QUERY,
-        {
-          kode: ejerlavskode,
-          ...bitemporalArgs,
-        },
+        { kode: ejerlavskode, ...bitemporalArgs },
         "MAT_Ejerlav",
-        trace,
+        { trace, phase: "layer1", metadata: { endpoint: "MAT/v2" } },
       );
 
-      const ejerlaver: any[] = ejerlavData?.MAT_Ejerlav?.nodes ?? [];
+      const ejerlaver = ejerlavData.MAT_Ejerlav.nodes;
       if (!ejerlaver.length) {
         return {
           registreretAreal: null,
@@ -244,23 +189,19 @@ export class MatService {
       }
 
       const ejerlav = ejerlaver[0];
-      const ejerlavLokalId: string = ejerlav.id_lokalId;
-      const ejerlavsnavn: string = ejerlav.ejerlavsnavn ?? null;
+      const ejerlavLokalId: string = ejerlav.id_lokalId ?? "";
+      const ejerlavsnavn: string | null = ejerlav.ejerlavsnavn ?? null;
 
       // ---- Trin 2: Find MAT_Jordstykke via ejerlavLokalId + matrikelnummer ----
-      const jordstykkeData = await gqlFetch(
+      const jordstykkeData = await datafordelerGraphqlFetch<{ MAT_Jordstykke: { nodes: MatJordstykkeNode[] } }>(
         url,
         JORDSTYKKE_QUERY,
-        {
-          ejerlavLokalId,
-          matrikelnummer: matr,
-          ...bitemporalArgs,
-        },
+        { ejerlavLokalId, matrikelnummer: matr, ...bitemporalArgs },
         "MAT_Jordstykke",
-        trace,
+        { trace, phase: "layer1", metadata: { endpoint: "MAT/v2" } },
       );
 
-      const jordstykker: any[] = jordstykkeData?.MAT_Jordstykke?.nodes ?? [];
+      const jordstykker = jordstykkeData.MAT_Jordstykke.nodes;
       if (!jordstykker.length) {
         return {
           registreretAreal: null,

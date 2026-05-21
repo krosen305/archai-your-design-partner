@@ -115,22 +115,38 @@ function buildWfsUrl(
 // Mapper: GeoServer GeoJSON feature → Lokalplan
 // ---------------------------------------------------------------------------
 
-function mapLokalplan(feature: any): Lokalplan {
+type PlandataWfsFeature = {
+  id?: string;
+  properties: Record<string, unknown> | null;
+};
+
+function str(v: unknown): string | null {
+  if (v == null) return null;
+  return String(v);
+}
+
+function num(v: unknown): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  return isFinite(n) ? n : null;
+}
+
+function mapLokalplan(feature: PlandataWfsFeature): Lokalplan {
   const p = feature.properties ?? {};
 
   return {
-    planid: p.planid?.toString() ?? feature.id ?? "",
-    plannavn: p.plannavn ?? "",
-    plannr: p.plannr ?? null,
-    kommunenavn: p.kommunenavn ?? null,
-    komnr: p.komnr ?? null,
-    datoVedtaget: p.datovedt?.toString() ?? null,
-    datoIkraft: p.datoikraft?.toString() ?? null,
-    plandokumentLink: p.doklink ?? null,
-    plantype: p.plantype?.toString() ?? null,
-    status: p.status ?? null,
-    anvgen: p.anvgen ?? null,
-    anvendelseGenerel: p.anvendelsegenerel ?? null,
+    planid: str(p.planid) ?? feature.id ?? "",
+    plannavn: str(p.plannavn) ?? "",
+    plannr: str(p.plannr),
+    kommunenavn: str(p.kommunenavn),
+    komnr: num(p.komnr),
+    datoVedtaget: str(p.datovedt),
+    datoIkraft: str(p.datoikraft),
+    plandokumentLink: str(p.doklink),
+    plantype: str(p.plantype),
+    status: str(p.status),
+    anvgen: num(p.anvgen),
+    anvendelseGenerel: str(p.anvendelsegenerel),
   };
 }
 
@@ -138,25 +154,25 @@ function mapLokalplan(feature: any): Lokalplan {
 // Mapper: GeoServer GeoJSON feature → Kommuneplanramme
 // ---------------------------------------------------------------------------
 
-function mapKommuneplanramme(feature: any): Kommuneplanramme {
+function mapKommuneplanramme(feature: PlandataWfsFeature): Kommuneplanramme {
   const p = feature.properties ?? {};
 
   return {
-    planid: p.planid?.toString() ?? feature.id ?? "",
-    plannavn: p.plannavn ?? "",
-    plannr: p.plannr ?? null,
-    kommunenavn: p.kommunenavn ?? null,
-    komnr: p.komnr ?? null,
-    bebygpct: p.bebygpct ?? null,
-    maxetager: p.maxetager ?? null,
-    maxbygnhjd: p.maxbygnhjd ?? null,
-    anvgen: p.anvgen ?? null,
-    anvendelseGenerel: p.anvendelsegenerel ?? null,
-    fremtidigzonestatus: p.fremtidigzonestatus ?? null,
-    sforhold: p.sforhold ?? null,
-    planstatus: p.planstatus ?? null,
-    datoIkraft: p.datoikraft?.toString() ?? null,
-    plandokumentLink: p.doklink ?? null,
+    planid: str(p.planid) ?? feature.id ?? "",
+    plannavn: str(p.plannavn) ?? "",
+    plannr: str(p.plannr),
+    kommunenavn: str(p.kommunenavn),
+    komnr: num(p.komnr),
+    bebygpct: num(p.bebygpct),
+    maxetager: num(p.maxetager),
+    maxbygnhjd: num(p.maxbygnhjd),
+    anvgen: num(p.anvgen),
+    anvendelseGenerel: str(p.anvendelsegenerel),
+    fremtidigzonestatus: str(p.fremtidigzonestatus),
+    sforhold: str(p.sforhold),
+    planstatus: str(p.planstatus),
+    datoIkraft: str(p.datoikraft),
+    plandokumentLink: str(p.doklink),
   };
 }
 

@@ -21,11 +21,11 @@
 // ---------------------------------------------------------------------------
 
 import { getEnvRequired } from "@/lib/env";
-import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { recordAnalysisEvent } from "@/lib/analysis-tracing";
 import { logServerEvent } from "@/lib/server-logger";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
+import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 import { runtimeConfig } from "@/lib/runtime-config";
 import {
   anvendelseLabel,
@@ -177,67 +177,6 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!, $registreringstid: D
   }
 }`;
 
-// ---------------------------------------------------------------------------
-// Hjælpefunktion: GraphQL-kald mod Datafordeler
-// ---------------------------------------------------------------------------
-
-async function gqlFetch(
-  url: URL,
-  query: string,
-  variables: Record<string, unknown>,
-  trace?: AnalysisTraceContext | null,
-): Promise<any> {
-  const response = await fetchWithRetry(
-    url.toString(),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables }),
-    },
-    { timeoutMs: 12_000 },
-    {
-      trace,
-      service: "Datafordeler BBR",
-      operation: "BBR_Bygning",
-      phase: "layer1",
-      metadata: { endpoint: "BBR/v2" },
-    },
-  );
-
-  const bodyText = await response.text();
-
-  if (!response.ok) {
-    const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
-    logServerEvent({
-      module: "bbr/client",
-      operation: "graphqlFetch",
-      severity: "fatal",
-      message: "HTTP-fejl",
-      metadata: {
-        status: response.status,
-        keyHint: `${keyHint}…`,
-        body: bodyText.slice(0, 500),
-        wwwAuth: response.headers.get("www-authenticate") ?? "",
-      },
-    });
-    throw new Error(`Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
-  }
-
-  const parsed = JSON.parse(bodyText);
-
-  if (parsed.errors?.length) {
-    logServerEvent({
-      module: "bbr/client",
-      operation: "graphqlFetch",
-      severity: "fatal",
-      message: "GraphQL-fejl",
-      metadata: { errors: parsed.errors },
-    });
-    throw new Error(parsed.errors[0].message);
-  }
-
-  return parsed.data;
-}
 
 // ---------------------------------------------------------------------------
 // Aggregeringskonstanter og -helper — ARCH-227
@@ -284,7 +223,7 @@ export class BbrService {
     url.searchParams.set("apiKey", apiKey);
 
     try {
-      const data = await gqlFetch(url, BYGNING_QUERY, { id, ...currentBitemporalArgs() }, trace);
+      const data = await datafordelerGraphqlFetch<unknown>(url, BYGNING_QUERY, { id, ...currentBitemporalArgs() }, "BBR_Bygning", { trace, phase: "layer1", metadata: { endpoint: "BBR/v2" } });
       // 1–2. Aggregér bygningsliste (ARCH-227)
       const bygninger: BbrBygning[] = parseBbrBygninger(data);
       const {

@@ -24,6 +24,7 @@ import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import { logServerEvent } from "@/lib/server-logger";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 
 type EbrClientConfig = {
   apiKey?: string;
@@ -83,68 +84,12 @@ export type EbrResult = {
   fejl: string | null;
 };
 
-// ---------------------------------------------------------------------------
-// Hjælpefunktion: GraphQL-kald
-// ---------------------------------------------------------------------------
-
-import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
-
-async function gqlFetch(
-  url: URL,
-  query: string,
-  variables: Record<string, unknown>,
-  trace?: AnalysisTraceContext | null,
-): Promise<any> {
-  const response = await fetchWithRetry(
-    url.toString(),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables }),
-    },
-    { timeoutMs: 12_000 },
-    {
-      trace,
-      service: "Datafordeler EBR",
-      operation: "EBR_Ejendomsbeliggenhed",
-      phase: "layer1",
-      metadata: { endpoint: "EBR/v1" },
-    },
-  );
-
-  const bodyText = await response.text();
-
-  if (!response.ok) {
-    const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
-    logServerEvent({
-      module: "ebr/client",
-      operation: "graphqlFetch",
-      severity: "fatal",
-      message: "HTTP-fejl",
-      metadata: {
-        status: response.status,
-        keyHint: `${keyHint}…`,
-        body: bodyText.slice(0, 500),
-      },
-    });
-    throw new Error(`EBR Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
-  }
-
-  const parsed = JSON.parse(bodyText);
-
-  if (parsed.errors?.length) {
-    logServerEvent({
-      module: "ebr/client",
-      operation: "graphqlFetch",
-      severity: "fatal",
-      message: "GraphQL-fejl",
-      metadata: { errors: parsed.errors },
-    });
-    throw new Error(parsed.errors[0].message);
-  }
-
-  return parsed.data;
-}
+type EbrBeliggenhedNode = {
+  bestemtFastEjendomBFENr: string | null;
+  husnummerLokalId: string | null;
+  id_lokalId: string | null;
+  adresseLokalId?: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // EbrService
@@ -169,13 +114,14 @@ export class EbrService {
       const { apiKey, endpoint } = getConfig(config);
       const url = new URL(endpoint);
       url.searchParams.set("apiKey", apiKey);
-      const data = await gqlFetch(
+      const data = await datafordelerGraphqlFetch<{ EBR_Ejendomsbeliggenhed: { nodes: EbrBeliggenhedNode[] } }>(
         url,
         BELIGGENHED_QUERY,
         { husnummerLokalId: id, ...currentBitemporalArgs() },
-        trace,
+        "EBR_Ejendomsbeliggenhed",
+        { trace, phase: "layer1", metadata: { endpoint: "EBR/v1" } },
       );
-      const nodes: any[] = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
+      const nodes = data.EBR_Ejendomsbeliggenhed.nodes;
 
       if (!nodes.length) {
         return {
@@ -216,13 +162,14 @@ export class EbrService {
       const { apiKey, endpoint } = getConfig(config);
       const url = new URL(endpoint);
       url.searchParams.set("apiKey", apiKey);
-      const data = await gqlFetch(
+      const data = await datafordelerGraphqlFetch<{ EBR_Ejendomsbeliggenhed: { nodes: EbrBeliggenhedNode[] } }>(
         url,
         BELIGGENHED_ADRESSE_QUERY,
         { adresseLokalId: id, ...currentBitemporalArgs() },
-        trace,
+        "EBR_Ejendomsbeliggenhed",
+        { trace, phase: "layer1", metadata: { endpoint: "EBR/v1" } },
       );
-      const nodes: any[] = data?.EBR_Ejendomsbeliggenhed?.nodes ?? [];
+      const nodes = data.EBR_Ejendomsbeliggenhed.nodes;
 
       if (!nodes.length) {
         return {

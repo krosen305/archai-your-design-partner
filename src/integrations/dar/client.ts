@@ -23,12 +23,12 @@
 //   - Koordinater: EPSG:25832 WKT på DAR_Adressepunkt.position.wkt – kræver UTM→WGS84 konvertering
 
 import { getEnvRequired } from "@/lib/env";
-import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import { logServerEvent } from "@/lib/server-logger";
 import { utm32ToWgs84 } from "@/lib/geometry-utils";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -206,49 +206,12 @@ function parseWktPoint(wkt: string | null | undefined): { x: number; y: number }
 // Hjælpefunktion: GraphQL-kald mod Datafordeler
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(
-  url: URL,
-  query: string,
-  variables: Record<string, unknown>,
-  operation: string,
-  trace?: AnalysisTraceContext | null,
-): Promise<any> {
-  const response = await fetchWithRetry(
-    url.toString(),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables }),
-    },
-    { timeoutMs: 12_000 },
-    {
-      trace,
-      service: operation.startsWith("MAT_") ? "Datafordeler MAT" : "Datafordeler DAR",
-      operation,
-      phase: "address_enrichment",
-    },
-  );
-
-  const bodyText = await response.text();
-
-  if (!response.ok) {
-    throw new Error(`DAR Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
-  }
-
-  const parsed = JSON.parse(bodyText);
-  if (parsed.errors?.length) {
-    logServerEvent({
-      module: "dar/client",
-      operation: "graphqlFetch",
-      severity: "fatal",
-      message: "GraphQL-fejl",
-      metadata: { errors: parsed.errors },
-    });
-    throw new Error(parsed.errors[0].message);
-  }
-
-  return parsed.data;
-}
+type DarAdresseNode = { id_lokalId: string | null; adressebetegnelse: string | null; husnummer: string | null; etagebetegnelse: string | null; doerbetegnelse: string | null; status: string | null };
+type DarHusnummerNode = { id_lokalId: string | null; adgangsadressebetegnelse: string | null; husnummertekst: string | null; adgangspunkt: string | null; postnummer: string | null; kommuneinddeling: string | null; navngivenVej: string | null; jordstykke: string | null; status: string | null };
+type DarPostnummerNode = { postnr: string | null; navn: string | null };
+type DarAdressepunktNode = { position: { wkt: string | null } | null };
+type MatJordstykkeByIdNode = { matrikelnummer: string | null; ejerlavLokalId: string | null; registreretAreal: number | null };
+type MatEjerlavByIdNode = { ejerlavskode: number | null; ejerlavsnavn: string | null };
 
 // ---------------------------------------------------------------------------
 // MAT URL builder — MAT endpoint er forskellig fra DAR, men bruger samme API-nøgle
@@ -290,14 +253,11 @@ export class DarService {
     const bitemporalArgs = currentBitemporalArgs();
 
     // ── Kald 1: DAR_Adresse ─────────────────────────────────────────────────
-    const adresseData = await gqlFetch(
-      url,
-      ADRESSE_QUERY,
-      { id, ...bitemporalArgs },
-      "DAR_Adresse",
-      trace,
+    const adresseData = await datafordelerGraphqlFetch<{ DAR_Adresse: { nodes: DarAdresseNode[] } }>(
+      url, ADRESSE_QUERY, { id, ...bitemporalArgs }, "DAR_Adresse",
+      { trace, phase: "address_enrichment" },
     );
-    const adresseNodes: any[] = adresseData?.DAR_Adresse?.nodes ?? [];
+    const adresseNodes = adresseData.DAR_Adresse.nodes;
     if (!adresseNodes.length) {
       throw new Error(`DAR_Adresse ikke fundet for id_lokalId: ${id}`);
     }
@@ -305,19 +265,13 @@ export class DarService {
     const husnummerFK: string = adresse.husnummer ?? "";
 
     // ── Kald 2: DAR_Husnummer ───────────────────────────────────────────────
-    let husnummer: any = null;
+    let husnummer: DarHusnummerNode | null = null;
     if (husnummerFK) {
-      const husnummerData = await gqlFetch(
-        url,
-        HUSNUMMER_QUERY,
-        {
-          id: husnummerFK,
-          ...bitemporalArgs,
-        },
-        "DAR_Husnummer",
-        trace,
+      const husnummerData = await datafordelerGraphqlFetch<{ DAR_Husnummer: { nodes: DarHusnummerNode[] } }>(
+        url, HUSNUMMER_QUERY, { id: husnummerFK, ...bitemporalArgs }, "DAR_Husnummer",
+        { trace, phase: "address_enrichment" },
       );
-      husnummer = husnummerData?.DAR_Husnummer?.nodes?.[0] ?? null;
+      husnummer = husnummerData.DAR_Husnummer?.nodes?.[0] ?? null;
     }
 
     const adgangspunktFK: string = husnummer?.adgangspunkt ?? "";
@@ -328,30 +282,21 @@ export class DarService {
     // ── Kald 3a + 3b + 3c: postnummer, adressepunkt og MAT_Jordstykke (parallelt) ─
     const [postnummerData, adressepunktData, jordstykkeData] = await Promise.all([
       postnummerFK
-        ? gqlFetch(
-            url,
-            POSTNUMMER_QUERY,
-            { id: postnummerFK, ...bitemporalArgs },
-            "DAR_Postnummer",
-            trace,
+        ? datafordelerGraphqlFetch<{ DAR_Postnummer: { nodes: DarPostnummerNode[] } }>(
+            url, POSTNUMMER_QUERY, { id: postnummerFK, ...bitemporalArgs }, "DAR_Postnummer",
+            { trace, phase: "address_enrichment" },
           )
         : Promise.resolve(null),
       adgangspunktFK
-        ? gqlFetch(
-            url,
-            ADRESSEPUNKT_QUERY,
-            { id: adgangspunktFK, ...bitemporalArgs },
-            "DAR_Adressepunkt",
-            trace,
+        ? datafordelerGraphqlFetch<{ DAR_Adressepunkt: { nodes: DarAdressepunktNode[] } }>(
+            url, ADRESSEPUNKT_QUERY, { id: adgangspunktFK, ...bitemporalArgs }, "DAR_Adressepunkt",
+            { trace, phase: "address_enrichment" },
           )
         : Promise.resolve(null),
       jordstykkeFK
-        ? gqlFetch(
-            matUrl,
-            MAT_JORDSTYKKE_QUERY,
-            { id: jordstykkeFK, ...bitemporalArgs },
-            "MAT_Jordstykke_by_id",
-            trace,
+        ? datafordelerGraphqlFetch<{ MAT_Jordstykke: { nodes: MatJordstykkeByIdNode[] } }>(
+            matUrl, MAT_JORDSTYKKE_QUERY, { id: jordstykkeFK, ...bitemporalArgs }, "MAT_Jordstykke_by_id",
+            { trace, phase: "address_enrichment" },
           ).catch((e: Error) => {
             logServerEvent({
               module: "dar/client",
@@ -394,17 +339,11 @@ export class DarService {
     let ejerlavskode: number | null = null;
     if (matEjerlavLokalId) {
       try {
-        const ejerlavData = await gqlFetch(
-          matUrl,
-          MAT_EJERLAV_QUERY,
-          {
-            id: matEjerlavLokalId,
-            ...bitemporalArgs,
-          },
-          "MAT_Ejerlav_by_id",
-          trace,
+        const ejerlavData = await datafordelerGraphqlFetch<{ MAT_Ejerlav: { nodes: MatEjerlavByIdNode[] } }>(
+          matUrl, MAT_EJERLAV_QUERY, { id: matEjerlavLokalId, ...bitemporalArgs },
+          "MAT_Ejerlav_by_id", { trace, phase: "address_enrichment" },
         );
-        ejerlavskode = ejerlavData?.MAT_Ejerlav?.nodes?.[0]?.ejerlavskode ?? null;
+        ejerlavskode = ejerlavData.MAT_Ejerlav.nodes[0]?.ejerlavskode ?? null;
       } catch (e) {
         logServerEvent({
           module: "dar/client",
