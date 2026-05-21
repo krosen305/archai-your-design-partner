@@ -81,7 +81,9 @@ describe("decodeSourceResultRow", () => {
 
 describe("isValidComplianceResultShape", () => {
   it("returns true for object with analysedAt string", () => {
-    expect(isValidComplianceResultShape({ analysedAt: "2026-05-20T10:00:00Z", bbr: null })).toBe(true);
+    expect(isValidComplianceResultShape({ analysedAt: "2026-05-20T10:00:00Z", bbr: null })).toBe(
+      true,
+    );
   });
 
   it("returns false for empty object", () => {
@@ -104,11 +106,19 @@ describe("isValidComplianceResultShape", () => {
 
 describe("isValidLokalplanExtractShape", () => {
   it("returns true for object with bebyggelsesprocent", () => {
-    expect(isValidLokalplanExtractShape({ bebyggelsesprocent: { value: 30, source: "pdf_extracted", confidence: 0.8 } })).toBe(true);
+    expect(
+      isValidLokalplanExtractShape({
+        bebyggelsesprocent: { value: 30, source: "pdf_extracted", confidence: 0.8 },
+      }),
+    ).toBe(true);
   });
 
   it("returns true for object with maxEtager", () => {
-    expect(isValidLokalplanExtractShape({ maxEtager: { value: 2, source: "pdf_extracted", confidence: 0.9 } })).toBe(true);
+    expect(
+      isValidLokalplanExtractShape({
+        maxEtager: { value: 2, source: "pdf_extracted", confidence: 0.9 },
+      }),
+    ).toBe(true);
   });
 
   it("returns false for empty object", () => {

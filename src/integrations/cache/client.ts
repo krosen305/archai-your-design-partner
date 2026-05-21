@@ -14,17 +14,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import type * as GeoJSON from "geojson";
-import type { SourceResult, SourceStatus, SourceConfidence } from "@/lib/source-result";
-
-const DAYS_MS = (n: number) => n * 24 * 60 * 60 * 1000;
-
-const TTL = {
-  lokalplan: DAYS_MS(30),
-  servitut: DAYS_MS(7),
-  compliance: DAYS_MS(30),
-  report: DAYS_MS(30),
-  jordstykke: DAYS_MS(90),
-};
+import type { SourceResult } from "@/lib/source-result";
+import { CACHE_TTL_DAYS, sourceResultTtlDays, daysToMs } from "@/lib/cache-policy";
+import {
+  decodeSourceResultRow,
+  isValidComplianceResultShape,
+  isValidLokalplanExtractShape,
+} from "./decoders";
 
 function isFresh(timestamp: string | null, ttlMs: number): boolean {
   if (!timestamp) return false;
@@ -62,9 +58,10 @@ export async function getCachedLokalplan(
 ): Promise<Json | null> {
   const row = await getRow(addressId);
   if (!row) return null;
-  if (!isFresh(row.lokalplan_extracted_at, TTL.lokalplan)) return null;
+  if (!isFresh(row.lokalplan_extracted_at, daysToMs(CACHE_TTL_DAYS.lokalplan))) return null;
   // Invalidate if the PDF URL has changed
   if (currentPdfUrl && row.lokalplan_pdf_url !== currentPdfUrl) return null;
+  if (row.lokalplan_extracted !== null && !isValidLokalplanExtractShape(row.lokalplan_extracted)) return null;
   return row.lokalplan_extracted;
 }
 
@@ -87,7 +84,7 @@ export async function setCachedLokalplan(
 export async function getCachedServitut(addressId: string): Promise<Json | null> {
   const row = await getRow(addressId);
   if (!row) return null;
-  if (!isFresh(row.servitut_extracted_at, TTL.servitut)) return null;
+  if (!isFresh(row.servitut_extracted_at, daysToMs(CACHE_TTL_DAYS.servitut))) return null;
   return row.servitut_extracted;
 }
 
@@ -105,7 +102,8 @@ export async function setCachedServitut(addressId: string, result: Json): Promis
 export async function getCachedCompliance(addressId: string): Promise<ComplianceResult | null> {
   const row = await getRow(addressId);
   if (!row) return null;
-  if (!isFresh(row.compliance_result_at, TTL.compliance)) return null;
+  if (!isFresh(row.compliance_result_at, daysToMs(CACHE_TTL_DAYS.compliance))) return null;
+  if (!isValidComplianceResultShape(row.compliance_result)) return null;
   return row.compliance_result as unknown as ComplianceResult;
 }
 
@@ -126,7 +124,7 @@ export async function setCachedCompliance(
 export async function getCachedReport(addressId: string): Promise<string | null> {
   const row = await getRow(addressId);
   if (!row) return null;
-  if (!isFresh(row.report_generated_at, TTL.report)) return null;
+  if (!isFresh(row.report_generated_at, daysToMs(CACHE_TTL_DAYS.report))) return null;
   return row.report_text;
 }
 
@@ -146,11 +144,8 @@ export async function getCachedJordstykkePolygon(
 ): Promise<GeoJSON.FeatureCollection | null> {
   const row = await getRow(addressId);
   if (!row) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const at = (row as any).jordstykke_polygon_at as string | null;
-  if (!isFresh(at, TTL.jordstykke)) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (row as any).jordstykke_polygon as GeoJSON.FeatureCollection | null;
+  if (!isFresh(row.jordstykke_polygon_at, daysToMs(CACHE_TTL_DAYS.jordstykke))) return null;
+  return row.jordstykke_polygon as GeoJSON.FeatureCollection | null;
 }
 
 export async function setCachedJordstykkePolygon(
@@ -158,8 +153,7 @@ export async function setCachedJordstykkePolygon(
   featureCollection: GeoJSON.FeatureCollection,
 ): Promise<void> {
   await upsert(addressId, {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    jordstykke_polygon: featureCollection as any,
+    jordstykke_polygon: featureCollection as unknown as Json,
     jordstykke_polygon_at: new Date().toISOString(),
   });
 }
@@ -168,26 +162,12 @@ export async function setCachedJordstykkePolygon(
 // address_source_results cache (ARCH-239)
 // ---------------------------------------------------------------------------
 
-const SOURCE_RESULT_TTL_DAYS: Partial<Record<string, number>> = {
-  dkjord: 30,
-  geus: 30,
-  hip: 30,
-  dhm: 30,
-  geodanmark_mat: 90,
-  dai_extended: 30,
-  plandata_ext: 14,
-};
-
-function sourceResultTtlDays(sourceKind: string): number {
-  return SOURCE_RESULT_TTL_DAYS[sourceKind] ?? 30;
-}
-
 export async function getCachedSourceResult<T>(
   addressId: string,
   sourceKind: string,
 ): Promise<SourceResult<T> | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabaseAdmin.from as any)("address_source_results")
+  const { data, error } = await supabaseAdmin
+    .from("address_source_results")
     .select("*")
     .eq("address_id", addressId)
     .eq("source_kind", sourceKind)
@@ -200,16 +180,7 @@ export async function getCachedSourceResult<T>(
     );
   if (!data) return null;
 
-  return {
-    status: data.status as SourceStatus,
-    confidence: data.confidence as SourceConfidence,
-    isMock: data.is_mock,
-    fetchedAt: data.fetched_at,
-    sourceUrl: data.source_url,
-    rawFeatureCount: data.raw_feature_count,
-    data: (data.payload ?? null) as T | null,
-    kilde: data.source_kind,
-  };
+  return decodeSourceResultRow<T>(data);
 }
 
 export async function setCachedSourceResult<T>(
@@ -219,10 +190,9 @@ export async function setCachedSourceResult<T>(
   ttlDaysOverride?: number,
 ): Promise<void> {
   const ttlDays = ttlDaysOverride ?? sourceResultTtlDays(sourceKind);
-  const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + daysToMs(ttlDays)).toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabaseAdmin.from as any)("address_source_results").upsert(
+  const { error } = await supabaseAdmin.from("address_source_results").upsert(
     {
       address_id: addressId,
       source_kind: sourceKind,
