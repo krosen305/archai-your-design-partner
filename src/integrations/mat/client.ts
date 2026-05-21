@@ -27,6 +27,7 @@ import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
+import { logServerEvent } from "@/lib/server-logger";
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -134,10 +135,16 @@ async function gqlFetch(
 
   if (!response.ok) {
     const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
-    console.error("[MAT] HTTP-fejl:", {
-      status: response.status,
-      keyHint: `${keyHint}…`,
-      body: bodyText.slice(0, 500),
+    logServerEvent({
+      module: "mat/client",
+      operation: "graphqlFetch",
+      severity: "fatal",
+      message: "HTTP-fejl",
+      metadata: {
+        status: response.status,
+        keyHint: `${keyHint}…`,
+        body: bodyText.slice(0, 500),
+      },
     });
     throw new Error(`MAT Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
   }
@@ -145,7 +152,7 @@ async function gqlFetch(
   const parsed = JSON.parse(bodyText);
 
   if (parsed.errors?.length) {
-    console.error("[MAT] GraphQL-fejl:", parsed.errors);
+    logServerEvent({ module: "mat/client", operation: "graphqlFetch", severity: "fatal", message: "GraphQL-fejl", metadata: { errors: parsed.errors } });
     throw new Error(parsed.errors[0].message);
   }
 
@@ -279,7 +286,7 @@ export class MatService {
         klitfredning: omfangToBool(js.klitfredning_omfang),
       };
     } catch (e) {
-      console.error("[MAT] Service fejl:", e);
+      logServerEvent({ module: "mat/client", operation: "getGrundareal", severity: "fatal", message: "Service fejl", error: e });
       return {
         registreretAreal: null,
         ejerlavLokalId: null,

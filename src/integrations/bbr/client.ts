@@ -24,6 +24,7 @@ import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { recordAnalysisEvent } from "@/lib/analysis-tracing";
+import { logServerEvent } from "@/lib/server-logger";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import {
   anvendelseLabel,
@@ -209,11 +210,17 @@ async function gqlFetch(
 
   if (!response.ok) {
     const keyHint = url.searchParams.get("apiKey")?.slice(0, 4) ?? "?";
-    console.error("[BBR] HTTP-fejl:", {
-      status: response.status,
-      keyHint: `${keyHint}…`,
-      body: bodyText.slice(0, 500),
-      wwwAuth: response.headers.get("www-authenticate") ?? "",
+    logServerEvent({
+      module: "bbr/client",
+      operation: "graphqlFetch",
+      severity: "fatal",
+      message: "HTTP-fejl",
+      metadata: {
+        status: response.status,
+        keyHint: `${keyHint}…`,
+        body: bodyText.slice(0, 500),
+        wwwAuth: response.headers.get("www-authenticate") ?? "",
+      },
     });
     throw new Error(`Datafordeler HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
   }
@@ -221,7 +228,7 @@ async function gqlFetch(
   const parsed = JSON.parse(bodyText);
 
   if (parsed.errors?.length) {
-    console.error("[BBR] GraphQL-fejl:", parsed.errors);
+    logServerEvent({ module: "bbr/client", operation: "graphqlFetch", severity: "fatal", message: "GraphQL-fejl", metadata: { errors: parsed.errors } });
     throw new Error(parsed.errors[0].message);
   }
 
@@ -364,7 +371,7 @@ export class BbrService {
         bygning_samlet_boligareal: canonicalBuilding.byg039BygningensSamledeBoligAreal ?? null,
       };
     } catch (e) {
-      console.error("[BBR] Service fejl:", e);
+      logServerEvent({ module: "bbr/client", operation: "getBbrData", severity: "fatal", message: "Service fejl", error: e });
       return this.getEmptyData((e as Error).message);
     }
   }

@@ -14,6 +14,8 @@
 //
 // Aktiver live API: sæt IS_MOCK = false og verificér layer-navne mod GetCapabilities.
 
+import { logServerEvent } from "@/lib/server-logger";
+
 const IS_MOCK = true;
 
 const GEUS_OWS = "https://data.geus.dk/geusmap/ows/4258.jsp";
@@ -133,11 +135,11 @@ export const GeusService = {
 
     const [radonRisk, groundwater] = await Promise.all([
       fetchRadonRisk(koordinat).catch((e: Error) => {
-        console.warn("[GEUS] Radon WMS fejlede:", e.message);
+        logServerEvent({ module: "geus/client", operation: "fetchRadonRisk", severity: "degraded", message: "Radon WMS fejlede", error: e });
         return "unknown" as const;
       }),
       fetchGroundwater(koordinat).catch((e: Error) => {
-        console.warn("[GEUS] Jupiter WFS fejlede:", e.message);
+        logServerEvent({ module: "geus/client", operation: "fetchGroundwater", severity: "degraded", message: "Jupiter WFS fejlede", error: e });
         return { depthM: null, boringId: null };
       }),
     ]);

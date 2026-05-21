@@ -13,6 +13,7 @@ import { getEnvRequired, getEnvOptional } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { logServerEvent } from "@/lib/server-logger";
 
 // ---------------------------------------------------------------------------
 // Output-typer (eksporterede — bruges af compliance-layer1 og MatrikelMap)
@@ -272,7 +273,7 @@ export class GrundarealResolver {
         }
       }
     } catch (e) {
-      console.warn("[GrundarealResolver] Rute 1 (EBR husnummer) fejlede:", (e as Error).message);
+      logServerEvent({ module: "mat/grundareal-resolver", operation: "resolve", severity: "degraded", message: "Rute 1 (EBR husnummer) fejlede", error: e });
     }
 
     // --- Rute 2: EBR adresse → MAT Ejerlejlighed → SFE ---
@@ -324,7 +325,7 @@ export class GrundarealResolver {
         }
       }
     } catch (e) {
-      console.warn("[GrundarealResolver] Rute 2 (EBR adresse) fejlede:", (e as Error).message);
+      logServerEvent({ module: "mat/grundareal-resolver", operation: "resolve", severity: "degraded", message: "Rute 2 (EBR adresse) fejlede", error: e });
     }
 
     return {

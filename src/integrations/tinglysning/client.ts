@@ -18,6 +18,7 @@
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { logServerEvent } from "@/lib/server-logger";
 
 const IS_MOCK = FEATURE_FLAGS.tinglysningMock;
 
@@ -85,7 +86,7 @@ async function classifyServitutter(servitutter: Omit<Servitut, "kritisk">[]): Pr
 
   const apiKey = runtimeConfig.ai.anthropicApiKey || getEnvOptional("ANTHROPIC_API_KEY");
   if (!apiKey) {
-    console.warn("[Tinglysning] ANTHROPIC_API_KEY mangler — kritisk=false for alle servitutter");
+    logServerEvent({ module: "tinglysning/client", operation: "classifyServitutter", severity: "degraded", message: "ANTHROPIC_API_KEY mangler — kritisk=false for alle servitutter" });
     return servitutter.map((s) => ({ ...s, kritisk: false }));
   }
 
@@ -187,7 +188,7 @@ async function fetchLiveTinglysning(
   }));
 
   const servitutter = await classifyServitutter(rawServitutter).catch((e: Error) => {
-    console.warn("[Tinglysning] AI-klassificering fejlede:", e.message);
+    logServerEvent({ module: "tinglysning/client", operation: "classifyServitutter", severity: "degraded", message: "AI-klassificering fejlede", error: e });
     return rawServitutter.map((s) => ({ ...s, kritisk: false }));
   });
 
@@ -213,7 +214,7 @@ export class TinglysningService {
     }
 
     if (!ejerlavskode || !matrikelnummer) {
-      console.warn("[Tinglysning] Mangler ejerlavskode/matrikelnummer — returnerer tom liste");
+      logServerEvent({ module: "tinglysning/client", operation: "getServitutter", severity: "degraded", message: "Mangler ejerlavskode/matrikelnummer — returnerer tom liste" });
       return { servitutter: [], pant: 0, kilde: "tinglysning" };
     }
 

@@ -9,6 +9,7 @@
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { logServerEvent } from "@/lib/server-logger";
 
 // ---------------------------------------------------------------------------
 // Typer
@@ -146,7 +147,7 @@ export class VurService {
         fejl: null,
       };
     } catch (e) {
-      console.error("[VUR] Service fejl:", e);
+      logServerEvent({ module: "vur/client", operation: "getVurData", severity: "fatal", message: "Service fejl", error: e });
       return this.errorResult(bfeNr, (e as Error).message);
     }
   }

@@ -18,6 +18,8 @@
 // Adresse-fallback udløses når BBR ikke leverer brugbare bygnings-UUID'er.
 // Bruger vejnavn+husnr (del af adressetekst før første komma) + kommunenavn.
 
+import { logServerEvent } from "@/lib/server-logger";
+
 const FBB_WFS = "https://www.kulturarv.dk/geoserver/wfs";
 
 // ---------------------------------------------------------------------------
@@ -245,7 +247,7 @@ export class FbbService {
         kilde: "fbb-wfs",
       };
     } catch (e) {
-      console.warn("[FBB] GeoServer fejl:", (e as Error).message);
+      logServerEvent({ module: "fbb/client", operation: "getSaveData", severity: "degraded", message: "GeoServer fejl", error: e });
       return { fbb_bygninger: [], fbb_bedste_bygning: null, fbb_er_fredet: false, kilde: "fejl" };
     }
   }
@@ -276,7 +278,7 @@ export class FbbService {
         kilde: "adresse-fallback",
       };
     } catch (e) {
-      console.warn("[FBB] Adresse-fallback fejlede:", (e as Error).message);
+      logServerEvent({ module: "fbb/client", operation: "getSaveDataByAddress", severity: "degraded", message: "Adresse-fallback fejlede", error: e });
       return { fbb_bygninger: [], fbb_bedste_bygning: null, fbb_er_fredet: false, kilde: "fejl" };
     }
   }

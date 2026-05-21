@@ -10,6 +10,8 @@
 //
 // OBS: Det tidligere antagne typename `pdk:theme_pdk_varmeforsyning_vedtaget` eksisterer ikke.
 
+import { logServerEvent } from "@/lib/server-logger";
+
 const IS_MOCK = false;
 
 const WFS_BASE = "https://geoserver.plandata.dk/geoserver/wfs";
@@ -60,7 +62,7 @@ export class FjernvarmeService {
       const daekket = await erIndenforFjernvarme(koordinat);
       return { fjernvarmeDaekket: daekket, fejl: null };
     } catch (e) {
-      console.warn("[FjernvarmeService] fejl:", (e as Error).message);
+      logServerEvent({ module: "plandata/fjernvarme", operation: "getFjernvarmeDaekket", severity: "degraded", message: "FjernvarmeService fejl", error: e });
       return { fjernvarmeDaekket: null, fejl: (e as Error).message };
     }
   }

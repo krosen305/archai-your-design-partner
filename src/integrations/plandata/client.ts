@@ -29,6 +29,7 @@
 
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import { selectKommuneplanrammeForCompliance } from "./selectors";
+import { logServerEvent } from "@/lib/server-logger";
 
 // WFS er et offentligt endpoint — retry på 502/503/504, ikke 429.
 const WFS_RETRY = { timeoutMs: 15_000, retries: 1, retryOnStatuses: [502, 503, 504] };
@@ -221,7 +222,7 @@ export class PlandataService {
         rawCount: allFeatures.length,
       };
     } catch (e) {
-      console.error("[Plandata] WFS-kald fejlede:", e);
+      logServerEvent({ module: "plandata/client", operation: "getLokalplanerForKoordinat", severity: "fatal", message: "WFS-kald fejlede", error: e });
       return {
         lokalplaner: [],
         fejl: (e as Error).message,
@@ -263,7 +264,7 @@ export class PlandataService {
       const rammer = features.map(mapKommuneplanramme);
       return { ramme: selectKommuneplanrammeForCompliance(rammer), fejl: null };
     } catch (e) {
-      console.error("[Plandata] Kommuneplanramme-kald fejlede:", e);
+      logServerEvent({ module: "plandata/client", operation: "getKommuneplanrammeForKoordinat", severity: "fatal", message: "Kommuneplanramme-kald fejlede", error: e });
       return { ramme: null, fejl: (e as Error).message };
     }
   }

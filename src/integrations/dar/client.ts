@@ -26,6 +26,7 @@ import { getEnvOptional, getEnvRequired } from "@/lib/env";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
+import { logServerEvent } from "@/lib/server-logger";
 import { utm32ToWgs84 } from "@/lib/geometry-utils";
 
 // ---------------------------------------------------------------------------
@@ -238,7 +239,7 @@ async function gqlFetch(
 
   const parsed = JSON.parse(bodyText);
   if (parsed.errors?.length) {
-    console.error("[DAR] GraphQL-fejl:", parsed.errors);
+    logServerEvent({ module: "dar/client", operation: "graphqlFetch", severity: "fatal", message: "GraphQL-fejl", metadata: { errors: parsed.errors } });
     throw new Error(parsed.errors[0].message);
   }
 
@@ -350,18 +351,11 @@ export class DarService {
             "MAT_Jordstykke_by_id",
             trace,
           ).catch((e: Error) => {
-            console.error(
-              "[DAR] MAT_Jordstykke fejlede for jordstykkeFK",
-              jordstykkeFK,
-              ":",
-              e.message,
-            );
+            logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "fatal", message: "MAT_Jordstykke fejlede for jordstykkeFK", metadata: { jordstykkeFK }, error: e });
             return null;
           })
         : (() => {
-            console.warn(
-              "[DAR] DAR_Husnummer.jordstykke er tom — grundareal og matrikeldata utilgængeligt",
-            );
+            logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "degraded", message: "DAR_Husnummer.jordstykke er tom — grundareal og matrikeldata utilgængeligt" });
             return Promise.resolve(null);
           })(),
     ]);
@@ -370,11 +364,7 @@ export class DarService {
     const adressepunktNode = adressepunktData?.DAR_Adressepunkt?.nodes?.[0] ?? null;
     const jordstykkeNode = jordstykkeData?.MAT_Jordstykke?.nodes?.[0] ?? null;
     if (jordstykkeFK && !jordstykkeNode) {
-      console.error(
-        "[DAR] MAT_Jordstykke returnerede ingen nodes for jordstykkeFK:",
-        jordstykkeFK,
-        "— id_lokalId matchede ingenting",
-      );
+      logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "fatal", message: "MAT_Jordstykke returnerede ingen nodes — id_lokalId matchede ingenting", metadata: { jordstykkeFK } });
     }
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
@@ -396,10 +386,7 @@ export class DarService {
         );
         ejerlavskode = ejerlavData?.MAT_Ejerlav?.nodes?.[0]?.ejerlavskode ?? null;
       } catch (e) {
-        console.warn(
-          "[DAR] MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null:",
-          (e as Error).message,
-        );
+        logServerEvent({ module: "dar/client", operation: "getAddressDetails", severity: "degraded", message: "MAT_Ejerlav opslag fejlede — ejerlavskode forbliver null", error: e });
       }
     }
 
