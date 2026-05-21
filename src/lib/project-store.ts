@@ -39,14 +39,6 @@ export type {
   PipelineServiceState,
   AdressePreCheckResultat,
 } from "@/types/project-state";
-export {
-  DATA_SOURCE_LABELS,
-  PIPELINE_SERVICE_STATE_LABELS,
-  isHusDna,
-  parseComplianceData,
-  deriveSourceStatus,
-} from "@/types/project-state";
-export { deriveComplianceFlags } from "@/lib/compliance-flags";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 export type { ComplianceMetrics } from "@/lib/compliance-engine";
 

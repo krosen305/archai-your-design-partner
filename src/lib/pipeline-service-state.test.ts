@@ -3,7 +3,7 @@ import {
   type PipelineServiceState,
   PIPELINE_SERVICE_STATE_LABELS,
   type DataSourceKind,
-} from "./project-store";
+} from "../types/project-state";
 
 describe("PipelineServiceState", () => {
   it("alle 7 states er defineret i PIPELINE_SERVICE_STATE_LABELS", () => {
