@@ -7,6 +7,7 @@ import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { logServerEvent } from "@/lib/server-logger";
+import { callAnthropicGateway, extractStructuredOutput } from "./gateway";
 import {
   type BilledeAnalyseResultat,
   BILLEDE_ANALYSE_SYSTEM_PROMPT,
@@ -89,7 +90,7 @@ export class BilledeAnalyseService {
     }
 
     try {
-      return await callHaiku(apiKey, billedUrls);
+      return await callHaiku(billedUrls);
     } catch (e) {
       logServerEvent({
         module: "billede-analyse",
@@ -107,65 +108,49 @@ export class BilledeAnalyseService {
 // Intern: HTTP-kald til Anthropic Haiku
 // ---------------------------------------------------------------------------
 
-async function callHaiku(apiKey: string, billedUrls: string[]): Promise<BilledeAnalyseResultat> {
+async function callHaiku(billedUrls: string[]): Promise<BilledeAnalyseResultat> {
   const imageBlocks = billedUrls.slice(0, 4).map((url) => ({
     type: "image" as const,
     source: { type: "url" as const, url },
   }));
 
-  const BACKOFF_MS = [10_000, 20_000, 40_000] as const;
+  const userContent = [
+    ...imageBlocks,
+    { type: "text" as const, text: "Analyser disse billeder og returner JSON som specificeret." },
+  ];
 
-  for (let attempt = 0; attempt <= 2; attempt++) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "prompt-caching-2024-07-31",
+  const gatewayResponse = await callAnthropicGateway({
+    model: "claude-haiku-4-5-20251001",
+    system: BILLEDE_ANALYSE_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: userContent as unknown as import("./gateway").AnthropicContentBlock[],
       },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
-        system: [
-          {
-            type: "text",
-            text: BILLEDE_ANALYSE_SYSTEM_PROMPT,
-            cache_control: { type: "ephemeral" },
-          },
-        ],
-        messages: [
-          {
-            role: "user",
-            content: [
-              ...imageBlocks,
-              { type: "text", text: "Analyser disse billeder og returner JSON som specificeret." },
-            ],
-          },
-        ],
-      }),
-    });
+    ],
+    maxTokens: 400,
+    operation: "billede-analyse",
+  });
 
-    if (res.status === 429 && attempt < 2) {
-      await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt]));
-      continue;
-    }
-
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Anthropic API ${res.status}: ${body.slice(0, 200)}`);
-    }
-
-    const json = (await res.json()) as { content: { text: string }[] };
-    const raw = json?.content?.[0]?.text ?? "{}";
-    const cleaned = raw
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/, "")
-      .trim();
-
-    const parsed = ApiResponseSchema.parse(JSON.parse(cleaned));
-    return { ...parsed, kilde: "haiku" as const };
+  const textBlock = gatewayResponse.content.find((b) => b.type === "text");
+  if (!textBlock?.text) {
+    throw new Error("Anthropic returnerede ingen tekst i billede-analyse");
   }
 
-  throw new Error("[BilledeAnalyse] max retries exceeded");
+  const parsed = extractStructuredOutput(ApiResponseSchema, textBlock.text);
+  return {
+    kategorier: {
+      facade: parsed.kategorier.facade ?? [],
+      tagform: parsed.kategorier.tagform ?? [],
+      vinduer: parsed.kategorier.vinduer ?? [],
+      materialer: parsed.kategorier.materialer ?? [],
+      saerligeTraek: parsed.kategorier.saerligeTraek ?? [],
+      farver: parsed.kategorier.farver ?? [],
+      stil: parsed.kategorier.stil ?? [],
+    },
+    konflikter: parsed.konflikter ?? [],
+    ekstraTags: parsed.ekstraTags ?? [],
+    confidence: parsed.confidence ?? 70,
+    kilde: "haiku" as const,
+  };
 }
