@@ -1,72 +1,51 @@
-// src/routes/debug.analyse.tsx
-// Internal debug view: analysis runs + event log.
-// Guarded: returns error in production (ENVIRONMENT === "production").
-
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
+import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type {
+  AnalysisEventRow,
+  AnalysisRunRow,
+  TracingDatabase,
+} from "@/lib/analysis-tracing-types";
 import { getEnvOptional } from "@/lib/env";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+type AnalysisRunView = AnalysisRunRow & { events: AnalysisEventRow[] };
+type AnalysisRunWithRelation = AnalysisRunRow & { analysis_events: AnalysisEventRow[] | null };
 
-type AnalysisEventRow = {
-  id: string;
-  event_type: string;
-  phase: string | null;
-  service: string;
-  operation: string;
-  status: string;
-  cache_hit: boolean | null;
-  http_status: number | null;
-  duration_ms: number | null;
-  error_message: string | null;
-  input_summary: string | null;
-  output_summary: string | null;
-  decision_summary: string | null;
-  created_at: string;
-};
+const tracingDb = supabaseAdmin as unknown as SupabaseClient<TracingDatabase>;
 
-type AnalysisRunRow = {
-  id: string;
-  run_kind: string;
-  address_id: string | null;
-  project_id: string | null;
-  status: string;
-  started_at: string;
-  completed_at: string | null;
-  duration_ms: number | null;
-  error_message: string | null;
-  events: AnalysisEventRow[];
-};
-
-// ---------------------------------------------------------------------------
-// Server function
-// ---------------------------------------------------------------------------
+const getAnalysisRunsSchema = z.object({
+  addressId: z.string().nullable(),
+  projectId: z.string().nullable(),
+  token: z.string().min(1),
+});
 
 const getAnalysisRuns = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => {
-    const params = d as Record<string, string | null>;
-    return {
-      addressId: params.addressId ?? null,
-      projectId: params.projectId ?? null,
-    };
-  })
-  .handler(async ({ data }): Promise<AnalysisRunRow[]> => {
+  .inputValidator((d: unknown) => getAnalysisRunsSchema.parse(d))
+  .handler(async ({ data }): Promise<AnalysisRunView[]> => {
     if (getEnvOptional("ENVIRONMENT") === "production") {
-      throw new Error("403: Debug view er ikke tilgængeligt i produktion");
+      throw new Error("403: Debug view er ikke tilgaengeligt i produktion");
     }
 
-    let query = (supabaseAdmin.from as any)("analysis_runs")
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
+    if (authError || !authData.user) throw new Error("401: Ikke autentificeret");
+
+    const role = String(authData.user.app_metadata?.role ?? "");
+    if (role !== "admin" && role !== "service_role") {
+      throw new Error("403: Kun admin har adgang til debug analyse");
+    }
+
+    let query = tracingDb
+      .from("analysis_runs")
       .select(
-        `id, run_kind, address_id, project_id, status,
-         started_at, completed_at, duration_ms, error_message,
+        `id, run_kind, address_id, project_id, user_id, source, status,
+         started_at, completed_at, duration_ms, error_message, metadata,
          analysis_events (
-           id, event_type, phase, service, operation, status,
-           cache_hit, http_status, duration_ms, error_message,
-           input_summary, output_summary, decision_summary, created_at
+           id, run_id, event_type, phase, service, operation, status,
+           cache_hit, attempt, http_status, duration_ms, error_message,
+           metadata, input_summary, output_summary, decision_summary, created_at
          )`,
       )
       .order("started_at", { ascending: false })
@@ -75,33 +54,25 @@ const getAnalysisRuns = createServerFn({ method: "GET" })
     if (data.addressId) query = query.eq("address_id", data.addressId);
     if (data.projectId) query = query.eq("project_id", data.projectId);
 
-    const { data: runs, error } = await query;
+    const { data: runs, error } = await query.returns<AnalysisRunWithRelation[]>();
     if (error) throw new Error(`DB fejl: ${error.message}`);
 
-    return (runs ?? []).map((r: any) => ({
-      ...r,
-      events: (r.analysis_events ?? []).sort(
-        (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    return (runs ?? []).map((run) => ({
+      ...run,
+      events: [...(run.analysis_events ?? [])].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       ),
     }));
   });
-
-// ---------------------------------------------------------------------------
-// Route
-// ---------------------------------------------------------------------------
 
 export const Route = createFileRoute("/debug/analyse")({
   component: DebugAnalysePage,
 });
 
-// ---------------------------------------------------------------------------
-// Components
-// ---------------------------------------------------------------------------
-
 function DebugAnalysePage() {
   const [addressId, setAddressId] = useState("");
   const [projectId, setProjectId] = useState("");
-  const [runs, setRuns] = useState<AnalysisRunRow[]>([]);
+  const [runs, setRuns] = useState<AnalysisRunView[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
@@ -110,8 +81,16 @@ function DebugAnalysePage() {
     setLoading(true);
     setError(null);
     try {
+      const { getSession } = await import("@/lib/auth");
+      const session = await getSession();
+      if (!session) throw new Error("Ingen session");
+
       const result = await getAnalysisRuns({
-        data: { addressId: addressId || null, projectId: projectId || null },
+        data: {
+          addressId: addressId || null,
+          projectId: projectId || null,
+          token: session.access_token,
+        },
       });
       setRuns(result);
     } catch (e) {
@@ -126,7 +105,7 @@ function DebugAnalysePage() {
       <div>
         <h1 className="font-mono text-sm tracking-widest text-foreground">DEBUG / ANALYSE LOG</h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Intern visning af analysekørsler — kun tilgængelig i dev/staging.
+          Intern visning af analysekorsler - kun tilgaengelig i dev/staging.
         </p>
       </div>
 
@@ -154,7 +133,7 @@ function DebugAnalysePage() {
           className="rounded bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
           data-testid="debug-search-btn"
         >
-          {loading ? "Søger…" : "Søg"}
+          {loading ? "Soger..." : "Sog"}
         </button>
       </div>
 
@@ -165,7 +144,7 @@ function DebugAnalysePage() {
       )}
 
       {runs.length === 0 && !loading && !error && (
-        <p className="text-sm text-muted-foreground">Ingen kørsler endnu.</p>
+        <p className="text-sm text-muted-foreground">Ingen korsler endnu.</p>
       )}
 
       <div className="space-y-3" data-testid="debug-runs-list">
@@ -187,7 +166,7 @@ function RunCard({
   expanded,
   onToggle,
 }: {
-  run: AnalysisRunRow;
+  run: AnalysisRunView;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -211,7 +190,7 @@ function RunCard({
         </div>
         <div className="text-xs text-foreground font-mono">{run.id}</div>
         <div className="flex gap-4 text-xs text-muted-foreground">
-          {run.address_id && <span>adresse: {run.address_id.slice(0, 16)}…</span>}
+          {run.address_id && <span>adresse: {run.address_id.slice(0, 16)}...</span>}
           <span>{run.events.length} steps</span>
           {run.duration_ms != null && <span>{run.duration_ms}ms</span>}
           <span>{new Date(run.started_at).toLocaleTimeString("da-DK")}</span>
@@ -248,19 +227,19 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
       <div className="space-y-0.5">
         <div className="text-foreground">{event.operation}</div>
         {event.input_summary && (
-          <div className="text-muted-foreground">↑ {event.input_summary}</div>
+          <div className="text-muted-foreground">in: {event.input_summary}</div>
         )}
         {event.output_summary && (
-          <div className="text-muted-foreground">↓ {event.output_summary}</div>
+          <div className="text-muted-foreground">out: {event.output_summary}</div>
         )}
         {event.decision_summary && (
-          <div className="text-yellow-400">⚠ {event.decision_summary}</div>
+          <div className="text-yellow-400">decision: {event.decision_summary}</div>
         )}
-        {event.error_message && <div className="text-danger">✗ {event.error_message}</div>}
+        {event.error_message && <div className="text-danger">error: {event.error_message}</div>}
         <div className="text-muted-foreground/50">
-          {event.phase && `${event.phase} · `}
+          {event.phase && `${event.phase} � `}
           {event.duration_ms != null && `${event.duration_ms}ms`}
-          {event.cache_hit === true && " · cache-hit"}
+          {event.cache_hit === true && " � cache-hit"}
         </div>
       </div>
     </div>

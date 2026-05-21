@@ -17,6 +17,7 @@
 
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 const IS_MOCK = FEATURE_FLAGS.tinglysningMock;
 
@@ -82,7 +83,7 @@ const MOCK_RESULT: TinglysningResult = {
 async function classifyServitutter(servitutter: Omit<Servitut, "kritisk">[]): Promise<Servitut[]> {
   if (servitutter.length === 0) return [];
 
-  const apiKey = getEnvOptional("ANTHROPIC_API_KEY");
+  const apiKey = runtimeConfig.ai.anthropicApiKey || getEnvOptional("ANTHROPIC_API_KEY");
   if (!apiKey) {
     console.warn("[Tinglysning] ANTHROPIC_API_KEY mangler — kritisk=false for alle servitutter");
     return servitutter.map((s) => ({ ...s, kritisk: false }));

@@ -14,8 +14,8 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
-import { getEnvOptional } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 // ---------------------------------------------------------------------------
 // Output-typer
@@ -319,7 +319,7 @@ export class ByggeanalyseService {
 
     if (FEATURE_FLAGS.byggeanalyseMock) return MOCK_RESULTAT;
 
-    const apiKey = getEnvOptional("ANTHROPIC_API_KEY") ?? "";
+    const apiKey = runtimeConfig.ai.anthropicApiKey;
     if (!apiKey) {
       logger.warn("[ByggeanalyseService] ANTHROPIC_API_KEY mangler — returnerer mock");
       return MOCK_RESULTAT;

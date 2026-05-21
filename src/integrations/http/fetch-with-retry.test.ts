@@ -1,7 +1,13 @@
-import { describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { fetchWithRetry } from "./fetch-with-retry";
+import { resetMockedFetch } from "@/testing/fetch-mocks";
 
 describe("fetchWithRetry", () => {
+  beforeEach(() => {
+    mock.restore();
+    resetMockedFetch();
+  });
+
   it("retries on 429 and eventually succeeds", async () => {
     let calls = 0;
     globalThis.fetch = mock(async () => {

@@ -21,8 +21,9 @@ import { GrundarealResolver } from "@/integrations/mat/grundareal-resolver";
 import {
   selectKommuneplanrammeForCompliance,
   selectPrimaryLokalplanForPdf,
-} from "@/integrations/plandata/client";
+} from "@/integrations/plandata/selectors";
 import type { Kommuneplanramme, Lokalplan } from "@/integrations/plandata/client";
+import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
 // ---------------------------------------------------------------------------
 // Konfig til services der tager eksplicit config
@@ -41,23 +42,12 @@ const GR_CONFIG = {
 // ---------------------------------------------------------------------------
 
 function mockFetch(responses: any[]) {
-  let i = 0;
-  const spy = mock(async (_url: unknown, _init?: unknown) => {
-    const json = responses[i++] ?? { data: {} };
-    return {
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () => JSON.stringify(json),
-      json: async () => json,
-    } as unknown as Response;
-  });
-  globalThis.fetch = spy as any;
-  return spy;
+  return installSequentialJsonFetch(responses);
 }
 
 beforeEach(() => {
-  globalThis.fetch = fetch;
+  mock.restore();
+  resetMockedFetch();
 });
 
 // ---------------------------------------------------------------------------

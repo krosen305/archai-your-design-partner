@@ -8,6 +8,7 @@
  */
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { MatService } from "./client";
+import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,18 +25,7 @@ const JORDSTYKKE_LOKAL_ID = "mat-jordstykke-0000-0000-000000000001";
 type MockJson = Record<string, unknown>;
 
 function mockFetch(responses: MockJson[]) {
-  let callCount = 0;
-  const mockedFetch = mock(async (_url: unknown, _init?: unknown) => {
-    const body = responses[callCount++] ?? { data: {} };
-    return {
-      ok: true,
-      status: 200,
-      headers: { get: (_: string) => null },
-      text: async () => JSON.stringify(body),
-    } as unknown as Response;
-  });
-  globalThis.fetch = mockedFetch as any;
-  return mockedFetch;
+  return installSequentialJsonFetch(responses);
 }
 
 const ejerlavResponse = (lokalId = EJERLAV_LOKAL_ID, navn = "Virum By, Virum") => ({
@@ -56,7 +46,8 @@ const jordstykkeResponse = (areal: number, matr = "48a") => ({
 
 describe("MatService.getGrundareal", () => {
   beforeEach(() => {
-    globalThis.fetch = fetch;
+    mock.restore();
+    resetMockedFetch();
   });
 
   it("returnerer korrekt grundareal via ejerlav + jordstykke kæde", async () => {

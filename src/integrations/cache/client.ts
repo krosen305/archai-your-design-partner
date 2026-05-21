@@ -61,7 +61,8 @@ export async function getCachedLokalplan(
   if (!isFresh(row.lokalplan_extracted_at, daysToMs(CACHE_TTL_DAYS.lokalplan))) return null;
   // Invalidate if the PDF URL has changed
   if (currentPdfUrl && row.lokalplan_pdf_url !== currentPdfUrl) return null;
-  if (row.lokalplan_extracted !== null && !isValidLokalplanExtractShape(row.lokalplan_extracted)) return null;
+  if (row.lokalplan_extracted !== null && !isValidLokalplanExtractShape(row.lokalplan_extracted))
+    return null;
   return row.lokalplan_extracted;
 }
 

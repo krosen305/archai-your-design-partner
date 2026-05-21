@@ -77,6 +77,10 @@ mock.module("@/integrations/cache/client", () => ({
   setCachedLokalplan: mock(async () => {}),
   getCachedServitut: mock(async () => null),
   setCachedServitut: mock(async () => {}),
+  getCachedJordstykkePolygon: mock(async () => null),
+  setCachedJordstykkePolygon: mock(async () => {}),
+  getCachedSourceResult: mock(async () => null),
+  setCachedSourceResult: mock(async () => {}),
 }));
 
 mock.module("@/lib/analysis-tracing", () => ({

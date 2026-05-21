@@ -116,7 +116,33 @@ Hard Stop-tærskler:
 - `mat_fredskov === true` → `dispensation_required`
 - `mat_klitfredning === true` → `dispensation_required`
 
-Disse tærskler er defineret i `src/lib/rule-engine/rules/stop-rules.ts` og i `src/types/building-platform.ts`. Kopiér dem aldrig til andre filer — brug import.
+Disse tærskler er **kanonisk defineret** i `src/lib/rule-engine/rules/stop-rules.ts`. En ældre kopi eksisterer i `src/types/building-platform.ts` og ryddes op via ROADMAP-002/018. Tilføj aldrig threshold-tjek udenfor regel-engine-modulet og dets tests — brug import.
+
+### Rule 4 — Compliance-gates verificeres altid server-side
+
+Acceptér **aldrig** `hasHardStop`, `hasAbsoluteHardStop` eller tilsvarende compliance-gate-signaler som input fra klienten i `createServerFn`-handlers. Serveren skal altid verificere Hard Stop-status fra betroede data: `projects.hard_stop`, `site_constraints`-tabellen eller en regel-engine-kørsel med BBR/MAT-data. Klienten må gerne disable knapper UI-side — men serveren er autoritativ og kan ikke stoles på klient-input. Dette er en **sikkerhedsregel**.
+
+---
+
+## Aktiv arkitektur-sanering (ROADMAP-001–026)
+
+26 refaktoreringsopgaver er i gang — prioriteret over ny feature-udvikling. Kodebasen har akkumuleret God Objects, utypede `any`-casts og duplikeret Hard Stop-logik. Undgå at reproducere disse mønstre i nye brancher:
+
+**Må ikke gøres i ny kode:**
+- God Objects: én fil der ejer transport + forretningslogik + persistence + UI
+- `(supabaseAdmin.from as any)("tabel")` — brug genererede typer
+- `any` i Datafordeler-klienter (`map((node: any) => ...)`, `Promise<any>`)
+- Inline threshold-tjek der duplikerer `stop-rules.ts`
+- `console.warn` som eneste fejlhåndtering i server-pipeline
+- Compliance-beslutninger i route-filer eller UI-komponenter
+- Hard-stop gate-signaler accepteret fra klienten (se Rule 4)
+
+**Ny kode følger disse mønstre:**
+- Routes → kalder `createServerFn`, komponerer UI — ingen register-klienter i route-filer
+- Domain-logik → pure functions med eksplicit input/output og tests
+- Infrastructure → repositories, gateways eller fælles typede klienter
+- Runtime-data fra API, AI eller JSONB → dekoderes via Zod-schema før domain-state
+- Hard Stops → evalueres kun via regel-engine-grænsefladen
 
 ---
 

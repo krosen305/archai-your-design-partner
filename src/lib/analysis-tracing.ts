@@ -2,6 +2,8 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TracingDatabase } from "@/lib/analysis-tracing-types";
 import { logger } from "@/lib/logger";
 
 export type AnalysisRunKind =
@@ -64,6 +66,7 @@ type TraceStepOptions<T> = {
 };
 
 let persistenceDisabled = false;
+const tracingDb = supabaseAdmin as unknown as SupabaseClient<TracingDatabase>;
 
 function nowMs() {
   return Date.now();
@@ -101,7 +104,7 @@ export async function startAnalysisRun(input: StartRunInput): Promise<AnalysisTr
   if (persistenceDisabled) return context;
 
   try {
-    const { error } = await (supabaseAdmin.from as any)("analysis_runs").insert({
+    const { error } = await tracingDb.from("analysis_runs").insert({
       id: fallbackId,
       run_kind: input.runKind,
       project_id: input.projectId ?? null,
@@ -129,7 +132,8 @@ export async function finishAnalysisRun(
   if (!trace?.runId || persistenceDisabled) return;
 
   try {
-    const { error: updateError } = await (supabaseAdmin.from as any)("analysis_runs")
+    const { error: updateError } = await tracingDb
+      .from("analysis_runs")
       .update({
         status,
         completed_at: new Date().toISOString(),
@@ -152,7 +156,7 @@ export async function recordAnalysisEvent(
   if (!trace?.runId || persistenceDisabled) return;
 
   try {
-    const { error } = await (supabaseAdmin.from as any)("analysis_events").insert({
+    const { error } = await tracingDb.from("analysis_events").insert({
       run_id: trace.runId,
       event_type: input.eventType,
       phase: input.phase ?? null,

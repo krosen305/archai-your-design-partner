@@ -25,6 +25,18 @@ import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { recordAnalysisEvent } from "@/lib/analysis-tracing";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
+import {
+  anvendelseLabel,
+  opvarmningsmiddelLabel,
+  tagdaekningLabel,
+  varmeinstallationLabel,
+  ydervaegsMaterialeLabel,
+} from "@/domain/bbr/code-lists";
+import {
+  deriveBbrSummary as deriveBbrSummaryPure,
+  selectCanonicalBuilding as selectCanonicalBuildingPure,
+} from "@/domain/bbr/canonical-building";
+import { parseBbrBygninger } from "@/domain/bbr/node-decoder";
 
 type BbrClientConfig = {
   apiKey?: string;
@@ -48,81 +60,6 @@ function getConfig(explicit?: BbrClientConfig) {
 
   return { apiKey, endpoint };
 }
-
-// ---------------------------------------------------------------------------
-// Kodelister
-// ---------------------------------------------------------------------------
-
-const ANVENDELSE_KODER: Record<string, string> = {
-  "110": "Stuehus til landbrugsejendom",
-  "120": "Fritliggende enfamilieshus",
-  "121": "Sammenbygget enfamilieshus",
-  "122": "Dobbelthus",
-  "130": "Række-, kæde- eller dobbelthus",
-  "140": "Etagebolig",
-  "510": "Sommerhus",
-  "910": "Garage",
-  "920": "Carport",
-  "930": "Udhus",
-};
-
-// byg056 Varmeinstallation (primær)
-const VARMEINSTALLATION_KODER: Record<string, string> = {
-  "1": "Fjernvarme/blokvarme",
-  "2": "Centralvarme (én fyringsenhed)",
-  "3": "Ovn (el, gas, olie mv.)",
-  "5": "Varmepumpe",
-  "6": "Centralvarme (to fyringsenheder)",
-  "7": "Etagecentralvarme",
-  "8": "Ingen varmeinstallation",
-  "9": "Blandet",
-};
-
-// byg057 Opvarmningsmiddel (primært brændstof)
-const OPVARMNINGSMIDDEL_KODER: Record<string, string> = {
-  "1": "El",
-  "2": "Gasolin/olie",
-  "3": "Gas",
-  "4": "Fast brændsel (kul/koks/træ)",
-  "6": "Halm",
-  "7": "Naturgas",
-  "8": "Fjernvarme",
-  "9": "Biobrændsel",
-  "10": "Solenergi",
-  "11": "Andet",
-};
-
-// byg032 YdervaeggensMateriale
-const YDERVAEGS_KODER: Record<string, string> = {
-  "1": "Mursten/tegl",
-  "2": "Letbeton/porebeton",
-  "3": "Træbeklædning",
-  "4": "Betonsten",
-  "5": "Eternit/fibercement",
-  "6": "Plastmateriale",
-  "7": "Metal",
-  "8": "Glas",
-  "10": "Gul mursten",
-  "11": "Rød mursten",
-  "12": "Puds",
-  "80": "Andet",
-  "90": "Blandet",
-};
-
-// byg033 Tagdaekningsmateriale
-const TAGDAEKNING_KODER: Record<string, string> = {
-  "1": "Tagsten (tegl/beton)",
-  "2": "Eternit/fibercement",
-  "3": "Metaltagplader",
-  "4": "Bygningsplader",
-  "5": "Stråtag",
-  "6": "Tagpap",
-  "7": "Glas",
-  "10": "Tagfolie",
-  "11": "Grønt tag",
-  "80": "Andet",
-  "90": "Blandet",
-};
 
 // ---------------------------------------------------------------------------
 // Output type
@@ -197,7 +134,7 @@ export type BbrKompliantData = {
 
 // ---------------------------------------------------------------------------
 // GraphQL Query – kun BBR_Bygning
-// (BBR_Grund har intet grundareal-felt – grundareal sendes fra DAWA-laget)
+// (BBR_Grund har intet grundareal-felt – grundareal sendes fra DAR/MAT-laget)
 // ---------------------------------------------------------------------------
 
 // virkningstid er obligatorisk (DAF-GQL-0009) – Datafordeler er bitemporal.
@@ -295,95 +232,7 @@ async function gqlFetch(
 // Aggregeringskonstanter og -helper — ARCH-227
 // ---------------------------------------------------------------------------
 
-const SECONDARY_CODES = new Set(["910", "920", "930", "940"]);
-
-// ---------------------------------------------------------------------------
-// selectCanonicalBuilding — ARCH-task (Byledet 3 fix)
-// ---------------------------------------------------------------------------
-
-const BOLIG_KODER = new Set(["110", "120", "121", "122", "130", "140", "510"]);
-
-function scoreBygning(b: BbrBygning): number {
-  let score = 0;
-  if (BOLIG_KODER.has(b.byg021BygningensAnvendelse ?? "")) score += 1000;
-  if (b.byg039BygningensSamledeBoligAreal != null) score += 200;
-  if (b.byg038SamletBygningsareal != null) score += 150;
-  if (b.byg041BebyggetAreal != null) score += 100;
-  if (b.byg054AntalEtager != null) score += 80;
-  if (b.byg094Revisionsdato != null) score += 60;
-  if (b.byg026Opfoerelsesaar != null) score += 40;
-  return score;
-}
-
-function buildingIsActive(b: BbrBygning): boolean {
-  const now = new Date().toISOString();
-  const today = now.slice(0, 10);
-  if (b.virkningTil != null && b.virkningTil <= now) return false;
-  if (b.registreringTil != null && b.registreringTil <= now) return false;
-  // Midlertidigt opført: exclude if the temporary status date is in the past (per spec).
-  // Note: BBR byg029 semantics are "dato for godkendelse af midlertidig bygning";
-  // a past date may mean the permit has expired. Confirm against BBR register if needed.
-  if (
-    b.byg029DatoForMidlertidigOpfoertBygning != null &&
-    b.byg029DatoForMidlertidigOpfoertBygning < today
-  )
-    return false;
-  return true;
-}
-
-export function selectCanonicalBuilding(bygninger: BbrBygning[]): {
-  canonical: BbrBygning | null;
-  reason: string | null;
-} {
-  if (!bygninger.length) return { canonical: null, reason: null };
-
-  const nonSecondary = bygninger.filter(
-    (b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? ""),
-  );
-
-  const active = nonSecondary.filter(buildingIsActive);
-  const candidates = active.length > 0 ? active : nonSecondary;
-
-  if (!candidates.length) return { canonical: bygninger[0], reason: "fallback_no_primary" };
-  if (candidates.length === 1) return { canonical: candidates[0], reason: "only_candidate" };
-
-  const sorted = [...candidates].sort((a, b) => {
-    const diff = scoreBygning(b) - scoreBygning(a);
-    if (diff !== 0) return diff;
-
-    // Tie-break 1: newest revisionsdato
-    const revA = a.byg094Revisionsdato ?? "";
-    const revB = b.byg094Revisionsdato ?? "";
-    if (revA !== revB) return revB.localeCompare(revA);
-
-    // Tie-break 2: highest opfoerelsesaar
-    const aarA = a.byg026Opfoerelsesaar ?? 0;
-    const aarB = b.byg026Opfoerelsesaar ?? 0;
-    if (aarA !== aarB) return aarB - aarA;
-
-    // Tie-break 3: highest boligareal
-    const boligA = a.byg039BygningensSamledeBoligAreal ?? 0;
-    const boligB = b.byg039BygningensSamledeBoligAreal ?? 0;
-    if (boligA !== boligB) return boligB - boligA;
-
-    // Tie-break 4: highest samlet areal
-    const samletA = a.byg038SamletBygningsareal ?? 0;
-    const samletB = b.byg038SamletBygningsareal ?? 0;
-    if (samletA !== samletB) return samletB - samletA;
-
-    // Tie-break 5: highest bebygget areal
-    return (b.byg041BebyggetAreal ?? 0) - (a.byg041BebyggetAreal ?? 0);
-  });
-
-  const canonical = sorted[0];
-  const reason = canonical.byg094Revisionsdato
-    ? "newest_complete_residential"
-    : canonical.byg026Opfoerelsesaar
-      ? "newest_residential_by_year"
-      : "highest_score_residential";
-
-  return { canonical, reason };
-}
+export const selectCanonicalBuilding = selectCanonicalBuildingPure;
 
 /**
  * Aggregerer BBR-bygningsliste til compliance-summary.
@@ -394,70 +243,7 @@ export function selectCanonicalBuilding(bygninger: BbrBygning[]): {
  * - aggregated_bebygget_areal_all_primary: sum af alle ikke-sekundære bygningers footprint (debug)
  * - fredet: true hvis NOGEN bygning har byg070Fredning != null/"0"/""
  */
-export function deriveBbrSummary(bygninger: BbrBygning[]): {
-  canonicalBuilding: BbrBygning | null;
-  canonicalReason: string | null;
-  candidatesCount: number;
-  bebygget_areal: number | null;
-  aggregated_bebygget_areal_all_primary: number | null;
-  fredet: boolean | null;
-} {
-  if (!bygninger.length) {
-    return {
-      canonicalBuilding: null,
-      canonicalReason: null,
-      candidatesCount: 0,
-      bebygget_areal: null,
-      aggregated_bebygget_areal_all_primary: null,
-      fredet: null,
-    };
-  }
-
-  // Deduplicate on id_lokalId
-  const seen = new Set<string>();
-  const deduped = bygninger.filter((b) => {
-    const id = b.id_lokalId;
-    if (!id) return true;
-    if (seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
-
-  const { canonical: canonicalBuilding, reason: canonicalReason } =
-    selectCanonicalBuilding(deduped);
-
-  // Count primary (non-secondary) candidates after dedup
-  const primaryCandidates = deduped.filter(
-    (b) => !SECONDARY_CODES.has(b.byg021BygningensAnvendelse ?? ""),
-  );
-  const candidatesCount = primaryCandidates.length;
-
-  // canonical building's footprint (not an aggregate sum)
-  const bebygget_areal = canonicalBuilding?.byg041BebyggetAreal ?? null;
-
-  // Aggregate footprint for all primary buildings — debug field only
-  const footprints = primaryCandidates
-    .map((b) => b.byg041BebyggetAreal)
-    .filter((a): a is number => a != null);
-  const aggregated_bebygget_areal_all_primary =
-    footprints.length > 0 ? footprints.reduce((s, a) => s + a, 0) : null;
-
-  // fredet: true if ANY building has fredning set
-  const fredningsValues = deduped.map((b) => b.byg070Fredning ?? null);
-  const hasAnyExplicit = fredningsValues.some((v) => v !== null);
-  const fredet = hasAnyExplicit
-    ? fredningsValues.some((v) => v !== null && v !== "0" && v !== "")
-    : null;
-
-  return {
-    canonicalBuilding,
-    canonicalReason,
-    candidatesCount,
-    bebygget_areal,
-    aggregated_bebygget_areal_all_primary,
-    fredet,
-  };
-}
+export const deriveBbrSummary = deriveBbrSummaryPure;
 
 // ---------------------------------------------------------------------------
 // BbrService
@@ -467,8 +253,8 @@ export class BbrService {
   /**
    * Henter BBR-bygningsdata via Datafordelers GraphQL v2-endpoint.
    *
-   * @param adgangsadresseid  DAWA's adgangsadresse-UUID (= BBR's husnummer-filter)
-   * @param grundareal        Grundareal i m² fra DAWA (jordstykke.registreretAreal)
+   * @param adgangsadresseid  DAR/BBR husnummer-UUID (= BBR's husnummer-filter)
+   * @param grundareal        Grundareal i m² fra DAR/MAT (jordstykke.registreretAreal)
    *                          – BBR_Grund indeholder ikke dette felt
    */
   static async getKompliantData(
@@ -488,9 +274,8 @@ export class BbrService {
 
     try {
       const data = await gqlFetch(url, BYGNING_QUERY, { id, ...currentBitemporalArgs() }, trace);
-
       // 1–2. Aggregér bygningsliste (ARCH-227)
-      const bygninger: BbrBygning[] = data?.BBR_Bygning?.nodes ?? [];
+      const bygninger: BbrBygning[] = parseBbrBygninger(data);
       const {
         canonicalBuilding,
         canonicalReason,
@@ -525,7 +310,7 @@ export class BbrService {
         canonicalBuilding.byg038SamletBygningsareal ??
         null;
 
-      // 3. Bebyggelsesprocent (kræver grundareal fra DAWA-laget)
+      // 3. Bebyggelsesprocent (kræver grundareal fra MAT/DAR-laget)
       let bebyggelsesprocent: number | null = null;
       if (bebygget_areal && grundareal && grundareal > 0) {
         bebyggelsesprocent = Math.round((bebygget_areal / grundareal) * 1000) / 10;
@@ -543,11 +328,7 @@ export class BbrService {
       // FBB: saml alle bygnings-UUIDs — bruges til SAVE-opslag (ARCH-131)
       // Deduplikér på id_lokalId for at undgå redundante FBB-opslag ved bitemporal-dubletter
       const alle_bygning_lokal_ids: string[] = [
-        ...new Set(
-          bygninger
-            .map((b: any) => b.id_lokalId as string | null)
-            .filter((id): id is string => !!id),
-        ),
+        ...new Set(bygninger.map((b) => b.id_lokalId).filter((id): id is string => !!id)),
       ];
 
       return {
@@ -556,21 +337,17 @@ export class BbrService {
         samlet_areal,
         antal_etager: canonicalBuilding.byg054AntalEtager ?? null,
         anvendelseskode: anv_kode,
-        anvendelse_tekst: anv_kode ? (ANVENDELSE_KODER[anv_kode] ?? `Kode ${anv_kode}`) : null,
+        anvendelse_tekst: anvendelseLabel(anv_kode),
         grundareal,
         bebyggelsesprocent,
         beregning_mulig: bebyggelsesprocent !== null,
         fejl: grundareal
           ? null
           : "Grundareal ikke tilgængeligt – bebyggelsesprocent kan ikke beregnes",
-        varmeinstallation: varme_kode
-          ? (VARMEINSTALLATION_KODER[varme_kode] ?? `Kode ${varme_kode}`)
-          : null,
-        opvarmningsmiddel: opv_kode
-          ? (OPVARMNINGSMIDDEL_KODER[opv_kode] ?? `Kode ${opv_kode}`)
-          : null,
-        ydervaegs_materiale: yv_kode ? (YDERVAEGS_KODER[yv_kode] ?? `Kode ${yv_kode}`) : null,
-        tagdaekning: tag_kode ? (TAGDAEKNING_KODER[tag_kode] ?? `Kode ${tag_kode}`) : null,
+        varmeinstallation: varmeinstallationLabel(varme_kode),
+        opvarmningsmiddel: opvarmningsmiddelLabel(opv_kode),
+        ydervaegs_materiale: ydervaegsMaterialeLabel(yv_kode),
+        tagdaekning: tagdaekningLabel(tag_kode),
         fredet,
         mat_strandbeskyttelse: null,
         mat_fredskov: null,

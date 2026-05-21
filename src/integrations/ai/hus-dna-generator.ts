@@ -12,7 +12,7 @@
 
 import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
-import { getEnvOptional } from "@/lib/env";
+import { runtimeConfig } from "@/lib/runtime-config";
 const IS_MOCK = FEATURE_FLAGS.husDnaMock;
 
 // ---------------------------------------------------------------------------
@@ -92,7 +92,7 @@ export class HusDnaGeneratorService {
       return { ...MOCK_RESULT };
     }
 
-    const apiKey = getEnvOptional("ANTHROPIC_API_KEY") ?? "";
+    const apiKey = runtimeConfig.ai.anthropicApiKey;
     if (!apiKey) {
       console.warn("[HusDna] ANTHROPIC_API_KEY mangler — returnerer mock");
       return { ...MOCK_RESULT };

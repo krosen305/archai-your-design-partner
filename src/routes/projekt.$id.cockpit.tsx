@@ -42,6 +42,7 @@ import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
+import { withAuth } from "@/lib/server-auth";
 import { syncPatch, restoreProject } from "@/lib/project-sync";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { ProjektDnaPanel } from "@/components/cockpit";
@@ -87,13 +88,11 @@ const analysisInputSchema = z.object({
 const fetchCompliance = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => analysisInputSchema.parse(data))
   .handler(async ({ data }): Promise<ComplianceResult> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
-    if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
-
-    const { token: _token, ...analysisInput } = data;
-    const { analyseAddress } = await import("@/lib/analysis-orchestrator");
-    return analyseAddress({ ...analysisInput, userId: authData.user.id });
+    return withAuth(data.token, async (userId) => {
+      const { token: _token, ...analysisInput } = data;
+      const { analyseAddress } = await import("@/lib/analysis-orchestrator");
+      return analyseAddress({ ...analysisInput, userId });
+    });
   });
 
 const runByggeanalyse = createServerFn({ method: "POST" })
@@ -102,38 +101,39 @@ const runByggeanalyse = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<ByggeanalyseResultat> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.token);
-    if (authError || !authData.user) throw new Response("Uautoriseret", { status: 401 });
+    return withAuth(data.token, async () => {
+      const { token: _token, ...analysisInput } = data;
 
-    const { token: _token, ...analysisInput } = data;
+      let ruleEngineResult: import("@/lib/rule-engine/types").RuleEngineResult | undefined;
+      try {
+        const { assembleRuleEngineInput } = await import("@/lib/rule-engine/input-assembler");
+        const { runRuleEngine } = await import("@/lib/rule-engine/engine");
+        const { input: ruleInput, missingFields } = assembleRuleEngineInput({
+          bbr: analysisInput.bbr,
+          kommuneplanramme: analysisInput.kommuneplanramme ?? null,
+          lokalplaner: analysisInput.lokalplaner ?? [],
+          lokalplanExtract: analysisInput.lokalplanExtract,
+          naturbeskyttelse: analysisInput.naturbeskyttelse ?? null,
+          geusRisk: analysisInput.geusRisk ?? null,
+          servitutter: analysisInput.servitutter ?? null,
+          terrain: analysisInput.terrain ?? null,
+          fbbData: analysisInput.fbbData ?? null,
+          dkjord: null,
+          byggeoenske: analysisInput.byggeoenske,
+          municipality: analysisInput.municipality ?? "",
+          kommunekode: analysisInput.kommunekode ?? "",
+        });
+        ruleEngineResult = runRuleEngine(ruleInput, missingFields);
+      } catch (e) {
+        logger.warn(
+          "[ByggeanalyseService] Regelkerne fejlede (ikke kritisk):",
+          (e as Error).message,
+        );
+      }
 
-    let ruleEngineResult: import("@/lib/rule-engine/types").RuleEngineResult | undefined;
-    try {
-      const { assembleRuleEngineInput } = await import("@/lib/rule-engine/input-assembler");
-      const { runRuleEngine } = await import("@/lib/rule-engine/engine");
-      const { input: ruleInput, missingFields } = assembleRuleEngineInput({
-        bbr: analysisInput.bbr,
-        kommuneplanramme: analysisInput.kommuneplanramme ?? null,
-        lokalplaner: analysisInput.lokalplaner ?? [],
-        lokalplanExtract: analysisInput.lokalplanExtract,
-        naturbeskyttelse: analysisInput.naturbeskyttelse ?? null,
-        geusRisk: analysisInput.geusRisk ?? null,
-        servitutter: analysisInput.servitutter ?? null,
-        terrain: analysisInput.terrain ?? null,
-        fbbData: analysisInput.fbbData ?? null,
-        dkjord: null,
-        byggeoenske: analysisInput.byggeoenske,
-        municipality: analysisInput.municipality ?? "",
-        kommunekode: analysisInput.kommunekode ?? "",
-      });
-      ruleEngineResult = runRuleEngine(ruleInput, missingFields);
-    } catch (e) {
-      logger.warn("[ByggeanalyseService] Regelkerne fejlede (ikke kritisk):", (e as Error).message);
-    }
-
-    const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
-    return ByggeanalyseService.analyse({ ...analysisInput, ruleEngineResult });
+      const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
+      return ByggeanalyseService.analyse({ ...analysisInput, ruleEngineResult });
+    });
   });
 
 function HardStopBanner() {
@@ -680,7 +680,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
         return;
       }
       const state = useProject.getState();
-      const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/client");
+      const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/selectors");
       const primaryLp = selectPrimaryLokalplanForPdf(state.lokalplaner);
       const lpNavn = primaryLp?.plannavn ?? primaryLp?.plannr ?? "Ukendt lokalplan";
       const analyse = await runByggeanalyse({

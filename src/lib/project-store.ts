@@ -26,7 +26,7 @@ export type Address = {
   kommunekode: string;
   matrikel: string | null;
   adgangsadresseid: string;
-  koordinater: { lat: number; lng: number };
+  koordinater: { lat: number; lng: number } | null;
   bbrId: string | null;
   ejerlavskode: number | null;
   matrikelnummer: string | null;

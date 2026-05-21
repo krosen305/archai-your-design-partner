@@ -60,6 +60,7 @@ import {
 } from "@/lib/analysis-tracing";
 import { summarizeSourceResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
+import { logServerEvent } from "@/lib/server-logger";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -178,7 +179,14 @@ async function analyseAddressWithTrace(
       if (ejerlavskode === null) ejerlavskode = dar.ejerlavskode;
       if (matrikelnummer === null) matrikelnummer = dar.matrikelnummer;
     } catch (e) {
-      console.warn("[Orchestrator] DAR opslag fejlede:", (e as Error).message);
+      logServerEvent({
+        module: "analysis-orchestrator",
+        operation: "dar.getAddressDetails",
+        severity: "degraded",
+        message: "DAR opslag fejlede",
+        error: e,
+        trace,
+      });
     }
   }
 
@@ -221,10 +229,13 @@ async function analyseAddressWithTrace(
       const canRecoverGrundareal =
         preFetchedGrundareal !== null || (ejerlavskode !== null && matrikelnummer !== null);
       if (cached.bbr?.grundareal === null && canRecoverGrundareal) {
-        console.warn("[Orchestrator] Stale cache bypassed — grundareal mangler, genberegner", {
-          preFetchedGrundareal,
-          ejerlavskode,
-          matrikelnummer,
+        logServerEvent({
+          module: "analysis-orchestrator",
+          operation: "cache.compliance.stale_bypass",
+          severity: "ignored",
+          message: "Stale cache bypassed — grundareal mangler, genberegner",
+          trace,
+          metadata: { preFetchedGrundareal, ejerlavskode, matrikelnummer },
         });
       } else {
         complianceBase = cached;
@@ -235,10 +246,14 @@ async function analyseAddressWithTrace(
       }
     }
   } catch (e) {
-    console.warn(
-      "[Orchestrator] cache-læsning fejlede (behandles som cache-miss):",
-      (e as Error).message,
-    );
+    logServerEvent({
+      module: "analysis-orchestrator",
+      operation: "cache.compliance.read",
+      severity: "degraded",
+      message: "cache-læsning fejlede (behandles som cache-miss)",
+      error: e,
+      trace,
+    });
   }
 
   if (!complianceBase) {
@@ -306,10 +321,14 @@ async function analyseAddressWithTrace(
           }),
       );
     } catch (e) {
-      console.warn(
-        "[Orchestrator] compliance-cache-skriv fejlede (returnerer resultat uncached):",
-        (e as Error).message,
-      );
+      logServerEvent({
+        module: "analysis-orchestrator",
+        operation: "cache.compliance.write",
+        severity: "degraded",
+        message: "compliance-cache-skriv fejlede (returnerer resultat uncached)",
+        error: e,
+        trace,
+      });
     }
   }
 
@@ -329,7 +348,7 @@ async function analyseAddressWithTrace(
   // ── Layers 2 + 3 + 4: kører parallelt — ingen indbyrdes afhængighed ──────
   // Layer 2 (lokalplan PDF), Layer 3 (servitutter) og Layer 4 (geodata)
   // behøver alle kun Layer 1's output. Parallel Promise.all sparer ~2s live.
-  const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/client");
+  const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/selectors");
   const primaryLokalplan = selectPrimaryLokalplanForPdf(complianceBase.lokalplaner);
   const primaryPdfUrl = primaryLokalplan?.plandokumentLink ?? null;
 
@@ -383,7 +402,14 @@ async function analyseAddressWithTrace(
         });
         return null;
       } catch (e) {
-        console.warn("[Orchestrator] lokalplan PDF-udtræk fejlede:", (e as Error).message);
+        logServerEvent({
+          module: "analysis-orchestrator",
+          operation: "layer2.extract_lokalplan",
+          severity: "degraded",
+          message: "lokalplan PDF-udtræk fejlede",
+          error: e,
+          trace,
+        });
         return null;
       }
     })(),
@@ -426,7 +452,14 @@ async function analyseAddressWithTrace(
         );
         return result;
       } catch (e) {
-        console.warn("[Orchestrator] servitut-udtræk fejlede:", (e as Error).message);
+        logServerEvent({
+          module: "analysis-orchestrator",
+          operation: "layer3.servitut_extract",
+          severity: "degraded",
+          message: "servitut-udtræk fejlede",
+          error: e,
+          trace,
+        });
         return null;
       }
     })(),
@@ -476,7 +509,14 @@ async function analyseAddressWithTrace(
             }),
           },
         ).catch((e: Error) => {
-          console.warn("[Orchestrator] MatGeometryService fejlede:", e.message);
+          logServerEvent({
+            module: "analysis-orchestrator",
+            operation: "layer4.mat_geometry",
+            severity: "degraded",
+            message: "MatGeometryService fejlede",
+            error: e,
+            trace,
+          });
           return null;
         });
         matGeometri = matGeoResult?.data ?? null;
@@ -513,7 +553,14 @@ async function analyseAddressWithTrace(
             ),
           )
           .catch((e: Error) => {
-            console.warn("[Orchestrator] FBB fejlede:", e.message);
+            logServerEvent({
+              module: "analysis-orchestrator",
+              operation: "layer4.fbb",
+              severity: "degraded",
+              message: "FBB fejlede",
+              error: e,
+              trace,
+            });
             return null;
           });
       }
@@ -574,7 +621,14 @@ async function analyseAddressWithTrace(
               ),
             )
             .catch((e: Error) => {
-              console.warn("[Orchestrator] naturbeskyttelse fejlede:", e.message);
+              logServerEvent({
+                module: "analysis-orchestrator",
+                operation: "layer4.naturbeskyttelse",
+                severity: "degraded",
+                message: "naturbeskyttelse fejlede",
+                error: e,
+                trace,
+              });
               return null;
             }),
           import("@/integrations/miljoe/dkjord")
@@ -604,7 +658,14 @@ async function analyseAddressWithTrace(
               );
             })
             .catch((e: Error) => {
-              console.warn("[Orchestrator] DK-Jord fejlede:", e.message);
+              logServerEvent({
+                module: "analysis-orchestrator",
+                operation: "layer4.dkjord",
+                severity: "degraded",
+                message: "DK-Jord fejlede",
+                error: e,
+                trace,
+              });
               return null;
             }),
           import("@/integrations/geus/client")
@@ -621,7 +682,14 @@ async function analyseAddressWithTrace(
               ),
             )
             .catch((e: Error) => {
-              console.warn("[Orchestrator] GEUS fejlede:", e.message);
+              logServerEvent({
+                module: "analysis-orchestrator",
+                operation: "layer4.geus",
+                severity: "degraded",
+                message: "GEUS fejlede",
+                error: e,
+                trace,
+              });
               return null;
             }),
           import("@/integrations/sdfi/dhm-client")
@@ -639,7 +707,14 @@ async function analyseAddressWithTrace(
               );
             })
             .catch((e: Error) => {
-              console.warn("[Orchestrator] DHM terrain fejlede:", e.message);
+              logServerEvent({
+                module: "analysis-orchestrator",
+                operation: "layer4.terrain",
+                severity: "degraded",
+                message: "DHM terrain fejlede",
+                error: e,
+                trace,
+              });
               return null;
             }),
           (async () => {
@@ -681,7 +756,14 @@ async function analyseAddressWithTrace(
                 ),
               )
               .catch((e: Error) => {
-                console.warn("[Orchestrator] GeoDanmarkNaboService fejlede:", e.message);
+                logServerEvent({
+                  module: "analysis-orchestrator",
+                  operation: "layer4.geodanmark_naboer",
+                  severity: "degraded",
+                  message: "GeoDanmarkNaboService fejlede",
+                  error: e,
+                  trace,
+                });
                 return null;
               });
           })(),
@@ -699,7 +781,14 @@ async function analyseAddressWithTrace(
               ),
             )
             .catch((e: Error) => {
-              console.warn("[Orchestrator] FjernvarmeService fejlede:", e.message);
+              logServerEvent({
+                module: "analysis-orchestrator",
+                operation: "layer4.fjernvarme",
+                severity: "degraded",
+                message: "FjernvarmeService fejlede",
+                error: e,
+                trace,
+              });
               return null;
             }),
         ]);

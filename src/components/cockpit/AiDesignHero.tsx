@@ -135,9 +135,17 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 export function AiDesignHero() {
-  const { byggeoenske, setByggeoenske, complianceFlags, billedanalyse, setBilledanalyse } =
-    useProject();
-  // ARCH-172: Rule 1 gate - ingen AI-design ved aktive compliance-stop.
+  const {
+    byggeoenske,
+    setByggeoenske,
+    complianceFlags,
+    billedanalyse,
+    setBilledanalyse,
+    address,
+    currentProjectId,
+  } = useProject();
+  // Client-side gate: disables the button for immediate UI feedback.
+  // The authoritative gate runs server-side in generateDesignProposals (ARCH-267).
   const hasHardStop = complianceFlags.some((f) => f.status === "blocker");
   const analyseableImageCount = (byggeoenske.inspirationsbilleder ?? []).filter(
     isRemoteImageUrl,
@@ -321,7 +329,8 @@ export function AiDesignHero() {
           inspirationsUrls: (remoteImages.length > 0 ? remoteImages : uploadedImages).slice(0, 4),
           stil: byggeoenske.arkitektoniskStil,
           facademateriale: byggeoenske.facademateriale,
-          hasHardStop,
+          projectId: currentProjectId ?? undefined,
+          addressId: address?.adresseid ?? undefined,
         },
       });
       setForslag(result.images);

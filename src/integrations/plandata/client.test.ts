@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import {
-  PlandataService,
-  selectKommuneplanrammeForCompliance,
-  selectPrimaryLokalplanForPdf,
-} from "./client";
+import { PlandataService } from "./client";
+import { selectKommuneplanrammeForCompliance, selectPrimaryLokalplanForPdf } from "./selectors";
 import type { Kommuneplanramme, Lokalplan } from "./client";
+import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
 describe("PlandataService", () => {
   beforeEach(() => {
-    globalThis.fetch = fetch;
+    mock.restore();
+    resetMockedFetch();
   });
 
   it("returns validation error when coordinates are missing", async () => {
@@ -17,20 +16,16 @@ describe("PlandataService", () => {
   });
 
   it("maps lokalplan features", async () => {
-    globalThis.fetch = mock(async () => {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          features: [
-            {
-              id: "lp1",
-              properties: { planid: "1", plannavn: "Plan A", komnr: 101, datovedt: 20200101 },
-            },
-          ],
-        }),
-      } as Response;
-    }) as any;
+    installSequentialJsonFetch([
+      {
+        features: [
+          {
+            id: "lp1",
+            properties: { planid: "1", plannavn: "Plan A", komnr: 101, datovedt: 20200101 },
+          },
+        ],
+      },
+    ]);
 
     const result = await PlandataService.getLokalplanerForKoordinat(12.5, 55.7);
     expect(result.lokalplaner).toHaveLength(1);
@@ -127,5 +122,29 @@ describe("selectPrimaryLokalplanForPdf (ARCH-228)", () => {
     const liste = [lp("F", "20221201", "forslag"), lp("V", "20200101", "vedtaget")];
     selectPrimaryLokalplanForPdf(liste);
     expect(liste).toHaveLength(2);
+  });
+
+  it("manglende plandokumentLink hindrer ikke selektion — plan returneres stadig", () => {
+    const uden: Lokalplan = { ...lp("V", "20220101", "uden"), plandokumentLink: null };
+    expect(selectPrimaryLokalplanForPdf([uden])).not.toBeNull();
+    expect(selectPrimaryLokalplanForPdf([uden])!.plandokumentLink).toBeNull();
+  });
+
+  it("vedtaget plan uden PDF-link vinder over forslag med PDF-link", () => {
+    const vedtagetUdenLink: Lokalplan = {
+      ...lp("V", "20200101", "vedtaget"),
+      plandokumentLink: null,
+    };
+    const forslagMedLink = lp("F", "20221201", "forslag");
+    expect(selectPrimaryLokalplanForPdf([forslagMedLink, vedtagetUdenLink])!.planid).toBe(
+      "vedtaget",
+    );
+  });
+
+  it("vælger korrekt ved tre planer med blanding af status og datoer", () => {
+    const gammel = lp("V", "20150101", "gammel");
+    const ny = lp("V", "20230601", "ny");
+    const forslag = lp("F", "20231201", "forslag");
+    expect(selectPrimaryLokalplanForPdf([forslag, gammel, ny])!.planid).toBe("ny");
   });
 });

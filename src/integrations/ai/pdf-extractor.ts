@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
-import { getEnvOptional } from "@/lib/env";
+import { runtimeConfig } from "@/lib/runtime-config";
 const IS_MOCK = FEATURE_FLAGS.pdfExtractorMock;
 
 // ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ export class PdfExtractorService {
       return MOCK_EXTRACT;
     }
 
-    const apiKey = getEnvOptional("ANTHROPIC_API_KEY") ?? "";
+    const apiKey = runtimeConfig.ai.anthropicApiKey;
     if (!apiKey) {
       console.warn("[PdfExtractor] ANTHROPIC_API_KEY mangler — returnerer mock");
       return MOCK_EXTRACT;

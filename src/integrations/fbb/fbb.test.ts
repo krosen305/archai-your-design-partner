@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { FbbService } from "./client";
+import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
 describe("FbbService.getSaveData", () => {
   beforeEach(() => {
-    globalThis.fetch = fetch;
+    mock.restore();
+    resetMockedFetch();
   });
 
   it("returns empty result for empty ids", async () => {
@@ -14,42 +16,36 @@ describe("FbbService.getSaveData", () => {
   });
 
   it("maps JSON features and picks lowest save value >= 1", async () => {
-    globalThis.fetch = mock(async () => {
-      return {
-        ok: true,
-        status: 200,
-        headers: { get: () => "application/json" },
-        text: async () =>
-          JSON.stringify({
-            features: [
-              {
-                properties: {
-                  bygningsid: 1,
-                  bygningsnummer: 11,
-                  bevaringsvaerdi: 5,
-                  fredet: false,
-                },
-              },
-              {
-                properties: {
-                  bygningsid: 2,
-                  bygningsnummer: 22,
-                  bevaringsvaerdi: 3,
-                  fredet: false,
-                },
-              },
-              {
-                properties: {
-                  bygningsid: 3,
-                  bygningsnummer: 33,
-                  bevaringsvaerdi: -1,
-                  fredet: false,
-                },
-              },
-            ],
-          }),
-      } as Response;
-    }) as any;
+    installSequentialJsonFetch([
+      {
+        features: [
+          {
+            properties: {
+              bygningsid: 1,
+              bygningsnummer: 11,
+              bevaringsvaerdi: 5,
+              fredet: false,
+            },
+          },
+          {
+            properties: {
+              bygningsid: 2,
+              bygningsnummer: 22,
+              bevaringsvaerdi: 3,
+              fredet: false,
+            },
+          },
+          {
+            properties: {
+              bygningsid: 3,
+              bygningsnummer: 33,
+              bevaringsvaerdi: -1,
+              fredet: false,
+            },
+          },
+        ],
+      },
+    ]);
 
     const result = await FbbService.getSaveData(["uuid-1", "uuid-2", "uuid-3"]);
     expect(result.fbb_bygninger).toHaveLength(3);
@@ -59,26 +55,20 @@ describe("FbbService.getSaveData", () => {
   });
 
   it("sætter fbb_er_fredet=true når mindst én bygning er fredet", async () => {
-    globalThis.fetch = mock(async () => {
-      return {
-        ok: true,
-        status: 200,
-        headers: { get: () => "application/json" },
-        text: async () =>
-          JSON.stringify({
-            features: [
-              {
-                properties: {
-                  bygningsid: 1,
-                  bygningsnummer: 11,
-                  bevaringsvaerdi: -1,
-                  fredet: true,
-                },
-              },
-            ],
-          }),
-      } as Response;
-    }) as any;
+    installSequentialJsonFetch([
+      {
+        features: [
+          {
+            properties: {
+              bygningsid: 1,
+              bygningsnummer: 11,
+              bevaringsvaerdi: -1,
+              fredet: true,
+            },
+          },
+        ],
+      },
+    ]);
 
     const result = await FbbService.getSaveData(["uuid-1"]);
     expect(result.fbb_er_fredet).toBe(true);

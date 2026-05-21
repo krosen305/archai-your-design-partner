@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { BbrService, deriveBbrSummary, selectCanonicalBuilding } from "./client";
+import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,20 +23,10 @@ type MockResponse = {
 };
 
 function mockFetch(responses: MockResponse[]) {
-  let callCount = 0;
-  const mockedFetch = mock(async (_url: any, _init?: any) => {
-    const r = responses[callCount++] ?? { json: { data: {} } };
-    return {
-      ok: r.ok ?? true,
-      status: r.status ?? 200,
-      statusText: r.statusText ?? "OK",
-      headers: { get: (_name: string) => null },
-      json: async () => r.json,
-      text: async () => JSON.stringify(r.json),
-    } as unknown as Response;
-  });
-  globalThis.fetch = mockedFetch as any;
-  return mockedFetch;
+  return installSequentialJsonFetch(
+    responses.map((r) => r.json),
+    { status: responses[0]?.status ?? 200 },
+  );
 }
 
 const MOCK_BYGNING: import("./client").BbrBygning = {
@@ -81,7 +72,8 @@ const okResponse = (bygning: any[]) => ({
 
 describe("BbrService.getKompliantData (GraphQL)", () => {
   beforeEach(() => {
-    globalThis.fetch = fetch;
+    mock.restore();
+    resetMockedFetch();
   });
 
   it("sender POST med apiKey som query-param og uden Authorization-header", async () => {
@@ -148,6 +140,13 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     expect(result.beregning_mulig).toBe(false);
     expect(result.fejl).toBe("Ingen bygning fundet på adressen");
     expect(result.bebyggelsesprocent).toBeNull();
+  });
+
+  it("returnerer fejl ved malformed BBR payload", async () => {
+    mockFetch([{ json: { data: { BBR_Bygning: { nodes: [{ id_lokalId: "abc" }] } } } }]);
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+    expect(result.beregning_mulig).toBe(false);
+    expect(result.fejl).toContain("Ugyldigt BBR GraphQL-response payload");
   });
 
   it("returnerer beregning_mulig: false når grundareal er null", async () => {
@@ -510,5 +509,45 @@ describe("selectCanonicalBuilding", () => {
     const bolig = { ...MOCK_BYGNING, id_lokalId: "uuid-bolig", byg021BygningensAnvendelse: "120" };
     const { canonical } = selectCanonicalBuilding([garage, bolig]);
     expect(canonical!.id_lokalId).toBe("uuid-bolig");
+  });
+
+  it("secondary-only: vælger bedste sekundære bygning når ingen primære findes", () => {
+    const garage = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-garage",
+      byg021BygningensAnvendelse: "910",
+      byg041BebyggetAreal: 40,
+      byg039BygningensSamledeBoligAreal: null,
+    };
+    const udhus = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-udhus",
+      byg021BygningensAnvendelse: "930",
+      byg041BebyggetAreal: 55,
+      byg039BygningensSamledeBoligAreal: null,
+      byg094Revisionsdato: "2025-01-01",
+    };
+    const { canonical } = selectCanonicalBuilding([garage, udhus]);
+    expect(canonical!.id_lokalId).toBe("uuid-udhus");
+  });
+
+  it("manglende arealer: fallback til score uden area-felter", () => {
+    const a = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-a",
+      byg021BygningensAnvendelse: "120",
+      byg038SamletBygningsareal: null,
+      byg039BygningensSamledeBoligAreal: null,
+      byg041BebyggetAreal: null,
+      byg026Opfoerelsesaar: 2000,
+      byg094Revisionsdato: null,
+    };
+    const b = {
+      ...a,
+      id_lokalId: "uuid-b",
+      byg026Opfoerelsesaar: 2020,
+    };
+    const { canonical } = selectCanonicalBuilding([a, b]);
+    expect(canonical!.id_lokalId).toBe("uuid-b");
   });
 });

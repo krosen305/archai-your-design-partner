@@ -1,40 +1,79 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { PersistedProject, ProjectPatch } from "@/integrations/supabase/project-persistence";
 import { logger } from "@/lib/logger";
+import { withAuth } from "@/lib/server-auth";
 import { useProject } from "@/lib/project-store";
 
+// ---------------------------------------------------------------------------
+// Input schemas — runtime-validated (replaces TypeScript-only pass-through)
+// ---------------------------------------------------------------------------
+
+const tokenSchema = z.string().min(1);
+
+const createProjectSchema = z.object({ accessToken: tokenSchema });
+
+const saveProjectSchema = z.object({
+  accessToken: tokenSchema,
+  patch: z.record(z.string(), z.unknown()),
+  projectId: z.string().uuid().nullable().optional(),
+});
+
+const loadProjectSchema = z.object({
+  accessToken: tokenSchema,
+  projectId: z.string().uuid().nullable().optional(),
+  addressId: z.string().optional().nullable(),
+});
+
+const deleteProjectSchema = z.object({
+  accessToken: tokenSchema,
+  projectId: z.string().uuid(),
+});
+
+// ---------------------------------------------------------------------------
+// Server functions — auth validated via withAuth before delegating to persistence
+// ---------------------------------------------------------------------------
+
 export const serverCreateProject = createServerFn({ method: "POST" })
-  .inputValidator((data: { accessToken: string }) => data)
+  .inputValidator((data: unknown) => createProjectSchema.parse(data))
   .handler(async ({ data }): Promise<string | null> => {
-    const { createProject } = await import("@/integrations/supabase/project-persistence");
-    return createProject(data.accessToken);
+    return withAuth(data.accessToken, async () => {
+      const { createProject } = await import("@/integrations/supabase/project-persistence");
+      return createProject(data.accessToken);
+    });
   });
 
 export const serverSaveProject = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: { accessToken: string; patch: ProjectPatch; projectId?: string | null }) => data,
-  )
+  .inputValidator((data: unknown) => saveProjectSchema.parse(data))
   .handler(async ({ data }): Promise<void> => {
-    const { saveProject } = await import("@/integrations/supabase/project-persistence");
-    await saveProject(data.accessToken, data.patch, data.projectId);
+    return withAuth(data.accessToken, async () => {
+      const { saveProject } = await import("@/integrations/supabase/project-persistence");
+      await saveProject(data.accessToken, data.patch as ProjectPatch, data.projectId);
+    });
   });
 
 export const serverLoadProject = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: { accessToken: string; projectId?: string | null; addressId?: string | null }) => data,
-  )
+  .inputValidator((data: unknown) => loadProjectSchema.parse(data))
   .handler(async ({ data }): Promise<PersistedProject | null> => {
-    const { loadProject } = await import("@/integrations/supabase/project-persistence");
-    return loadProject(data.accessToken, data.projectId, data.addressId);
+    return withAuth(data.accessToken, async () => {
+      const { loadProject } = await import("@/integrations/supabase/project-persistence");
+      return loadProject(data.accessToken, data.projectId, data.addressId);
+    });
   });
 
 export const serverDeleteProject = createServerFn({ method: "POST" })
-  .inputValidator((data: { accessToken: string; projectId: string }) => data)
+  .inputValidator((data: unknown) => deleteProjectSchema.parse(data))
   .handler(async ({ data }): Promise<void> => {
-    const { deleteProject } = await import("@/integrations/supabase/project-persistence");
-    await deleteProject(data.accessToken, data.projectId);
+    return withAuth(data.accessToken, async () => {
+      const { deleteProject } = await import("@/integrations/supabase/project-persistence");
+      await deleteProject(data.accessToken, data.projectId);
+    });
   });
+
+// ---------------------------------------------------------------------------
+// Client-side helpers
+// ---------------------------------------------------------------------------
 
 async function getAccessToken(): Promise<string | null> {
   try {

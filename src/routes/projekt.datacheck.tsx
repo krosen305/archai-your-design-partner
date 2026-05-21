@@ -21,6 +21,7 @@ import {
   SECTIONS,
   getReadinessScores,
   getRiskFlags,
+  parsePersistedDataStatusMap,
   type DataPointStatus,
   type DataStatusMap,
 } from "@/lib/datacheck";
@@ -40,11 +41,7 @@ const loadDatacheck = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<DataStatusMap> => {
     const { loadProject } = await import("@/integrations/supabase/project-persistence");
     const project = await loadProject(data.token, data.projectId ?? null);
-    if (!project?.project_data_status || typeof project.project_data_status !== "object") {
-      return {} as DataStatusMap;
-    }
-
-    return project.project_data_status as DataStatusMap;
+    return parsePersistedDataStatusMap(project?.project_data_status);
   });
 
 const saveDatacheckSchema = z.object({
@@ -60,7 +57,7 @@ const saveDatacheck = createServerFn({ method: "POST" })
     const { saveProject } = await import("@/integrations/supabase/project-persistence");
     await saveProject(
       data.token,
-      { currentStep: "datacheck", projectDataStatus: data.statusMap as Json },
+      { projectDataStatus: data.statusMap as Json },
       data.projectId ?? null,
     );
   });

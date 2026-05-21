@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { DarService } from "./client";
+import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
 // ---------------------------------------------------------------------------
 // Test-IDs
@@ -35,18 +36,9 @@ const MOCK_CONFIG = {
 type MockJson = Record<string, unknown>;
 
 function mockFetch(responses: MockJson[]) {
-  let callCount = 0;
-  const mockedFetch = mock(async (_url: unknown, _init?: unknown) => {
-    const body = responses[callCount++] ?? { data: {} };
-    return {
-      ok: true,
-      status: 200,
-      headers: { get: (_: string) => null },
-      text: async () => JSON.stringify(body),
-    } as unknown as Response;
+  return installSequentialJsonFetch(responses, {
+    headers: { "content-type": "application/json" },
   });
-  globalThis.fetch = mockedFetch as any;
-  return mockedFetch;
 }
 
 // WKT-koordinat i EPSG:25832 (svarende til ca. Virum)
@@ -123,7 +115,7 @@ function fullAddressResponses() {
 
 describe("DarService.getAddressDetails", () => {
   beforeEach(() => {
-    globalThis.fetch = fetch;
+    resetMockedFetch();
   });
 
   it("returnerer fuld adressedetalje inkl. koordinater og matrikeldata", async () => {
