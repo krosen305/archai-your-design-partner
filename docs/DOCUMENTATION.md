@@ -7,15 +7,16 @@ historical implementation plans must not look like instructions.
 
 ## Canonical Documents
 
-| Document                                      | Purpose                                                       |
-| --------------------------------------------- | ------------------------------------------------------------- |
-| `AGENTS.md`                                   | Codex-facing rules and protected boundaries.                  |
-| `CLAUDE.md`                                   | Claude Code architecture context and current operating model. |
-| `README.md`                                   | Product, setup and high-level architecture onboarding.        |
-| `docs/INTEGRATIONS.md`                        | Current integration matrix and Datafordeler/DAWA policy.      |
-| `docs/data-ingestion-contract.md`             | Contract for new public-data sources.                         |
-| `docs/offentlige-datakilder-gap-analyse.md`   | Current public-data gap analysis.                             |
-| `docs/domain/journey-demolition-new-build.md` | Domain journey reference.                                     |
+| Document                                      | Purpose                                                                    |
+| --------------------------------------------- | -------------------------------------------------------------------------- |
+| `AGENTS.md`                                   | Codex-facing rules, protected boundaries and established patterns.         |
+| `CLAUDE.md`                                   | Claude Code architecture context and current operating model.              |
+| `ROADMAP.md`                                  | Architecture backlog — accepted items drive AGENTS.md/CLAUDE.md contracts. |
+| `README.md`                                   | Product, setup and high-level architecture onboarding.                     |
+| `docs/INTEGRATIONS.md`                        | Current integration matrix and Datafordeler/DAWA policy.                   |
+| `docs/data-ingestion-contract.md`             | Contract for new public-data sources.                                      |
+| `docs/offentlige-datakilder-gap-analyse.md`   | Current public-data gap analysis.                                          |
+| `docs/domain/journey-demolition-new-build.md` | Domain journey reference.                                                  |
 
 ## What Does Not Belong In Active Docs
 
@@ -38,6 +39,9 @@ Before merging changes that touch integrations, persistence, routes or agent rul
 3. Compare `docs/INTEGRATIONS.md` with `src/integrations/`.
 4. Compare active Supabase tables with `supabase/migrations/`.
 5. Update `AGENTS.md`/`CLAUDE.md` only when the rule itself changed.
+6. When a `ROADMAP.md` item moves to Done, check whether `AGENTS.md` and `CLAUDE.md`
+   reflect the new module boundaries, patterns and file paths it establishes.
+   Run `/sync-docs` after merging P0/P1 roadmap items.
 
 Suggested future automation: add a `docs:lint` script that fails on stale terms
 outside an explicit allowlist.

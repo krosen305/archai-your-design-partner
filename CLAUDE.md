@@ -131,19 +131,27 @@ When you encounter a field being read from `compliance_data JSONB` or another JS
 
 ## src/lib — nøglefiler
 
-| Fil                              | Ansvar                                                                                                                                                      |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `project-store.ts`               | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `byggeanalyseResultat`, `adressePreCheck`, `boligoenskeValidering`) |
-| `project-sync.ts`                | Fire-and-forget Supabase-sync (`syncPatch`, `restoreProject`) — session-persistens                                                                          |
-| `analysis-orchestrator.ts`       | Entry point for compliance pipeline — BBR+MAT+Plandata+geodata paralleliseret                                                                               |
-| `pre-check-adresse.ts`           | `preCheckAdresse` createServerFn — kører BBR+MAT+Plandata+Natur+Save+VUR parallelt ved adressevalg (ARCH-121)                                               |
-| `reactive-compliance.ts`         | `computePartialUpdate()` — client-safe wrapper: compliance-metrics + regel-engine + flags uden API-kald                                                     |
-| `rule-engine/`                   | Deterministisk regelkerne (stopregler, beregninger, energi) — pure functions, ingen AI                                                                      |
-| `compliance-engine.ts`           | Beregning af `ComplianceMetrics` (bebyggelsesprocent, etager, areal)                                                                                        |
-| `auth.ts` / `auth-middleware.ts` | Auth utilities + Cloudflare middleware                                                                                                                      |
-| `env.ts`                         | Zod-valideret env — brug denne                                                                                                                              |
-| `kommuner.ts`                    | Kommunekode → kommunenavn map (98 kommuner)                                                                                                                 |
-| `utils.ts`                       | `cn()` og utilities                                                                                                                                         |
+| Fil                                | Ansvar                                                                                                                                                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project-store.ts`                 | Zustand wizard-state (`address`, `bbrData`, `complianceFlags`, `lokalplaner`, `husDna`, `byggeanalyseResultat`, `adressePreCheck`, `boligoenskeValidering`) |
+| `project-sync.ts`                  | Fire-and-forget Supabase-sync (`syncPatch`, `restoreProject`) — `projectPatchSchema` validerer patches med `.strict()`                                      |
+| `project-update-builder.ts`        | `buildProjectUpdate()` — pure function, bygger Supabase-update fra `ProjectPatch` uden side effects                                                         |
+| `analysis-orchestrator.ts`         | Thin coordinator over `src/lib/analysis/` step-moduler — cache-first, ingen inline forretningslogik                                                        |
+| `pre-check-adresse.ts`             | `preCheckAdresse` createServerFn — handler delegerer til `runPreCheckAdresse()`; flags i `pre-check-flags.ts`                                               |
+| `pre-check-flags.ts`               | `buildPreCheckFlags()` — pure, ingen server-imports, testbar isoleret                                                                                       |
+| `compliance-flags.ts`              | `deriveComplianceFlags()` — full-analysis flag-derivation, ingen Zustand                                                                                    |
+| `reactive-compliance.ts`           | `computePartialUpdate()` — client-safe: metrics + regel-engine + flags uden API-kald, ingen project-store import                                            |
+| `rule-engine/`                     | Deterministisk regelkerne (stopregler, beregninger, energi) — pure functions, ingen AI                                                                      |
+| `rule-engine/hard-stop-adapter.ts` | `evaluateHardStop()`, `isSaveDispensationRequired()`, `isSaveWarning()` — SSOT for hard-stop tærskler                                                      |
+| `compliance-engine.ts`             | Beregning af `ComplianceMetrics` (bebyggelsesprocent, etager, areal)                                                                                        |
+| `server-auth.ts`                   | `withAuth()` — delt authenticated wrapper til alle `createServerFn`-handlers                                                                                |
+| `server-logger.ts`                 | `logServerEvent()` — struktureret server-logging; erstatter `console.warn` i server-pipeline                                                                |
+| `cockpit.functions.ts`             | Cockpit server actions: `fetchCompliance`, `runByggeanalyse`                                                                                                |
+| `compliance-layer1.ts`             | `fetchLayer1()` — delt Layer-1-fetch til orchestrator og pre-check                                                                                          |
+| `auth.ts` / `auth-middleware.ts`   | Auth utilities + Cloudflare middleware                                                                                                                      |
+| `env.ts`                           | Zod-valideret env — brug denne                                                                                                                              |
+| `kommuner.ts`                      | Kommunekode → kommunenavn map (98 kommuner)                                                                                                                 |
+| `utils.ts`                         | `cn()` og utilities                                                                                                                                         |
 
 ## Integrations (`src/integrations/`)
 

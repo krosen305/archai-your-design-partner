@@ -96,6 +96,19 @@ Særligt: `src/integrations/bbr/client.ts`, `src/integrations/mat/client.ts`, `s
 
 ---
 
+### 10. ROADMAP-mønstre i AI-instruktioner
+
+Tjek `ROADMAP.md` for P0/P1-items der er markeret Done siden seneste sync:
+
+- Er der nye modul-grænser (repositories, step-moduler, pure functions) der ikke er dokumenteret i `AGENTS.md`/`CLAUDE.md`?
+- Er der nye "brug dette mønster" eksempler der mangler (fx ny shared wrapper, ny pure function)?
+- Er der forældede filnavne i nøglefiler-tabellerne (fx fil der er splittet)?
+- Er der "Aktiv arkitektur-sanering"-sektioner der kan opdateres med landede mønstre?
+
+Opdatér `AGENTS.md` og `CLAUDE.md` kun hvis indholdet faktisk er ændret — ikke kosmetisk. Marker ændringer med `🔒 Rører beskyttet fil — kræver review`.
+
+---
+
 ## Output-format
 
 Rapportér resultatet i dette format:

@@ -124,9 +124,118 @@ Acceptér **aldrig** `hasHardStop`, `hasAbsoluteHardStop` eller tilsvarende comp
 
 ---
 
-## Aktiv arkitektur-sanering (ROADMAP-001–026)
+## Etablerede mønstre — brug disse i al ny kode
 
-26 refaktoreringsopgaver er i gang — prioriteret over ny feature-udvikling. Kodebasen har akkumuleret God Objects, utypede `any`-casts og duplikeret Hard Stop-logik. Undgå at reproducere disse mønstre i nye brancher:
+Disse mønstre er nu etablerede i kodebasen. Kopiér dem — opfind ikke egne varianter.
+
+### Server functions (createServerFn)
+
+```typescript
+// KORREKT — withAuth() + dynamic import + delegér til service
+export const myServerFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => mySchema.parse(data))
+  .handler(async ({ data }) => {
+    return withAuth(data.accessToken, async () => {
+      const { myService } = await import("@/lib/my-service");
+      return myService.doWork(data);
+    });
+  });
+
+// FORKERT — inline auth-check + inline forretningslogik
+.handler(async ({ data }) => {
+  const { data: { user } } = await supabaseAdmin.auth.getUser(data.accessToken);
+  if (!user) throw new Error("401");
+  // forretningslogik her...
+});
+```
+
+Se `src/lib/server-auth.ts` for `withAuth()`.
+
+### Hard Stop-evaluering
+
+```typescript
+// KORREKT — brug adapteren, aldrig hardcodede tærskler
+import { isSaveDispensationRequired, isSaveWarning, evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
+if (isSaveDispensationRequired(saveValue)) { /* blocker */ }
+
+// FORKERT — hardcoded tærskel
+if (saveValue !== null && saveValue <= 3) { /* blocker */ }
+```
+
+### Server-side logging
+
+```typescript
+// KORREKT — struktureret logging
+import { logServerEvent } from "@/lib/server-logger";
+logServerEvent({ module: "pre-check", operation: "fetchLayer1", severity: "degraded", message: "FBB fejlede", error: e, trace });
+
+// FORKERT
+console.warn("FBB fejlede:", e);
+```
+
+### Compliance-flag generering
+
+```typescript
+// Pre-check gate: brug buildPreCheckFlags() fra src/lib/pre-check-flags.ts
+// Full analysis: brug deriveComplianceFlags() fra src/lib/compliance-flags.ts
+// Aldrig inline flag-arrays i route-filer eller persistence
+```
+
+### Persistence writes
+
+```typescript
+// KORREKT — repository + buildProjectUpdate()
+import { updateProject } from "@/integrations/supabase/repositories/projects.repository";
+import { buildProjectUpdate } from "@/lib/project-update-builder";
+const update = buildProjectUpdate(patch);
+await updateProject(projectId, update);
+
+// FORKERT — inline Supabase query i persistence-lag
+await supabaseAdmin.from("projects").update({ ... }).eq("id", projectId);
+// (direkte Supabase-kald hører kun hjemme i repositories)
+```
+
+### Pure plandata-selektorer
+
+```typescript
+// KORREKT — importer fra selectors.ts (ingen WFS-deps)
+import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
+
+// FORKERT — importer fra client.ts i en client-komponent
+import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/client"; // server-only deps!
+```
+
+### Cockpit-data
+
+```typescript
+// KORREKT — læs fra useProject(), skriv via syncPatch()
+const { bbrData, complianceFlags } = useProject();
+await syncPatch({ complianceDone: true });
+
+// FORKERT — lokal state mirror
+const [bbrData, setBbrData] = useState(null); // bryder restore og sync
+```
+
+---
+
+## Ny feature checklist — inden du skriver kode
+
+- [ ] Rører du en beskyttet fil? → Skriv `🔒 Rører beskyttet fil — kræver review` i PR
+- [ ] Tilføjer du forretningslogik til en server function handler? → Udtræk til pure function/service
+- [ ] Bruger du `supabaseAdmin.from(...)` direkte i persistence-lag? → Brug repository i stedet
+- [ ] Evaluerer du Hard Stop-tærskler uden `hard-stop-adapter`? → Importer `isSaveDispensationRequired` / `evaluateHardStop`
+- [ ] Bruger du `console.warn` i server-pipeline? → Brug `logServerEvent()` fra `server-logger`
+- [ ] Tilføjer du compliance-data til JSONB? → Tilføj typed SQL-kolonne i stedet (se Rule 2)
+- [ ] Importer du pure selectors fra en server-only klient? → Brug `selectors.ts`-modulet
+- [ ] Skriver du til `projekter`-tabellen? → Stop. Tabellen eksisterer ikke
+- [ ] Accepterer du `hasHardStop` eller compliance-gate-signaler fra klienten? → Stop (Rule 4)
+- [ ] Har du kørt `bunx tsc --noEmit`, `bun test`, `bunx eslint .`, `bun run build`? → Alle skal passere
+
+---
+
+## Aktiv arkitektur-sanering (ROADMAP)
+
+P0/P1-items fra Round 1 er nu landede. Undgå at reproducere disse mønstre i nye brancher:
 
 **Må ikke gøres i ny kode:**
 - God Objects: én fil der ejer transport + forretningslogik + persistence + UI
@@ -136,13 +245,7 @@ Acceptér **aldrig** `hasHardStop`, `hasAbsoluteHardStop` eller tilsvarende comp
 - `console.warn` som eneste fejlhåndtering i server-pipeline
 - Compliance-beslutninger i route-filer eller UI-komponenter
 - Hard-stop gate-signaler accepteret fra klienten (se Rule 4)
-
-**Ny kode følger disse mønstre:**
-- Routes → kalder `createServerFn`, komponerer UI — ingen register-klienter i route-filer
-- Domain-logik → pure functions med eksplicit input/output og tests
-- Infrastructure → repositories, gateways eller fælles typede klienter
-- Runtime-data fra API, AI eller JSONB → dekoderes via Zod-schema før domain-state
-- Hard Stops → evalueres kun via regel-engine-grænsefladen
+- Import af server-only moduler på top-level i route-filer
 
 ---
 
@@ -212,18 +315,32 @@ Disse areas kræver **ikke** review for merge, men verification checklist nedenf
 
 ## Arkitektur — nøglefiler
 
-| Fil                                                | Ansvar                                                                                                      |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `src/lib/project-store.ts`                         | Zustand cockpit-state — ENESTE kilde til flow-data inkl. typede compliance-felter                           |
-| `src/lib/project-sync.ts`                          | Fire-and-forget Supabase-sync (`syncPatch`) — thin wrapper                                                  |
-| `src/integrations/supabase/project-persistence.ts` | Domain Sync Engine — skriver typede kolonner, `hard_stop`, `building_tasks`                                 |
-| `src/lib/analysis-orchestrator.ts`                 | Cache-first compliance pipeline — BBR+MAT+Plandata+geodata paralleliseret                                   |
-| `src/lib/pre-check-adresse.ts`                     | Hurtig Layer-1-fetch ved adressevalg (ARCH-121)                                                             |
-| `src/lib/reactive-compliance.ts`                   | Client-safe compliance-compute — ingen API-kald, kald ved Byggeoenske-ændringer                             |
-| `src/lib/rule-engine/`                             | Deterministisk regelkerne — pure functions, ingen AI                                                        |
-| `src/lib/compliance-engine.ts`                     | `calculateComplianceMetrics()` — bebyggelsesprocent, etager, areal                                          |
-| `src/lib/env.ts`                                   | Zod-valideret env — brug denne                                                                              |
-| `src/types/building-platform.ts`                   | Domain-typer: `SiteConstraints`, `DesignIteration`, `BuildingTask`, `BUILDING_TASK_KEYS`, Hard Stop helpers |
+| Fil                                                        | Ansvar                                                                                                 |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/lib/project-store.ts`                                 | Zustand cockpit-state — ENESTE kilde til flow-data inkl. typede compliance-felter                      |
+| `src/lib/project-sync.ts`                                  | Fire-and-forget Supabase-sync (`syncPatch`, `projectPatchSchema`) — thin wrapper                       |
+| `src/integrations/supabase/project-persistence.ts`         | Domain Sync Engine — thin orchestration facade, delegerer til repositories og `buildProjectUpdate()`   |
+| `src/integrations/supabase/repositories/`                  | Data access layer — `projects.repository`, `site-constraints.repository`, `building-tasks.repository` |
+| `src/lib/project-update-builder.ts`                        | `buildProjectUpdate()` — pure function, bygger Supabase-update uden side effects                       |
+| `src/lib/analysis-orchestrator.ts`                         | Thin coordinator over step-moduler — cache-first, delegerer til `src/lib/analysis/`                   |
+| `src/lib/analysis/`                                        | Pipeline step-moduler: `layer1-analysis`, `address-enrichment`, `lokalplan-extraction-step`, osv.     |
+| `src/lib/pre-check-adresse.ts`                             | `preCheckAdresse` createServerFn — handler kun; orchestrering og flags delegeres                       |
+| `src/lib/pre-check-flags.ts`                               | `buildPreCheckFlags()` — pure function, ingen server-imports, testbar isoleret                         |
+| `src/lib/compliance-flags.ts`                              | `deriveComplianceFlags()` — full-analysis flag-derivation, pure, ingen Zustand                         |
+| `src/lib/reactive-compliance.ts`                           | Client-safe `computePartialUpdate()` — ingen API-kald, ingen project-store import                      |
+| `src/lib/rule-engine/`                                     | Deterministisk regelkerne — pure functions, ingen AI                                                   |
+| `src/lib/rule-engine/hard-stop-adapter.ts`                 | `evaluateHardStop()`, `isSaveDispensationRequired()`, `isSaveWarning()` — kanoniske tærskler           |
+| `src/lib/compliance-engine.ts`                             | `calculateComplianceMetrics()` — bebyggelsesprocent, etager, areal                                     |
+| `src/lib/server-auth.ts`                                   | `withAuth()` — delt auth-wrapper til alle `createServerFn`-handlers                                    |
+| `src/lib/server-logger.ts`                                 | `logServerEvent()` — struktureret server-logging med modul, operation, severity, trace                 |
+| `src/lib/cockpit.functions.ts`                             | Cockpit server actions: `fetchCompliance`, `runByggeanalyse`                                           |
+| `src/hooks/useCockpitRestore.ts`                           | Restore-hook — beslutningslogik om restore vs. ny analyse                                              |
+| `src/hooks/useCockpitAnalysis.ts`                          | Analyse-trigger hook — koordinerer analyse-flow fra cockpit                                            |
+| `src/integrations/plandata/selectors.ts`                   | Pure lokalplan-selektorer (ingen WFS-imports) — importerbar fra client og server                       |
+| `src/integrations/cache/decoders.ts`                       | Zod-decoders for cached payloads (`ComplianceResult`, `LokalplanExtract`, osv.)                        |
+| `src/lib/env.ts`                                           | Zod-valideret env — brug denne                                                                         |
+| `src/types/project-state.ts`                               | Delte domain-typer: `Byggeoenske`, `ComplianceFlag`, `Address`, `HusDna`, `AdressePreCheckResultat`    |
+| `src/types/building-platform.ts`                           | Infrastructure-typer: `SiteConstraints`, `DesignIteration`, `BuildingTask`, `BUILDING_TASK_KEYS`       |
 
 ---
 
