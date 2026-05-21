@@ -10,6 +10,7 @@
 
 import type { Tables } from "@/integrations/supabase/types";
 import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
+import { parseByggeoenskePayload } from "@/lib/design-iteration-parsers";
 
 // =============================================================================
 // Re-exports with domain names
@@ -197,9 +198,9 @@ export function getSaveHardStop(sc: SiteConstraints): HardStopViolation | null {
  */
 export function getDesignAreaM2(di: DesignIteration): number | null {
   if (di.area_m2 !== null) return di.area_m2;
-  const boe = di.byggeoenske as Record<string, unknown> | null;
-  if (boe && typeof boe["bruttoAreal"] === "number") return boe["bruttoAreal"];
-  if (boe && typeof boe["bruttoareal"] === "number") return boe["bruttoareal"];
+  const boe = parseByggeoenskePayload(di.byggeoenske);
+  if (boe?.bruttoAreal !== undefined) return boe.bruttoAreal;
+  if (boe?.bruttoareal !== undefined) return boe.bruttoareal;
   return null;
 }
 
@@ -208,7 +209,7 @@ export function getDesignAreaM2(di: DesignIteration): number | null {
  */
 export function getDesignFloors(di: DesignIteration): number | null {
   if (di.floors !== null) return di.floors;
-  const boe = di.byggeoenske as Record<string, unknown> | null;
-  if (boe && typeof boe["etager"] === "number") return boe["etager"];
+  const boe = parseByggeoenskePayload(di.byggeoenske);
+  if (boe?.etager !== undefined) return boe.etager;
   return null;
 }
