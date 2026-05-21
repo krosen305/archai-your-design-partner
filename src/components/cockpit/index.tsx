@@ -781,12 +781,19 @@ function MatrikelCanvas({
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
 }) {
+  const { address, setAddress } = useProject();
+
   return (
     <MatrikelMap
       bbr={bbr}
       metrics={metrics}
       naboer={naboer}
       jordstykkeLokalId={bbr?.jordstykke_lokal_id ?? null}
+      onPlacementChange={({ centroid }) => {
+        const next = { ...address!, centroid };
+        setAddress(next);
+        void syncPatch({ address: next });
+      }}
     />
   );
 }

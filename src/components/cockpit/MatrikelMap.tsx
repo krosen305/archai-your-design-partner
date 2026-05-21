@@ -22,11 +22,12 @@ export type MatrikelMapProps = {
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
   jordstykkeLokalId?: string | null;
+  onPlacementChange?: (patch: { centroid: { lat: number; lng: number } }) => void;
 };
 
 type ParcelFeatureCollection = GeoJSON.FeatureCollection | null;
 
-export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId }: MatrikelMapProps) {
+export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId, onPlacementChange }: MatrikelMapProps) {
   const { address, complianceFlags, setAddress } = useProject();
   const geo = address?.centroid ?? address?.koordinater ?? null;
   const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
@@ -34,7 +35,7 @@ export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId }: Matrike
   const mapRef = useRef<import("ol/Map").default | null>(null);
   const parcelSourceRef = useRef<import("ol/source/Vector").default | null>(null);
   const footprintSourceRef = useRef<import("ol/source/Vector").default | null>(null);
-  const previewLayerRef = useRef<import("ol/layer/Image").default<any> | null>(null);
+  const previewLayerRef = useRef<import("ol/layer/Image").default<import("ol/source/Image").default> | null>(null);
   const footprintFeatureRef = useRef<import("ol/Feature").default | null>(null);
   const footprintCenterRef = useRef<[number, number] | null>(null);
   const translateRef = useRef<import("ol/interaction/Translate").default | null>(null);
@@ -209,17 +210,27 @@ export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId }: Matrike
         import("ol/proj"),
       ]);
 
-      const Map = (imports[0] as any).default;
-      const View = (imports[1] as any).default;
-      const TileLayer = (imports[2] as any).default;
-      const ImageLayer = (imports[3] as any).default;
-      const VectorLayer = (imports[4] as any).default;
-      const VectorSource = (imports[5] as any).default;
-      const Feature = (imports[6] as any).default;
+      // Typed OL adapter — narrows dynamic import constructors
+      type OlMapCtor = new (...args: unknown[]) => import("ol/Map").default;
+      type OlViewCtor = new (...args: unknown[]) => import("ol/View").default;
+      type OlTileLayerCtor = new (...args: unknown[]) => import("ol/layer/Tile").default<import("ol/source/Tile").default>;
+      type OlImageLayerCtor = new (...args: unknown[]) => import("ol/layer/Image").default<import("ol/source/Image").default>;
+      type OlVectorLayerCtor = new (...args: unknown[]) => import("ol/layer/Vector").default;
+      type OlVectorSourceCtor = new (...args: unknown[]) => import("ol/source/Vector").default;
+      type OlFeatureCtor = new (...args: unknown[]) => import("ol/Feature").default;
+      type OlTranslateCtor = new (...args: unknown[]) => import("ol/interaction/Translate").default;
+
+      const Map = (imports[0] as { default: OlMapCtor }).default;
+      const View = (imports[1] as { default: OlViewCtor }).default;
+      const TileLayer = (imports[2] as { default: OlTileLayerCtor }).default;
+      const ImageLayer = (imports[3] as { default: OlImageLayerCtor }).default;
+      const VectorLayer = (imports[4] as { default: OlVectorLayerCtor }).default;
+      const VectorSource = (imports[5] as { default: OlVectorSourceCtor }).default;
+      const Feature = (imports[6] as { default: OlFeatureCtor }).default;
       const Point = (imports[7] as any).default;
       const Polygon = (imports[8] as any).default;
       const OSM = (imports[9] as any).default;
-      const Translate = (imports[10] as any).default;
+      const Translate = (imports[10] as { default: OlTranslateCtor }).default;
       const GeoJSON = (imports[11] as any).default;
       const Style = (imports[12] as any).default;
       const Fill = (imports[13] as any).default;
@@ -315,7 +326,7 @@ export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId }: Matrike
             centroid: { lat, lng },
           };
           setAddress(nextAddress);
-          void syncPatch({ address: nextAddress });
+          onPlacementChange?.({ centroid: { lat, lng } });
         }
       });
 
