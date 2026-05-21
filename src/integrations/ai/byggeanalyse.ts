@@ -14,8 +14,7 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
-import { logger } from "@/lib/logger";
-import { runtimeConfig } from "@/lib/runtime-config";
+import { callAnthropicGateway, extractStructuredOutput } from "./gateway";
 
 // ---------------------------------------------------------------------------
 // Output-typer
@@ -319,64 +318,34 @@ export class ByggeanalyseService {
 
     if (FEATURE_FLAGS.byggeanalyseMock) return MOCK_RESULTAT;
 
-    const apiKey = runtimeConfig.ai.anthropicApiKey;
-    if (!apiKey) {
-      logger.warn("[ByggeanalyseService] ANTHROPIC_API_KEY mangler — returnerer mock");
-      return MOCK_RESULTAT;
-    }
-
     const systemPrompt = input.ruleEngineResult ? SYSTEM_PROMPT_BASE : SYSTEM_PROMPT_LEGACY;
     const userText = buildUserMessage(input);
     const imageBlocks = buildImageBlocks(byggeoenske.inspirationsbilleder ?? []);
 
     const userContent: ContentBlock[] = [...imageBlocks, { type: "text", text: userText }];
 
-    let res: Response | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 2048,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userContent }],
-        }),
-      });
+    const gatewayResponse = await callAnthropicGateway({
+      model: "claude-sonnet-4-6",
+      system: systemPrompt,
+      messages: [{ role: "user", content: userContent as unknown as import("./gateway").AnthropicContentBlock[] }],
+      maxTokens: 2000,
+      operation: "byggeanalyse",
+    });
 
-      if (res.status !== 429) break;
-      const delayMs = 10_000 * Math.pow(2, attempt);
-      logger.warn(
-        `[ByggeanalyseService] Rate limit — venter ${delayMs / 1000}s (forsøg ${attempt + 1}/3)`,
-      );
-      await new Promise((r) => setTimeout(r, delayMs));
+    const textBlock = gatewayResponse.content.find((b) => b.type === "text");
+    if (!textBlock?.text) {
+      throw new Error("Anthropic returnerede ingen tekst i byggeanalyse");
     }
 
-    if (!res!.ok) {
-      const body = await res!.text();
-      throw new Error(
-        `ByggeanalyseService: Anthropic API fejl (${res!.status}): ${body.slice(0, 200)}`,
-      );
-    }
-
-    const json = (await res!.json()) as { content?: Array<{ text?: string }> };
-    const rawText = json?.content?.[0]?.text ?? "{}";
-    const cleaned = rawText
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/i, "")
-      .trim();
-
-    try {
-      const parsed = ByggeanalyseSchema.parse(JSON.parse(cleaned));
-      return { ...parsed, kilde: "anthropic" as const, ruleEngine: input.ruleEngineResult };
-    } catch {
-      throw new Error(
-        `ByggeanalyseService: kunne ikke parse Anthropic-svar: ${cleaned.slice(0, 200)}`,
-      );
-    }
+    const validated = extractStructuredOutput(ByggeanalyseSchema, textBlock.text);
+    return {
+      tilladt: validated.tilladt ?? [],
+      kraever_dispensation: validated.kraever_dispensation ?? [],
+      konflikt: validated.konflikt ?? [],
+      mangler_data: validated.mangler_data ?? [],
+      stilOpsummering: validated.stilOpsummering ?? null,
+      kilde: "anthropic" as const,
+      ruleEngine: input.ruleEngineResult,
+    };
   }
 }
