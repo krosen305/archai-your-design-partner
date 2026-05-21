@@ -61,6 +61,7 @@ import {
 import { summarizeSourceResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import { logServerEvent } from "@/lib/server-logger";
+import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -84,12 +85,7 @@ export type ComplianceResult = {
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
   analysisRunId?: string | null;
-  serviceStates?: Partial<
-    Record<
-      import("@/lib/project-store").DataSourceKind,
-      import("@/lib/project-store").PipelineServiceState
-    >
-  >;
+  serviceStates?: Partial<Record<DataSourceKind, PipelineServiceState>>;
 };
 
 // ---------------------------------------------------------------------------
@@ -141,12 +137,7 @@ async function analyseAddressWithTrace(
 ): Promise<ComplianceResult> {
   const { addressId, koordinater } = input;
 
-  const states: Partial<
-    Record<
-      import("@/lib/project-store").DataSourceKind,
-      import("@/lib/project-store").PipelineServiceState
-    >
-  > = {};
+  const states: Partial<Record<DataSourceKind, PipelineServiceState>> = {};
 
   // Løs manglende adressefelter server-side via DAR.
   // Udløses når adgangsadresseid mangler ELLER grundareal er null — det sikrer at
@@ -520,7 +511,7 @@ async function analyseAddressWithTrace(
           return null;
         });
         matGeometri = matGeoResult?.data ?? null;
-        (states as Record<string, unknown>).matGeometri =
+        states.matGeometri =
           matGeoResult == null
             ? "error"
             : matGeoResult.status === "mock"
@@ -531,7 +522,7 @@ async function analyseAddressWithTrace(
                   ? "success"
                   : "no_hit";
       } else {
-        (states as Record<string, unknown>).matGeometri = "no_hit";
+        states.matGeometri = "no_hit";
       }
 
       // FBB: kræver integer BBR building IDs — kører altid (SAVE-værdi er nødvendig
