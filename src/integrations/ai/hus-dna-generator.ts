@@ -14,6 +14,7 @@ import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { logServerEvent } from "@/lib/server-logger";
+import { callAnthropicGateway, extractStructuredOutput } from "./gateway";
 const IS_MOCK = FEATURE_FLAGS.husDnaMock;
 
 // ---------------------------------------------------------------------------
@@ -105,7 +106,7 @@ export class HusDnaGeneratorService {
     }
 
     try {
-      return await callAnthropic(apiKey, input);
+      return await callAnthropic(input);
     } catch (e) {
       logServerEvent({
         module: "hus-dna-generator",
@@ -123,7 +124,7 @@ export class HusDnaGeneratorService {
 // Intern: HTTP-kald til Anthropic
 // ---------------------------------------------------------------------------
 
-async function callAnthropic(apiKey: string, input: HusDnaInput): Promise<HusDnaResult> {
+async function callAnthropic(input: HusDnaInput): Promise<HusDnaResult> {
   const content: unknown[] = [];
 
   // Hent billeder som base64 (max 5, spring over utilgængelige)
@@ -145,35 +146,28 @@ async function callAnthropic(apiKey: string, input: HusDnaInput): Promise<HusDna
     : USER_PROMPT;
   content.push({ type: "text", text: userText });
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 512,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content }],
-    }),
+  const gatewayResponse = await callAnthropicGateway({
+    model: "claude-sonnet-4-6",
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: content as import("./gateway").AnthropicContentBlock[] }],
+    maxTokens: 512,
+    operation: "hus-dna-generator",
   });
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Anthropic API ${res.status}: ${body.slice(0, 200)}`);
+  const textBlock = gatewayResponse.content.find((b) => b.type === "text");
+  if (!textBlock?.text) {
+    throw new Error("Anthropic returnerede ingen tekst i hus-dna-generator");
   }
 
-  const json = (await res.json()) as any;
-  const raw: string = json?.content?.[0]?.text ?? "{}";
-
-  // Strip evt. markdown code fence (```json ... ```)
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "")
-    .trim();
-
-  const parsed = HusDnaSchema.parse(JSON.parse(cleaned));
-  return { ...parsed, kilde: "anthropic" as const };
+  const parsed = extractStructuredOutput(HusDnaSchema, textBlock.text);
+  return {
+    stil: parsed.stil ?? "Ukendt stil",
+    bruttoareal: parsed.bruttoareal ?? "—",
+    etager: parsed.etager ?? "—",
+    tagform: parsed.tagform ?? "—",
+    energiklasse: parsed.energiklasse ?? "A2020",
+    saerligeKrav: parsed.saerligeKrav ?? [],
+    confidence: parsed.confidence ?? 70,
+    kilde: "anthropic" as const,
+  };
 }
