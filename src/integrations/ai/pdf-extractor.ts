@@ -8,9 +8,11 @@
 // Mock flag
 // ---------------------------------------------------------------------------
 
+import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { logServerEvent } from "@/lib/server-logger";
+import { callAnthropicGateway, extractStructuredOutput } from "./gateway";
 const IS_MOCK = FEATURE_FLAGS.pdfExtractorMock;
 
 // ---------------------------------------------------------------------------
@@ -137,6 +139,19 @@ Returnér KUN dette JSON-objekt — ingen markdown, ingen forklaring:
 `.trim();
 
 // ---------------------------------------------------------------------------
+// Zod schema for raw AI response
+// ---------------------------------------------------------------------------
+
+const LokalplanAiResponseSchema = z.object({
+  maxEtager: z.number().nullable().optional(),
+  maxBebyggelsespct: z.number().nullable().optional(),
+  tagform: z.string().nullable().optional(),
+  materialer: z.array(z.string()).optional(),
+  byggelinjer: z.string().nullable().optional(),
+  specialBestemmelser: z.array(z.string()).optional(),
+});
+
+// ---------------------------------------------------------------------------
 // PdfExtractorService
 // ---------------------------------------------------------------------------
 
@@ -197,89 +212,47 @@ export class PdfExtractorService {
       };
     }
 
-    // Trin 3: Claude-kald med prompt caching på PDF-dokumentblokken
-    // cache_control: ephemeral → PDF caches i 5 min; re-brug koster 10 % af normal pris.
+    // Trin 3: Claude-kald med PDF-dokumentblok
     const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-    let anthropicRes: Response | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-beta": "prompt-caching-2024-07-31",
+    const pdfContent = [
+      {
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+      },
+      { type: "text", text: EXTRACTION_PROMPT },
+    ];
+
+    const gatewayResponse = await callAnthropicGateway({
+      model: "claude-sonnet-4-6",
+      system: "",
+      messages: [
+        {
+          role: "user",
+          content: pdfContent as unknown as import("./gateway").AnthropicContentBlock[],
         },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1024,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "document",
-                  source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-                  cache_control: { type: "ephemeral" },
-                },
-                { type: "text", text: EXTRACTION_PROMPT },
-              ],
-            },
-          ],
-        }),
-      });
+      ],
+      maxTokens: 1024,
+      operation: "pdf-extractor",
+    });
 
-      if (anthropicRes.status !== 429) break;
+    const textBlock = gatewayResponse.content.find((b) => b.type === "text");
+    const rawText: string = textBlock?.text ?? "{}";
 
-      // Eksponentiel backoff: 10s, 20s, 40s
-      const delayMs = 10_000 * Math.pow(2, attempt);
-      logServerEvent({
-        module: "pdf-extractor",
-        operation: "extractLokalplan",
-        severity: "degraded",
-        message: `Rate limit (429) — venter ${delayMs / 1000}s før retry ${attempt + 1}/3`,
-      });
-      await new Promise((r) => setTimeout(r, delayMs));
-    }
-
-    if (!anthropicRes!.ok) {
-      const body = await anthropicRes!.text();
-      throw new Error(
-        `PdfExtractorService: Anthropic API fejl (${anthropicRes!.status}): ${body.slice(0, 200)}`,
-      );
-    }
-
-    const json = (await anthropicRes!.json()) as { content?: Array<{ text?: string }> };
-    const rawText: string = json?.content?.[0]?.text ?? "{}";
-
-    // Strip evt. markdown code fence (```json ... ```) som Claude tilføjer
-    const cleaned =
-      rawText
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```\s*$/i, "")
-        .trim() || "{}";
-
-    try {
-      const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-      return {
-        maxEtager:
-          typeof parsed.maxEtager === "number" ? parsed.maxEtager : (preparse.maxEtager ?? null),
-        maxBebyggelsespct:
-          typeof parsed.maxBebyggelsespct === "number"
-            ? parsed.maxBebyggelsespct
-            : (preparse.maxBebyggelsespct ?? null),
-        tagform: typeof parsed.tagform === "string" ? parsed.tagform : (preparse.tagform ?? null),
-        materialer: Array.isArray(parsed.materialer) ? (parsed.materialer as string[]) : [],
-        byggelinjer: typeof parsed.byggelinjer === "string" ? parsed.byggelinjer : null,
-        specialBestemmelser: Array.isArray(parsed.specialBestemmelser)
-          ? (parsed.specialBestemmelser as string[])
-          : [],
-        kilde: "anthropic",
-      };
-    } catch {
-      throw new Error(
-        `PdfExtractorService: kunne ikke parse Anthropic-svar som JSON: ${rawText.slice(0, 200)}`,
-      );
-    }
+    const parsed = extractStructuredOutput(LokalplanAiResponseSchema, rawText || "{}");
+    return {
+      maxEtager:
+        typeof parsed.maxEtager === "number" ? parsed.maxEtager : (preparse.maxEtager ?? null),
+      maxBebyggelsespct:
+        typeof parsed.maxBebyggelsespct === "number"
+          ? parsed.maxBebyggelsespct
+          : (preparse.maxBebyggelsespct ?? null),
+      tagform: typeof parsed.tagform === "string" ? parsed.tagform : (preparse.tagform ?? null),
+      materialer: Array.isArray(parsed.materialer) ? parsed.materialer : [],
+      byggelinjer: typeof parsed.byggelinjer === "string" ? parsed.byggelinjer : null,
+      specialBestemmelser: Array.isArray(parsed.specialBestemmelser)
+        ? parsed.specialBestemmelser
+        : [],
+      kilde: "anthropic",
+    };
   }
 }
