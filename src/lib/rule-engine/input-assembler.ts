@@ -21,6 +21,8 @@ import type {
   ProjectType,
   BuildingUsage,
 } from "@/lib/rule-engine/types";
+import { parseSetbackM, parseRoofTypes, parseZone } from "./parsers";
+import { mapByggetypeToProjectType, mapAntalEtager, mapUsageFromBbr } from "./mappers";
 
 // ---------------------------------------------------------------------------
 // Assembler params
@@ -59,69 +61,6 @@ function makeRuleValue<T>(
   estimated = false,
 ): RuleValue<T> {
   return { value, source, confidence, estimated };
-}
-
-// Parser fritekst-setback-streng, fx "2,5 m fra vejskel, 2 m fra naboskel"
-// Returnerer den mindste fundne afstand i meter, eller null.
-function parseSetbackM(byggelinjer: string | null): number | null {
-  if (!byggelinjer) return null;
-  const normalized = byggelinjer.replace(",", ".");
-  const matches = [...normalized.matchAll(/(\d+(?:\.\d+)?)\s*m/gi)];
-  if (matches.length === 0) return null;
-  const vals = matches.map((m) => parseFloat(m[1])).filter((v) => isFinite(v) && v > 0);
-  return vals.length > 0 ? Math.min(...vals) : null;
-}
-
-// Parser tagform-fritekst til string-array, fx "Sadeltag med hældning 25-45°"
-function parseRoofTypes(tagform: string | null): string[] | null {
-  if (!tagform) return null;
-  const lower = tagform.toLowerCase();
-  const types: string[] = [];
-  if (lower.includes("sadeltag") || lower.includes("to-fald")) types.push("saddeltag");
-  if (lower.includes("fladt") || lower.includes("ensidig")) types.push("fladt");
-  if (lower.includes("valm")) types.push("valm");
-  if (lower.includes("mansard")) types.push("mansard");
-  return types.length > 0 ? types : [tagform.trim()];
-}
-
-// Afledt zone fra kommuneplanrammens fremtidigzonestatus
-function parseZone(ramme: Kommuneplanramme | null): RuleEngineInput["plot"]["zone"] {
-  const raw = (ramme?.fremtidigzonestatus ?? "").toUpperCase();
-  if (raw.includes("BYZONE") || raw.includes("BY")) return "urban";
-  if (raw.includes("SOMMERHUS")) return "summerhouse";
-  if (raw.includes("LANDZONE") || raw.includes("LAND")) return "rural";
-  // Dansk standard: ingen ramme = typisk byzone
-  return ramme ? "unknown" : "urban";
-}
-
-// Oversæt Byggeoenske.byggetype → ProjectType
-function mapByggetypeToProjectType(byggetype: Byggeoenske["byggetype"] | undefined): ProjectType {
-  switch (byggetype) {
-    case "nybyg":
-      return "new_build";
-    case "tilbyg":
-      return "extension";
-    case "ombyg":
-      return "renovation";
-    default:
-      return "new_build";
-  }
-}
-
-// Oversæt Byggeoenske.antalEtager → heltal storeys
-function mapAntalEtager(antalEtager: Byggeoenske["antalEtager"] | undefined): number | null {
-  if (antalEtager === undefined) return null;
-  return Math.ceil(antalEtager);
-}
-
-// Afled usage fra BBR-anvendelseskode
-function mapUsageFromBbr(kode: string | null): BuildingUsage {
-  if (!kode) return "residential";
-  const n = parseInt(kode, 10);
-  if (n >= 110 && n <= 190) return "residential";
-  if (n === 910 || n === 920) return "garage";
-  if (n >= 320 && n <= 399) return "commercial";
-  return "mixed";
 }
 
 // ---------------------------------------------------------------------------
