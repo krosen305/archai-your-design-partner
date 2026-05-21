@@ -7,6 +7,25 @@ import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
 
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
 
+export function hasComplianceFields(patch: ProjectPatch): boolean {
+  return (
+    patch.bbrData !== undefined ||
+    patch.complianceFlags !== undefined ||
+    patch.lokalplaner !== undefined ||
+    patch.kommuneplanramme !== undefined ||
+    patch.byggeanalyseResultat !== undefined ||
+    patch.vurderingData !== undefined ||
+    patch.naturbeskyttelse !== undefined ||
+    patch.dkjord !== undefined ||
+    patch.geusRisk !== undefined ||
+    patch.servitutter !== undefined ||
+    patch.terrain !== undefined ||
+    patch.naboer !== undefined ||
+    patch.fjernvarme !== undefined ||
+    patch.fbbData !== undefined
+  );
+}
+
 /**
  * Build a Supabase projects UPDATE payload from a wizard patch.
  *
@@ -51,21 +70,7 @@ export function buildProjectUpdate(
   }
 
   // ── Compliance JSONB + typed columns ───────────────────────────────────────
-  const hasComplianceData =
-    patch.bbrData !== undefined ||
-    patch.complianceFlags !== undefined ||
-    patch.lokalplaner !== undefined ||
-    patch.kommuneplanramme !== undefined ||
-    patch.byggeanalyseResultat !== undefined ||
-    patch.vurderingData !== undefined ||
-    patch.naturbeskyttelse !== undefined ||
-    patch.dkjord !== undefined ||
-    patch.geusRisk !== undefined ||
-    patch.servitutter !== undefined ||
-    patch.terrain !== undefined ||
-    patch.naboer !== undefined ||
-    patch.fjernvarme !== undefined ||
-    patch.fbbData !== undefined;
+  const hasComplianceData = hasComplianceFields(patch);
 
   if (hasComplianceData) {
     update.compliance_data = {

@@ -46,8 +46,7 @@ export function deriveSiteConstraintsPatch(
 
   if (patch.lokalplaner !== undefined) {
     hasConstraintField = true;
-    sitePatch.source_lokalplan_id =
-      selectPrimaryLokalplanForPdf(patch.lokalplaner)?.planid ?? null;
+    sitePatch.source_lokalplan_id = selectPrimaryLokalplanForPdf(patch.lokalplaner)?.planid ?? null;
   }
 
   if (patch.fbbData !== undefined) {
@@ -58,7 +57,7 @@ export function deriveSiteConstraintsPatch(
 
   if (patch.fbbData !== undefined || patch.bbrData !== undefined) {
     hasConstraintField = true;
-    sitePatch.is_fredet = (update.is_fredet as boolean | null | undefined) ?? null;
+    sitePatch.is_fredet = update.is_fredet ?? null;
   }
 
   if (patch.bbrData !== undefined && patch.bbrData !== null) {

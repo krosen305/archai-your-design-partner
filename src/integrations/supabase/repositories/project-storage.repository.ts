@@ -4,15 +4,10 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logServerEvent } from "@/lib/server-logger";
 
-export async function cleanupProjectStorage(
-  userId: string,
-  projectId: string,
-): Promise<void> {
+export async function cleanupProjectStorage(userId: string, projectId: string): Promise<void> {
   const folder = `${userId}/${projectId}`;
   try {
-    const { data: files } = await supabaseAdmin.storage
-      .from("inspirationsbilleder")
-      .list(folder);
+    const { data: files } = await supabaseAdmin.storage.from("inspirationsbilleder").list(folder);
     if (files && files.length > 0) {
       const paths = files.map((f) => `${folder}/${f.name}`);
       await supabaseAdmin.storage.from("inspirationsbilleder").remove(paths);
