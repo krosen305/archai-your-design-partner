@@ -10,12 +10,11 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { useProject } from "@/lib/project-store";
 import {
-  useProject,
-  type ComplianceFlag,
-  type PipelineServiceState,
   PIPELINE_SERVICE_STATE_LABELS,
-} from "@/lib/project-store";
+} from "@/types/project-state";
+import type { ComplianceFlag, PipelineServiceState } from "@/types/project-state";
 import { Card } from "@/components/wizard-ui";
 
 export function EjendomPanel() {

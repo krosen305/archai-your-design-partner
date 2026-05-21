@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
-import type { Byggeoenske } from "@/lib/project-store";
+import type { Byggeoenske } from "@/types/project-state";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Kommuneplanramme, Lokalplan } from "@/integrations/plandata/client";

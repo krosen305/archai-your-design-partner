@@ -1,6 +1,7 @@
 import { RefreshCw, AlertCircle } from "lucide-react";
-import { useProject, DATA_SOURCE_LABELS } from "@/lib/project-store";
-import type { DataSourceKind } from "@/lib/project-store";
+import { useProject } from "@/lib/project-store";
+import { DATA_SOURCE_LABELS } from "@/types/project-state";
+import type { DataSourceKind } from "@/types/project-state";
 import { cn } from "@/lib/utils";
 
 function formatRelative(iso: string | null): string {

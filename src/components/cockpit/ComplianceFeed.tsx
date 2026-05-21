@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, AlertOctagon, AlertTriangle, CheckCircle2, Info } from "lucide-react";
-import { useProject, type ComplianceFlag } from "@/lib/project-store";
+import { useProject } from "@/lib/project-store";
+import type { ComplianceFlag } from "@/types/project-state";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------

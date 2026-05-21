@@ -19,7 +19,7 @@ const IS_MOCK = FEATURE_FLAGS.husDnaMock;
 // Input / Output typer
 // ---------------------------------------------------------------------------
 
-import type { HusDna } from "@/lib/project-store";
+import type { HusDna } from "@/types/project-state";
 
 export type HusDnaInput = {
   fritekst: string;

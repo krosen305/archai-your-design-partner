@@ -10,7 +10,8 @@
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import { assembleRuleEngineInput } from "@/lib/rule-engine/input-assembler";
 import { runRuleEngine } from "@/lib/rule-engine/engine";
-import { deriveComplianceFlags } from "@/lib/project-store";
+import { deriveComplianceFlags } from "@/lib/compliance-flags";
+import type { Byggeoenske, ComplianceFlag } from "@/types/project-state";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Kommuneplanramme, Lokalplan } from "@/integrations/plandata/client";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
@@ -20,7 +21,6 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { FbbResultat } from "@/integrations/fbb/client";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import type { Byggeoenske, ComplianceFlag } from "@/lib/project-store";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 

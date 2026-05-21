@@ -10,7 +10,8 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { ComplianceFlag } from "@/lib/project-store";
+import type { ComplianceFlag, AdressePreCheckResultat } from "@/types/project-state";
+export type { AdressePreCheckResultat } from "@/types/project-state";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { VurData } from "@/integrations/vur/client";
@@ -65,30 +66,6 @@ export type AdressePreCheckInput = {
   vejnavn?: string | null;
   /** Kommunenavn til FBB adresse-fallback, fx "Lyngby-Taarbæk" (ARCH-151) */
   kommunenavn?: string | null;
-};
-
-export type AdressePreCheckResultat = {
-  analysisRunId?: string | null;
-  blockers: ComplianceFlag[];
-  advarsler: ComplianceFlag[];
-  kontekst: {
-    grundareal: number | null;
-    bebyggetAreal: number | null;
-    bebyggelsesprocent: number | null;
-    antalEtager: number | null;
-    maxBebyggelsesprocent: number | null;
-    maxEtager: number | null;
-    maxBygningshoejde: number | null;
-    restBygningsareal: number | null;
-    ejendomsvaerdi: number | null;
-    grundvaerdi: number | null;
-  };
-  // Rådata til store-population (ARCH-122)
-  bbr: BbrKompliantData | null;
-  lokalplaner: Lokalplan[];
-  kommuneplanramme: Kommuneplanramme | null;
-  vurderingData: VurData | null;
-  complianceMetrics: ComplianceMetrics | null;
 };
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { RefreshCw, Check, AlertTriangle, Circle, Loader2 } from "lucide-react";
 import { useProject } from "@/lib/project-store";
-import type { DataSourceKind, DataSourceStatus as Status } from "@/lib/project-store";
+import type { DataSourceKind, DataSourceStatus as Status } from "@/types/project-state";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<Status, string> = {

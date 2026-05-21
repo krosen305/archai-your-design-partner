@@ -1,7 +1,7 @@
 // Typer for `projekter`-tabellen (ARCH-81).
 // Byggeoenske-typen defineres i project-store — her kun DB-wrapper typer.
 
-import type { Byggeoenske } from "@/lib/project-store";
+import type { Byggeoenske } from "@/types/project-state";
 export type { Byggeoenske };
 
 export type Projekt = {

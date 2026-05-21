@@ -14,7 +14,7 @@ import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import type { Byggeoenske, DesignPlacement } from "@/lib/project-store";
+import type { Byggeoenske, DesignPlacement } from "@/types/project-state";
 import type {
   RuleEngineInput,
   RuleValue,

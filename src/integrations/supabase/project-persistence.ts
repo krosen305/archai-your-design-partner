@@ -4,7 +4,7 @@
 
 import type { Json } from "@/integrations/supabase/types";
 import type { FbbResultat } from "@/integrations/fbb/client";
-import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project-store";
+import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/types/project-state";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";

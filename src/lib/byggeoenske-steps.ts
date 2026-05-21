@@ -1,7 +1,7 @@
 // Delt 22-trins datamodel for byggeønsker.
 // Bruges af projekt.boligoenske.tsx (wizard) og byggeanalyse Cockpit (accordion).
 
-import type { Byggeoenske } from "@/lib/project-store";
+import type { Byggeoenske } from "@/types/project-state";
 
 export type Option = { value: string | number | boolean; label: string; hint?: string };
 

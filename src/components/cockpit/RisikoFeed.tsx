@@ -15,7 +15,8 @@ import {
   Filter,
   type LucideIcon,
 } from "lucide-react";
-import { useProject, type ComplianceFlag } from "@/lib/project-store";
+import { useProject } from "@/lib/project-store";
+import type { ComplianceFlag } from "@/types/project-state";
 import { cn } from "@/lib/utils";
 
 /**

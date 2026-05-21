@@ -9,7 +9,8 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { TopBar } from "@/components/wizard-chrome";
-import { useProject, isHusDna, parseComplianceData } from "@/lib/project-store";
+import { useProject } from "@/lib/project-store";
+import { isHusDna, parseComplianceData } from "@/types/project-state";
 import type { BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
 // 🔒 Rører beskyttet fil — kræver review (ARCH-160)
 import { restoreProject } from "@/lib/project-sync";

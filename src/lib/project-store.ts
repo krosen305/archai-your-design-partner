@@ -9,255 +9,46 @@ import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { VurData } from "@/integrations/vur/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
-import type { AdressePreCheckResultat } from "@/lib/pre-check-adresse";
+import type {
+  Address,
+  ProjectData,
+  PhaseName,
+  PhaseStatus,
+  HusDna,
+  Byggeoenske,
+  DesignPlacement,
+  ComplianceFlag,
+  BoligoenskeValidering,
+  DataSourceStatus,
+  DataSourceKind,
+  PipelineServiceState,
+  AdressePreCheckResultat,
+} from "@/types/project-state";
+export type {
+  Address,
+  ProjectData,
+  PhaseName,
+  PhaseStatus,
+  HusDna,
+  Byggeoenske,
+  DesignPlacement,
+  ComplianceFlag,
+  BoligoenskeValidering,
+  DataSourceStatus,
+  DataSourceKind,
+  PipelineServiceState,
+  AdressePreCheckResultat,
+} from "@/types/project-state";
+export {
+  DATA_SOURCE_LABELS,
+  PIPELINE_SERVICE_STATE_LABELS,
+  isHusDna,
+  parseComplianceData,
+  deriveSourceStatus,
+} from "@/types/project-state";
+export { deriveComplianceFlags } from "@/lib/compliance-flags";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 export type { ComplianceMetrics } from "@/lib/compliance-engine";
-
-// ---------------------------------------------------------------------------
-// Adresse
-// ---------------------------------------------------------------------------
-
-export type Address = {
-  adresseid: string; // DAR/DAWA UUID — cache key for address_analysis
-  adresse: string;
-  postnr: string;
-  postnrnavn: string;
-  kommune: string;
-  kommunekode: string;
-  matrikel: string | null;
-  adgangsadresseid: string;
-  koordinater: { lat: number; lng: number } | null;
-  bbrId: string | null;
-  ejerlavskode: number | null;
-  matrikelnummer: string | null;
-  grundareal: number | null;
-  centroid?: { lat: number; lng: number } | null;
-  rotationDeg?: number;
-  footprintAreaM2?: number | null;
-  minDistanceToBoundaryM?: number | null;
-  outsideParcelAreaM2?: number;
-};
-
-// ---------------------------------------------------------------------------
-// Projekt-formdata (wizard step 3)
-// ---------------------------------------------------------------------------
-
-export type ProjectData = {
-  area?: string;
-  floors?: string;
-  budget?: string;
-  timeline?: string;
-  description?: string;
-  inspirations?: string[];
-};
-
-// ---------------------------------------------------------------------------
-// 5-fase arkitektur
-// ---------------------------------------------------------------------------
-
-export type PhaseName = "hus-dna" | "match" | "finans" | "engineering" | "udbud";
-
-export type PhaseStatus = "locked" | "active" | "complete" | "error";
-
-// ---------------------------------------------------------------------------
-// Hus-DNA (Phase 1) — Lovable UI bruger disse felter
-// ---------------------------------------------------------------------------
-
-export type HusDna = {
-  stil: string;
-  bruttoareal: string;
-  etager: string;
-  tagform: string;
-  energiklasse: string;
-  saerligeKrav: string[];
-  confidence: number; // 0-100
-  kilde: "mock" | "anthropic";
-};
-
-// ---------------------------------------------------------------------------
-// Byggeønske (Phase 1) — 22-trins guidet wizard
-// ---------------------------------------------------------------------------
-
-export type Byggeoenske = {
-  // Trin 1-5: Grundlæggende
-  byggetype?: "nybyg" | "tilbyg" | "ombyg";
-  husstandsstoerrelse?: number;
-  voksne?: number;
-  boern?: number;
-  livsfase?: "ung" | "etableret" | "senior";
-  // Trin 6-10: Areal & rum
-  oensketAreal?: number;
-  antalEtager?: 1 | 1.5 | 2 | 3;
-  antalSovevaerelser?: number;
-  antalBadevaerelser?: number;
-  hjemmekontor?: boolean;
-  // Trin 11-15: Stil & arkitektur
-  arkitektoniskStil?: "moderne" | "klassisk" | "skandinavisk" | "industriel" | "minimalistisk";
-  tagform?: "fladt" | "saddeltag" | "valm" | "ensidig";
-  facademateriale?: "tegl" | "trae" | "puds" | "metal" | "kombineret";
-  vinduesandel?: "lille" | "mellem" | "stor";
-  udeomraade?: "terrasse" | "have" | "altan" | "tagterrasse";
-  // Trin 16-20: Bæredygtighed & teknik
-  energiklasse?: "BR18" | "lavenergi" | "passiv" | "plusenergi";
-  varmekilde?: "varmepumpe" | "fjernvarme" | "jordvarme" | "solvarme";
-  solceller?: boolean;
-  ventilation?: "naturlig" | "mekanisk" | "balanceret";
-  ladestander?: boolean;
-  // Trin 21-22: Budget & inspiration
-  budget?: "under-3" | "3-5" | "5-8" | "8-12" | "over-12";
-  inspirationsbilleder?: string[]; // signed URLs til visning (udløber efter 1t)
-  inspirationsbilledePaths?: string[]; // Storage paths til URL-fornyelse (ARCH-174)
-  // AI-design hero (cockpit)
-  designDroem?: string;
-  valgteDesignforslag?: string;
-  genererededDesignforslag?: string[];
-};
-
-// ---------------------------------------------------------------------------
-// Design placement (ARCH-179) — georefereret bygningsplacering fra korteditor
-// ---------------------------------------------------------------------------
-
-type GeoJsonPolygon = {
-  type: "Polygon";
-  coordinates: [number, number][][];
-};
-
-export type DesignPlacement = {
-  footprintGeojson: GeoJsonPolygon | null; // WGS84 — gemmes som JSONB i design_iterations
-  footprintAreaM2: number | null; // beregnet fra polygon via @turf/area
-  centroid: { lat: number; lng: number } | null;
-  rotationDeg: number; // 0–360, nord = 0
-  floors: number | null; // override af newBuilding.storeys
-  heightM: number | null; // override af newBuilding.heightM
-  minDistanceToBoundaryM: number | null; // korteste afstand til parcelgrænse (m)
-  outsideParcelAreaM2: number; // > 0 = bygning overlapper skel (hard stop)
-  source: "user" | "generated";
-};
-
-// ---------------------------------------------------------------------------
-// Hus-DNA (afledt af Byggeønske via AI)
-// ---------------------------------------------------------------------------
-
-export type ComplianceFlag = {
-  id: string;
-  label: string;
-  status: "ok" | "advarsel" | "blocker";
-  detalje: string | null;
-  aktuelVærdi: string | null;
-  tilladt: string | null;
-  kilde:
-    | "bbr"
-    | "plandata"
-    | "servitut"
-    | "beregnet"
-    | "sdfi"
-    | "dkjord"
-    | "geus"
-    | "regelkerne"
-    | "fbb";
-  dispensationMulig?: boolean;
-  dispensationMyndighed?: string;
-};
-
-// ---------------------------------------------------------------------------
-// ARCH-124: Boligoensker valideringsstatus
-// ---------------------------------------------------------------------------
-
-export type BoligoenskeValidering = {
-  etagerStatus: "ok" | "dispensation" | "ingen_data";
-  arealStatus: "ok" | "dispensation" | "ingen_data";
-  beregnetBebyggelsespct: number | null;
-  etagerDispensationAcknowledged: boolean;
-  arealDispensationAcknowledged: boolean;
-};
-
-// ---------------------------------------------------------------------------
-// Datakilde-status — bruges af cockpittet til at vise hvilke kilder der er
-// friske, forældede, manglende eller under genindlæsning, og til at tilbyde
-// manuel refresh pr. kilde.
-// ---------------------------------------------------------------------------
-
-export type DataSourceStatus = "fresh" | "stale" | "missing" | "loading" | "error";
-
-export type DataSourceKind =
-  | "bbr"
-  | "lokalplaner"
-  | "kommuneplanramme"
-  | "fbb"
-  | "naturbeskyttelse"
-  | "dkjord"
-  | "geusRisk"
-  | "servitutter"
-  | "terrain"
-  | "fjernvarme"
-  | "naboer"
-  | "matGeometri"
-  | "vurdering"
-  | "byggeanalyse"
-  | "billedanalyse"
-  | "husDna";
-
-export const DATA_SOURCE_LABELS: Record<DataSourceKind, string> = {
-  bbr: "BBR & matrikel",
-  lokalplaner: "Lokalplaner",
-  kommuneplanramme: "Kommuneplanramme",
-  fbb: "SAVE & fredning (FBB)",
-  naturbeskyttelse: "Naturbeskyttelse",
-  dkjord: "Jordforurening (DK-Jord)",
-  geusRisk: "Geoteknisk risiko",
-  servitutter: "Servitutter",
-  terrain: "Terræn (DHM)",
-  fjernvarme: "Fjernvarme",
-  naboer: "Nabobygninger",
-  matGeometri: "Parcelgeometri (MAT WFS)",
-  vurdering: "Ejendomsvurdering",
-  byggeanalyse: "AI byggeanalyse",
-  billedanalyse: "AI billedanalyse",
-  husDna: "Hus-DNA",
-};
-
-const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
-  bbr: "missing",
-  lokalplaner: "missing",
-  kommuneplanramme: "missing",
-  fbb: "missing",
-  naturbeskyttelse: "missing",
-  dkjord: "missing",
-  geusRisk: "missing",
-  servitutter: "missing",
-  terrain: "missing",
-  fjernvarme: "missing",
-  naboer: "missing",
-  matGeometri: "missing",
-  vurdering: "missing",
-  byggeanalyse: "missing",
-  billedanalyse: "missing",
-  husDna: "missing",
-};
-
-// ---------------------------------------------------------------------------
-// Pipeline-servicetilstand — hvad skete der da pipelinen senest kørte for
-// denne datakilde? Bruges i UI til at forklare "mangler data" eksplicit.
-// ---------------------------------------------------------------------------
-
-export type PipelineServiceState =
-  | "success" // data hentet og fundet
-  | "no_hit" // kald lykkedes, men ingen data fundet for denne adresse
-  | "error" // kald fejlede med en teknisk fejl
-  | "skipped" // trin sprunget over (hard-stop-gate eller betingelse ikke opfyldt)
-  | "mock" // IS_MOCK=true — syntetisk data returneret
-  | "cache_hit" // data serveret fra cache
-  | "not_run"; // pipelinen er ikke kørt endnu for denne session
-
-export const PIPELINE_SERVICE_STATE_LABELS: Record<PipelineServiceState, string> = {
-  success: "Live",
-  no_hit: "Ingen hit",
-  error: "Fejl",
-  skipped: "Sprunget over",
-  mock: "Mock",
-  cache_hit: "Cache",
-  not_run: "Ikke kørt",
-};
 
 // ---------------------------------------------------------------------------
 // Store state
@@ -373,6 +164,25 @@ const DEFAULT_PHASES: Record<PhaseName, PhaseStatus> = {
   udbud: "locked",
 };
 
+const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
+  bbr: "missing",
+  lokalplaner: "missing",
+  kommuneplanramme: "missing",
+  fbb: "missing",
+  naturbeskyttelse: "missing",
+  dkjord: "missing",
+  geusRisk: "missing",
+  servitutter: "missing",
+  terrain: "missing",
+  fjernvarme: "missing",
+  naboer: "missing",
+  matGeometri: "missing",
+  vurdering: "missing",
+  byggeanalyse: "missing",
+  billedanalyse: "missing",
+  husDna: "missing",
+};
+
 export const useProject = create<State>((set) => ({
   address: null,
   bbrData: null,
@@ -480,442 +290,3 @@ export const useProject = create<State>((set) => ({
       serviceStates: {},
     }),
 }));
-
-// ---------------------------------------------------------------------------
-// Type guards — bruges i __root.tsx til sikker restore fra Supabase JSONB
-// ---------------------------------------------------------------------------
-
-export function isHusDna(v: unknown): v is HusDna {
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    typeof (v as Record<string, unknown>).stil === "string" &&
-    typeof (v as Record<string, unknown>).confidence === "number"
-  );
-}
-
-// Stale-tærskler pr. kilde (dage). Spejler cache-TTL i src/integrations/cache/client.ts
-// og bruges KUN i UI'et til at vise "Forældet"-pille — ikke til at invalidere cachen.
-const STALE_DAYS: Record<DataSourceKind, number> = {
-  bbr: 30,
-  lokalplaner: 30,
-  kommuneplanramme: 30,
-  fbb: 30,
-  naturbeskyttelse: 30,
-  dkjord: 30,
-  geusRisk: 30,
-  servitutter: 7,
-  terrain: 30,
-  fjernvarme: 30,
-  naboer: 30,
-  matGeometri: 90,
-  vurdering: 30,
-  byggeanalyse: 60,
-  billedanalyse: 60,
-  husDna: 60,
-};
-
-/**
- * Beregn datakilde-status ud fra om feltet findes + projektets updated_at.
- * `value` er truthy hvis kilden er gendannet fra DB. `lastFetchedIso` er
- * projects.updated_at (sidste skrivning til DB) — bruges som proxy for friskhed.
- */
-export function deriveSourceStatus(
-  kind: DataSourceKind,
-  value: unknown,
-  lastFetchedIso: string | null,
-): DataSourceStatus {
-  const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
-  if (!hasValue) return "missing";
-  if (!lastFetchedIso) return "fresh";
-  const ageMs = Date.now() - new Date(lastFetchedIso).getTime();
-  const staleMs = STALE_DAYS[kind] * 24 * 60 * 60 * 1000;
-  return ageMs > staleMs ? "stale" : "fresh";
-}
-
-type ParsedComplianceData = {
-  bbr: BbrKompliantData | null;
-  flags: ComplianceFlag[];
-  lokalplaner: Lokalplan[];
-  kommuneplanramme: Kommuneplanramme | null;
-  byggeanalyseResultat: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null;
-  vurderingData: VurData | null;
-};
-
-export function parseComplianceData(v: unknown): ParsedComplianceData | null {
-  if (typeof v !== "object" || v === null) return null;
-  const o = v as Record<string, unknown>;
-  return {
-    bbr: (typeof o.bbr === "object" ? o.bbr : null) as BbrKompliantData | null,
-    flags: Array.isArray(o.flags) ? (o.flags as ComplianceFlag[]) : [],
-    lokalplaner: Array.isArray(o.lokalplaner) ? (o.lokalplaner as Lokalplan[]) : [],
-    kommuneplanramme: (typeof o.kommuneplanramme === "object"
-      ? o.kommuneplanramme
-      : null) as Kommuneplanramme | null,
-    byggeanalyseResultat: (typeof o.byggeanalyseResultat === "object"
-      ? o.byggeanalyseResultat
-      : null) as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null,
-    vurderingData: (typeof o.vurderingData === "object" ? o.vurderingData : null) as VurData | null,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Hjælpefunktion: udled ComplianceFlags fra BBR + Kommuneplanramme
-// ---------------------------------------------------------------------------
-
-export function deriveComplianceFlags(
-  bbr: BbrKompliantData | null,
-  ramme: Kommuneplanramme | null,
-  naturbeskyttelse?: NaturbeskyttelsesResultat | null,
-  dkjord?: DkJordResultat | null,
-  geusRisk?: GeusRiskData | null,
-  ruleEngine?: RuleEngineResult | null,
-  fjernvarme?: FjernvarmeResultat | null,
-): ComplianceFlag[] {
-  const flags: ComplianceFlag[] = [];
-
-  if (!bbr) return flags;
-
-  // Bebyggelsesprocent
-  if (bbr.bebyggelsesprocent !== null) {
-    const max = ramme?.bebygpct ?? null;
-    const pct = bbr.bebyggelsesprocent;
-    flags.push({
-      id: "bebyggelsesprocent",
-      label: "Bebyggelsesprocent",
-      status:
-        max === null ? "advarsel" : pct > max ? "blocker" : pct > max * 0.9 ? "advarsel" : "ok",
-      detalje: max === null ? "Ingen kommuneplanramme fundet" : null,
-      aktuelVærdi: `${pct}%`,
-      tilladt: max !== null ? `${max}%` : null,
-      kilde: "beregnet",
-    });
-  }
-
-  // Max etager
-  if (bbr.antal_etager !== null) {
-    const max = ramme?.maxetager ?? null;
-    const etager = bbr.antal_etager;
-    flags.push({
-      id: "etager",
-      label: "Antal etager",
-      status: max === null ? "advarsel" : etager > max ? "blocker" : "ok",
-      detalje: max === null ? "Ingen kommuneplanramme fundet" : null,
-      aktuelVærdi: `${etager}`,
-      tilladt: max !== null ? `${max}` : null,
-      kilde: "bbr",
-    });
-  }
-
-  // Max bygningshøjde
-  if (ramme?.maxbygnhjd !== null && ramme?.maxbygnhjd !== undefined) {
-    flags.push({
-      id: "bygningshoejde",
-      label: "Max bygningshøjde",
-      status: "ok",
-      detalje: null,
-      aktuelVærdi: null,
-      tilladt: `${ramme.maxbygnhjd} m`,
-      kilde: "plandata",
-    });
-  }
-
-  // Lokalplan-zone
-  if (ramme?.anvendelseGenerel) {
-    flags.push({
-      id: "anvendelse",
-      label: "Planlagt anvendelse",
-      status: "ok",
-      detalje: ramme.sforhold ?? null,
-      aktuelVærdi: bbr.anvendelse_tekst ?? null,
-      tilladt: ramme.anvendelseGenerel,
-      kilde: "plandata",
-    });
-  }
-
-  // ── Beskyttelseslinjer fra MAT_Jordstykke (autoritative kildedata) ────────
-  // Supplerer eller erstatter SDFI naturbeskyttelse (IS_MOCK=true) for de tre
-  // typer MAT_Jordstykke registrerer: strandbeskyttelse, fredskov, klitfredning.
-  if (bbr) {
-    if (bbr.mat_strandbeskyttelse) {
-      flags.push({
-        id: "mat-strandbeskyttelse",
-        label: "Strandbeskyttelseslinje",
-        status: "blocker",
-        detalje:
-          "Jordstykket er registreret inden for strandbeskyttelseslinje i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
-        aktuelVærdi: "Inden for zone",
-        tilladt: "Ingen byggeri uden dispensation",
-        kilde: "bbr",
-        dispensationMulig: true,
-        dispensationMyndighed: "Kystdirektoratet",
-      });
-    }
-    if (bbr.mat_fredskov) {
-      flags.push({
-        id: "mat-fredskov",
-        label: "Fredskov",
-        status: "blocker",
-        detalje:
-          "Jordstykket er udlagt som fredskov i Matrikelregistret — skovlovens §28 forbyder byggeri uden dispensation fra Miljøstyrelsen",
-        aktuelVærdi: "Fredskov",
-        tilladt: "Ingen byggeri uden dispensation",
-        kilde: "bbr",
-        dispensationMulig: true,
-        dispensationMyndighed: "Miljøstyrelsen",
-      });
-    }
-    if (bbr.mat_klitfredning) {
-      flags.push({
-        id: "mat-klitfredning",
-        label: "Klitfredning",
-        status: "blocker",
-        detalje:
-          "Jordstykket er klitfredet i Matrikelregistret — byggestop uden dispensation fra Kystdirektoratet",
-        aktuelVærdi: "Inden for klitfredet zone",
-        tilladt: "Ingen byggeri uden dispensation",
-        kilde: "bbr",
-        dispensationMulig: true,
-        dispensationMyndighed: "Kystdirektoratet",
-      });
-    }
-  }
-
-  // ── Fredning fra BBR byg070 (ARCH-118) ────────────────────────────────────
-  // Autoritativ fredningsmarkering fra BBR — supplerer/erstatter SaveService (IS_MOCK=true)
-  if (bbr?.fredet) {
-    flags.push({
-      id: "bbr-fredet",
-      label: "Fredet bygning",
-      status: "blocker",
-      detalje:
-        "Bygningen er registreret som fredet i BBR (byg070) — alle ændringer kræver tilladelse fra Slots- og Kulturstyrelsen",
-      aktuelVærdi: "Fredet",
-      tilladt: "Ingen ændringer uden dispensation",
-      kilde: "bbr",
-      dispensationMulig: true,
-      dispensationMyndighed: "Slots- og Kulturstyrelsen",
-    });
-  }
-
-  // ── Fjernvarme-mismatch (ARCH-117) ──────────────────────────────────────
-  // Sammenligner BBR byg056 med Plandata fjernvarmedækning (live data)
-  if (bbr && fjernvarme && fjernvarme.fjernvarmeDaekket !== null) {
-    const harFjernvarmeBbr =
-      bbr.varmeinstallation !== null && bbr.varmeinstallation.toLowerCase().includes("fjernvarme");
-    if (harFjernvarmeBbr && !fjernvarme.fjernvarmeDaekket) {
-      flags.push({
-        id: "fjernvarme-mismatch-ingen-daekning",
-        label: "Mulig fejlregistrering: fjernvarme",
-        status: "advarsel",
-        detalje:
-          "BBR registrerer fjernvarme (byg056) men Plandata viser ingen fjernvarmedækning på adressen — kontrollér med forsyningsselskabet",
-        aktuelVærdi: bbr.varmeinstallation,
-        tilladt: null,
-        kilde: "bbr",
-      });
-    } else if (!harFjernvarmeBbr && fjernvarme.fjernvarmeDaekket) {
-      flags.push({
-        id: "fjernvarme-tilslutningspligt",
-        label: "Mulig tilslutningspligt: fjernvarme",
-        status: "advarsel",
-        detalje:
-          "Adressen er dækket af fjernvarmeforsyningsområde — kommunen kan pålægge tilslutningspligt ved ny bebyggelse",
-        aktuelVærdi: bbr.varmeinstallation ?? "Ingen fjernvarme",
-        tilladt: null,
-        kilde: "bbr",
-      });
-    }
-  }
-
-  // ── Naturbeskyttelseslinjer (ARCH-65) ───────────────────────────────────
-  if (naturbeskyttelse) {
-    const linjer: Array<{ key: keyof NaturbeskyttelsesResultat; label: string; detalje: string }> =
-      [
-        {
-          key: "strandbeskyttelse",
-          label: "Strandbeskyttelseslinje",
-          detalje: "300 m fra kyst — byggestop uden dispensation fra Kystdirektoratet",
-        },
-        {
-          key: "skovbyggelinje",
-          label: "Skovbyggelinje",
-          detalje: "300 m fra statsskov — byggestop uden dispensation",
-        },
-        {
-          key: "soebeskyttelse",
-          label: "Søbeskyttelseslinje",
-          detalje: "150 m fra søer >3 ha — byggestop uden dispensation",
-        },
-        {
-          key: "aabeskyttelse",
-          label: "Åbeskyttelseslinje",
-          detalje: "150 m fra vandløb — byggestop uden dispensation",
-        },
-        { key: "klitfredning", label: "Klitfredning", detalje: "Byggestop i klitfredet område" },
-        {
-          key: "kirkebyggelinje",
-          label: "Kirkebyggelinje",
-          detalje: "Op til 300 m fra kirke — højdebegrænsning",
-        },
-      ];
-
-    for (const { key, label, detalje } of linjer) {
-      if (naturbeskyttelse[key]) {
-        flags.push({
-          id: `naturbeskyttelse-${key}`,
-          label,
-          status: "blocker",
-          detalje,
-          aktuelVærdi: "Inden for zone",
-          tilladt: "Ingen byggeri uden dispensation",
-          kilde: "sdfi",
-        });
-      }
-    }
-  }
-
-  // ── DK-Jord forurening (ARCH-66) ───────────────────────────────��────────
-  if (dkjord) {
-    const dkjordLabelPrefix = dkjord.kilde === "mock" ? "MOCK: " : "";
-
-    if (dkjord.v2Kortlagt) {
-      flags.push({
-        id: "dkjord-v2",
-        label: `${dkjordLabelPrefix}V2-kortlagt grund`,
-        status: "blocker",
-        detalje:
-          "Dokumenteret forurening — oprensning kræves inden byggeri. Potentielt 500.000+ kr.",
-        aktuelVærdi: "V2-kortlagt",
-        tilladt: null,
-        kilde: "dkjord",
-      });
-    }
-    if (dkjord.v1Kortlagt) {
-      flags.push({
-        id: "dkjord-v1",
-        label: `${dkjordLabelPrefix}V1-kortlagt grund`,
-        status: "advarsel",
-        detalje: "Mulig forurening — miljøteknisk undersøgelse kræves inden byggeri",
-        aktuelVærdi: "V1-kortlagt",
-        tilladt: null,
-        kilde: "dkjord",
-      });
-    }
-    if (dkjord.olietank.eksisterer) {
-      flags.push({
-        id: "dkjord-olietank",
-        label: `${dkjordLabelPrefix}Olietank registreret`,
-        status: "advarsel",
-        detalje: `Gammel olietank${dkjord.olietank.driftsstatus ? ` (${dkjord.olietank.driftsstatus})` : ""} — prøvetagning af jord kræves`,
-        aktuelVærdi: dkjord.olietank.driftsstatus ?? "registreret",
-        tilladt: null,
-        kilde: "dkjord",
-      });
-    }
-    if (dkjord.omraadeklassificering) {
-      flags.push({
-        id: "dkjord-omraade",
-        label: `${dkjordLabelPrefix}Områdeklassificering`,
-        status: "advarsel",
-        detalje: "Krav om jordsundhedsattest ved jordflytning — kontakt kommunen",
-        aktuelVærdi: dkjord.omraadeklassificering,
-        tilladt: null,
-        kilde: "dkjord",
-      });
-    }
-  }
-
-  // ── GEUS geoteknisk risiko (ARCH-101) ──────────────────────────────────────
-  if (geusRisk) {
-    if (geusRisk.radonRisk === "high") {
-      flags.push({
-        id: "geus-radon",
-        label: "Høj radonrisiko",
-        status: "blocker",
-        detalje: "Høj radonkoncentration i undergrunden — radonafskærmning påkrævet jf. BR18 §301",
-        aktuelVærdi: "Høj",
-        tilladt: "Lav–middel",
-        kilde: "geus",
-      });
-    } else if (geusRisk.radonRisk === "medium") {
-      flags.push({
-        id: "geus-radon",
-        label: "Middel radonrisiko",
-        status: "advarsel",
-        detalje: "Middel radonkoncentration — anbefalet med radonspærre i konstruktionen",
-        aktuelVærdi: "Middel",
-        tilladt: null,
-        kilde: "geus",
-      });
-    }
-    if (geusRisk.groundwaterDepthM !== null && geusRisk.groundwaterDepthM < 1.0) {
-      flags.push({
-        id: "geus-grundvand",
-        label: "Højt grundvand",
-        status: "blocker",
-        detalje: `Grundvand ${geusRisk.groundwaterDepthM.toFixed(1)} m under terræn — drænforanstaltninger og vandtæt kælder kræves`,
-        aktuelVærdi: `${geusRisk.groundwaterDepthM.toFixed(1)} m`,
-        tilladt: ">1,0 m",
-        kilde: "geus",
-      });
-    } else if (geusRisk.groundwaterDepthM !== null && geusRisk.groundwaterDepthM < 2.0) {
-      flags.push({
-        id: "geus-grundvand",
-        label: "Lavt grundvand",
-        status: "advarsel",
-        detalje: `Grundvand ${geusRisk.groundwaterDepthM.toFixed(1)} m under terræn — dræning anbefalet ved kælder eller terrændæk`,
-        aktuelVærdi: `${geusRisk.groundwaterDepthM.toFixed(1)} m`,
-        tilladt: null,
-        kilde: "geus",
-      });
-    }
-  }
-
-  // ── Regelkerne violations (ARCH-109) ──────────────────────────────────────
-  if (ruleEngine) {
-    // Eksisterende flag-IDs — undgå duplikering med BBR/plandata-beregninger
-    const existingIds = new Set(flags.map((f) => f.id));
-
-    for (const violation of ruleEngine.violations) {
-      // Beregningsregler duplikerer eksisterende BBR-flags — skip dem
-      if (
-        (violation.rule === "bebyggelsesprocent" && existingIds.has("bebyggelsesprocent")) ||
-        (violation.rule === "etager" && existingIds.has("etager")) ||
-        (violation.rule === "bygningshøjde" && existingIds.has("bygningshoejde"))
-      ) {
-        continue;
-      }
-      // Beskyttelseslinjer duplikerer sdfi-flags — skip dem
-      if (
-        violation.rule.startsWith("protection_line_") &&
-        existingIds.has(`naturbeskyttelse-${violation.rule.replace("protection_line_", "")}`)
-      ) {
-        continue;
-      }
-
-      const status: ComplianceFlag["status"] =
-        violation.severity === "illegal"
-          ? "blocker"
-          : violation.severity === "dispensation_required"
-            ? "blocker"
-            : "advarsel";
-
-      flags.push({
-        id: `regelkerne-${violation.rule}`,
-        label: violation.authority
-          ? `${violation.rule.replace(/_/g, " ")} (${violation.authority})`
-          : violation.rule.replace(/_/g, " "),
-        status,
-        detalje: violation.reason,
-        aktuelVærdi: null,
-        tilladt: null,
-        kilde: "regelkerne",
-        dispensationMulig: violation.severity === "dispensation_required",
-        dispensationMyndighed: violation.authority,
-      });
-    }
-  }
-
-  return flags;
-}

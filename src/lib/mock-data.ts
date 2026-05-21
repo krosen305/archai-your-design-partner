@@ -5,7 +5,7 @@
 //
 // Alle mock-data afspejler Hasselvej 48, 2830 Virum (Lyngby-Taarbæk kommune).
 
-import type { Address, Byggeoenske } from "@/lib/project-store";
+import type { Address, Byggeoenske } from "@/types/project-state";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 
 // ---------------------------------------------------------------------------

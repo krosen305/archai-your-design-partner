@@ -27,7 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useProject, type Byggeoenske } from "@/lib/project-store";
+import { useProject } from "@/lib/project-store";
+import type { Byggeoenske } from "@/types/project-state";
 import {
   STEPS,
   STEP_GROUPS,
