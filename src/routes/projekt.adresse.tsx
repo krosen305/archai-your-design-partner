@@ -1,19 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useState } from "react";
 import { Search, Loader2, AlertTriangle, CheckCircle2, ChevronDown } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import type { ComplianceFlag, Address } from "@/types/project-state";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
-import { PageTransition, StepHeader, Card } from "@/components/wizard-ui";
+import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
-import { syncPatch } from "@/lib/project-sync";
 import { MOCK_ADRESSE } from "@/lib/mock-data";
-import { preCheckAdresse } from "@/lib/pre-check-adresse";
-import { logger } from "@/lib/logger";
 import { kommunenavnFraKode } from "@/lib/kommuner";
+import { flagIcon } from "@/lib/compliance-flag-icons";
+import { useAddressSearch } from "@/lib/use-address-search";
+import { useAddressSelectionPrecheck } from "@/lib/use-address-precheck";
 import {
   Dialog,
   DialogContent,
@@ -21,37 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-function flagIcon(id: string): string {
-  if (id.includes("fredet")) return "🏛️";
-  if (id.includes("strandbeskyttelse")) return "🌊";
-  if (id.includes("fredskov")) return "🌲";
-  if (id.includes("skovbyggelinje")) return "🌳";
-  if (id.includes("soebeskyttelse")) return "💧";
-  return "⚠️";
-}
-
-// ---------------------------------------------------------------------------
-// Server functions — begge kræver credentials der kun er tilgængelige server-side.
-// ---------------------------------------------------------------------------
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const searchAddresses = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => z.object({ q: z.string().min(2).max(200).trim() }).parse(data))
-  .handler(async ({ data }) => {
-    const { GsearchService } = await import("@/integrations/gsearch/client");
-    return GsearchService.getSuggestions(data.q);
-  });
-
-const fetchAddressDetails = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
-    z.object({ adresseid: z.string().regex(UUID_RE, "Ugyldigt adresse-ID").max(64) }).parse(data),
-  )
-  .handler(async ({ data }) => {
-    const { DarService } = await import("@/integrations/dar/client");
-    return DarService.getAddressDetails(data.adresseid);
-  });
 
 export const Route = createFileRoute("/projekt/adresse")({
   component: AddressStep,
@@ -61,37 +28,30 @@ function AddressStep() {
   const navigate = useNavigate();
   const [mode, setMode] = useCockpitMode();
 
-  const {
-    address,
-    setAddress,
-    setBbrData,
-    setKommuneplanramme,
-    setLokalplaner,
-    setComplianceFlags,
-    setVurderingData,
-    setComplianceMetrics,
-    setComplianceDone,
-    setAdressePreCheck,
-    adressePreCheck,
-  } = useProject();
+  const { address, setAddress, adressePreCheck } = useProject();
 
   // Compliance gate UI state (ARCH-125)
   const [overrideContinue, setOverrideContinue] = useState(false);
   const [showBlockerDialog, setShowBlockerDialog] = useState(false);
   const [softOpen, setSoftOpen] = useState(false);
 
-  const [query, setQuery] = useState(address?.adresse ?? "");
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(address);
-  const [suggestions, setSuggestions] = useState<GsearchSuggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isCheckingCompliance, setIsCheckingCompliance] = useState(false);
-  const [highlightIdx, setHighlightIdx] = useState(0);
-  const lastQueryRef = useRef<string>("");
+  const [selected, setSelected] = useState<Address | null>(address ?? null);
 
-  const queryTrimmed = useMemo(() => query.trim(), [query]);
-  const showDropdown = open && queryTrimmed.length > 0 && !selected;
+  const {
+    query,
+    setQuery,
+    suggestions,
+    loading,
+    error,
+    open,
+    setOpen,
+    highlightIdx,
+    setHighlightIdx,
+    showDropdown,
+    markSelected,
+  } = useAddressSearch(address?.adresse ?? "");
+
+  const { handleSelectSuggestion, isCheckingCompliance } = useAddressSelectionPrecheck();
 
   // Gate-logik: hard blockers = blockers uden dispensationsmulighed
   const hardBlockers = adressePreCheck?.blockers.filter((f) => !f.dispensationMulig) ?? [];
@@ -103,125 +63,13 @@ function AddressStep() {
   const isClean = allChecksDone && !hasHard && !hasSoft;
   const anyDispensationPossible = softBlockers.length > 0;
 
-  useEffect(() => {
-    if (!open || selected) return;
-    if (queryTrimmed.length < 2) {
-      setSuggestions([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    const q = queryTrimmed;
-    lastQueryRef.current = q;
-    setLoading(true);
-    setError(null);
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await searchAddresses({ data: { q } });
-        if (lastQueryRef.current !== q) return;
-        setSuggestions(res);
-        setHighlightIdx(0);
-      } catch {
-        if (lastQueryRef.current !== q) return;
-        setSuggestions([]);
-        setError("Kunne ikke hente adresser. Prøv igen.");
-      } finally {
-        if (lastQueryRef.current === q) setLoading(false);
-      }
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [open, queryTrimmed, selected]);
-
-  async function handleSelectSuggestion(s: GsearchSuggestion) {
-    // Ryd tidligere pre-check ved nyt adressevalg
-    setAdressePreCheck(null);
-    setBbrData(null);
-    setComplianceDone(false);
-
-    // TRIN 1: Sæt straks adresse fra autocomplete-data (ingen ventetid)
-    const immediateAddress: Address = {
-      adresseid: s.adresseid,
-      adresse: s.tekst,
-      postnr: s.postnr,
-      postnrnavn: s.postnrnavn,
-      kommune: s.kommunekode,
-      kommunekode: s.kommunekode,
-      matrikel: null,
-      adgangsadresseid: s.adgangsadresseid,
-      koordinater: s.koordinater,
-      bbrId: null,
-      ejerlavskode: null,
-      matrikelnummer: null,
-      grundareal: null,
-    };
-
-    setSelected(immediateAddress);
-    setAddress(immediateAddress);
-    setQuery(s.tekst);
+  async function onSelectSuggestion(s: GsearchSuggestion) {
+    setSelected(null);
+    markSelected();
     setOpen(false);
-    setIsCheckingCompliance(true);
-
-    // TRIN 2: Hent kommunenavn + matrikel server-side
-    let fullAddress = immediateAddress;
-    try {
-      const details = await fetchAddressDetails({ data: { adresseid: s.adresseid } });
-      fullAddress = {
-        ...immediateAddress,
-        adresse: details.adresse || s.tekst,
-        postnr: details.postnr || s.postnr,
-        postnrnavn: details.postnrnavn || s.postnrnavn,
-        kommunekode: details.kommunekode || s.kommunekode,
-        kommune:
-          details.kommunenavn ||
-          (await import("@/lib/kommuner")).kommunenavnFraKode(details.kommunekode || s.kommunekode),
-        matrikel: details.matrikel,
-        adgangsadresseid: details.adgangsadresseid || s.adgangsadresseid,
-        koordinater: details.koordinater || s.koordinater,
-        ejerlavskode: details.ejerlavskode,
-        matrikelnummer: details.matrikelnummer,
-        grundareal: details.grundareal ?? null,
-      };
-      setSelected(fullAddress);
-      setAddress(fullAddress);
-      syncPatch({ address: fullAddress, complianceDone: false, currentStep: "boligoenske" });
-    } catch (err) {
-      logger.error("[Adresse] getAddressDetails fejlede (ikke kritisk):", err);
-      syncPatch({ address: immediateAddress, complianceDone: false, currentStep: "boligoenske" });
-    }
-
-    // TRIN 3: Kør pre-check compliance
-    try {
-      // vejnavn = vejnavn+husnr til FBB adresse-fallback (del af adressetekst før første komma)
-      const vejnavn = fullAddress.adresse?.split(",")[0]?.trim() ?? null;
-      const preCheck = await preCheckAdresse({
-        data: {
-          adgangsadresseid: fullAddress.adgangsadresseid,
-          adresseid: s.adresseid,
-          ejerlavskode: fullAddress.ejerlavskode,
-          matrikelnummer: fullAddress.matrikelnummer,
-          koordinater: fullAddress.koordinater,
-          grundareal: fullAddress.grundareal,
-          vejnavn,
-          kommunenavn: fullAddress.kommune ?? null,
-        },
-      });
-      setAdressePreCheck(preCheck);
-      if (preCheck.bbr) setBbrData(preCheck.bbr);
-      setKommuneplanramme(preCheck.kommuneplanramme);
-      setLokalplaner(preCheck.lokalplaner);
-      setComplianceFlags([...preCheck.blockers, ...preCheck.advarsler]);
-      if (preCheck.vurderingData) setVurderingData(preCheck.vurderingData);
-      if (preCheck.complianceMetrics) setComplianceMetrics(preCheck.complianceMetrics);
-    } catch (err) {
-      logger.error("[Adresse] preCheckAdresse fejlede:", err);
-    } finally {
-      setIsCheckingCompliance(false);
-    }
+    setQuery(s.tekst);
+    const full = await handleSelectSuggestion(s);
+    setSelected(full);
   }
 
   return (
@@ -239,7 +87,7 @@ function AddressStep() {
             <input
               data-testid="address-input"
               value={query}
-              onChange={(e: any) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setQuery(e.target.value);
                 setSelected(null);
                 setOpen(true);
@@ -259,7 +107,7 @@ function AddressStep() {
                   const s = suggestions[highlightIdx];
                   if (s) {
                     e.preventDefault();
-                    handleSelectSuggestion(s);
+                    void onSelectSuggestion(s);
                   }
                 } else if (e.key === "Escape") {
                   setOpen(false);
@@ -303,9 +151,9 @@ function AddressStep() {
                       aria-selected={isHi}
                       key={s.adgangsadresseid || i}
                       onMouseEnter={() => setHighlightIdx(i)}
-                      onMouseDown={(e: any) => {
+                      onMouseDown={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.preventDefault();
-                        handleSelectSuggestion(s);
+                        void onSelectSuggestion(s);
                       }}
                       className={`w-full text-left px-4 py-3 transition-colors border-b border-border last:border-b-0 ${
                         isHi ? "bg-[#222222]" : "hover:bg-[#1f1f1f]"

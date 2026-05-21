@@ -1,5 +1,5 @@
 // src/lib/use-address-search.ts
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import { searchAddresses } from "./adresse.functions";
 
@@ -12,7 +12,7 @@ export type UseAddressSearchResult = {
   open: boolean;
   setOpen: (v: boolean) => void;
   highlightIdx: number;
-  setHighlightIdx: (i: number) => void;
+  setHighlightIdx: React.Dispatch<React.SetStateAction<number>>;
   showDropdown: boolean;
   markSelected: () => void;
 };
