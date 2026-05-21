@@ -22,6 +22,7 @@ const IS_MOCK = FEATURE_FLAGS.husDnaMock;
 // ---------------------------------------------------------------------------
 
 import type { HusDna } from "@/types/project-state";
+import type { AnthropicContentBlock } from "./gateway";
 
 export type HusDnaInput = {
   fritekst: string;
@@ -125,7 +126,7 @@ export class HusDnaGeneratorService {
 // ---------------------------------------------------------------------------
 
 async function callAnthropic(input: HusDnaInput): Promise<HusDnaResult> {
-  const content: unknown[] = [];
+  const content: AnthropicContentBlock[] = [];
 
   // Hent billeder som base64 (max 5, spring over utilgængelige)
   for (const url of input.billedUrls.slice(0, 5)) {
@@ -149,7 +150,7 @@ async function callAnthropic(input: HusDnaInput): Promise<HusDnaResult> {
   const gatewayResponse = await callAnthropicGateway({
     model: "claude-sonnet-4-6",
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: content as import("./gateway").AnthropicContentBlock[] }],
+    messages: [{ role: "user", content }],
     maxTokens: 512,
     operation: "hus-dna-generator",
   });

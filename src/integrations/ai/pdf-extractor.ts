@@ -228,7 +228,7 @@ export class PdfExtractorService {
       messages: [
         {
           role: "user",
-          content: pdfContent as unknown as import("./gateway").AnthropicContentBlock[],
+          content: pdfContent,
         },
       ],
       maxTokens: 1024,

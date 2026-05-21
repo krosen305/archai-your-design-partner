@@ -125,7 +125,7 @@ async function callHaiku(billedUrls: string[]): Promise<BilledeAnalyseResultat> 
     messages: [
       {
         role: "user",
-        content: userContent as unknown as import("./gateway").AnthropicContentBlock[],
+        content: userContent,
       },
     ],
     maxTokens: 400,

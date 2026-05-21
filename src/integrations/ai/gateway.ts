@@ -14,7 +14,10 @@ export type AnthropicMessage = {
 
 export type AnthropicContentBlock =
   | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+  | { type: "image"; source: { type: "url"; url: string } }
+  | { type: "document"; source: Record<string, unknown>; title?: string; citations?: Record<string, unknown> }
+  | { type: string; [key: string]: unknown };
 
 export type GatewayRequest = {
   model: string;
