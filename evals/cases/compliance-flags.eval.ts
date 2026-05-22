@@ -6,8 +6,8 @@
 import type { EvalSuite } from "../types.ts";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Kommuneplanramme } from "@/integrations/plandata/client";
-import type { ComplianceFlag } from "@/lib/project-store";
-import { deriveComplianceFlags } from "@/lib/project-store";
+import type { ComplianceFlag } from "@/types/project-state";
+import { deriveComplianceFlags } from "@/lib/compliance-flags";
 import { BBR_FIXTURES } from "../fixtures/bbr/bbr.fixture.ts";
 import { RAMME_FIXTURES } from "../fixtures/lokalplan/lokalplan.fixture.ts";
 
