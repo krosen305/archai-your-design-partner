@@ -112,8 +112,9 @@ export async function runByggeanalyseGated(params: {
       terrain: (terrain as import("@/integrations/sdfi/dhm-client").TerrainData) ?? null,
       fbbData: (fbbData as import("@/integrations/fbb/client").FbbResultat) ?? null,
       dkjord: null,
-      byggeoenske: byggeoenske as import("@/types/project-state").Byggeoenske,
-      municipality: "",
+      // Partial<Byggeoenske> is structurally compatible — assembler handles undefined fields via missingFields
+      byggeoenske: (byggeoenske ?? null) as import("@/types/project-state").Byggeoenske | null,
+      municipality: "", // not available from JSONB — rule engine uses missingFields for locality-specific rules
       kommunekode: "",
     });
     ruleEngineResult = runRuleEngine(input, missingFields);
