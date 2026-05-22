@@ -100,12 +100,12 @@ export async function runByggeanalyseGated(params: {
       bbr: bbrData as import("@/integrations/bbr/client").BbrKompliantData,
       kommuneplanramme:
         (kommuneplanramme as import("@/integrations/plandata/client").Kommuneplanramme) ?? null,
-      lokalplaner:
-        (lokalplaner as import("@/integrations/plandata/client").Lokalplan[]) ?? [],
+      lokalplaner: (lokalplaner as import("@/integrations/plandata/client").Lokalplan[]) ?? [],
       lokalplanExtract:
         (lokalplanExtract as import("@/integrations/ai/pdf-extractor").LokalplanExtract) ?? null,
       naturbeskyttelse:
-        (naturbeskyttelse as import("@/integrations/sdfi/naturbeskyttelse").NaturbeskyttelsesResultat) ?? null,
+        (naturbeskyttelse as import("@/integrations/sdfi/naturbeskyttelse").NaturbeskyttelsesResultat) ??
+        null,
       geusRisk: (geusRisk as import("@/integrations/geus/client").GeusRiskData) ?? null,
       servitutter:
         (servitutter as import("@/integrations/tinglysning/client").TinglysningResult) ?? null,
@@ -155,10 +155,10 @@ export async function runByggeanalyseGated(params: {
     lokalplanNavn,
     kommuneplanramme:
       (kommuneplanramme as import("@/integrations/plandata/client").Kommuneplanramme) ?? null,
-    lokalplaner:
-      (lokalplaner as import("@/integrations/plandata/client").Lokalplan[]) ?? [],
+    lokalplaner: (lokalplaner as import("@/integrations/plandata/client").Lokalplan[]) ?? [],
     naturbeskyttelse:
-      (naturbeskyttelse as import("@/integrations/sdfi/naturbeskyttelse").NaturbeskyttelsesResultat) ?? null,
+      (naturbeskyttelse as import("@/integrations/sdfi/naturbeskyttelse").NaturbeskyttelsesResultat) ??
+      null,
     geusRisk: (geusRisk as import("@/integrations/geus/client").GeusRiskData) ?? null,
     servitutter:
       (servitutter as import("@/integrations/tinglysning/client").TinglysningResult) ?? null,
