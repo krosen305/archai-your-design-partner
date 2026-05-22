@@ -4,28 +4,21 @@ import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, LocateFixed, Move3D, MapPin, RotateCcw } from "lucide-react";
 import { Card } from "@/components/wizard-ui";
 import { cn } from "@/lib/utils";
-import { syncPatch } from "@/lib/project-sync";
 import { useProject } from "@/lib/project-store";
-import {
-  fetchMatriklenPreview,
-  fetchParcelGeometry,
-  fetchParcelGeometryById,
-  fetchSkærmkortTile,
-} from "@/routes/api.map-tiles";
+import { fetchSkærmkortTile } from "@/routes/api.map-tiles";
+import { useParcelData } from "@/hooks/useParcelData";
+import { usePlacementSync } from "@/hooks/usePlacementSync";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
-import type * as GeoJSON from "geojson";
+import type { NeighborBuildingData } from "@/domain/contracts/analysis.types";
+import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 
 export type MatrikelMapProps = {
-  bbr: BbrKompliantData | null;
+  bbr: RuleEngineBbrData | null;
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
   jordstykkeLokalId?: string | null;
   onPlacementChange?: (patch: { centroid: { lat: number; lng: number } }) => void;
 };
-
-type ParcelFeatureCollection = GeoJSON.FeatureCollection | null;
 
 export function MatrikelMap({
   bbr,
@@ -34,7 +27,7 @@ export function MatrikelMap({
   jordstykkeLokalId,
   onPlacementChange,
 }: MatrikelMapProps) {
-  const { address, complianceFlags, setAddress } = useProject();
+  const { address, complianceFlags } = useProject();
   const geo = address?.centroid ?? address?.koordinater ?? null;
   const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -50,20 +43,8 @@ export function MatrikelMap({
   const initialCenterRef = useRef<[number, number] | null>(null);
 
   const [olReady, setOlReady] = useState(false);
-  const [parcelStatus, setParcelStatus] = useState<"idle" | "loading" | "ready" | "missing">(
-    "idle",
-  );
-  const [parcelGeojson, setParcelGeojson] = useState<ParcelFeatureCollection>(null);
-  const [previewImage, setPreviewImage] = useState<{
-    dataUrl: string;
-    extent3857: [number, number, number, number];
-  } | null>(null);
-  const [rotationDeg, setRotationDeg] = useState(address?.rotationDeg ?? 0);
   const [dragHint, setDragHint] = useState("Træk bygningen for at flytte den");
 
-  const loadParcelGeometry = useServerFn(fetchParcelGeometry);
-  const loadParcelGeometryById = useServerFn(fetchParcelGeometryById);
-  const loadParcelPreview = useServerFn(fetchMatriklenPreview);
   const loadTile = useServerFn(fetchSkærmkortTile);
   const loadTileRef = useRef(loadTile);
   useEffect(() => {
@@ -86,108 +67,19 @@ export function MatrikelMap({
   const hasAddress = hasValidGeo;
   const baseCenter: [number, number] = geo ? [geo.lng, geo.lat] : [10, 56];
 
-  useEffect(() => {
-    setRotationDeg(address?.rotationDeg ?? 0);
-  }, [address?.rotationDeg]);
+  const { parcelStatus, parcelGeojson, previewImage } = useParcelData({
+    geo,
+    jordstykkeLokalId: jordstykkeLokalId ?? null,
+    adresseid: address?.adresseid ?? null,
+  });
+
+  const { rotationDeg, updateRotation, resetPlacement: resetPlacementSync } = usePlacementSync(address ?? null);
 
   useEffect(() => {
     if (!geo) return;
     initialCenterRef.current = [geo.lng, geo.lat];
     footprintCenterRef.current = [geo.lng, geo.lat];
   }, [address?.adresseid, geo?.lat, geo?.lng]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadGeometry() {
-      if (!geo) {
-        setParcelGeojson(null);
-        setPreviewImage(null);
-        setParcelStatus("idle");
-        return;
-      }
-
-      setParcelStatus("loading");
-
-      try {
-        // ARCH-229: brug specifik jordstykke-geometri når ID er tilgængeligt
-        if (jordstykkeLokalId) {
-          const result = await loadParcelGeometryById({
-            data: { jordstykkeLokalId },
-          });
-          if (cancelled) return;
-          if (result.featureCollection) {
-            setParcelGeojson(result.featureCollection);
-            setParcelStatus("ready");
-          } else {
-            // ID-opslag fandt intet — forsøg bbox-fallback
-            const fallback = await loadParcelGeometry({
-              data: {
-                point: geo,
-                adresseid: address?.adresseid ?? null,
-                bufferMeters: 180,
-              },
-            });
-            if (cancelled) return;
-            setParcelGeojson(fallback.featureCollection);
-            setParcelStatus(fallback.featureCollection?.features.length ? "ready" : "missing");
-          }
-        } else {
-          // Bbox-fallback når jordstykke-ID ikke kendes
-          const geometry = await loadParcelGeometry({
-            data: {
-              point: geo,
-              adresseid: address?.adresseid ?? null,
-              bufferMeters: 180,
-            },
-          });
-          if (cancelled) return;
-          setParcelGeojson(geometry.featureCollection);
-          setParcelStatus(geometry.featureCollection?.features.length ? "ready" : "missing");
-        }
-
-        const preview = await loadParcelPreview({
-          data: {
-            point: geo,
-            bufferMeters: 220,
-          },
-        });
-        if (cancelled) return;
-
-        if (!preview) {
-          setPreviewImage(null);
-          return;
-        }
-
-        const { transformExtent } = await import("ol/proj");
-        const extent3857 = transformExtent(preview.bbox25832, "EPSG:25832", "EPSG:3857") as [
-          number,
-          number,
-          number,
-          number,
-        ];
-        setPreviewImage({ dataUrl: preview.dataUrl, extent3857 });
-      } catch {
-        if (cancelled) return;
-        setParcelStatus("missing");
-        setParcelGeojson(null);
-        setPreviewImage(null);
-      }
-    }
-
-    void loadGeometry();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    address?.adresseid,
-    geo?.lat,
-    geo?.lng,
-    jordstykkeLokalId,
-    loadParcelGeometry,
-    loadParcelGeometryById,
-    loadParcelPreview,
-  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -371,7 +263,7 @@ export function MatrikelMap({
       cancelled = true;
       cleanup?.();
     };
-  }, [address, baseCenter, hasAddress, setAddress]);
+  }, [address, baseCenter, hasAddress]);
 
   useEffect(() => {
     if (!mapRef.current || !previewLayerRef.current) return;
@@ -462,30 +354,6 @@ export function MatrikelMap({
       cancelled = true;
     };
   }, [geo?.lat, geo?.lng, buildingArea, rotationDeg]);
-
-  const updateRotation = (value: number) => {
-    setRotationDeg(value);
-    if (!address) return;
-    const nextAddress = { ...address, rotationDeg: value };
-    setAddress(nextAddress);
-    void syncPatch({ address: nextAddress });
-  };
-
-  const resetPlacement = () => {
-    if (!address) return;
-    const nextAddress = {
-      ...address,
-      centroid:
-        geo ??
-        (initialCenterRef.current
-          ? { lat: initialCenterRef.current[1], lng: initialCenterRef.current[0] }
-          : null),
-      rotationDeg: 0,
-    };
-    setRotationDeg(0);
-    setAddress(nextAddress);
-    void syncPatch({ address: nextAddress });
-  };
 
   const hardStopLabel =
     activeBlockers[0]?.label ?? (address?.outsideParcelAreaM2 ? "Bygning overlapper skel" : null);
@@ -607,7 +475,7 @@ export function MatrikelMap({
                   </button>
                   <button
                     type="button"
-                    onClick={resetPlacement}
+                    onClick={() => resetPlacementSync(geo, initialCenterRef.current)}
                     className="rounded-md border border-border/60 bg-[#111] p-2 text-foreground hover:border-border"
                     aria-label="Nulstil placering"
                   >
