@@ -1,15 +1,14 @@
 import { describe, it, expect } from "bun:test";
 import { buildProjectUpdate } from "./project-update-builder";
-import type { FbbResultat } from "@/integrations/fbb/client";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { RuleEngineBbrData, RuleEngineFbbResult } from "@/domain/contracts/rule-engine.types";
 
-const minimalFbb = (bevaringsvaerdi: number, erFredet = false): FbbResultat => ({
+const minimalFbb = (bevaringsvaerdi: number, erFredet = false): RuleEngineFbbResult => ({
   fbb_bygninger: [],
   fbb_bedste_bygning: { bygningsid: 1, bevaringsvaerdi, fredningsstatus: null },
   fbb_er_fredet: erFredet,
 });
 
-const minimalBbr = (overrides: Partial<BbrKompliantData> = {}): BbrKompliantData => ({
+const minimalBbr = (overrides: Partial<RuleEngineBbrData> = {}): RuleEngineBbrData => ({
   byggeaar: null,
   bebygget_areal: 100,
   samlet_areal: 200,
@@ -154,15 +153,25 @@ describe("buildProjectUpdate", () => {
     expect(update.budget_estimate).toBe(5_000_000);
   });
 
-  it("sets hus_dna without cast", () => {
-    const hna = { stil: "nordisk", areal: 180 };
-    const update = buildProjectUpdate({ husDna: hna as any }, {});
-    expect(update.hus_dna).toEqual(hna);
-  });
-
-  it("sets hus_dna=null when patch.husDna is null", () => {
-    const update = buildProjectUpdate({ husDna: null }, {});
-    expect(update.hus_dna).toBeNull();
+  it("does not write design state to projects anymore", () => {
+    const update = buildProjectUpdate(
+      {
+        byggeoenske: { oensketAreal: 160, designDroem: "Atrium" },
+        husDna: {
+          stil: "nordisk",
+          bruttoareal: "160",
+          etager: "2",
+          tagform: "saddeltag",
+          energiklasse: "BR18",
+          saerligeKrav: [],
+          confidence: 0.8,
+          kilde: "mock",
+        },
+      },
+      {},
+    );
+    expect(update.brief_data).toBeUndefined();
+    expect(update.hus_dna).toBeUndefined();
   });
 
   it("skips heritage_save_value when fbbData.fbb_bedste_bygning is null", () => {

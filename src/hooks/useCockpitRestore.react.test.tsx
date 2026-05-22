@@ -30,7 +30,10 @@ const MINIMAL_PROJECT: PersistedProject = {
   address_ejerlavskode: null,
   address_matrikelnummer: null,
   compliance_data: null,
-  brief_data: null,
+  design_byggeoenske: {
+    byggetype: "tilbyg",
+    oensketAreal: 60,
+  },
   compliance_done: false,
   current_step: "matriklen",
   project_data_status: null,
@@ -43,7 +46,18 @@ const MINIMAL_PROJECT: PersistedProject = {
   budget_estimate: null,
   bfe_nr: null,
   billedanalyse: null,
-  hus_dna: null,
+  design_hus_dna: null,
+  design_placement: {
+    footprintGeojson: null,
+    footprintAreaM2: 80,
+    centroid: { lat: 55.7701, lng: 12.5001 },
+    rotationDeg: 10,
+    floors: 1,
+    heightM: null,
+    minDistanceToBoundaryM: null,
+    outsideParcelAreaM2: 0,
+    source: "user",
+  },
   updated_at: "2026-05-22T10:00:00Z",
 };
 
@@ -110,6 +124,25 @@ describe("useCockpitRestore", () => {
     });
 
     expect(useProject.getState().grundareal_m2).toBe(441);
+  });
+
+  it("restorer design state ind i store", async () => {
+    const { useCockpitRestore } = await import("./useCockpitRestore");
+
+    const { result } = renderHook(() =>
+      useCockpitRestore({
+        adresseId: ADRESSE_ID,
+        searchProjectId: undefined,
+        onSnapshotRestored: () => {},
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.restorePhase).toBe("checked");
+    });
+
+    expect(useProject.getState().byggeoenske.oensketAreal).toBe(60);
+    expect(useProject.getState().designPlacement?.rotationDeg).toBe(10);
   });
 
   it("sætter restorePhase=checked straks hvis adressen allerede matcher", async () => {

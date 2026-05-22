@@ -94,8 +94,9 @@ describe("resolveHardStop — projectId path", () => {
     mockSelectSingle.mockClear();
   });
 
-  it("allows generation when project.hard_stop is false", async () => {
+  it("allows generation when project.hard_stop is false and site_constraints is clean", async () => {
     setProjectResult(makeProject({ hard_stop: false }));
+    setSiteConstraintsResult(makeConstraints());
 
     const result = await resolveHardStop({
       projectId: PROJECT_ID,
@@ -105,6 +106,19 @@ describe("resolveHardStop — projectId path", () => {
 
     expect(result.blocked).toBe(false);
     expect(result.reason).toBeNull();
+  });
+
+  it("blocks generation when project.hard_stop is false but site_constraints has a blocker", async () => {
+    setProjectResult(makeProject({ hard_stop: false, address_adresseid: ADDRESS_ID }));
+    setSiteConstraintsResult(makeConstraints({ save_value: 1 }));
+
+    const result = await resolveHardStop({
+      projectId: PROJECT_ID,
+      addressId: undefined,
+      userId: OWNER_ID,
+    });
+
+    expect(result.blocked).toBe(true);
   });
 
   it("blocks generation when project.hard_stop is true", async () => {

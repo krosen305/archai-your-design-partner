@@ -27,8 +27,8 @@ export function MatrikelMap({
   jordstykkeLokalId,
   onPlacementChange,
 }: MatrikelMapProps) {
-  const { address, complianceFlags } = useProject();
-  const geo = address?.centroid ?? address?.koordinater ?? null;
+  const { address, complianceFlags, designPlacement } = useProject();
+  const geo = designPlacement?.centroid ?? address?.koordinater ?? null;
   const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("ol/Map").default | null>(null);
@@ -55,15 +55,18 @@ export function MatrikelMap({
     () => complianceFlags.filter((flag) => flag.status === "blocker"),
     [complianceFlags],
   );
-  const hardStop = activeBlockers.length > 0 || (address?.outsideParcelAreaM2 ?? 0) > 0;
+  const hardStop = activeBlockers.length > 0 || (designPlacement?.outsideParcelAreaM2 ?? 0) > 0;
   const currentPct =
     metrics?.currentBebyggelsesprocent ??
     (metrics?.grundareal && metrics?.currentBygningsareal
       ? (metrics.currentBygningsareal / metrics.grundareal) * 100
       : null);
-  const minBoundaryDistance = address?.minDistanceToBoundaryM ?? null;
+  const minBoundaryDistance = designPlacement?.minDistanceToBoundaryM ?? null;
   const buildingArea =
-    address?.footprintAreaM2 ?? bbr?.bebygget_areal ?? metrics?.currentBygningsareal ?? null;
+    designPlacement?.footprintAreaM2 ??
+    bbr?.bebygget_areal ??
+    metrics?.currentBygningsareal ??
+    null;
   const hasAddress = hasValidGeo;
   const baseCenter: [number, number] = geo ? [geo.lng, geo.lat] : [10, 56];
 
@@ -73,7 +76,12 @@ export function MatrikelMap({
     adresseid: address?.adresseid ?? null,
   });
 
-  const { rotationDeg, updateRotation, resetPlacement: resetPlacementSync } = usePlacementSync(address ?? null);
+  const {
+    rotationDeg,
+    updateRotation,
+    updateCentroid,
+    resetPlacement: resetPlacementSync,
+  } = usePlacementSync(designPlacement, address?.koordinater ?? null);
 
   useEffect(() => {
     if (!geo) return;
@@ -224,6 +232,7 @@ export function MatrikelMap({
         footprintCenterRef.current = [lng, lat];
         setDragHint("Placering opdateret");
 
+        updateCentroid({ lat, lng });
         onPlacementChange?.({ centroid: { lat, lng } });
       });
 
@@ -356,7 +365,8 @@ export function MatrikelMap({
   }, [geo?.lat, geo?.lng, buildingArea, rotationDeg]);
 
   const hardStopLabel =
-    activeBlockers[0]?.label ?? (address?.outsideParcelAreaM2 ? "Bygning overlapper skel" : null);
+    activeBlockers[0]?.label ??
+    (designPlacement?.outsideParcelAreaM2 ? "Bygning overlapper skel" : null);
 
   return (
     <Card className="p-0 overflow-hidden h-full flex flex-col">
@@ -475,7 +485,7 @@ export function MatrikelMap({
                   </button>
                   <button
                     type="button"
-                    onClick={() => resetPlacementSync(geo, initialCenterRef.current)}
+                    onClick={() => resetPlacementSync(initialCenterRef.current)}
                     className="rounded-md border border-border/60 bg-[#111] p-2 text-foreground hover:border-border"
                     aria-label="Nulstil placering"
                   >

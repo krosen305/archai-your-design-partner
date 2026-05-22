@@ -4,7 +4,13 @@
 
 import type { Json } from "@/integrations/supabase/types";
 import type { FbbResultat } from "@/integrations/fbb/client";
-import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/types/project-state";
+import type {
+  Address,
+  HusDna,
+  ComplianceFlag,
+  Byggeoenske,
+  DesignPlacement,
+} from "@/types/project-state";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
@@ -32,6 +38,10 @@ import {
   syncSiteConstraints,
   deriveSoilContaminationStatus,
 } from "@/integrations/supabase/repositories/site-constraints.repository";
+import {
+  hasDesignIterationFields,
+  syncActiveDesignIteration,
+} from "@/integrations/supabase/repositories/design-iterations.repository";
 import { syncBuildingTasks } from "@/integrations/supabase/repositories/building-tasks.repository";
 import { cleanupProjectStorage } from "@/integrations/supabase/repositories/project-storage.repository";
 import { buildProjectUpdate, hasComplianceFields } from "@/lib/project-update-builder";
@@ -48,6 +58,7 @@ export type ProjectPatch = {
   bbrData?: BbrKompliantData | null;
   husDna?: HusDna | null;
   byggeoenske?: Byggeoenske;
+  designPlacement?: DesignPlacement | null;
   complianceFlags?: ComplianceFlag[];
   lokalplaner?: Lokalplan[];
   kommuneplanramme?: Kommuneplanramme | null;
@@ -82,7 +93,7 @@ export type PersistedProject = {
   address_ejerlavskode: number | null;
   address_matrikelnummer: string | null;
   compliance_data: Json | null;
-  brief_data: Json | null;
+  design_byggeoenske: Json | null;
   compliance_done: boolean;
   current_step: string;
   project_data_status: Json | null;
@@ -95,7 +106,8 @@ export type PersistedProject = {
   budget_estimate: number | null;
   bfe_nr: string | null;
   billedanalyse: Json | null;
-  hus_dna: Json | null;
+  design_hus_dna: Json | null;
+  design_placement: Json | null;
   updated_at: string | null;
 };
 
@@ -207,24 +219,30 @@ export async function saveProject(
 
   const prevCompliance =
     typeof snapshot?.compliance_data === "object" && snapshot.compliance_data !== null
-      ? (snapshot.compliance_data as Record<string, unknown>)
+      ? snapshot.compliance_data
       : {};
 
   const update = buildProjectUpdate(patch, prevCompliance);
-  if (Object.keys(update).length === 0) return;
+  const hasProjectUpdate = Object.keys(update).length > 0;
+  const hasDesignUpdate = hasDesignIterationFields(patch);
+  if (!hasProjectUpdate && !hasDesignUpdate) return;
 
-  const projectWriteStartedAt = Date.now();
-  await updateProject(id, userId, update);
+  if (hasProjectUpdate) {
+    const projectWriteStartedAt = Date.now();
+    await updateProject(id, userId, update);
 
-  await recordAnalysisEvent(trace, {
-    eventType: "db_write",
-    phase: "persistence",
-    service: "Supabase",
-    operation: "projects.update",
-    status: "ok",
-    durationMs: Date.now() - projectWriteStartedAt,
-    metadata: { table: "projects", fields: Object.keys(update) },
-  });
+    await recordAnalysisEvent(trace, {
+      eventType: "db_write",
+      phase: "persistence",
+      service: "Supabase",
+      operation: "projects.update",
+      status: "ok",
+      durationMs: Date.now() - projectWriteStartedAt,
+      metadata: { table: "projects", fields: Object.keys(update) },
+    });
+  }
+
+  await syncActiveDesignIteration(id, patch, trace);
 
   const hasComplianceData = hasComplianceFields(patch);
 

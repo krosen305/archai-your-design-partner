@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { saveProjectSchema, projectPatchSchema } from "@/lib/project-sync";
+import { saveProjectSchema, projectPatchSchema } from "@/types/project-sync.schemas";
 
 // ---------------------------------------------------------------------------
 // projectPatchSchema
@@ -31,10 +31,52 @@ describe("projectPatchSchema", () => {
     expect(r.success).toBe(true);
   });
 
+  it("accepts patch with designPlacement", () => {
+    const r = projectPatchSchema.safeParse({
+      designPlacement: {
+        footprintGeojson: null,
+        footprintAreaM2: 88,
+        centroid: { lat: 55.7, lng: 12.5 },
+        rotationDeg: 15,
+        floors: 2,
+        heightM: 6,
+        minDistanceToBoundaryM: 2.5,
+        outsideParcelAreaM2: 0,
+        source: "user",
+      },
+    });
+    expect(r.success).toBe(true);
+  });
+
   it("accepts patch with array fields", () => {
     const r = projectPatchSchema.safeParse({
-      complianceFlags: [{ kilde: "bbr", severity: "warning" }],
-      lokalplaner: [{ id: "lp-1" }],
+      complianceFlags: [
+        {
+          id: "flag-1",
+          label: "Testflag",
+          status: "advarsel",
+          detalje: null,
+          aktuelVærdi: null,
+          tilladt: null,
+          kilde: "bbr",
+        },
+      ],
+      lokalplaner: [
+        {
+          planid: "lp-1",
+          plannavn: "Lokalplan 1",
+          plannr: null,
+          kommunenavn: null,
+          komnr: null,
+          datoVedtaget: null,
+          datoIkraft: null,
+          plandokumentLink: null,
+          plantype: null,
+          status: null,
+          anvgen: null,
+          anvendelseGenerel: null,
+        },
+      ],
     });
     expect(r.success).toBe(true);
   });

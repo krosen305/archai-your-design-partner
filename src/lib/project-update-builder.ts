@@ -1,8 +1,10 @@
 // Pure function: converts a ProjectPatch + existing compliance JSONB
-// into a typed Supabase ProjectUpdate — no Supabase imports, fully unit-testable.
+// into a typed Supabase ProjectUpdate. Design state is handled separately
+// in the design_iterations repository.
 
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { ProjectPatch } from "@/integrations/supabase/project-persistence";
+import { toJsonObject, toJsonValue } from "@/lib/json-value";
 import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
 
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
@@ -39,7 +41,6 @@ export function buildProjectUpdate(
 ): ProjectUpdate {
   const update: ProjectUpdate = {};
 
-  // ── Address ────────────────────────────────────────────────────────────────
   if (patch.address !== undefined) {
     update.address_full = patch.address.adresse;
     update.address_kommune = patch.address.kommune;
@@ -49,51 +50,43 @@ export function buildProjectUpdate(
     update.adresse_dar_id = patch.address.adresseid;
     update.address_postnr = patch.address.postnr;
     update.address_postnrnavn = patch.address.postnrnavn;
-    update.address_koordinater = patch.address.koordinater as unknown as Json;
+    update.address_koordinater = toJsonValue(patch.address.koordinater) ?? null;
     update.address_ejerlavskode = patch.address.ejerlavskode;
     update.address_matrikelnummer = patch.address.matrikelnummer;
   }
 
-  // ── Byggeoenske ────────────────────────────────────────────────────────────
-  if (patch.byggeoenske !== undefined) {
-    update.brief_data = patch.byggeoenske as unknown as Json;
-  }
-
-  // ── HusDna ─────────────────────────────────────────────────────────────────
-  if (patch.husDna !== undefined) {
-    update.hus_dna = patch.husDna ?? null;
-  }
-
-  // ── Billedanalyse ──────────────────────────────────────────────────────────
   if (patch.billedanalyse !== undefined) {
     update.billedanalyse = patch.billedanalyse ?? null;
   }
 
-  // ── Compliance JSONB + typed columns ───────────────────────────────────────
   const hasComplianceData = hasComplianceFields(patch);
 
   if (hasComplianceData) {
-    update.compliance_data = {
-      ...prevCompliance,
-      ...(patch.bbrData !== undefined && { bbr: patch.bbrData }),
-      ...(patch.complianceFlags !== undefined && { flags: patch.complianceFlags }),
-      ...(patch.lokalplaner !== undefined && { lokalplaner: patch.lokalplaner }),
-      ...(patch.kommuneplanramme !== undefined && { kommuneplanramme: patch.kommuneplanramme }),
-      ...(patch.byggeanalyseResultat !== undefined && {
-        byggeanalyseResultat: patch.byggeanalyseResultat,
+    const complianceData: Json = {
+      ...toJsonObject(prevCompliance),
+      ...(patch.bbrData !== undefined && { bbr: toJsonValue(patch.bbrData) }),
+      ...(patch.complianceFlags !== undefined && { flags: toJsonValue(patch.complianceFlags) }),
+      ...(patch.lokalplaner !== undefined && { lokalplaner: toJsonValue(patch.lokalplaner) }),
+      ...(patch.kommuneplanramme !== undefined && {
+        kommuneplanramme: toJsonValue(patch.kommuneplanramme),
       }),
-      ...(patch.vurderingData !== undefined && { vurderingData: patch.vurderingData }),
-      ...(patch.naturbeskyttelse !== undefined && { naturbeskyttelse: patch.naturbeskyttelse }),
-      ...(patch.dkjord !== undefined && { dkjord: patch.dkjord }),
-      ...(patch.geusRisk !== undefined && { geusRisk: patch.geusRisk }),
-      ...(patch.servitutter !== undefined && { servitutter: patch.servitutter }),
-      ...(patch.terrain !== undefined && { terrain: patch.terrain }),
-      ...(patch.naboer !== undefined && { naboer: patch.naboer }),
-      ...(patch.fjernvarme !== undefined && { fjernvarme: patch.fjernvarme }),
-      ...(patch.fbbData !== undefined && { fbbData: patch.fbbData }),
-    } as Json;
+      ...(patch.byggeanalyseResultat !== undefined && {
+        byggeanalyseResultat: toJsonValue(patch.byggeanalyseResultat),
+      }),
+      ...(patch.vurderingData !== undefined && { vurderingData: toJsonValue(patch.vurderingData) }),
+      ...(patch.naturbeskyttelse !== undefined && {
+        naturbeskyttelse: toJsonValue(patch.naturbeskyttelse),
+      }),
+      ...(patch.dkjord !== undefined && { dkjord: toJsonValue(patch.dkjord) }),
+      ...(patch.geusRisk !== undefined && { geusRisk: toJsonValue(patch.geusRisk) }),
+      ...(patch.servitutter !== undefined && { servitutter: toJsonValue(patch.servitutter) }),
+      ...(patch.terrain !== undefined && { terrain: toJsonValue(patch.terrain) }),
+      ...(patch.naboer !== undefined && { naboer: toJsonValue(patch.naboer) }),
+      ...(patch.fjernvarme !== undefined && { fjernvarme: toJsonValue(patch.fjernvarme) }),
+      ...(patch.fbbData !== undefined && { fbbData: toJsonValue(patch.fbbData) }),
+    };
+    update.compliance_data = complianceData;
 
-    // Typed compliance columns — only written when source data is in this patch
     if (patch.fbbData !== undefined) {
       const saveVal = patch.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
       update.heritage_save_value = saveVal !== null && saveVal >= 1 ? saveVal : null;
@@ -110,8 +103,6 @@ export function buildProjectUpdate(
       update.bebygget_areal_m2 = patch.bbrData.bebygget_areal;
     }
 
-    // Hard stop — only recomputed when triggering data sources are present.
-    // Prevents byggeanalyseResultat-only patches from resetting hard_stop=false.
     const hasHardStopTrigger = patch.fbbData !== undefined || patch.bbrData !== undefined;
     if (hasHardStopTrigger) {
       const saveValue = update.heritage_save_value ?? null;
@@ -133,7 +124,6 @@ export function buildProjectUpdate(
     }
   }
 
-  // ── Non-compliance fields ──────────────────────────────────────────────────
   if (patch.complianceDone !== undefined) {
     update.compliance_done = patch.complianceDone;
   }

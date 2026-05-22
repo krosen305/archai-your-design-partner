@@ -3,16 +3,32 @@ import { useProject } from "@/lib/project-store";
 import { parseComplianceData, deriveSourceStatus } from "@/types/project-state";
 import { restoreProject } from "@/lib/project-sync";
 import { logger } from "@/lib/logger";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
-import type { FbbResultat } from "@/integrations/fbb/client";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import type { FjernvarmeResultat, NeighborBuildingData } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
+import {
+  addressKoordinaterSchema,
+  billedeAnalyseResultatSchema,
+  byggeoenskeSchema,
+  designPlacementSchema,
+  fjernvarmeResultatSchema,
+  husDnaSchema,
+  neighborBuildingDataSchema,
+  ruleEngineDkJordResultatSchema,
+  ruleEngineFbbResultSchema,
+  ruleEngineGeusRiskDataSchema,
+  ruleEngineNaturbeskyttelsesResultatSchema,
+  ruleEngineTerrainDataSchema,
+  ruleEngineTinglysningResultSchema,
+} from "@/types/project-restore.schemas";
 import type { AnalysisSnapshot } from "./useCockpitAnalysis";
-import { routeMatchesAddress, objectField } from "@/hooks/cockpit-restore-utils";
+import { decodeWithSchema, routeMatchesAddress, objectField } from "@/hooks/cockpit-restore-utils";
 
 export { routeMatchesAddress, objectField };
 
@@ -43,6 +59,10 @@ export function useCockpitRestore(params: {
         if (cancelled) return;
         if (project?.address_full && (project?.address_adresseid || project?.address_bbr)) {
           const store = useProject.getState();
+          const restoredKoordinater = decodeWithSchema(
+            project.address_koordinater,
+            addressKoordinaterSchema,
+          );
           store.setCurrentProjectId(project.id);
           const resolvedAdresseid = project.address_adresseid ?? project.address_bbr ?? adresseId;
           const resolvedAdgangsadresseid =
@@ -57,14 +77,16 @@ export function useCockpitRestore(params: {
             matrikel: project.address_matrikel,
             adgangsadresseid: resolvedAdgangsadresseid,
             grundareal: project.grundareal_m2 ?? null,
-            koordinater: (project.address_koordinater as { lat: number; lng: number } | null) ?? {
-              lat: 0,
-              lng: 0,
-            },
+            koordinater: restoredKoordinater ?? { lat: 0, lng: 0 },
             bbrId: null,
             ejerlavskode: project.address_ejerlavskode ?? null,
             matrikelnummer: project.address_matrikelnummer ?? null,
           });
+          store.resetByggeoenske();
+          const byggeoenske = decodeWithSchema(project.design_byggeoenske, byggeoenskeSchema);
+          if (byggeoenske) {
+            store.setByggeoenske(byggeoenske);
+          }
           const cd = parseComplianceData(project.compliance_data);
           if (cd) {
             if (cd.bbr) store.setBbrData(cd.bbr);
@@ -77,17 +99,46 @@ export function useCockpitRestore(params: {
           }
           const snapshot: Partial<AnalysisSnapshot> = {
             lokalplaner: cd?.lokalplaner ?? [],
-            geusRisk: objectField<GeusRiskData>(project.compliance_data, "geusRisk"),
-            servitutter: objectField<TinglysningResult>(project.compliance_data, "servitutter"),
-            terrain: objectField<TerrainData>(project.compliance_data, "terrain"),
-            fjernvarme: objectField<FjernvarmeResultat>(project.compliance_data, "fjernvarme"),
-            naboer: objectField<NeighborBuildingData>(project.compliance_data, "naboer"),
-            fbbData: objectField<FbbResultat>(project.compliance_data, "fbbData"),
-            naturbeskyttelse: objectField<NaturbeskyttelsesResultat>(
+            geusRisk: objectField<RuleEngineGeusRiskData>(
+              project.compliance_data,
+              "geusRisk",
+              ruleEngineGeusRiskDataSchema,
+            ),
+            servitutter: objectField<RuleEngineTinglysningResult>(
+              project.compliance_data,
+              "servitutter",
+              ruleEngineTinglysningResultSchema,
+            ),
+            terrain: objectField<RuleEngineTerrainData>(
+              project.compliance_data,
+              "terrain",
+              ruleEngineTerrainDataSchema,
+            ),
+            fjernvarme: objectField<FjernvarmeResultat>(
+              project.compliance_data,
+              "fjernvarme",
+              fjernvarmeResultatSchema,
+            ),
+            naboer: objectField<NeighborBuildingData>(
+              project.compliance_data,
+              "naboer",
+              neighborBuildingDataSchema,
+            ),
+            fbbData: objectField<RuleEngineFbbResult>(
+              project.compliance_data,
+              "fbbData",
+              ruleEngineFbbResultSchema,
+            ),
+            naturbeskyttelse: objectField<RuleEngineNaturbeskyttelsesResultat>(
               project.compliance_data,
               "naturbeskyttelse",
+              ruleEngineNaturbeskyttelsesResultatSchema,
             ),
-            dkjord: objectField<DkJordResultat>(project.compliance_data, "dkjord"),
+            dkjord: objectField<RuleEngineDkJordResultat>(
+              project.compliance_data,
+              "dkjord",
+              ruleEngineDkJordResultatSchema,
+            ),
           };
           onSnapshotRestored(snapshot);
           if (project.heritage_save_value != null)
@@ -100,14 +151,17 @@ export function useCockpitRestore(params: {
           if (project.bebygget_areal_m2 != null) setBebyggetAreal(project.bebygget_areal_m2);
           if (project.budget_estimate != null) setBudgetEstimate(project.budget_estimate);
           setBfeNr(project.bfe_nr ?? null);
-          if (project.billedanalyse) {
-            store.setBilledanalyse(
-              project.billedanalyse as import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat,
-            );
+          const billedanalyse = decodeWithSchema(
+            project.billedanalyse,
+            billedeAnalyseResultatSchema,
+          );
+          if (billedanalyse) {
+            store.setBilledanalyse(billedanalyse);
           }
-          if (project.hus_dna) {
-            store.setHusDna(project.hus_dna as import("@/lib/project-store").HusDna);
-          }
+          const husDna = decodeWithSchema(project.design_hus_dna, husDnaSchema);
+          store.setHusDna(husDna);
+          const designPlacement = decodeWithSchema(project.design_placement, designPlacementSchema);
+          store.setDesignPlacement(designPlacement);
           const lastFetched = project.updated_at ?? null;
           const s = useProject.getState();
           store.setDataLastFetchedAt(lastFetched);
@@ -121,43 +175,51 @@ export function useCockpitRestore(params: {
             ),
             fbb: deriveSourceStatus(
               "fbb",
-              objectField(project.compliance_data, "fbbData"),
+              objectField(project.compliance_data, "fbbData", ruleEngineFbbResultSchema),
               lastFetched,
             ),
             naturbeskyttelse: deriveSourceStatus(
               "naturbeskyttelse",
-              objectField(project.compliance_data, "naturbeskyttelse"),
+              objectField(
+                project.compliance_data,
+                "naturbeskyttelse",
+                ruleEngineNaturbeskyttelsesResultatSchema,
+              ),
               lastFetched,
             ),
             geusRisk: deriveSourceStatus(
               "geusRisk",
-              objectField(project.compliance_data, "geusRisk"),
+              objectField(project.compliance_data, "geusRisk", ruleEngineGeusRiskDataSchema),
               lastFetched,
             ),
             servitutter: deriveSourceStatus(
               "servitutter",
-              objectField(project.compliance_data, "servitutter"),
+              objectField(
+                project.compliance_data,
+                "servitutter",
+                ruleEngineTinglysningResultSchema,
+              ),
               lastFetched,
             ),
             terrain: deriveSourceStatus(
               "terrain",
-              objectField(project.compliance_data, "terrain"),
+              objectField(project.compliance_data, "terrain", ruleEngineTerrainDataSchema),
               lastFetched,
             ),
             fjernvarme: deriveSourceStatus(
               "fjernvarme",
-              objectField(project.compliance_data, "fjernvarme"),
+              objectField(project.compliance_data, "fjernvarme", fjernvarmeResultatSchema),
               lastFetched,
             ),
             naboer: deriveSourceStatus(
               "naboer",
-              objectField(project.compliance_data, "naboer"),
+              objectField(project.compliance_data, "naboer", neighborBuildingDataSchema),
               lastFetched,
             ),
             vurdering: deriveSourceStatus("vurdering", s.vurderingData, lastFetched),
             byggeanalyse: deriveSourceStatus("byggeanalyse", s.byggeanalyseResultat, lastFetched),
-            billedanalyse: deriveSourceStatus("billedanalyse", project.billedanalyse, lastFetched),
-            husDna: deriveSourceStatus("husDna", project.hus_dna, lastFetched),
+            billedanalyse: deriveSourceStatus("billedanalyse", billedanalyse, lastFetched),
+            husDna: deriveSourceStatus("husDna", husDna, lastFetched),
           });
         }
       } catch (e) {

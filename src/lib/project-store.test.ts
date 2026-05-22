@@ -34,7 +34,7 @@ beforeEach(() => {
   useProject.getState().reset();
 });
 
-describe("husDna persistence — ARCH-197", () => {
+describe("husDna persistence - ARCH-197", () => {
   it("husDna er null ved opstart", () => {
     expect(useProject.getState().husDna).toBeNull();
   });
@@ -62,9 +62,8 @@ describe("husDna persistence — ARCH-197", () => {
     expect(stored?.saerligeKrav).toEqual([]);
   });
 
-  it("PersistedProject type accepterer hus_dna felt", () => {
-    // Verificerer at typen har feltet — compile-fejl synlig via bun build
-    const _: PersistedProject["hus_dna"] = null;
+  it("PersistedProject type accepterer design_hus_dna felt", () => {
+    const _: PersistedProject["design_hus_dna"] = null;
     expect(_).toBeNull();
   });
 });
@@ -78,7 +77,7 @@ describe("project-store budget_estimate", () => {
     expect(useProject.getState().budget_estimate).toBeNull();
   });
 
-  it("sættes og læses korrekt", () => {
+  it("saettes og laeses korrekt", () => {
     useProject.getState().setBudgetEstimate(2_500_000);
     expect(useProject.getState().budget_estimate).toBe(2_500_000);
   });
@@ -90,18 +89,16 @@ describe("project-store budget_estimate", () => {
   });
 });
 
-describe("project selection — ARCH-147", () => {
+describe("project selection - ARCH-147", () => {
   it("reset() clears address so a subsequent restore can load the correct project", () => {
     const { setAddress, setCurrentProjectId, reset } = useProject.getState();
 
-    // Simulate project A already loaded
     setAddress(makeAddress("A"));
     setCurrentProjectId("project-a");
 
     expect(useProject.getState().address?.adresseid).toBe("addr-A");
     expect(useProject.getState().currentProjectId).toBe("project-a");
 
-    // User clicks "Fortsæt" on project B — reset must clear address first
     reset();
     setCurrentProjectId("project-b");
 
@@ -112,15 +109,12 @@ describe("project selection — ARCH-147", () => {
   it("older project selection does not retain address from newer project", () => {
     const { setAddress, setCurrentProjectId, reset } = useProject.getState();
 
-    // Simulate newer project loaded first (most recent by updated_at)
     setAddress(makeAddress("newer"));
     setCurrentProjectId("project-newer");
 
-    // User explicitly selects the older project from the list
     reset();
     setCurrentProjectId("project-older");
 
-    // Address must be null — the __root.tsx guard (if address) return is now bypassed
     expect(useProject.getState().address).toBeNull();
     expect(useProject.getState().currentProjectId).toBe("project-older");
   });

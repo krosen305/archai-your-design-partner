@@ -70,10 +70,11 @@ export async function resolveHardStop(params: {
       return { blocked: true, reason: project.hard_stop_reason ?? "Aktive compliance-stop." };
     }
 
-    if (project.hard_stop === null) {
-      const lookupId = project.address_adresseid ?? addressId;
-      if (lookupId) {
-        return resolveHardStopFromConstraints(lookupId);
+    const lookupId = project.address_adresseid ?? addressId;
+    if (lookupId) {
+      const constraintResult = await resolveHardStopFromConstraints(lookupId);
+      if (constraintResult.blocked) {
+        return constraintResult;
       }
     }
 
