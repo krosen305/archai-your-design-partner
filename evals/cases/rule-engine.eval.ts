@@ -150,7 +150,14 @@ function makeBase(overrides?: {
       // i tests der ikke specifikt tester varmepumpe-reglen
       heatingSource: "fjernvarme",
     },
-    geotechnical: { radonRisk: "low", groundwaterDepthM: 5.0, slopePercent: 2.0, jordforureningV1: null, jordforureningV2: null, omraadeklassificering: null },
+    geotechnical: {
+      radonRisk: "low",
+      groundwaterDepthM: 5.0,
+      slopePercent: 2.0,
+      jordforureningV1: null,
+      jordforureningV2: null,
+      omraadeklassificering: null,
+    },
     servituts: { hasCritical: false, criticalTexts: [] },
   };
 }
