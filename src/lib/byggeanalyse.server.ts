@@ -118,11 +118,11 @@ export async function runByggeanalyseGated(params: {
     });
     ruleEngineResult = runRuleEngine(input, missingFields);
 
-    const illegalViolations = ruleEngineResult.violations.filter(
-      (v) => v.severity === "illegal",
+    const blockers = ruleEngineResult.violations.filter(
+      (v) => v.severity === "illegal" || v.severity === "dispensation_required",
     );
-    if (illegalViolations.length > 0) {
-      const reason = illegalViolations.map((v) => v.reason).join("; ");
+    if (blockers.length > 0) {
+      const reason = blockers.map((v) => v.reason).join("; ");
       return { status: "blocked", hardStopReason: reason };
     }
   } catch (e) {
