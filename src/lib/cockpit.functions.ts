@@ -141,19 +141,23 @@ export const fetchCompliance = createServerFn({ method: "POST" })
     return handleFetchCompliance(data, { withAuth, analyseAddress });
   });
 
+const runByggeanalyseInputSchema = z.object({
+  projectId: z.string().uuid("projectId skal være et UUID"),
+  accessToken: z.string().min(1, "accessToken er påkrævet"),
+  byggeoenske: z.record(z.unknown()).optional().default({}),
+});
+
 export const runByggeanalyse = createServerFn({ method: "POST" })
-  .inputValidator((data: ByggeanalyseInput & { token: string }) => {
-    if (!data.token || typeof data.token !== "string") throw new Error("Token er påkrævet");
-    return data;
-  })
-  .handler(async ({ data }): Promise<ByggeanalyseResultat> => {
-    const { assembleRuleEngineInput } = await import("@/lib/rule-engine/input-assembler");
-    const { runRuleEngine } = await import("@/lib/rule-engine/engine");
-    const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
-    return handleRunByggeanalyse(data, {
-      withAuth,
-      assembleRuleEngineInput,
-      runRuleEngine,
-      ByggeanalyseService,
-    });
-  });
+  .inputValidator((data: unknown) => runByggeanalyseInputSchema.parse(data))
+  .handler(
+    async ({ data }): Promise<import("@/integrations/ai/byggeanalyse").ByggeanalyseGatedResult> => {
+      return withAuth(data.accessToken, async (userId) => {
+        const { runByggeanalyseGated } = await import("@/lib/byggeanalyse.server");
+        return runByggeanalyseGated({
+          projectId: data.projectId,
+          userId,
+          byggeoenske: data.byggeoenske as Partial<import("@/types/project-state").Byggeoenske>,
+        });
+      });
+    },
+  );

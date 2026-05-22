@@ -53,6 +53,11 @@ export type ByggeanalyseResultat = {
   ruleEngine?: RuleEngineResult; // regelkerne-resultat fra ARCH-109
 };
 
+export type ByggeanalyseGatedResult =
+  | ({ status: "ok" } & ByggeanalyseResultat)
+  | { status: "blocked"; hardStopReason: string }
+  | { status: "missing_data"; reason: string };
+
 export type ByggeanalyseInput = {
   byggeoenske: Partial<Byggeoenske>;
   lokalplanExtract: LokalplanExtract | null;

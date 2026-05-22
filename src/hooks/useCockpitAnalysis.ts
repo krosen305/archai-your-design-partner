@@ -114,24 +114,26 @@ export function useCockpitAnalysis(params: {
         return;
       }
       const state = useProject.getState();
-      const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/selectors");
-      const primaryLp = selectPrimaryLokalplanForPdf(state.lokalplaner);
-      const lpNavn = primaryLp?.plannavn ?? primaryLp?.plannr ?? "Ukendt lokalplan";
-      const analyse = await runByggeanalyse({
+      if (!state.currentProjectId) {
+        logger.warn("[Cockpit] manuel AI-analyse afbrudt: intet currentProjectId");
+        return;
+      }
+      const gatedResult = await runByggeanalyse({
         data: {
-          token: session.access_token,
+          projectId: state.currentProjectId,
+          accessToken: session.access_token,
           byggeoenske: state.byggeoenske,
-          lokalplanExtract: state.lokalplanExtract,
-          bbr: bbrData,
-          lokalplanNavn: lpNavn,
-          kommuneplanramme: state.kommuneplanramme,
-          lokalplaner: state.lokalplaner,
-          municipality: address.kommune ?? "",
-          kommunekode: address.kommunekode ?? "",
         },
       });
-      setByggeanalyseResultat(analyse);
-      syncPatch({ byggeanalyseResultat: analyse });
+      if (gatedResult.status === "ok") {
+        const { status: _status, ...analyse } = gatedResult;
+        setByggeanalyseResultat(analyse);
+        syncPatch({ byggeanalyseResultat: analyse });
+      } else if (gatedResult.status === "blocked") {
+        logger.warn("[Cockpit] Byggeanalyse blokeret af Hard Stop:", gatedResult.hardStopReason);
+      } else {
+        logger.warn("[Cockpit] Byggeanalyse mangler data:", gatedResult.reason);
+      }
     } catch (e) {
       logger.warn("[Cockpit] manuel AI-analyse fejlede:", e);
     } finally {
