@@ -18,25 +18,59 @@ import { Card } from "@/components/wizard-ui";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { AiDesignHero } from "@/components/cockpit/AiDesignHero";
-import { AnimatedNumber } from "@/components/cockpit/AnimatedNumber";
-import { DetailsAccordion, type DetailsSection } from "@/components/cockpit/DetailsAccordion";
+import { type DetailsSection } from "@/components/cockpit/DetailsAccordion";
 import { RisikoFeed } from "@/components/cockpit/RisikoFeed";
 import { CanvasWithGauges } from "@/components/cockpit/CanvasWithGauges";
 import { DetailsDrawer } from "@/components/cockpit/DetailsDrawer";
 import { StatusStripe } from "@/components/cockpit/StatusStripe";
 import { ProjektDnaPanel } from "@/components/cockpit";
 import { cn } from "@/lib/utils";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan } from "@/integrations/plandata/client";
+import { genererBbrVurdering } from "@/lib/bbr-assessment";
+import { classifyLokalplaner } from "@/lib/lokalplan-classifier";
+import { classifyTerrain, classifyGroundwater, isNearNeighbor } from "@/lib/site-risk-classifier";
+import type {
+  FjernvarmeResultat,
+  NeighborBuildingData,
+  VurData,
+} from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineBbrData,
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineLokalplan,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
+
+// ---------------------------------------------------------------------------
+// Public prop types
+// ---------------------------------------------------------------------------
+
+export type AnalyseTabData = {
+  data: RuleEngineBbrData;
+  lokalplaner: RuleEngineLokalplan[];
+  byggeanalyse: ByggeanalyseResultat | null;
+  metrics: ComplianceMetrics | null;
+  fbbData: RuleEngineFbbResult | null;
+  vurderingData: VurData | null;
+  geusRisk: RuleEngineGeusRiskData | null;
+  servitutter: RuleEngineTinglysningResult | null;
+  terrain: RuleEngineTerrainData | null;
+  fjernvarme: FjernvarmeResultat | null;
+  naboer: NeighborBuildingData | null;
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  dkjord: RuleEngineDkJordResultat | null;
+};
+
+export type AnalyseTabCallbacks = {
+  onRunAnalyse: () => void;
+  onShowEjendom: () => void;
+  onShowOekonomi: () => void;
+};
 
 // ---------------------------------------------------------------------------
 // Loading constants
@@ -120,42 +154,28 @@ function ErrorView({ message, onRetry }: { message: string; onRetry: () => void 
 
 function AnalyseTab({
   adresse,
-  data,
-  lokalplaner,
-  byggeanalyse,
-  metrics,
-  fbbData,
-  vurderingData,
-  geusRisk,
-  servitutter,
-  terrain,
-  fjernvarme,
-  naboer,
-  naturbeskyttelse,
-  dkjord,
+  analyseData: {
+    data,
+    lokalplaner,
+    byggeanalyse,
+    metrics,
+    fbbData,
+    vurderingData,
+    geusRisk,
+    servitutter,
+    terrain,
+    fjernvarme,
+    naboer,
+    naturbeskyttelse,
+    dkjord,
+  },
+  callbacks: { onRunAnalyse, onShowEjendom, onShowOekonomi },
   isRecomputing,
-  onRunAnalyse,
-  onShowEjendom,
-  onShowOekonomi,
 }: {
   adresse: string;
-  data: BbrKompliantData;
-  lokalplaner: Lokalplan[];
-  byggeanalyse: ByggeanalyseResultat | null;
-  metrics: ComplianceMetrics | null;
-  fbbData: import("@/integrations/fbb/client").FbbResultat | null;
-  vurderingData: import("@/integrations/vur/client").VurData | null;
-  geusRisk: GeusRiskData | null;
-  servitutter: TinglysningResult | null;
-  terrain: TerrainData | null;
-  fjernvarme: FjernvarmeResultat | null;
-  naboer: NeighborBuildingData | null;
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  dkjord: DkJordResultat | null;
+  analyseData: AnalyseTabData;
+  callbacks: AnalyseTabCallbacks;
   isRecomputing: boolean;
-  onRunAnalyse: () => void;
-  onShowEjendom: () => void;
-  onShowOekonomi: () => void;
 }) {
   const [mode] = useCockpitMode();
   const inKobMode = mode === "due-diligence";
@@ -169,13 +189,7 @@ function AnalyseTab({
     [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord],
   );
 
-  const vedtagne = lokalplaner.filter(
-    (p) =>
-      !p.status ||
-      p.status.toLowerCase().includes("vedtaget") ||
-      !p.status.toLowerCase().includes("forslag"),
-  );
-  const forslag = lokalplaner.filter((p) => p.status?.toLowerCase().includes("forslag"));
+  const { vedtagne, forslag } = classifyLokalplaner(lokalplaner);
 
   const drawerSections: DetailsSection[] = [
     {
@@ -192,7 +206,7 @@ function AnalyseTab({
       ) : (
         <Card>
           <p className="text-sm leading-relaxed text-foreground/80">
-            {genererVurdering(data, adresse)}
+            {genererBbrVurdering(data, adresse)}
           </p>
         </Card>
       ),
@@ -443,7 +457,7 @@ function FjernvarmeSektion({ data }: { data: FjernvarmeResultat }) {
 }
 
 function NaboerSektion({ data }: { data: NeighborBuildingData }) {
-  const naer = data.nearestDistanceM !== null && data.nearestDistanceM < 2.5;
+  const naer = isNearNeighbor(data.nearestDistanceM) === true;
   return (
     <Card className="mb-4">
       <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
@@ -557,9 +571,10 @@ function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
   );
 }
 
-function TerrainSektion({ data }: { data: TerrainData }) {
-  const erSkraanende = data.slopePercent >= 5;
-  const erBrat = data.slopePercent >= 15;
+function TerrainSektion({ data }: { data: RuleEngineTerrainData }) {
+  const terrainLevel = classifyTerrain(data.slopePercent);
+  const erBrat = terrainLevel === "steep";
+  const erSkraanende = terrainLevel === "sloping";
 
   return (
     <Card className="mb-4">
@@ -612,7 +627,7 @@ function TerrainSektion({ data }: { data: TerrainData }) {
   );
 }
 
-function ServitutterSektion({ data }: { data: TinglysningResult }) {
+function ServitutterSektion({ data }: { data: RuleEngineTinglysningResult }) {
   const kritiske = data.servitutter.filter((s) => s.kritisk);
   const ikkeKritiske = data.servitutter.filter((s) => !s.kritisk);
 
@@ -677,7 +692,7 @@ function ServitutterSektion({ data }: { data: TinglysningResult }) {
   );
 }
 
-function GeusRisikoSektion({ data }: { data: GeusRiskData }) {
+function GeusRisikoSektion({ data }: { data: RuleEngineGeusRiskData }) {
   const radonBadge = {
     high: { label: "HØJ RADONRISIKO", color: "text-danger border-danger/40 bg-danger/10" },
     medium: { label: "MIDDEL RADONRISIKO", color: "text-warning border-warning/40 bg-warning/10" },
@@ -685,11 +700,9 @@ function GeusRisikoSektion({ data }: { data: GeusRiskData }) {
     unknown: { label: "RADON UKENDT", color: "text-muted-foreground border-border bg-[#1a1a1a]" },
   }[data.radonRisk];
 
-  const vandHighRisk = data.groundwaterDepthM !== null && data.groundwaterDepthM < 1.0;
-  const vandLowRisk =
-    data.groundwaterDepthM !== null &&
-    data.groundwaterDepthM >= 1.0 &&
-    data.groundwaterDepthM < 2.0;
+  const gwRisk = classifyGroundwater(data.groundwaterDepthM);
+  const vandHighRisk = gwRisk === "high";
+  const vandLowRisk = gwRisk === "medium";
 
   return (
     <Card className="mb-4">
@@ -748,87 +761,5 @@ function GeusRisikoSektion({ data }: { data: GeusRiskData }) {
     </Card>
   );
 }
-
-function MetricCard({
-  title,
-  value,
-  sub,
-  subClass = "text-muted-foreground",
-  bar,
-}: {
-  title: string;
-  value: string;
-  sub: string;
-  subClass?: string;
-  bar?: number;
-}) {
-  // Forsøg at udtrække tal + suffix fra value-strengen for at animere det.
-  const match = /^(-?\d+(?:[.,]\d+)?)(\D*)$/.exec(value.trim());
-  const numericValue = match ? parseFloat(match[1].replace(",", ".")) : null;
-  const suffix = match ? match[2] : "";
-  const decimals = match && match[1].includes(".") ? 1 : 0;
-
-  return (
-    <Card>
-      <div className="text-[11px] font-mono tracking-[0.1em] text-muted-foreground mb-2">
-        {title.toUpperCase()}
-      </div>
-      <div className="font-mono text-2xl text-foreground">
-        {numericValue !== null ? (
-          <AnimatedNumber value={numericValue} decimals={decimals} suffix={suffix} />
-        ) : (
-          value
-        )}
-      </div>
-      <div className={`text-xs mt-1 ${subClass}`}>{sub}</div>
-      {bar !== undefined && (
-        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[#222]">
-          <motion.div
-            className="h-full bg-accent"
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.min(100, Math.max(0, bar * 100))}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          />
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function genererVurdering(data: BbrKompliantData, adresse: string): string {
-  if (!data.beregning_mulig) {
-    return `Vi fandt en registrering på ${adresse}, men kunne ikke beregne alle compliance-parametre. ${data.fejl ?? ""} Vi anbefaler at kontakte din kommune for en præcis byggesagsvurdering.`;
-  }
-
-  const parts: string[] = [];
-  if (data.bebyggelsesprocent !== null && data.grundareal !== null) {
-    parts.push(
-      `Nuværende bebyggelsesprocent er ${data.bebyggelsesprocent}% på en grund af ${data.grundareal} m².`,
-    );
-  }
-  if (data.bebygget_areal !== null) {
-    parts.push(`Det bebyggede areal udgør ${data.bebygget_areal} m².`);
-  }
-  if (data.antal_etager !== null) {
-    parts.push(
-      data.antal_etager <= 1
-        ? "Eksisterende bebyggelse er i ét plan."
-        : `Bygningen har ${data.antal_etager} etager.`,
-    );
-  }
-  if (data.anvendelseskode && ["321", "322"].includes(data.anvendelseskode)) {
-    parts.push(
-      "Ejendommen er registreret til liberalt erhverv, hvilket muliggør en kombineret bolig/klinik-løsning.",
-    );
-  }
-
-  return parts.length > 0
-    ? parts.join(" ")
-    : `Bygningsdata hentet for ${adresse}. Kontakt din kommune for fuld byggesagsvurdering.`;
-}
-
-// Suppress unused import warnings — these are referenced in component bodies
-void DetailsAccordion;
-void MetricCard;
 
 export { LoadingView, ErrorView, AnalyseTab };
