@@ -32,7 +32,7 @@ const MOCK_BBR = {
   mat_strandbeskyttelse: false,
   mat_fredskov: false,
   mat_klitfredning: false,
-  alle_bbr_public_ids: [],
+  alle_bygning_lokal_ids: [],
   jordstykke_lokal_id: null,
 } as any;
 

@@ -13,20 +13,25 @@
 
 import { validateEnv } from "@/lib/env";
 
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
-import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
-import type { MatParcelGeometryPayload } from "@/integrations/mat/geometry";
-import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { FbbResultat } from "@/integrations/fbb/client";
+import type {
+  RuleEngineBbrData,
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+  RuleEngineLokalplanExtract,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
+import type {
+  FjernvarmeResultat,
+  MatParcelGeometryPayload,
+  NeighborBuildingData,
+  VurData,
+} from "@/domain/contracts/analysis.types";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
-import type { VurData } from "@/integrations/vur/client";
 import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
 import {
   finishAnalysisRun,
@@ -46,19 +51,19 @@ import { shouldSkipExpensiveLayer4 } from "@/lib/analysis/hard-stop-gate";
 // ---------------------------------------------------------------------------
 
 export type ComplianceResult = {
-  bbr: BbrKompliantData | null;
-  lokalplaner: Lokalplan[];
-  kommuneplanramme: Kommuneplanramme | null;
+  bbr: RuleEngineBbrData | null;
+  lokalplaner: RuleEngineLokalplan[];
+  kommuneplanramme: RuleEngineKommuneplanramme | null;
   analysedAt: string;
-  lokalplanExtract: LokalplanExtract | null;
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  dkjord: DkJordResultat | null;
-  geusRisk: GeusRiskData | null;
-  servitutter: TinglysningResult | null;
-  terrain: TerrainData | null;
+  lokalplanExtract: RuleEngineLokalplanExtract | null;
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  dkjord: RuleEngineDkJordResultat | null;
+  geusRisk: RuleEngineGeusRiskData | null;
+  servitutter: RuleEngineTinglysningResult | null;
+  terrain: RuleEngineTerrainData | null;
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
-  fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi (1-9) + fredningsstatus fra FBB
+  fbbData: RuleEngineFbbResult | null; // ARCH-131: SAVE-bevaringsværdi (1-9) + fredningsstatus fra FBB
   matGeometri: MatParcelGeometryPayload | null; // ARCH-240: parcelpolygon + skel-metrics
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
@@ -201,7 +206,7 @@ async function analyseAddressWithTrace(
         addressId,
         koordinater,
         jordstykkeId: complianceBase.bbr?.jordstykke_lokal_id ?? null,
-        bygningIds: complianceBase.bbr?.alle_bbr_public_ids ?? [],
+        bygningIds: complianceBase.bbr?.alle_bygning_lokal_ids ?? [],
         grundareal: enriched.grundareal,
         skipExpensive: shouldSkipExpensiveLayer4(complianceBase.bbr),
       },

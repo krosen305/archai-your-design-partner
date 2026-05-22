@@ -213,7 +213,6 @@ describe("deriveSiteConstraintsPatch", () => {
         bygning_lokal_id: null,
         fbb_reference: null,
         alle_bygning_lokal_ids: [],
-        alle_bbr_public_ids: [],
         jordstykke_lokal_id: null,
         canonical_building_lokal_id: null,
         canonical_selection_reason: null,

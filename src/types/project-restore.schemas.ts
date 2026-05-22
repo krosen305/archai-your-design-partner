@@ -104,7 +104,6 @@ export const ruleEngineBbrDataSchema = z
     bygning_lokal_id: z.string().nullable(),
     fbb_reference: z.string().nullable(),
     alle_bygning_lokal_ids: z.array(z.string()),
-    alle_bbr_public_ids: z.array(z.string()),
     jordstykke_lokal_id: z.string().nullable(),
     canonical_building_lokal_id: z.string().nullable(),
     canonical_selection_reason: z.string().nullable(),

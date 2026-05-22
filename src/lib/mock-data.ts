@@ -6,7 +6,7 @@
 // Alle mock-data afspejler Hasselvej 48, 2830 Virum (Lyngby-Taarbæk kommune).
 
 import type { Address, Byggeoenske } from "@/types/project-state";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 
 // ---------------------------------------------------------------------------
 // Adresse
@@ -29,10 +29,10 @@ export const MOCK_ADRESSE: Address = {
 };
 
 // ---------------------------------------------------------------------------
-// BBR (BbrKompliantData)
+// BBR (RuleEngineBbrData)
 // ---------------------------------------------------------------------------
 
-export const MOCK_BBR: BbrKompliantData = {
+export const MOCK_BBR: RuleEngineBbrData = {
   beregning_mulig: true,
   grundareal: 441,
   bebygget_areal: 68,
@@ -54,7 +54,6 @@ export const MOCK_BBR: BbrKompliantData = {
   bygning_lokal_id: null,
   fbb_reference: null,
   alle_bygning_lokal_ids: [],
-  alle_bbr_public_ids: [],
   jordstykke_lokal_id: null,
   canonical_building_lokal_id: null,
   canonical_selection_reason: null,

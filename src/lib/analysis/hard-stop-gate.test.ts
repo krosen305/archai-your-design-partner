@@ -1,8 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { shouldSkipExpensiveLayer4 } from "./hard-stop-gate";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 
-function mockBbr(overrides: Partial<BbrKompliantData> = {}): BbrKompliantData {
+function mockBbr(overrides: Partial<RuleEngineBbrData> = {}): RuleEngineBbrData {
   return {
     byggeaar: null,
     bebygget_areal: null,
@@ -25,7 +25,6 @@ function mockBbr(overrides: Partial<BbrKompliantData> = {}): BbrKompliantData {
     bygning_lokal_id: null,
     fbb_reference: null,
     alle_bygning_lokal_ids: [],
-    alle_bbr_public_ids: [],
     jordstykke_lokal_id: null,
     canonical_building_lokal_id: null,
     canonical_selection_reason: null,

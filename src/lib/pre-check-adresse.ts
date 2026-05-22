@@ -12,12 +12,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { AdressePreCheckResultat } from "@/types/project-state";
 export type { AdressePreCheckResultat } from "@/types/project-state";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
-import type { VurData } from "@/integrations/vur/client";
+import type { VurData } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineBbrData,
+  RuleEngineFbbResult,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+  RuleEngineNaturbeskyttelsesResultat,
+} from "@/domain/contracts/rule-engine.types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { FbbResultat } from "@/integrations/fbb/client";
 import { fetchLayer1 } from "@/lib/compliance-layer1";
 import { buildPreCheckFlags } from "@/lib/pre-check-flags";
 import {
@@ -126,8 +129,8 @@ async function runPreCheckAdresse(
               () => NaturbeskyttelseService.getTilstand(koordinater),
             ),
           )
-          .catch(() => null as NaturbeskyttelsesResultat | null)
-      : Promise.resolve(null as NaturbeskyttelsesResultat | null),
+          .catch(() => null as RuleEngineNaturbeskyttelsesResultat | null)
+      : Promise.resolve(null as RuleEngineNaturbeskyttelsesResultat | null),
   ]);
 
   const labels = ["Layer1", "Naturbeskyttelse"];
@@ -157,7 +160,7 @@ async function runPreCheckAdresse(
       ? layer1Settled.value
       : {
           bbr: null,
-          lokalplaner: [] as Lokalplan[],
+          lokalplaner: [] as RuleEngineLokalplan[],
           kommuneplanramme: null,
           vurderingData: null,
         };
@@ -168,8 +171,8 @@ async function runPreCheckAdresse(
 
   // FBB: kræver integer BBR building IDs fra Datafordeler/BBR — køres separat efter BBR-fasen (ARCH-131)
   // Fallback til adresse-opslag når FBB ikke finder bygnings-IDs (ARCH-151).
-  let fbbData: FbbResultat | null = null;
-  const bygningIds = bbr?.alle_bbr_public_ids ?? [];
+  let fbbData: RuleEngineFbbResult | null = null;
+  const bygningIds = bbr?.alle_bygning_lokal_ids ?? [];
   if (bygningIds.length) {
     fbbData = await import("@/integrations/fbb/client")
       .then(({ FbbService }) =>

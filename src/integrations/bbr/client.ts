@@ -60,6 +60,10 @@ function getConfig(explicit?: BbrClientConfig) {
   return { apiKey, endpoint };
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Ukendt BBR-fejl";
+}
+
 // ---------------------------------------------------------------------------
 // Output type
 // ---------------------------------------------------------------------------
@@ -121,7 +125,6 @@ export type BbrKompliantData = {
   bygning_lokal_id: string | null; // BBR UUID for canonical bygning (= FBB bygningLokalId)
   fbb_reference: string | null; // byg071 — URI-link til FBB-registrering (null = ikke i FBB)
   alle_bygning_lokal_ids: string[]; // UUIDs for alle bygninger på adressen (inkl. sekundære)
-  alle_bbr_public_ids: string[]; // FBB ois_id værdier afledt direkte fra BBR id_lokalId (ARCH-166)
   jordstykke_lokal_id: string | null; // primær MAT_Jordstykke id_lokalId til MatrikelMap (ARCH-223/229)
   // Canonical building metadata — which building was selected and why
   canonical_building_lokal_id: string | null;
@@ -310,7 +313,6 @@ export class BbrService {
         bygning_lokal_id: canonicalBuilding.id_lokalId ?? null,
         fbb_reference: canonicalBuilding.byg071BevaringsvaerdighedReference ?? null,
         alle_bygning_lokal_ids,
-        alle_bbr_public_ids: alle_bygning_lokal_ids,
         jordstykke_lokal_id: null,
         canonical_building_lokal_id: canonicalBuilding.id_lokalId ?? null,
         canonical_selection_reason: canonicalReason,
@@ -326,7 +328,7 @@ export class BbrService {
         message: "Service fejl",
         error: e,
       });
-      return this.getEmptyData((e as Error).message);
+      return this.getEmptyData(getErrorMessage(e));
     }
   }
 
@@ -353,7 +355,6 @@ export class BbrService {
       bygning_lokal_id: null,
       fbb_reference: null,
       alle_bygning_lokal_ids: [],
-      alle_bbr_public_ids: [],
       jordstykke_lokal_id: null,
       canonical_building_lokal_id: null,
       canonical_selection_reason: null,

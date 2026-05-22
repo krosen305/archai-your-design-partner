@@ -1,9 +1,11 @@
 import { describe, it, expect } from "bun:test";
 import { deriveComplianceFlags } from "./compliance-flags";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+} from "@/domain/contracts/rule-engine.types";
 
-const baseBbr: BbrKompliantData = {
+const baseBbr: RuleEngineBbrData = {
   byggeaar: "1985",
   bebygget_areal: 136,
   samlet_areal: 200,
@@ -25,7 +27,6 @@ const baseBbr: BbrKompliantData = {
   bygning_lokal_id: "aabbcc-1234",
   fbb_reference: null,
   alle_bygning_lokal_ids: ["aabbcc-1234"],
-  alle_bbr_public_ids: ["aabbcc-1234"],
   jordstykke_lokal_id: null,
   canonical_building_lokal_id: "aabbcc-1234",
   canonical_selection_reason: "only_candidate",
@@ -34,7 +35,7 @@ const baseBbr: BbrKompliantData = {
   bygning_samlet_boligareal: 200,
 };
 
-const baseRamme: Kommuneplanramme = {
+const baseRamme: RuleEngineKommuneplanramme = {
   planid: "test-ramme-1",
   plannavn: "Testramme",
   plannr: "1.1.B",
@@ -66,7 +67,7 @@ describe("deriveComplianceFlags", () => {
   });
 
   it("returns blocker for strandbeskyttelse from MAT", () => {
-    const bbr: BbrKompliantData = { ...baseBbr, mat_strandbeskyttelse: true };
+    const bbr: RuleEngineBbrData = { ...baseBbr, mat_strandbeskyttelse: true };
     const flags = deriveComplianceFlags(bbr, null);
     const flag = flags.find((f) => f.id === "mat-strandbeskyttelse");
     expect(flag).toBeDefined();
@@ -74,7 +75,7 @@ describe("deriveComplianceFlags", () => {
   });
 
   it("returns blocker for fredskov from MAT", () => {
-    const bbr: BbrKompliantData = { ...baseBbr, mat_fredskov: true };
+    const bbr: RuleEngineBbrData = { ...baseBbr, mat_fredskov: true };
     const flags = deriveComplianceFlags(bbr, null);
     const flag = flags.find((f) => f.id === "mat-fredskov");
     expect(flag).toBeDefined();
@@ -82,7 +83,7 @@ describe("deriveComplianceFlags", () => {
   });
 
   it("returns blocker for fredet building", () => {
-    const bbr: BbrKompliantData = { ...baseBbr, fredet: true };
+    const bbr: RuleEngineBbrData = { ...baseBbr, fredet: true };
     const flags = deriveComplianceFlags(bbr, null);
     const flag = flags.find((f) => f.id === "bbr-fredet");
     expect(flag).toBeDefined();
@@ -91,8 +92,8 @@ describe("deriveComplianceFlags", () => {
   });
 
   it("returns blocker when bebyggelsesprocent exceeds limit", () => {
-    const bbr: BbrKompliantData = { ...baseBbr, bebyggelsesprocent: 40 };
-    const ramme: Kommuneplanramme = { ...baseRamme, bebygpct: 30 };
+    const bbr: RuleEngineBbrData = { ...baseBbr, bebyggelsesprocent: 40 };
+    const ramme: RuleEngineKommuneplanramme = { ...baseRamme, bebygpct: 30 };
     const flags = deriveComplianceFlags(bbr, ramme);
     const flag = flags.find((f) => f.id === "bebyggelsesprocent");
     expect(flag).toBeDefined();

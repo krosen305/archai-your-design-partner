@@ -1,14 +1,16 @@
 import { describe, it, expect } from "bun:test";
 import { computePartialUpdate } from "./reactive-compliance";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+} from "@/domain/contracts/rule-engine.types";
 import type { PartialUpdateParams } from "./reactive-compliance";
 
 // ---------------------------------------------------------------------------
 // Fixtures — copied from compliance-flags.test.ts pattern
 // ---------------------------------------------------------------------------
 
-const baseBbr: BbrKompliantData = {
+const baseBbr: RuleEngineBbrData = {
   byggeaar: "1985",
   bebygget_areal: 136,
   samlet_areal: 200,
@@ -30,7 +32,6 @@ const baseBbr: BbrKompliantData = {
   bygning_lokal_id: "aabbcc-1234",
   fbb_reference: null,
   alle_bygning_lokal_ids: ["aabbcc-1234"],
-  alle_bbr_public_ids: ["aabbcc-1234"],
   jordstykke_lokal_id: null,
   canonical_building_lokal_id: "aabbcc-1234",
   canonical_selection_reason: "only_candidate",
@@ -39,7 +40,7 @@ const baseBbr: BbrKompliantData = {
   bygning_samlet_boligareal: 200,
 };
 
-const baseRamme: Kommuneplanramme = {
+const baseRamme: RuleEngineKommuneplanramme = {
   planid: "test-ramme-1",
   plannavn: "Testramme",
   plannr: "1.1.B",

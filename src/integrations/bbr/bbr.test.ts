@@ -246,7 +246,7 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     expect(result.mat_fredskov).toBeNull();
     expect(result.mat_klitfredning).toBeNull();
   });
-  it("genbruger BBR UUIDer som FBB-opslags-IDer", async () => {
+  it("returnerer BBR UUIDer som FBB-opslags-IDer", async () => {
     mockFetch([
       okResponse([
         { ...MOCK_BYGNING, id_lokalId: "uuid-1" },
@@ -256,7 +256,6 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
 
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
     expect(result.alle_bygning_lokal_ids).toEqual(["uuid-1", "uuid-2"]);
-    expect(result.alle_bbr_public_ids).toEqual(["uuid-1", "uuid-2"]);
   });
 
   it("Byledet 3: canonical er 2022-bygning, bebygget_areal=140, samlet_areal=271, aggregated=250", async () => {

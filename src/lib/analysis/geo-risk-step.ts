@@ -11,14 +11,18 @@ import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { summarizeSourceResult } from "@/lib/source-result";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
-import type { MatParcelGeometryPayload } from "@/integrations/mat/geometry";
-import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { FbbResultat } from "@/integrations/fbb/client";
+import type {
+  FjernvarmeResultat,
+  MatParcelGeometryPayload,
+  NeighborBuildingData,
+} from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+} from "@/domain/contracts/rule-engine.types";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 
 // ---------------------------------------------------------------------------
@@ -29,19 +33,19 @@ export type GeoRiskInput = {
   addressId: string;
   koordinater: { lat: number; lng: number } | null;
   jordstykkeId: string | null; // complianceBase.bbr?.jordstykke_lokal_id ?? null
-  bygningIds: string[]; // complianceBase.bbr?.alle_bbr_public_ids ?? []
+  bygningIds: string[]; // complianceBase.bbr?.alle_bygning_lokal_ids ?? []
   grundareal: number | null;
   skipExpensive: boolean; // result of shouldSkipExpensiveLayer4()
 };
 
 export type GeoRiskResult = {
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  dkjord: DkJordResultat | null;
-  geusRisk: GeusRiskData | null;
-  terrain: TerrainData | null;
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  dkjord: RuleEngineDkJordResultat | null;
+  geusRisk: RuleEngineGeusRiskData | null;
+  terrain: RuleEngineTerrainData | null;
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
-  fbbData: FbbResultat | null;
+  fbbData: RuleEngineFbbResult | null;
   matGeometri: MatParcelGeometryPayload | null;
   states: Partial<Record<DataSourceKind, PipelineServiceState>>;
 };
@@ -58,13 +62,13 @@ export async function runGeoRiskStep(
 
   const states: Partial<Record<DataSourceKind, PipelineServiceState>> = {};
 
-  let naturbeskyttelse: NaturbeskyttelsesResultat | null = null;
-  let dkjord: DkJordResultat | null = null;
-  let geusRisk: GeusRiskData | null = null;
-  let terrain: TerrainData | null = null;
+  let naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null = null;
+  let dkjord: RuleEngineDkJordResultat | null = null;
+  let geusRisk: RuleEngineGeusRiskData | null = null;
+  let terrain: RuleEngineTerrainData | null = null;
   let naboer: NeighborBuildingData | null = null;
   let fjernvarme: FjernvarmeResultat | null = null;
-  let fbbData: FbbResultat | null = null;
+  let fbbData: RuleEngineFbbResult | null = null;
   let matGeometri: MatParcelGeometryPayload | null = null;
 
   // ── Step 1: MAT geometry ─────────────────────────────────────────────────
