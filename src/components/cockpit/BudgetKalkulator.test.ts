@@ -6,7 +6,7 @@ import {
   beregnNybyg,
   beregnBudget,
   type BudgetInput,
-} from "./BudgetKalkulator";
+} from "@/lib/budget-calculator";
 
 describe("beregnNedrivning", () => {
   it("beregner standard sats (800–1200 kr/m²)", () => {
