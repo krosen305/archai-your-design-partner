@@ -1,6 +1,11 @@
 // src/types/building-platform.test.ts
 import { describe, test, expect } from "bun:test";
-import { hasAbsoluteHardStop, getSaveHardStop, getDesignAreaM2, getDesignFloors } from "./building-platform";
+import {
+  hasAbsoluteHardStop,
+  getSaveHardStop,
+  getDesignAreaM2,
+  getDesignFloors,
+} from "./building-platform";
 import type { SiteConstraints, DesignIteration } from "./building-platform";
 import type { Json } from "@/integrations/supabase/types";
 

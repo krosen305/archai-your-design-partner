@@ -1,10 +1,7 @@
 // src/lib/analysis/layer1-analysis.ts
 // SERVER-SIDE ONLY.
 
-import {
-  getCachedCompliance,
-  setCachedCompliance,
-} from "@/integrations/cache/client";
+import { getCachedCompliance, setCachedCompliance } from "@/integrations/cache/client";
 import { fetchBbrWithMat, fetchPlandata, fetchVurViaEbr } from "@/lib/compliance-layer1";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";

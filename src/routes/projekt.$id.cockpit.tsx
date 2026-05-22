@@ -182,10 +182,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
         {status === "loading" && <LoadingView />}
 
         {status === "error" && (
-          <ErrorView
-            message={fetchError ?? "Ukendt fejl."}
-            onRetry={triggerRefresh}
-          />
+          <ErrorView message={fetchError ?? "Ukendt fejl."} onRetry={triggerRefresh} />
         )}
 
         {status === "done" && bbrData && (

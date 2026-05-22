@@ -177,7 +177,6 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!, $registreringstid: D
   }
 }`;
 
-
 // ---------------------------------------------------------------------------
 // Aggregeringskonstanter og -helper — ARCH-227
 // ---------------------------------------------------------------------------
@@ -223,7 +222,13 @@ export class BbrService {
     url.searchParams.set("apiKey", apiKey);
 
     try {
-      const data = await datafordelerGraphqlFetch<unknown>(url, BYGNING_QUERY, { id, ...currentBitemporalArgs() }, "BBR_Bygning", { trace, phase: "layer1", metadata: { endpoint: "BBR/v2" } });
+      const data = await datafordelerGraphqlFetch<unknown>(
+        url,
+        BYGNING_QUERY,
+        { id, ...currentBitemporalArgs() },
+        "BBR_Bygning",
+        { trace, phase: "layer1", metadata: { endpoint: "BBR/v2" } },
+      );
       // 1–2. Aggregér bygningsliste (ARCH-227)
       const bygninger: BbrBygning[] = parseBbrBygninger(data);
       const {

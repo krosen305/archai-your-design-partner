@@ -24,10 +24,7 @@ export function computeFootprintAreaM2(ring: Ring): number | null {
   return shoelaceArea(ring) * DEG2_TO_M2_DK;
 }
 
-export function computeMinDistanceToBoundaryM(
-  point: [number, number],
-  ring: Ring,
-): number | null {
+export function computeMinDistanceToBoundaryM(point: [number, number], ring: Ring): number | null {
   if (ring.length < 2) return null;
   const mPerLng = 111_320 * Math.cos((56 * Math.PI) / 180);
   const mPerLat = 111_320;
@@ -53,10 +50,7 @@ export function computeMinDistanceToBoundaryM(
   return minDist === Infinity ? null : minDist;
 }
 
-export function computeOutsideParcelAreaM2(
-  footprintRing: Ring,
-  parcelRing: Ring,
-): number | null {
+export function computeOutsideParcelAreaM2(footprintRing: Ring, parcelRing: Ring): number | null {
   if (footprintRing.length < 3 || parcelRing.length < 3) return null;
 
   const fMinX = Math.min(...footprintRing.map((p) => p[0]));

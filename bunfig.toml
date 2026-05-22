@@ -5,3 +5,8 @@ saveTextLockfile = true
 # tests/ indeholder Playwright E2E-specs — kør dem med: npx playwright test
 # bun test køres kun på unit tests i src/
 root = "src"
+# Preload react-test-setup for React component tests (happy-dom + jest-dom matchers)
+# Only .test.tsx files that import react-test-setup directly will activate this.
+# The preload flag is NOT set globally here because it would break pure-unit tests
+# that do not need a DOM (e.g. rule-engine, decoders). Instead, each React test
+# imports react-test-setup explicitly at the top.

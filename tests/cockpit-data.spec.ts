@@ -1,22 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { enterCockpitWithMockAddress } from "./helpers/session";
 
 // ---------------------------------------------------------------------------
 // Test 1: mock-adresse navigerer til cockpit og viser compliance-sektioner
 // ---------------------------------------------------------------------------
 
 test("mock-adresse: navigerer til cockpit og viser compliance-sektioner", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-
-  await page.goto("/projekt/adresse");
-
-  const devBtn = page.getByRole("button", { name: /DEV: Brug mock-adresse/i });
-  await expect(devBtn).toBeVisible();
-  await devBtn.click();
-
-  await page.waitForURL(/\/projekt\/.+\/cockpit/, { timeout: 15000 });
+  await enterCockpitWithMockAddress(page);
 
   await expect(page.getByText("GRUNDAREAL", { exact: false })).toBeVisible();
 });
@@ -28,26 +18,18 @@ test("mock-adresse: navigerer til cockpit og viser compliance-sektioner", async 
 test("cockpit ejendom-tab: Datakilder-sektion viser datarækker med data-testid", async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-
-  await page.goto("/projekt/adresse");
-  await page.getByRole("button", { name: /DEV: Brug mock-adresse/i }).click();
-  await page.waitForURL(/\/projekt\/.+\/cockpit/, { timeout: 15000 });
+  await enterCockpitWithMockAddress(page);
 
   const ejendomTab = page.getByRole("tab", { name: /EJENDOM/i });
-  if (await ejendomTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await ejendomTab.click();
-  }
+  await expect(ejendomTab).toBeVisible({ timeout: 5000 });
+  await ejendomTab.click();
 
   const datakildBtn = page.getByRole("button", { name: /Datakildeoversigt/i });
-  if (await datakildBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await datakildBtn.click();
-    const firstRow = page.locator('[data-testid^="datarow-"]').first();
-    await expect(firstRow).toBeVisible({ timeout: 5000 });
-  }
+  await expect(datakildBtn).toBeVisible({ timeout: 5000 });
+  await datakildBtn.click();
+
+  const firstRow = page.locator('[data-testid^="datarow-"]').first();
+  await expect(firstRow).toBeVisible({ timeout: 5000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -55,30 +37,21 @@ test("cockpit ejendom-tab: Datakilder-sektion viser datarækker med data-testid"
 // ---------------------------------------------------------------------------
 
 test("cockpit DataRow badge viser PipelineServiceState tekst", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-
-  await page.goto("/projekt/adresse");
-  await page.getByRole("button", { name: /DEV: Brug mock-adresse/i }).click();
-  await page.waitForURL(/\/projekt\/.+\/cockpit/, { timeout: 15000 });
+  await enterCockpitWithMockAddress(page);
 
   const ejendomTab = page.getByRole("tab", { name: /EJENDOM/i });
-  if (await ejendomTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await ejendomTab.click();
-  }
+  await expect(ejendomTab).toBeVisible({ timeout: 5000 });
+  await ejendomTab.click();
 
   const datakildBtn = page.getByRole("button", { name: /Datakildeoversigt/i });
-  if (await datakildBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await datakildBtn.click();
+  await expect(datakildBtn).toBeVisible({ timeout: 5000 });
+  await datakildBtn.click();
 
-    // Badge must show one of the 7 named PipelineServiceState labels — not raw "LIVE"/"MANGLER"
-    const validBadgePattern = /LIVE|INGEN HIT|FEJL|SPRUNGET OVER|MOCK|CACHE|IKKE KØRT/i;
-    const badge = page.locator('[data-testid$="-badge"]').first();
-    await expect(badge).toBeVisible({ timeout: 8000 });
-    await expect(badge).toHaveText(validBadgePattern);
-  }
+  // Badge must show one of the 7 named PipelineServiceState labels — not raw "LIVE"/"MANGLER"
+  const validBadgePattern = /LIVE|INGEN HIT|FEJL|SPRUNGET OVER|MOCK|CACHE|IKKE KØRT/i;
+  const badge = page.locator('[data-testid$="-badge"]').first();
+  await expect(badge).toBeVisible({ timeout: 8000 });
+  await expect(badge).toHaveText(validBadgePattern);
 });
 
 // ---------------------------------------------------------------------------
@@ -86,25 +59,11 @@ test("cockpit DataRow badge viser PipelineServiceState tekst", async ({ page }) 
 // ---------------------------------------------------------------------------
 
 test("cockpit viser grundareal stat-card med data-testid", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
+  await enterCockpitWithMockAddress(page);
 
-  await page.goto("/projekt/adresse");
-  await page.getByRole("button", { name: /DEV: Brug mock-adresse/i }).click();
-  await page.waitForURL(/\/projekt\/.+\/cockpit/, { timeout: 15000 });
-
-  // Stat card wrapper (added in Task 6)
   const grundarealCard = page.locator('[data-testid="stat-card-grundareal"]');
-  if (await grundarealCard.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await expect(grundarealCard).toBeVisible();
-    // The value div inside should exist
-    await expect(page.locator('[data-testid="stat-grundareal-value"]')).toBeVisible();
-  } else {
-    // Fallback: at minimum the GRUNDAREAL label is visible
-    await expect(page.getByText("GRUNDAREAL", { exact: false })).toBeVisible();
-  }
+  await expect(grundarealCard).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('[data-testid="stat-grundareal-value"]')).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------

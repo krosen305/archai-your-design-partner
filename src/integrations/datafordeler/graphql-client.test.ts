@@ -13,9 +13,7 @@ type TestResponse = { DAR_Adresse: { nodes: { id_lokalId: string }[] } };
 
 describe("datafordelerGraphqlFetch", () => {
   it("returns typed data on success", async () => {
-    installSequentialJsonFetch([
-      { data: { DAR_Adresse: { nodes: [{ id_lokalId: "abc" }] } } },
-    ]);
+    installSequentialJsonFetch([{ data: { DAR_Adresse: { nodes: [{ id_lokalId: "abc" }] } } }]);
     const result = await datafordelerGraphqlFetch<TestResponse>(
       TEST_URL,
       TEST_QUERY,

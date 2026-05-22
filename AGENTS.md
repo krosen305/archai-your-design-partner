@@ -1,395 +1,453 @@
-# AGENTS.md — ArchAI
+# AGENTS.md - ArchAI Implementation Contract
 
-**ArchAI — The Builder's Cockpit.** AI-powered platform for private residential construction in Denmark. TanStack Start (React SSR) on Cloudflare Workers. Bun as runtime and package manager.
+ArchAI - The Builder's Cockpit.
 
-> Dette projekt har to AI-agenter: **Claude Code** (arkitektonisk opsyn) og **Codex** (implementering). Claude Code ejer CLAUDE.md og AGENTS.md. Codex opdaterer dem **IKKE** autonomt uden en eksplicit brugeropgave og efterfølgende human review.
+This file is the implementation contract for AI coding agents working in this
+repository. It is intentionally practical and strict.
+
+Claude Code owns architecture and these instruction files. Codex and other
+implementation agents must not update `AGENTS.md` or `CLAUDE.md` unless the
+user explicitly asks and the change receives human review.
+
+For architecture doctrine, see `CLAUDE.md`.
+For the current refactoring backlog, see `ROADMAP2.md`.
+For integration details, see `docs/INTEGRATIONS.md`.
+
+---
+
+## Product Invariant
+
+ArchAI is a due-diligence and decision cockpit for private residential
+construction in Denmark.
+
+It is not primarily an AI design toy.
+
+The product must help users understand:
+
+- whether they can build
+- what blocks them
+- what is risky or expensive
+- what must be checked before purchase, demolition or design
+- which design choices are realistic under regulation, budget and site data
+
+Pre-purchase due diligence is a primary use case.
+
+AI may inspire and explain. AI must not invent compliance truth.
+
+---
+
+## Canonical Phases
+
+Use these phase names in new code, comments, docs and PR descriptions:
+
+1. `Sandkassen` - inspiration, wishes, images, Hus-DNA.
+2. `Matriklen` - address, plot, BBR/MAT/FBB/Plandata, Hard Stops.
+3. `Maskinrummet` - parametric design, budget, live compliance, BIM direction.
+4. `Myndighed` - applications, neighbour hearing, LCA, statics, documentation.
+
+The journey is iterative, not linear.
 
 ---
 
 ## Commands
 
+Use Bun.
+
 ```bash
-bun dev                   # Dev server
-bun run build             # Production build — kør inden du erklærer dig færdig
-bun test                  # Test suite (0 failures påkrævet)
-bunx tsc --noEmit         # Type check (0 errors påkrævet)
-bunx eslint .             # Lint (0 errors påkrævet)
-bunx prettier --write .   # Format
+bun dev
+bun run build
+bun test
+bunx tsc --noEmit
+bunx eslint .
+bunx prettier --write .
 ```
 
----
+Before declaring work complete, run:
 
-## De 4 faser — Builder's Cockpit
-
-Kunderejsen er **ikke lineær**. Den er opdelt i 4 faser. Brug altid disse navne i kode, kommentarer og PR-beskrivelser:
-
-| Fase | Navn             | Indhold                                                 |
-| ---- | ---------------- | ------------------------------------------------------- |
-| 1    | **Sandkassen**   | Inspiration, AI-genererede koncepter (Hus-DNA)          |
-| 2    | **Matriklen**    | Grunddata, Hard Stops, SAVE-værdier, beskyttelseslinjer |
-| 3    | **Maskinrummet** | Parametrisk design, live compliance, BIM                |
-| 4    | **Myndighed**    | Ansøgninger, nabopartshøring, LCA, statics              |
-
-**Pre-purchase er en primær use case** — compliance-data er due diligence, ikke kun projekteringshjælp.
-
----
-
-## Kritiske regler — ubrydelige
-
-### Aldrig redigér
-
-- `src/routeTree.gen.ts` — auto-genereret af TanStack Router
-- `vite.config.ts` — delegerer til `@lovable.dev/vite-tanstack-config`
-
-### Aldrig slet
-
-- `src/server.ts` — Sentry-wrapper. Mangler den, crasher `wrangler.toml` til default entry.
-
-### DAWA som compliance-kilde er forbudt
-
-Brug **aldrig** DAWA/Dataforsyningen REST som compliance- eller registerkilde — hverken som primær kilde eller fallback. DAWA er udfaset og lukker. Al adresse-, matrikel-, BBR- og grundarealdata hentes fra Datafordeler (DAR, MAT, BBR, EBR/VUR). Hvis DAR/MAT mangler en nøgle eller et felt, returneres `null` eller brug en godkendt Datafordeler-baseret resolver — ingen DAWA-fallback.
-
-Tilladte undtagelser:
-
-- `api.dataforsyningen.dk/rest/gsearch/v2.0` må bruges til adresse-autocomplete. Det er kun søge-UX; alle registerdata enriches efterfølgende fra DAR.
-- Dataforsyningen/SDFI kort-tiles (fx WMTS) må bruges som baggrundskort. De må ikke være SSOT for compliance.
-- `src/integrations/bbr/neighbor-client.ts` returnerer tom liste, indtil en godkendt Datafordeler/GeoDanmark-kilde til radius-naboer findes.
-
-### Server boundary
-
-Al Datafordeler- og Supabase-kode SKAL ligge i `createServerFn`. Importer **aldrig** server-moduler på top-level i route-filer (`src/routes/*.tsx`).
-
-### State
-
-Cockpit-data lever **udelukkende** i `src/lib/project-store.ts` (Zustand). Ingen lokal `useState` for data der skal bevares på tværs af routes eller genindlæsninger.
-
-### Env
-
-Importér altid env-variabler fra `src/lib/env.ts`. Brug aldrig `process.env` direkte. Nye env-variabler dokumenteres i `CLAUDE.md` under "Env vars".
-
----
-
-## Development Rules — Compliance Engine
-
-Disse tre regler er ikke-forhandlbare. Enhver kode der overtræder dem vil blive afvist i review.
-
-### Rule 1 — Check `site_constraints` first
-
-Foreslå aldrig et design-valg, generer aldrig AI-output og flyt aldrig brugeren til næste fase uden at `RuleEngineInput` er assembleret og `runRuleEngine()` er kørt. Hvis `result.hardStops.length > 0`, skal dette vises **før** brugeren kan fortsætte.
-
-```typescript
-// KORREKT
-const input = assembleRuleEngineInput(bbrData, plandata, byggeoenske, ...);
-const result = runRuleEngine(input);
-if (result.hardStops.length > 0) { /* vis Hard Stop — stop ikke brugeren med AI-output */ }
-
-// FORKERT
-generateDesignSuggestion(byggeoenske); // ingen constraint-check
+```bash
+bunx tsc --noEmit
+bun test
+bunx eslint .
+bun run build
 ```
 
-### Rule 2 — Single Source of Truth: `projects`-tabellen
-
-Domæne-kritiske compliance-værdier (bebyggelsesprocent, SAVE-værdi, Hard Stop-flag) gemmes i **typede SQL-kolonner** — aldrig udelukkende i JSONB-blobs.
-
-Typede kolonner på `projects`:
-
-- `heritage_save_value SMALLINT` — FBB SAVE 1–9
-- `is_fredet BOOLEAN` — DAI WFS fredningsstatus
-- `grundareal_m2 FLOAT` — MAT-grundareal
-- `bebygget_areal_m2 FLOAT` — BBR bebygget areal
-- `hard_stop BOOLEAN` — aggregeret bloker-flag
-- `hard_stop_reason TEXT` — menneskelæsbar årsag
-- `budget_estimate BIGINT` — DKK, erstatning for `budget TEXT`
-
-Skriv **aldrig** compliance-data kun til `compliance_data JSONB` uden at skrive de tilhørende typede kolonner. JSONB-blobben beholdes som arkiv, ikke som primær kilde.
-
-### Rule 3 — Hard Stop Logic er deterministisk
-
-Hard Stops evalueres i `src/lib/rule-engine/rules/stop-rules.ts` — aldrig i UI-komponenter ved string-matching eller AI-output-parsing.
-
-Hard Stop-tærskler:
-
-- `heritage_save_value <= 3` → `dispensation_required` (Slots- og Kulturstyrelsen)
-- `heritage_save_value === 4` → `warning` (§14-forbud, kommunen)
-- `is_fredet === true` → `illegal` (ved nedrivning)
-- `mat_strandbeskyttelse === true` → `dispensation_required`
-- `mat_fredskov === true` → `dispensation_required`
-- `mat_klitfredning === true` → `dispensation_required`
-
-Disse tærskler er **kanonisk defineret** i `src/lib/rule-engine/rules/stop-rules.ts`. En ældre kopi eksisterer i `src/types/building-platform.ts` og ryddes op via ROADMAP-002/018. Tilføj aldrig threshold-tjek udenfor regel-engine-modulet og dets tests — brug import.
-
-### Rule 4 — Compliance-gates verificeres altid server-side
-
-Acceptér **aldrig** `hasHardStop`, `hasAbsoluteHardStop` eller tilsvarende compliance-gate-signaler som input fra klienten i `createServerFn`-handlers. Serveren skal altid verificere Hard Stop-status fra betroede data: `projects.hard_stop`, `site_constraints`-tabellen eller en regel-engine-kørsel med BBR/MAT-data. Klienten må gerne disable knapper UI-side — men serveren er autoritativ og kan ikke stoles på klient-input. Dette er en **sikkerhedsregel**.
+All must pass unless the user explicitly accepts a known failing baseline.
 
 ---
 
-## Etablerede mønstre — brug disse i al ny kode
+## Architecture Model
 
-Disse mønstre er nu etablerede i kodebasen. Kopiér dem — opfind ikke egne varianter.
+ArchAI uses pragmatic Ports & Adapters around compliance, persistence, public
+register data, AI and project state.
 
-### Server functions (createServerFn)
+Dependency direction:
 
-```typescript
-// KORREKT — withAuth() + dynamic import + delegér til service
+```txt
+UI / routes / server functions
+  -> application services
+  -> domain core
+
+application services
+  -> ports
+  -> adapters implementing ports
+```
+
+The domain core is pure TypeScript. It must not import React, Supabase,
+Datafordeler clients, Cloudflare runtime APIs, server functions, AI SDKs or
+storage clients.
+
+Adapters translate the outside world into validated domain data. Adapters must
+not own compliance truth.
+
+---
+
+## Non-Negotiable Rules
+
+### Rule 1 - Contract-First Boundaries
+
+All data crossing a system boundary must be validated at the boundary.
+
+This includes:
+
+- UI input into server functions
+- Supabase JSONB payloads
+- cache payloads
+- Datafordeler responses
+- Plandata/WFS responses
+- AI responses
+- restored project state
+
+Use Zod schemas or explicit typed decoders.
+
+Do not use:
+
+- `any`
+- unchecked `JSON.parse`
+- `as unknown as DomainType`
+- raw API responses as domain data
+- Supabase JSONB blobs as trusted domain state
+
+If external data does not match the expected schema, return a typed degraded
+state or throw a structured integration error.
+
+### Rule 2 - UI Is An Adapter
+
+React components may display data and collect user intent. They must not own
+compliance policy, Hard Stop thresholds, Supabase persistence, Datafordeler
+interpretation or AI gating.
+
+Allowed in UI:
+
+- local visual state: tabs, drawers, hover, upload progress
+- reading durable project state from `useProject()`
+- calling focused hooks or server functions for user actions
+
+Not allowed in UI:
+
+- direct Supabase/Datafordeler/AI calls
+- direct compliance/register fetches
+- durable project/compliance mirrors in local `useState`
+- hardcoded SAVE/MAT/fredning thresholds
+- regex/free-text parsing to infer compliance categories
+
+Move workflow logic into hooks. Move business logic into pure domain helpers or
+application services.
+
+### Rule 3 - Server Functions Are Inbound Adapters
+
+A `createServerFn` handler must stay thin:
+
+1. validate input
+2. authenticate with `withAuth()`
+3. dynamically import an application service
+4. return the service result
+
+It must not contain raw Supabase queries, AI prompt construction, Datafordeler
+calls, storage handling or compliance decisions inline.
+
+### Rule 4 - Server-Side Compliance Authority
+
+Compliance gates are always verified server-side from trusted data.
+
+Server functions must never accept client-provided values such as `hasHardStop`,
+`hasAbsoluteHardStop`, SAVE status, MAT blockers or equivalent derived gate
+signals as authoritative.
+
+Before AI generates design, analysis or recommendations, the server must verify
+Hard Stop status from trusted sources:
+
+- typed columns on `projects`
+- `site_constraints`
+- decoded cached register data
+- or a fresh rule-engine run
+
+The client may disable buttons for UX. The server is the authority.
+
+### Rule 5 - Rule Engine Is The Compliance Source Of Truth
+
+Hard Stop thresholds live in:
+
+- `src/lib/rule-engine/rules/stop-rules.ts`
+- `src/lib/rule-engine/hard-stop-adapter.ts`
+
+Do not duplicate thresholds in UI, routes, persistence or AI prompts.
+
+Important distinction:
+
+- SAVE 1-3 means high preservation value and usually requires dispensation or
+  special authority handling.
+- `is_fredet === true` is separate listed-building status.
+- Do not treat SAVE value and fredning as the same thing.
+
+### Rule 6 - Typed Columns Beat JSONB
+
+Domain-critical compliance values must be stored in typed SQL columns, not only
+inside JSONB.
+
+Typed project columns include:
+
+- `heritage_save_value`
+- `is_fredet`
+- `grundareal_m2`
+- `bebygget_areal_m2`
+- `hard_stop`
+- `hard_stop_reason`
+- `budget_estimate`
+
+JSONB may archive raw or secondary payloads. It is not the source of truth for
+critical compliance.
+
+### Rule 7 - Refactor Dirty Domain Boundaries Before Extending
+
+If a module already violates the Domain Core rules, do not build new behavior on
+top of the violation.
+
+Before extending the module, first move domain logic into pure TypeScript or
+create a small pure helper/use case that the existing adapter can call.
+
+This applies especially when existing code mixes:
+
+- React components with compliance decisions
+- server functions with business logic
+- Supabase queries with domain policy
+- Datafordeler/API parsing with rule decisions
+- AI prompt logic with compliance gates
+- Zustand state mutation with domain calculations
+
+Do not make dirty modules dirtier.
+
+Acceptable exception: if the user explicitly asks for a minimal hotfix, keep the
+change narrow and create a follow-up refactor task.
+
+### Rule 8 - No Circular Imports
+
+Circular imports are forbidden.
+
+Do not introduce import cycles between routes, components, hooks, stores,
+services, integrations, repositories or domain modules.
+
+Domain modules must never import adapters.
+
+If a circular import appears necessary, extract a shared type, pure helper or
+port into a lower-level module instead.
+
+### Rule 9 - No DAWA For Compliance
+
+DAWA/Dataforsyningen REST must not be used as compliance or register source.
+
+Allowed exceptions:
+
+- GSearch v2 for address autocomplete only.
+- SDFI/Dataforsyningen map tiles as visual background only.
+
+All register/compliance data must come from approved Datafordeler or other
+approved authoritative sources.
+
+If DAR, MAT, BBR or FBB lacks a field, return `null`, a typed degraded state or
+use an approved Datafordeler-based resolver. Do not add DAWA fallback.
+
+### Rule 10 - Structured Server Logging
+
+Use `logServerEvent()` for server-pipeline logging.
+
+Do not leave new `console.log`, `console.warn` or `console.error` in production
+server code.
+
+---
+
+## Established Patterns
+
+### Server Function Pattern
+
+```ts
 export const myServerFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => mySchema.parse(data))
   .handler(async ({ data }) => {
     return withAuth(data.accessToken, async () => {
-      const { myService } = await import("@/lib/my-service");
+      const { myService } = await import("@/lib/my-service.server");
       return myService.doWork(data);
     });
   });
-
-// FORKERT — inline auth-check + inline forretningslogik
-.handler(async ({ data }) => {
-  const { data: { user } } = await supabaseAdmin.auth.getUser(data.accessToken);
-  if (!user) throw new Error("401");
-  // forretningslogik her...
-});
 ```
 
-Se `src/lib/server-auth.ts` for `withAuth()`.
+Do not inline auth, Supabase queries or business logic in the handler.
 
-### Hard Stop-evaluering
+### Persistence Pattern
 
-```typescript
-// KORREKT — brug adapteren, aldrig hardcodede tærskler
-import { isSaveDispensationRequired, isSaveWarning, evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
-if (isSaveDispensationRequired(saveValue)) { /* blocker */ }
-
-// FORKERT — hardcoded tærskel
-if (saveValue !== null && saveValue <= 3) { /* blocker */ }
-```
-
-### Server-side logging
-
-```typescript
-// KORREKT — struktureret logging
-import { logServerEvent } from "@/lib/server-logger";
-logServerEvent({ module: "pre-check", operation: "fetchLayer1", severity: "degraded", message: "FBB fejlede", error: e, trace });
-
-// FORKERT
-console.warn("FBB fejlede:", e);
-```
-
-### Compliance-flag generering
-
-```typescript
-// Pre-check gate: brug buildPreCheckFlags() fra src/lib/pre-check-flags.ts
-// Full analysis: brug deriveComplianceFlags() fra src/lib/compliance-flags.ts
-// Aldrig inline flag-arrays i route-filer eller persistence
-```
-
-### Persistence writes
-
-```typescript
-// KORREKT — repository + buildProjectUpdate()
+```ts
 import { updateProject } from "@/integrations/supabase/repositories/projects.repository";
 import { buildProjectUpdate } from "@/lib/project-update-builder";
+
 const update = buildProjectUpdate(patch);
 await updateProject(projectId, update);
-
-// FORKERT — inline Supabase query i persistence-lag
-await supabaseAdmin.from("projects").update({ ... }).eq("id", projectId);
-// (direkte Supabase-kald hører kun hjemme i repositories)
 ```
 
-### Pure plandata-selektorer
+Direct Supabase table writes belong in repositories only.
 
-```typescript
-// KORREKT — importer fra selectors.ts (ingen WFS-deps)
-import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
+### Hard Stop Pattern
 
-// FORKERT — importer fra client.ts i en client-komponent
-import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/client"; // server-only deps!
+```ts
+import {
+  evaluateHardStop,
+  isSaveDispensationRequired,
+  isSaveWarning,
+} from "@/lib/rule-engine/hard-stop-adapter";
 ```
 
-### Cockpit-data
+Never hardcode SAVE thresholds outside rule-engine modules and tests.
 
-```typescript
-// KORREKT — læs fra useProject(), skriv via syncPatch()
-const { bbrData, complianceFlags } = useProject();
-await syncPatch({ complianceDone: true });
+### Cockpit State Pattern
 
-// FORKERT — lokal state mirror
-const [bbrData, setBbrData] = useState(null); // bryder restore og sync
+```ts
+const { bbrData, complianceFlags, heritageSaveValue, hardStop } = useProject();
 ```
 
----
-
-## Ny feature checklist — inden du skriver kode
-
-- [ ] Rører du en beskyttet fil? → Skriv `🔒 Rører beskyttet fil — kræver review` i PR
-- [ ] Tilføjer du forretningslogik til en server function handler? → Udtræk til pure function/service
-- [ ] Bruger du `supabaseAdmin.from(...)` direkte i persistence-lag? → Brug repository i stedet
-- [ ] Evaluerer du Hard Stop-tærskler uden `hard-stop-adapter`? → Importer `isSaveDispensationRequired` / `evaluateHardStop`
-- [ ] Bruger du `console.warn` i server-pipeline? → Brug `logServerEvent()` fra `server-logger`
-- [ ] Tilføjer du compliance-data til JSONB? → Tilføj typed SQL-kolonne i stedet (se Rule 2)
-- [ ] Importer du pure selectors fra en server-only klient? → Brug `selectors.ts`-modulet
-- [ ] Skriver du til `projekter`-tabellen? → Stop. Tabellen eksisterer ikke
-- [ ] Accepterer du `hasHardStop` eller compliance-gate-signaler fra klienten? → Stop (Rule 4)
-- [ ] Har du kørt `bunx tsc --noEmit`, `bun test`, `bunx eslint .`, `bun run build`? → Alle skal passere
+Durable project and compliance data belongs in `src/lib/project-store.ts`.
 
 ---
 
-## Aktiv arkitektur-sanering (ROADMAP)
+## Protected Files
 
-P0/P1-items fra Round 1 er nu landede. Undgå at reproducere disse mønstre i nye brancher:
+Do not edit these unless the user task requires it.
 
-**Må ikke gøres i ny kode:**
-- God Objects: én fil der ejer transport + forretningslogik + persistence + UI
-- `(supabaseAdmin.from as any)("tabel")` — brug genererede typer
-- `any` i Datafordeler-klienter (`map((node: any) => ...)`, `Promise<any>`)
-- Inline threshold-tjek der duplikerer `stop-rules.ts`
-- `console.warn` som eneste fejlhåndtering i server-pipeline
-- Compliance-beslutninger i route-filer eller UI-komponenter
-- Hard-stop gate-signaler accepteret fra klienten (se Rule 4)
-- Import af server-only moduler på top-level i route-filer
+- `src/routeTree.gen.ts` - never edit; generated by TanStack Router.
+- `vite.config.ts` - do not edit without explicit instruction.
+- `src/server.ts` - do not delete.
+- `src/lib/project-store.ts`
+- `src/lib/analysis-orchestrator.ts`
+- `src/lib/pre-check-adresse.ts`
+- `src/lib/reactive-compliance.ts`
+- `src/integrations/supabase/project-persistence.ts`
+- `AGENTS.md`
+- `CLAUDE.md`
+- `package.json`
+- `wrangler.toml`
 
----
+If a protected file is changed, the final response and PR summary must include:
 
-## Supabase-skema — aktive tabeller
-
-Kend disse tabeller. `projekter` eksisterer **ikke** længere — den er droppet i migration `20260515100000`.
-
-| Tabel                    | Formål                                                          | Nøgle                                     |
-| ------------------------ | --------------------------------------------------------------- | ----------------------------------------- |
-| `projects`               | SSOT for alle projekt-data — inkl. typede compliance-kolonner   | `id UUID`, `user_id`                      |
-| `address_analysis`       | Delt cache for compliance-resultater (alle brugere, én adresse) | `address_id TEXT`                         |
-| `site_constraints`       | Typede plot-begrænsninger til Validation Engine                 | `address_id TEXT` FK → `address_analysis` |
-| `address_source_results` | Per-source cache for ikke-SSOT screeningsresultater             | `address_id TEXT`, `source_kind TEXT`     |
-| `design_iterations`      | Versionerede brugerdesigns (én aktiv pr. projekt)               | `project_id UUID` FK → `projects`         |
-| `building_tasks`         | Bruger-vendt Building Timeline (Sandkassen → Myndighed)         | `project_id UUID`, `task_key TEXT`        |
-| `agent_sessions`         | AI-agent teknisk log (service_role kun)                         | `id TEXT`                                 |
-| `agent_tasks`            | Opgave-log pr. session (service_role kun)                       | `session_id TEXT`                         |
-
-**Skriv aldrig til `projekter`** — tabellen eksisterer ikke i produktions-DB.
-
-**`design_iterations`** har en partial unique index: kun én aktiv iteration pr. projekt:
-
-```sql
-CREATE UNIQUE INDEX ON design_iterations(project_id) WHERE is_active = true;
-```
-
-For at aktivere en ny version: sæt den eksisterende til `is_active = false` først.
-
-**`building_tasks`** har `UNIQUE(project_id, task_key)` (where task_key IS NOT NULL). Brug `UPSERT` med `onConflict: 'project_id,task_key'` — ikke INSERT.
+`PROTECTED FILE CHANGED - human review required`
 
 ---
 
-## Beskyttede filer — kræver human review inden merge
+## Active Supabase Tables
 
-Codex MÅ redigere disse, men PR **må ikke merges** uden eksplicit godkendelse. Skriv: `🔒 Rører beskyttet fil — kræver review`.
+Use these active tables:
 
-| Fil                                                | Årsag til beskyttelse                                                   |
-| -------------------------------------------------- | ----------------------------------------------------------------------- |
-| `src/lib/project-store.ts`                         | State-shape-ændringer bryder sync og restore                            |
-| `src/lib/analysis-orchestrator.ts`                 | Compliance-pipeline — fejl rammer alle brugere                          |
-| `src/lib/pre-check-adresse.ts`                     | Adresse-gate — fejl blokerer brugerflow                                 |
-| `src/lib/reactive-compliance.ts`                   | Reaktiv compute — arkitektonisk fundament                               |
-| `src/integrations/supabase/project-persistence.ts` | Domain Sync Engine — skriver typede kolonner + genererer building_tasks |
-| `AGENTS.md`, `CLAUDE.md`                           | Agent-instruktioner — Claude Code ejer disse                            |
-| `package.json`, `wrangler.toml`                    | Build og deployment                                                     |
-| Nye `createServerFn`-mønstre                       | Server boundary — arkitektonisk beslutning                              |
+- `projects`
+- `address_analysis`
+- `site_constraints`
+- `address_source_results`
+- `design_iterations`
+- `building_tasks`
+- `agent_sessions`
+- `agent_tasks`
 
----
+Never write to `projekter`. It no longer exists in production.
 
-## Sikre arbejdsområder — Codex kan arbejde autonomt
+`design_iterations` allows only one active row per project. Deactivate the
+current active iteration before activating a new one.
 
-Disse areas kræver **ikke** review for merge, men verification checklist nedenfor skal passere:
-
-- **UI-komponenter** — `src/components/` (følg shadcn + Lucide mønstre)
-- **Cockpit-faner og panels** — `src/components/cockpit/` (læs fra `useProject()`, ingen lokal compliance-state)
-- **Stub-routes** — `src/routes/projekt.teknik.tsx`, `src/routes/projekt.udbud.tsx`
-- **Cockpit økonomi-tab** — `src/components/cockpit/OekonomiPanel.tsx`
-- **Regel-engine regler** — `src/lib/rule-engine/rules/` (pure functions, ingen I/O)
-- **Integrationsklienter** — `src/integrations/*/` (kopier eksisterende klientmønster)
-- **IS_MOCK=true services** → live implementation
-- **Tests** — `src/**/*.test.ts`
-- **Database-migrationer** — `supabase/migrations/` (additive: ADD COLUMN, CREATE TABLE — aldrig DROP uden eksplicit instruks)
-
-**Undgå** at introducere `useState` for compliance-data i cockpit-komponenter. Brug `useProject()` fra `src/lib/project-store.ts` for alle felter der er beskrevet i Rule 2 ovenfor.
+`building_tasks` has a unique `(project_id, task_key)` constraint. Use upsert
+with `onConflict: "project_id,task_key"`.
 
 ---
 
-## Arkitektur — nøglefiler
+## Safe Work Areas
 
-| Fil                                                        | Ansvar                                                                                                 |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `src/lib/project-store.ts`                                 | Zustand cockpit-state — ENESTE kilde til flow-data inkl. typede compliance-felter                      |
-| `src/lib/project-sync.ts`                                  | Fire-and-forget Supabase-sync (`syncPatch`, `projectPatchSchema`) — thin wrapper                       |
-| `src/integrations/supabase/project-persistence.ts`         | Domain Sync Engine — thin orchestration facade, delegerer til repositories og `buildProjectUpdate()`   |
-| `src/integrations/supabase/repositories/`                  | Data access layer — `projects.repository`, `site-constraints.repository`, `building-tasks.repository` |
-| `src/lib/project-update-builder.ts`                        | `buildProjectUpdate()` — pure function, bygger Supabase-update uden side effects                       |
-| `src/lib/analysis-orchestrator.ts`                         | Thin coordinator over step-moduler — cache-first, delegerer til `src/lib/analysis/`                   |
-| `src/lib/analysis/`                                        | Pipeline step-moduler: `layer1-analysis`, `address-enrichment`, `lokalplan-extraction-step`, osv.     |
-| `src/lib/pre-check-adresse.ts`                             | `preCheckAdresse` createServerFn — handler kun; orchestrering og flags delegeres                       |
-| `src/lib/pre-check-flags.ts`                               | `buildPreCheckFlags()` — pure function, ingen server-imports, testbar isoleret                         |
-| `src/lib/compliance-flags.ts`                              | `deriveComplianceFlags()` — full-analysis flag-derivation, pure, ingen Zustand                         |
-| `src/lib/reactive-compliance.ts`                           | Client-safe `computePartialUpdate()` — ingen API-kald, ingen project-store import                      |
-| `src/lib/rule-engine/`                                     | Deterministisk regelkerne — pure functions, ingen AI                                                   |
-| `src/lib/rule-engine/hard-stop-adapter.ts`                 | `evaluateHardStop()`, `isSaveDispensationRequired()`, `isSaveWarning()` — kanoniske tærskler           |
-| `src/lib/compliance-engine.ts`                             | `calculateComplianceMetrics()` — bebyggelsesprocent, etager, areal                                     |
-| `src/lib/server-auth.ts`                                   | `withAuth()` — delt auth-wrapper til alle `createServerFn`-handlers                                    |
-| `src/lib/server-logger.ts`                                 | `logServerEvent()` — struktureret server-logging med modul, operation, severity, trace                 |
-| `src/lib/cockpit.functions.ts`                             | Cockpit server actions: `fetchCompliance`, `runByggeanalyse`                                           |
-| `src/hooks/useCockpitRestore.ts`                           | Restore-hook — beslutningslogik om restore vs. ny analyse                                              |
-| `src/hooks/useCockpitAnalysis.ts`                          | Analyse-trigger hook — koordinerer analyse-flow fra cockpit                                            |
-| `src/integrations/plandata/selectors.ts`                   | Pure lokalplan-selektorer (ingen WFS-imports) — importerbar fra client og server                       |
-| `src/integrations/cache/decoders.ts`                       | Zod-decoders for cached payloads (`ComplianceResult`, `LokalplanExtract`, osv.)                        |
-| `src/lib/env.ts`                                           | Zod-valideret env — brug denne                                                                         |
-| `src/types/project-state.ts`                               | Delte domain-typer: `Byggeoenske`, `ComplianceFlag`, `Address`, `HusDna`, `AdressePreCheckResultat`    |
-| `src/types/building-platform.ts`                           | Infrastructure-typer: `SiteConstraints`, `DesignIteration`, `BuildingTask`, `BUILDING_TASK_KEYS`       |
+These areas are usually safe for Codex-style implementation, provided all rules
+above are followed:
+
+- presentational UI components in `src/components/`
+- focused cockpit panels in `src/components/cockpit/`
+- stub routes such as `projekt.teknik` and `projekt.udbud`
+- pure rule-engine rules and tests
+- pure helpers
+- additive database migrations
+- tests
+
+These areas are not automatically safe:
+
+- new `createServerFn` patterns
+- persistence/state-shape changes
+- compliance/rule-engine semantics
+- Datafordeler/MAT/BBR/FBB/Plandata clients
+- AI gates and AI response parsing
+- project restore/sync
+- protected files
+
+When in doubt, stop and ask for architecture review.
 
 ---
 
-## Linear-labels — hvad du må arbejde på
+## Linear Labels
 
-| Label                | Betydning                                                            |
-| -------------------- | -------------------------------------------------------------------- |
-| `codex-safe`         | Codex kan implementere autonomt uden arkitekt-review                 |
-| `needs-architecture` | **Må ikke implementeres af Codex** — kræver Claude Code review først |
-| `lovable-frontend`   | Frontend-opgave til Lovable — ikke Codex                             |
+Use labels as authority boundaries:
 
-Tag kun issues med `codex-safe` label. Ser du `needs-architecture`-issues der virker enkle, opret en kommentar i Linear og vent på Claude Code.
+- `codex-safe`: implementation agents may work autonomously when the issue is
+  clear.
+- `needs-architecture`: do not implement without Claude/human architecture
+  review.
+- `lovable-frontend`: intended for Lovable/frontend workflow, not Codex.
 
----
-
-## Tech debt — regler for oprydning
-
-- Læs **aldrig** `compliance_data JSONB` for værdier der har typede kolonner (se Rule 2-liste ovenfor)
-- Skriv **aldrig** til den droppede `projekter`-tabel
-- Brug **aldrig** `current_step`-streng-enum til at drive navigation eller betinget rendering — brug `compliance_done` og `adresse_dar_id` som afledt datastatus
-- Tilføj **aldrig** ny JSONB-kolonne til `projects` for compliance-data — tilføj en typed kolonne i stedet
+If an issue looks simple but has `needs-architecture`, do not implement it.
 
 ---
 
-## Domain — kritiske risikokategorier
+## Before Coding Checklist
 
-| Risiko                       | Størrelsesorden        | Kilde            |
-| ---------------------------- | ---------------------- | ---------------- |
-| Geoteknik                    | 0–500.000 kr+          | GEUS WFS         |
-| Forsyningsafkobling          | 50.000–150.000 kr      | Manuel datacheck |
-| Nabosager/nabopartshøring    | 4–12 ugers forsinkelse | Plandata         |
-| Fredning / SAVE 1–3          | Byggestop — kræver SKS | FBB WFS          |
-| Strandbeskyttelse / fredskov | Absolut byggestop      | MAT_Jordstykke   |
+Before writing code, answer:
 
-Se `docs/domain/journey-demolition-new-build.md` for fuld kunderejse.
+- Does this cross a boundary?
+- Which schema or decoder validates the data?
+- Where does the business logic live?
+- Which application service owns the workflow?
+- Which adapter handles Supabase, Datafordeler, AI, storage or cache?
+- Does this touch a protected file?
+- Could this create a circular import?
+- Am I building on dirty domain code that should be refactored first?
+
+For small local UI copy/style changes, keep this lightweight.
 
 ---
 
-## Verification checklist — inden du erklærer færdig
+## Verification Checklist
+
+Before declaring work complete:
 
 ```bash
-bunx tsc --noEmit   # 0 errors
-bun test            # 0 failures
-bunx eslint .       # 0 errors
-bun build           # ingen build-fejl
+bunx tsc --noEmit
+bun test
+bunx eslint .
+bun run build
 ```
 
-- Ingen `console.log` eller debug-kode i produktionskode
-- Rørte du en beskyttet fil? → `🔒 Rører beskyttet fil — kræver review` i PR
-- Tilføjede du compliance-data til en ny JSONB-blob? → Stop. Tilføj en typed kolonne i stedet
-- Skriver din kode til `projekter`-tabellen? → Stop. Tabellen eksisterer ikke
-- Bruger din kode `fbbData?.fbb_bedste_bygning?.bevaringsvaerdi` direkte i en UI-komponent? → Læs `heritage_save_value` fra `useProject()` i stedet
+Also verify:
+
+- no debug logs remain
+- no new `any` or unchecked boundary casts were introduced
+- no new direct Supabase calls appear outside repositories
+- no new compliance values are stored only in JSONB
+- no circular imports were introduced
+- protected files are called out for review
+- docs are updated if behavior, env, architecture or integrations changed
+

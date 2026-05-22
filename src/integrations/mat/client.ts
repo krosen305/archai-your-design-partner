@@ -166,13 +166,13 @@ export class MatService {
 
     try {
       // ---- Trin 1: Find MAT_Ejerlav via ejerlavskode ----
-      const ejerlavData = await datafordelerGraphqlFetch<{ MAT_Ejerlav: { nodes: MatEjerlavNode[] } }>(
-        url,
-        EJERLAV_QUERY,
-        { kode: ejerlavskode, ...bitemporalArgs },
-        "MAT_Ejerlav",
-        { trace, phase: "layer1", metadata: { endpoint: "MAT/v2" } },
-      );
+      const ejerlavData = await datafordelerGraphqlFetch<{
+        MAT_Ejerlav: { nodes: MatEjerlavNode[] };
+      }>(url, EJERLAV_QUERY, { kode: ejerlavskode, ...bitemporalArgs }, "MAT_Ejerlav", {
+        trace,
+        phase: "layer1",
+        metadata: { endpoint: "MAT/v2" },
+      });
 
       const ejerlaver = ejerlavData.MAT_Ejerlav.nodes;
       if (!ejerlaver.length) {
@@ -193,7 +193,9 @@ export class MatService {
       const ejerlavsnavn: string | null = ejerlav.ejerlavsnavn ?? null;
 
       // ---- Trin 2: Find MAT_Jordstykke via ejerlavLokalId + matrikelnummer ----
-      const jordstykkeData = await datafordelerGraphqlFetch<{ MAT_Jordstykke: { nodes: MatJordstykkeNode[] } }>(
+      const jordstykkeData = await datafordelerGraphqlFetch<{
+        MAT_Jordstykke: { nodes: MatJordstykkeNode[] };
+      }>(
         url,
         JORDSTYKKE_QUERY,
         { ejerlavLokalId, matrikelnummer: matr, ...bitemporalArgs },

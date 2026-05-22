@@ -1,10 +1,7 @@
 // src/lib/analysis/servitut-step.ts
 // SERVER-SIDE ONLY. Layer 3: Tinglysning servitut extraction with cache.
 
-import {
-  getCachedServitut,
-  setCachedServitut,
-} from "@/integrations/cache/client";
+import { getCachedServitut, setCachedServitut } from "@/integrations/cache/client";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";

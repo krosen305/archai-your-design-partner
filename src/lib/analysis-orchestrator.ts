@@ -12,7 +12,6 @@
 // A returning user for a previously-analysed address pays $0.00 in AI costs.
 
 import { validateEnv } from "@/lib/env";
-validateEnv();
 
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
@@ -37,10 +36,10 @@ import {
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 import { enrichAddressDetails } from "@/lib/analysis/address-enrichment";
 import { runLayer1Analysis } from "@/lib/analysis/layer1-analysis";
-import { shouldSkipExpensiveLayer4 } from "@/lib/analysis/hard-stop-gate";
 import { runLokalplanExtractionStep } from "@/lib/analysis/lokalplan-extraction-step";
 import { runServitutStep } from "@/lib/analysis/servitut-step";
 import { runGeoRiskStep } from "@/lib/analysis/geo-risk-step";
+import { shouldSkipExpensiveLayer4 } from "@/lib/analysis/hard-stop-gate";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -83,12 +82,57 @@ export type AnalysisInput = {
 };
 
 // ---------------------------------------------------------------------------
-// analyseAddress: trace-wrapped public entry point
+// Dependency injection types
 // ---------------------------------------------------------------------------
 
-export async function analyseAddress(input: AnalysisInput): Promise<ComplianceResult> {
-  const startedAt = Date.now();
-  const trace = await startAnalysisRun({
+export type AnalysisOrchestratorDeps = {
+  enrichAddressDetails: typeof enrichAddressDetails;
+  runLayer1Analysis: typeof runLayer1Analysis;
+  selectPrimaryLokalplanForPdf: typeof selectPrimaryLokalplanForPdf;
+  runLokalplanExtractionStep: typeof runLokalplanExtractionStep;
+  runServitutStep: typeof runServitutStep;
+  runGeoRiskStep: typeof runGeoRiskStep;
+  startAnalysisRun: typeof startAnalysisRun;
+  finishAnalysisRun: typeof finishAnalysisRun;
+  now: () => number;
+  /** Called once at the start of each analysis run for fail-fast env validation. */
+  validateEnv: typeof validateEnv;
+};
+
+const defaultDeps: AnalysisOrchestratorDeps = {
+  enrichAddressDetails,
+  runLayer1Analysis,
+  selectPrimaryLokalplanForPdf,
+  runLokalplanExtractionStep,
+  runServitutStep,
+  runGeoRiskStep,
+  startAnalysisRun,
+  finishAnalysisRun,
+  now: () => Date.now(),
+  validateEnv,
+};
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
+
+export function createAnalysisOrchestrator(deps: AnalysisOrchestratorDeps) {
+  return {
+    analyseAddress: (input: AnalysisInput) => analyseAddressWithDeps(input, deps),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Internal implementation with explicit deps
+// ---------------------------------------------------------------------------
+
+async function analyseAddressWithDeps(
+  input: AnalysisInput,
+  deps: AnalysisOrchestratorDeps,
+): Promise<ComplianceResult> {
+  deps.validateEnv();
+  const startedAt = deps.now();
+  const trace = await deps.startAnalysisRun({
     runKind: "full_analysis",
     projectId: input.projectId ?? null,
     addressId: input.addressId,
@@ -101,11 +145,11 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
   });
 
   try {
-    const result = await analyseAddressWithTrace(input, trace);
-    await finishAnalysisRun(trace, "done", startedAt);
+    const result = await analyseAddressWithTrace(input, trace, deps);
+    await deps.finishAnalysisRun(trace, "done", startedAt);
     return { ...result, analysisRunId: trace.runId };
   } catch (e) {
-    await finishAnalysisRun(trace, "failed", startedAt, e);
+    await deps.finishAnalysisRun(trace, "failed", startedAt, e);
     throw e;
   }
 }
@@ -113,11 +157,12 @@ export async function analyseAddress(input: AnalysisInput): Promise<ComplianceRe
 async function analyseAddressWithTrace(
   input: AnalysisInput,
   trace: AnalysisTraceContext,
+  deps: AnalysisOrchestratorDeps,
 ): Promise<ComplianceResult> {
   const { addressId, koordinater } = input;
 
   // ── Step 1: Enrich address details via DAR (if needed) ───────────────────
-  const enriched = await enrichAddressDetails(
+  const enriched = await deps.enrichAddressDetails(
     addressId,
     {
       adgangsadresseid: input.adgangsadresseid,
@@ -129,7 +174,7 @@ async function analyseAddressWithTrace(
   );
 
   // ── Step 2: Layer 1 (BBR + Plandata + VUR) ───────────────────────────────
-  const { complianceBase, states: layer1States } = await runLayer1Analysis(
+  const { complianceBase, states: layer1States } = await deps.runLayer1Analysis(
     {
       addressId,
       adgangsadresseid: enriched.adgangsadresseid,
@@ -142,16 +187,16 @@ async function analyseAddressWithTrace(
   );
 
   // ── Step 3: Select primary lokalplan PDF for Layer 2 ─────────────────────
-  const primaryLokalplan = selectPrimaryLokalplanForPdf(complianceBase.lokalplaner);
+  const primaryLokalplan = deps.selectPrimaryLokalplanForPdf(complianceBase.lokalplaner);
   const primaryPdfUrl = primaryLokalplan?.plandokumentLink ?? null;
 
   // ── Step 4: Layers 2 + 3 + 4 in parallel ─────────────────────────────────
   // Layer 2 (lokalplan PDF), Layer 3 (servitutter) og Layer 4 (geodata)
   // behøver alle kun Layer 1's output. Parallel Promise.all sparer ~2s live.
   const [lokalplanExtract, servitutter, geoRisk] = await Promise.all([
-    runLokalplanExtractionStep(addressId, primaryPdfUrl, trace),
-    runServitutStep(addressId, enriched.ejerlavskode, enriched.matrikelnummer, trace),
-    runGeoRiskStep(
+    deps.runLokalplanExtractionStep(addressId, primaryPdfUrl, trace),
+    deps.runServitutStep(addressId, enriched.ejerlavskode, enriched.matrikelnummer, trace),
+    deps.runGeoRiskStep(
       {
         addressId,
         koordinater,
@@ -186,4 +231,12 @@ async function analyseAddressWithTrace(
     vurderingData: complianceBase.vurderingData,
     serviceStates,
   };
+}
+
+// ---------------------------------------------------------------------------
+// analyseAddress: trace-wrapped public entry point (public API preserved)
+// ---------------------------------------------------------------------------
+
+export async function analyseAddress(input: AnalysisInput): Promise<ComplianceResult> {
+  return createAnalysisOrchestrator(defaultDeps).analyseAddress(input);
 }

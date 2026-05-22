@@ -238,7 +238,13 @@ export class PlandataService {
         rawCount: allFeatures.length,
       };
     } catch (e) {
-      logServerEvent({ module: "plandata/client", operation: "getLokalplanerForKoordinat", severity: "fatal", message: "WFS-kald fejlede", error: e });
+      logServerEvent({
+        module: "plandata/client",
+        operation: "getLokalplanerForKoordinat",
+        severity: "fatal",
+        message: "WFS-kald fejlede",
+        error: e,
+      });
       return {
         lokalplaner: [],
         fejl: (e as Error).message,
@@ -280,7 +286,13 @@ export class PlandataService {
       const rammer = features.map(mapKommuneplanramme);
       return { ramme: selectKommuneplanrammeForCompliance(rammer), fejl: null };
     } catch (e) {
-      logServerEvent({ module: "plandata/client", operation: "getKommuneplanrammeForKoordinat", severity: "fatal", message: "Kommuneplanramme-kald fejlede", error: e });
+      logServerEvent({
+        module: "plandata/client",
+        operation: "getKommuneplanrammeForKoordinat",
+        severity: "fatal",
+        message: "Kommuneplanramme-kald fejlede",
+        error: e,
+      });
       return { ramme: null, fejl: (e as Error).message };
     }
   }

@@ -288,5 +288,13 @@ export function useCockpitAnalysis(params: {
     setSnapshotPatch,
   ]);
 
-  return { status, fetchError, analysisSnapshot, isRecomputing, setSnapshotPatch, triggerRefresh, runManualAnalyse };
+  return {
+    status,
+    fetchError,
+    analysisSnapshot,
+    isRecomputing,
+    setSnapshotPatch,
+    triggerRefresh,
+    runManualAnalyse,
+  };
 }

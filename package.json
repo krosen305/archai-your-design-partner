@@ -15,7 +15,10 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "evals": "bun run evals/runner.ts"
+    "evals": "bun run evals/runner.ts",
+    "test": "bun test src",
+    "test:live": "bun test tests/live",
+    "check": "bunx tsc --noEmit && bunx eslint . && bun test src && bun run build"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
@@ -82,6 +85,8 @@
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^1.4.0",
     "@playwright/test": "^1.59.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^22.16.5",
     "@types/proj4": "^2.19.0",
@@ -94,6 +99,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
+    "happy-dom": "^20.9.0",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",

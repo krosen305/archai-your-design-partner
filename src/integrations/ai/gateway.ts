@@ -16,7 +16,12 @@ export type AnthropicContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
   | { type: "image"; source: { type: "url"; url: string } }
-  | { type: "document"; source: Record<string, unknown>; title?: string; citations?: Record<string, unknown> }
+  | {
+      type: "document";
+      source: Record<string, unknown>;
+      title?: string;
+      citations?: Record<string, unknown>;
+    }
   | { type: string; [key: string]: unknown };
 
 export type GatewayRequest = {
@@ -34,9 +39,7 @@ export type GatewayResponse = {
 export async function callAnthropicGateway(req: GatewayRequest): Promise<GatewayResponse> {
   const apiKey = runtimeConfig.ai.anthropicApiKey;
   if (!apiKey) {
-    throw new Error(
-      `AI gateway: ANTHROPIC_API_KEY er ikke sat (operation: ${req.operation})`,
-    );
+    throw new Error(`AI gateway: ANTHROPIC_API_KEY er ikke sat (operation: ${req.operation})`);
   }
 
   const body = {

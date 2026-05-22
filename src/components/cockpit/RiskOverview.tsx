@@ -3,21 +3,20 @@ import { motion } from "framer-motion";
 import { Layers, Plug, Users, Landmark, Waves, type LucideIcon } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { cn } from "@/lib/utils";
-import { SAVE_HARD_STOP_MAX, SAVE_WARNING_VALUE } from "@/lib/rule-engine/hard-stop-adapter";
+import {
+  buildRiskOverviewCategories,
+  hasProvisionalRiskSignals,
+  type ComplianceRiskLevel,
+  type ComplianceRiskOverviewKey,
+  type RiskOverviewItem,
+} from "@/lib/compliance-view-model";
 
 // ---------------------------------------------------------------------------
 // RiskOverview — visuel hierarki for de 5 kritiske risikokategorier
 // ---------------------------------------------------------------------------
 
-type RiskLevel = "ok" | "ukendt" | "advarsel" | "kritisk";
-
-type RiskCategory = {
-  key: string;
-  label: string;
-  Icon: LucideIcon;
-  level: RiskLevel;
-  detail: string;
-};
+type RiskLevel = ComplianceRiskLevel;
+type RiskCategory = RiskOverviewItem & { Icon: LucideIcon };
 
 const LEVEL_STYLES: Record<RiskLevel, { ring: string; text: string; bg: string; dot: string }> = {
   ok: {
@@ -53,128 +52,30 @@ const LEVEL_LABEL: Record<RiskLevel, string> = {
   kritisk: "Kritisk",
 };
 
+const CATEGORY_ICONS: Record<ComplianceRiskOverviewKey, LucideIcon> = {
+  geoteknik: Layers,
+  forsyning: Plug,
+  naboer: Users,
+  fredning: Landmark,
+  natur: Waves,
+};
+
 export function RiskOverview() {
   const { complianceFlags, heritage_save_value, is_fredet } = useProject();
-  const hasMockRiskSignals = complianceFlags.some(
-    (f) => f.kilde === "geus" || f.kilde === "dkjord",
+  const hasMockRiskSignals = hasProvisionalRiskSignals(complianceFlags);
+
+  const categories = useMemo<RiskCategory[]>(
+    () =>
+      buildRiskOverviewCategories({
+        complianceFlags,
+        heritageSaveValue: heritage_save_value,
+        isFredet: is_fredet,
+      }).map((category) => ({
+        ...category,
+        Icon: CATEGORY_ICONS[category.key],
+      })),
+    [complianceFlags, heritage_save_value, is_fredet],
   );
-
-  const categories: RiskCategory[] = useMemo(() => {
-    const findFlag = (pattern: RegExp) => complianceFlags.find((f) => pattern.test(f.id));
-
-    // Geoteknik (GEUS / DK-Jord)
-    const geoFlag = complianceFlags.find(
-      (f) => f.kilde === "geus" || f.kilde === "dkjord" || /geo|jord|grund/.test(f.id),
-    );
-    const geo: RiskLevel = geoFlag
-      ? geoFlag.status === "blocker"
-        ? "kritisk"
-        : geoFlag.status === "advarsel"
-          ? "advarsel"
-          : "ok"
-      : "ukendt";
-
-    // Forsyning (fjernvarme tilslutning)
-    const forsyningFlag = findFlag(/fjernvarme|forsyning|tilslutning/);
-    const forsyning: RiskLevel = forsyningFlag
-      ? forsyningFlag.status === "blocker"
-        ? "advarsel"
-        : forsyningFlag.status === "advarsel"
-          ? "advarsel"
-          : "ok"
-      : "ukendt";
-
-    // Naboer (tæt på skel / nabopartshøring)
-    const naboFlag = findFlag(/nabo|skel|afstand/);
-    const naboer: RiskLevel = naboFlag
-      ? naboFlag.status === "blocker"
-        ? "kritisk"
-        : "advarsel"
-      : "ok";
-
-    // Fredning / SAVE
-    const fredningLevel: RiskLevel = is_fredet
-      ? "kritisk"
-      : heritage_save_value !== null && heritage_save_value !== undefined
-        ? heritage_save_value <= SAVE_HARD_STOP_MAX
-          ? "kritisk"
-          : heritage_save_value === SAVE_WARNING_VALUE
-            ? "advarsel"
-            : "ok"
-        : "ukendt";
-
-    // Strandbeskyttelse / fredskov / klitfredning
-    const naturFlag = findFlag(/strand|fredskov|klitfredning|natur/);
-    const natur: RiskLevel = naturFlag
-      ? naturFlag.status === "blocker"
-        ? "kritisk"
-        : "advarsel"
-      : "ok";
-
-    return [
-      {
-        key: "geoteknik",
-        label: "Geoteknik",
-        Icon: Layers,
-        level: geo,
-        detail:
-          geo === "kritisk"
-            ? "Risiko for dyre fundamentsløsninger"
-            : geo === "advarsel"
-              ? "Vurdering anbefales"
-              : geo === "ok"
-                ? "Ingen kendte risici"
-                : "Geoteknisk vurdering mangler",
-      },
-      {
-        key: "forsyning",
-        label: "Forsyning",
-        Icon: Plug,
-        level: forsyning,
-        detail:
-          forsyning === "advarsel"
-            ? "Tilslutningspligt eller -mangel"
-            : forsyning === "ok"
-              ? "Tilslutning afklaret"
-              : "Status mangler",
-      },
-      {
-        key: "naboer",
-        label: "Naboer",
-        Icon: Users,
-        level: naboer,
-        detail:
-          naboer === "kritisk"
-            ? "Nabopartshøring sandsynlig"
-            : naboer === "advarsel"
-              ? "Tæt på skel — vurder"
-              : "Ingen kendte konflikter",
-      },
-      {
-        key: "fredning",
-        label: "Fredning / SAVE",
-        Icon: Landmark,
-        level: fredningLevel,
-        detail: is_fredet
-          ? "Bygning er fredet"
-          : heritage_save_value !== null && heritage_save_value !== undefined
-            ? `SAVE-værdi: ${heritage_save_value}`
-            : "SAVE-værdi mangler",
-      },
-      {
-        key: "natur",
-        label: "Naturbeskyttelse",
-        Icon: Waves,
-        level: natur,
-        detail:
-          natur === "kritisk"
-            ? "Strand-/fredskov/klit — dispensation kræves"
-            : natur === "advarsel"
-              ? "Beskyttelseslinje i nærheden"
-              : "Ingen kendte beskyttelser",
-      },
-    ];
-  }, [complianceFlags, heritage_save_value, is_fredet]);
 
   return (
     <section className="mb-6">

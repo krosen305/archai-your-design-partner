@@ -16,9 +16,7 @@ export function mapByggetypeToProjectType(
   }
 }
 
-export function mapAntalEtager(
-  antalEtager: Byggeoenske["antalEtager"] | undefined,
-): number | null {
+export function mapAntalEtager(antalEtager: Byggeoenske["antalEtager"] | undefined): number | null {
   if (antalEtager === undefined) return null;
   return Math.ceil(antalEtager);
 }

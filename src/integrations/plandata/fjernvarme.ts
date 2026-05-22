@@ -62,7 +62,13 @@ export class FjernvarmeService {
       const daekket = await erIndenforFjernvarme(koordinat);
       return { fjernvarmeDaekket: daekket, fejl: null };
     } catch (e) {
-      logServerEvent({ module: "plandata/fjernvarme", operation: "getFjernvarmeDaekket", severity: "degraded", message: "FjernvarmeService fejl", error: e });
+      logServerEvent({
+        module: "plandata/fjernvarme",
+        operation: "getFjernvarmeDaekket",
+        severity: "degraded",
+        message: "FjernvarmeService fejl",
+        error: e,
+      });
       return { fjernvarmeDaekket: null, fejl: (e as Error).message };
     }
   }

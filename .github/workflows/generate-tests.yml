@@ -1,4 +1,4 @@
-name: Generate Unit Tests
+name: Generate Unit Test Suggestions
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - 'src/lib/**/*.ts'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   generate-tests:
@@ -150,21 +150,25 @@ jobs:
                   print(f"API fejl for {src_path}: {e} — springer over")
                   continue
 
-              os.makedirs(os.path.dirname(test_path) or ".", exist_ok=True)
-              with open(test_path, "w", encoding="utf-8") as f:
+              suggestion_dir = "test-suggestions"
+              os.makedirs(suggestion_dir, exist_ok=True)
+              suggestion_path = os.path.join(suggestion_dir, test_path.replace("/", "__"))
+              with open(suggestion_path, "w", encoding="utf-8") as f:
                   f.write(test_content + "\n")
-              print(f"Genereret: {test_path}")
+              print(f"Genereret suggestion: {suggestion_path}")
 
           PYEOF
 
-      - name: Commit genererede tests
+      - name: Upload generated test suggestions
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-test-suggestions
+          path: test-suggestions/
+          retention-days: 7
+
+      - name: Summarize suggestions
+        if: always()
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add 'src/**/*.test.ts' 2>/dev/null || git add $(find src -name "*.test.ts" 2>/dev/null) || true
-          if git diff --cached --quiet; then
-            echo "Ingen nye tests genereret"
-          else
-            git commit -m "test: auto-generer test-skeletons [skip ci]"
-            git push
-          fi
+          echo "## Generated test suggestions" >> "$GITHUB_STEP_SUMMARY"
+          find test-suggestions -type f -maxdepth 1 2>/dev/null | sed 's#^#- #' >> "$GITHUB_STEP_SUMMARY" || echo "No suggestions generated" >> "$GITHUB_STEP_SUMMARY"

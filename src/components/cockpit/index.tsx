@@ -52,7 +52,7 @@ import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskytt
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
-import { SAVE_HARD_STOP_MAX, SAVE_WARNING_VALUE } from "@/lib/rule-engine/hard-stop-adapter";
+import { buildInvisibleBudgetRisks } from "@/lib/compliance-view-model";
 import { cn } from "@/lib/utils";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 
@@ -141,11 +141,7 @@ export function ProjektDnaPanel({
 // LEFT — Accordion med 22 byggeønsker + debounced patch
 // ===========================================================================
 
-function ByggeoenskeAccordion({
-  reactiveContext,
-}: {
-  reactiveContext: ReactiveContext;
-}) {
+function ByggeoenskeAccordion({ reactiveContext }: { reactiveContext: ReactiveContext }) {
   const { byggeoenske } = useProject();
   const { patch } = useCockpitByggeoensker(reactiveContext);
   const [dispensationFor, setDispensationFor] = useState<"etager" | "areal" | null>(null);
@@ -732,70 +728,15 @@ function CompliancePanel({
   const konflikter = byggeanalyse?.konflikt.length ?? 0;
   const dispensationer = byggeanalyse?.kraever_dispensation.length ?? 0;
 
-  // Usynlige Budgetrisici — afledt fra complianceFlags (ARCH-176).
-  // Ingen direkte fbbData/bbr-checks — single source of truth er store.
-  const RISICI_FLAG_IDS = new Set([
-    "save-bevaringsvaerdi",
-    "bbr-fredet",
-    "fredet",
-    "geus-radon",
-    "geus-grundvand",
-    "mat-fredskov",
-    "mat-strandbeskyttelse",
-    "mat-klitfredning",
-    "naturbeskyttelse-strandbeskyttelse",
-    "dkjord-v2",
-    "dkjord-v1",
-  ]);
-  const flagRisici = complianceFlags
-    .filter((f) => RISICI_FLAG_IDS.has(f.id) || f.kilde === "geus" || f.kilde === "dkjord")
-    .map((f) => ({
-      key: f.id,
-      label: f.label,
-      severity: f.status === "blocker" ? ("high" as const) : ("med" as const),
-      detalje: f.detalje ?? "",
-    }));
-
-  // ARCH-162: augment med typede store-felter — vises selv ved page refresh (ingen pipeline re-run)
-  const flagKeys = new Set(flagRisici.map((r) => r.key));
-  const storeRisici: typeof flagRisici = [];
-  if (
-    heritage_save_value !== null &&
-    heritage_save_value <= SAVE_HARD_STOP_MAX &&
-    !flagKeys.has("save-bevaringsvaerdi") &&
-    !flagKeys.has("regelkerne-save_1_3_demolition")
-  ) {
-    storeRisici.push({
-      key: "save",
-      label: `SAVE ${heritage_save_value}/9 — Høj bevaringsværdi`,
-      severity: "high",
-      detalje: "Nedrivning/ombygning kræver kommunens tilladelse (Planlovens §14).",
-    });
-  }
-  if (
-    heritage_save_value === SAVE_WARNING_VALUE &&
-    !flagKeys.has("regelkerne-save_4_paragraph14_risk")
-  ) {
-    storeRisici.push({
-      key: "save-4",
-      label: "SAVE 4/9 — §14-forbud risiko",
-      severity: "med",
-      detalje: "Kommunen kan nedlægge §14-forbud mod nedrivning. Kontakt teknisk forvaltning.",
-    });
-  }
-  if (
-    is_fredet === true &&
-    !flagKeys.has("bbr-fredet") &&
-    !flagKeys.has("regelkerne-listed_building_demolition")
-  ) {
-    storeRisici.push({
-      key: "fredet",
-      label: "Fredet bygning",
-      severity: "high",
-      detalje: "Alle ændringer kræver tilladelse fra Slots- og Kulturstyrelsen.",
-    });
-  }
-  const risici = [...storeRisici, ...flagRisici];
+  const risici = useMemo(
+    () =>
+      buildInvisibleBudgetRisks({
+        complianceFlags,
+        heritageSaveValue: heritage_save_value,
+        isFredet: is_fredet,
+      }),
+    [complianceFlags, heritage_save_value, is_fredet],
+  );
 
   const inKobMode = mode === "due-diligence";
 

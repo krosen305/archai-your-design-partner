@@ -47,7 +47,7 @@ describe("logServerEvent", () => {
   test("non-fatal failure does not throw", () => {
     const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
     expect(() =>
-      logServerEvent({ module: "m", operation: "o", severity: "degraded", message: "ok" })
+      logServerEvent({ module: "m", operation: "o", severity: "degraded", message: "ok" }),
     ).not.toThrow();
     warnSpy.mockRestore();
   });

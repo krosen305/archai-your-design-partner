@@ -327,7 +327,12 @@ export class ByggeanalyseService {
     const gatewayResponse = await callAnthropicGateway({
       model: "claude-sonnet-4-6",
       system: systemPrompt,
-      messages: [{ role: "user", content: userContent as unknown as import("./gateway").AnthropicContentBlock[] }],
+      messages: [
+        {
+          role: "user",
+          content: userContent as unknown as import("./gateway").AnthropicContentBlock[],
+        },
+      ],
       maxTokens: 2000,
       operation: "byggeanalyse",
     });

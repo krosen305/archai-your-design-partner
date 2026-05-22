@@ -11,11 +11,16 @@ import {
   Check,
 } from "lucide-react";
 import { useProject } from "@/lib/project-store";
-import {
-  PIPELINE_SERVICE_STATE_LABELS,
-} from "@/types/project-state";
+import { buildSaveFieldView, type SaveFieldTone } from "@/lib/compliance-view-model";
+import { PIPELINE_SERVICE_STATE_LABELS } from "@/types/project-state";
 import type { ComplianceFlag, PipelineServiceState } from "@/types/project-state";
 import { Card } from "@/components/wizard-ui";
+
+const SAVE_FIELD_TONE_CLASS: Record<SaveFieldTone, string> = {
+  danger: "text-danger",
+  warning: "text-warning",
+  success: "text-emerald-400",
+};
 
 export function EjendomPanel() {
   const {
@@ -177,10 +182,7 @@ export function EjendomPanel() {
             />
             <Field label="Etager" value={bbr?.antal_etager != null ? `${bbr.antal_etager}` : "—"} />
             <Field label="Anvendelse" value={bbr?.anvendelse_tekst ?? "—"} />
-            <SaveField
-              hasFbbRegistration={heritage_save_value != null}
-              heritageSaveValue={heritage_save_value}
-            />
+            <SaveField heritageSaveValue={heritage_save_value} />
           </div>
         </Card>
         <Card>
@@ -360,44 +362,22 @@ function Field({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function SaveField({
-  hasFbbRegistration,
-  heritageSaveValue,
-}: {
-  hasFbbRegistration: boolean;
-  heritageSaveValue: number | null;
-}) {
-  if (!hasFbbRegistration) {
+function SaveField({ heritageSaveValue }: { heritageSaveValue: number | null }) {
+  const view = buildSaveFieldView(heritageSaveValue);
+
+  if (!view) {
     return <Field label="Bevaringsværdi (FBB)" value="Ikke registreret" />;
   }
-
-  if (heritageSaveValue == null) {
-    return <Field label="Bevaringsværdi (FBB)" value="Ikke registreret" />;
-  }
-
-  const tone =
-    heritageSaveValue <= 4
-      ? "text-danger"
-      : heritageSaveValue <= 6
-        ? "text-warning"
-        : "text-emerald-400";
-
-  const konsekvens =
-    heritageSaveValue <= 3
-      ? "Høj bevaringsværdi - nedrivning/ombygning kræver kommunens tilladelse"
-      : heritageSaveValue === 4
-        ? "§14-forbud risiko - kommunen kan nedlægge forbud mod nedrivning"
-        : heritageSaveValue <= 6
-          ? "Middel bevaringsværdi - kommunen bør høres"
-          : "Lav bevaringsværdi - ingen særlige krav";
 
   return (
     <div className="col-span-2 rounded-md border border-border/50 p-2.5">
       <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground uppercase">
         Bevaringsværdi (FBB)
       </div>
-      <div className={`mt-1 text-sm font-medium ${tone}`}>SAVE {heritageSaveValue}/9</div>
-      <div className="mt-0.5 text-xs text-muted-foreground">{konsekvens}</div>
+      <div className={`mt-1 text-sm font-medium ${SAVE_FIELD_TONE_CLASS[view.tone]}`}>
+        SAVE {view.saveValue}/9
+      </div>
+      <div className="mt-0.5 text-xs text-muted-foreground">{view.consequence}</div>
     </div>
   );
 }

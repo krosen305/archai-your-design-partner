@@ -247,7 +247,13 @@ export class FbbService {
         kilde: "fbb-wfs",
       };
     } catch (e) {
-      logServerEvent({ module: "fbb/client", operation: "getSaveData", severity: "degraded", message: "GeoServer fejl", error: e });
+      logServerEvent({
+        module: "fbb/client",
+        operation: "getSaveData",
+        severity: "degraded",
+        message: "GeoServer fejl",
+        error: e,
+      });
       return { fbb_bygninger: [], fbb_bedste_bygning: null, fbb_er_fredet: false, kilde: "fejl" };
     }
   }
@@ -278,7 +284,13 @@ export class FbbService {
         kilde: "adresse-fallback",
       };
     } catch (e) {
-      logServerEvent({ module: "fbb/client", operation: "getSaveDataByAddress", severity: "degraded", message: "Adresse-fallback fejlede", error: e });
+      logServerEvent({
+        module: "fbb/client",
+        operation: "getSaveDataByAddress",
+        severity: "degraded",
+        message: "Adresse-fallback fejlede",
+        error: e,
+      });
       return { fbb_bygninger: [], fbb_bedste_bygning: null, fbb_er_fredet: false, kilde: "fejl" };
     }
   }

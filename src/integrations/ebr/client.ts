@@ -114,7 +114,9 @@ export class EbrService {
       const { apiKey, endpoint } = getConfig(config);
       const url = new URL(endpoint);
       url.searchParams.set("apiKey", apiKey);
-      const data = await datafordelerGraphqlFetch<{ EBR_Ejendomsbeliggenhed: { nodes: EbrBeliggenhedNode[] } }>(
+      const data = await datafordelerGraphqlFetch<{
+        EBR_Ejendomsbeliggenhed: { nodes: EbrBeliggenhedNode[] };
+      }>(
         url,
         BELIGGENHED_QUERY,
         { husnummerLokalId: id, ...currentBitemporalArgs() },
@@ -162,7 +164,9 @@ export class EbrService {
       const { apiKey, endpoint } = getConfig(config);
       const url = new URL(endpoint);
       url.searchParams.set("apiKey", apiKey);
-      const data = await datafordelerGraphqlFetch<{ EBR_Ejendomsbeliggenhed: { nodes: EbrBeliggenhedNode[] } }>(
+      const data = await datafordelerGraphqlFetch<{
+        EBR_Ejendomsbeliggenhed: { nodes: EbrBeliggenhedNode[] };
+      }>(
         url,
         BELIGGENHED_ADRESSE_QUERY,
         { adresseLokalId: id, ...currentBitemporalArgs() },

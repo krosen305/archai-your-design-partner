@@ -46,7 +46,7 @@ One-click generation of demolition and building permit applications, pre-filled 
 | AI              | Anthropic Claude (Sonnet / Haiku) — design generation, PDF extraction, AI analysis                       |
 | Danish Data     | Datafordeler (BBR, MAT, DAR, EBR, VUR), Plandata (WFS), SDFI (DHM, naturbeskyttelse), FBB, GEUS, DK-Jord |
 | Styling         | Tailwind CSS + shadcn/ui                                                                                 |
-| Tests           | Vitest (unit) + Playwright (E2E) + eval-framework                                                        |
+| Tests           | Bun test (unit/integration) + Playwright (E2E) + eval-framework                                          |
 
 ---
 
@@ -76,7 +76,9 @@ SUPABASE_SERVICE_ROLE_KEY=...
 ```bash
 bun dev                     # Dev server
 bun run build               # Production build (Cloudflare Workers)
-bun test                    # Unit tests
+bun test                    # Unit tests (src/)
+bun run test:live           # Live integration tests (kræver env vars)
+bunx playwright test        # E2E tests
 bun run evals               # AI eval-suite (mock mode)
 bunx tsc --noEmit           # Type-check
 bunx eslint .               # Lint

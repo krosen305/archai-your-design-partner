@@ -14,17 +14,17 @@ export default defineConfig({
   },
 
   webServer: {
-    command: "bun run dev -- --host 127.0.0.1 --port 8080",
+    command: process.env.CI
+      ? "bun run build && bun run preview -- --host 127.0.0.1 --port 8080"
+      : "bun run dev -- --host 127.0.0.1 --port 8080",
     url: "http://127.0.0.1:8080",
-    reuseExistingServer: true, // Genbrug kørende dev server
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 
   projects: [
-    {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
-    },
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "mobile-chrome", use: { ...devices["Pixel 7"] } },
   ],
 
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],

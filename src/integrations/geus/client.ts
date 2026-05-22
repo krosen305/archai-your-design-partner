@@ -135,11 +135,23 @@ export const GeusService = {
 
     const [radonRisk, groundwater] = await Promise.all([
       fetchRadonRisk(koordinat).catch((e: Error) => {
-        logServerEvent({ module: "geus/client", operation: "fetchRadonRisk", severity: "degraded", message: "Radon WMS fejlede", error: e });
+        logServerEvent({
+          module: "geus/client",
+          operation: "fetchRadonRisk",
+          severity: "degraded",
+          message: "Radon WMS fejlede",
+          error: e,
+        });
         return "unknown" as const;
       }),
       fetchGroundwater(koordinat).catch((e: Error) => {
-        logServerEvent({ module: "geus/client", operation: "fetchGroundwater", severity: "degraded", message: "Jupiter WFS fejlede", error: e });
+        logServerEvent({
+          module: "geus/client",
+          operation: "fetchGroundwater",
+          severity: "degraded",
+          message: "Jupiter WFS fejlede",
+          error: e,
+        });
         return { depthM: null, boringId: null };
       }),
     ]);

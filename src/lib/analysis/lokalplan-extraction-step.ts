@@ -1,10 +1,7 @@
 // src/lib/analysis/lokalplan-extraction-step.ts
 // SERVER-SIDE ONLY. Layer 2: lokalplan PDF extraction with cache.
 
-import {
-  getCachedLokalplan,
-  setCachedLokalplan,
-} from "@/integrations/cache/client";
+import { getCachedLokalplan, setCachedLokalplan } from "@/integrations/cache/client";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";

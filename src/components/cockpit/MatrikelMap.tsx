@@ -27,7 +27,13 @@ export type MatrikelMapProps = {
 
 type ParcelFeatureCollection = GeoJSON.FeatureCollection | null;
 
-export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId, onPlacementChange }: MatrikelMapProps) {
+export function MatrikelMap({
+  bbr,
+  metrics,
+  naboer,
+  jordstykkeLokalId,
+  onPlacementChange,
+}: MatrikelMapProps) {
   const { address, complianceFlags, setAddress } = useProject();
   const geo = address?.centroid ?? address?.koordinater ?? null;
   const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
@@ -35,7 +41,9 @@ export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId, onPlaceme
   const mapRef = useRef<import("ol/Map").default | null>(null);
   const parcelSourceRef = useRef<import("ol/source/Vector").default | null>(null);
   const footprintSourceRef = useRef<import("ol/source/Vector").default | null>(null);
-  const previewLayerRef = useRef<import("ol/layer/Image").default<import("ol/source/Image").default> | null>(null);
+  const previewLayerRef = useRef<
+    import("ol/layer/Image").default<import("ol/source/Image").default> | null
+  >(null);
   const footprintFeatureRef = useRef<import("ol/Feature").default | null>(null);
   const footprintCenterRef = useRef<[number, number] | null>(null);
   const translateRef = useRef<import("ol/interaction/Translate").default | null>(null);
@@ -213,8 +221,12 @@ export function MatrikelMap({ bbr, metrics, naboer, jordstykkeLokalId, onPlaceme
       // Typed OL adapter — narrows dynamic import constructors
       type OlMapCtor = new (...args: unknown[]) => import("ol/Map").default;
       type OlViewCtor = new (...args: unknown[]) => import("ol/View").default;
-      type OlTileLayerCtor = new (...args: unknown[]) => import("ol/layer/Tile").default<import("ol/source/Tile").default>;
-      type OlImageLayerCtor = new (...args: unknown[]) => import("ol/layer/Image").default<import("ol/source/Image").default>;
+      type OlTileLayerCtor = new (
+        ...args: unknown[]
+      ) => import("ol/layer/Tile").default<import("ol/source/Tile").default>;
+      type OlImageLayerCtor = new (
+        ...args: unknown[]
+      ) => import("ol/layer/Image").default<import("ol/source/Image").default>;
       type OlVectorLayerCtor = new (...args: unknown[]) => import("ol/layer/Vector").default;
       type OlVectorSourceCtor = new (...args: unknown[]) => import("ol/source/Vector").default;
       type OlFeatureCtor = new (...args: unknown[]) => import("ol/Feature").default;

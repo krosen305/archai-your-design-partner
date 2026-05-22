@@ -72,6 +72,14 @@ function AddressStep() {
     setSelected(full);
   }
 
+  async function startWithoutAddress() {
+    setAddress(null);
+    setMode("design");
+    const { setGuest } = await import("@/lib/auth");
+    setGuest();
+    navigate({ to: "/projekt/frit/cockpit" as never });
+  }
+
   return (
     <PageTransition>
       <div className="mx-auto max-w-[720px] px-6 py-10">
@@ -258,7 +266,16 @@ function AddressStep() {
           )}
 
           {/* Fortsæt-knap — varianter */}
-          {(hasHard || softBlockers.length > 0) && !overrideContinue ? (
+          {!selected ? (
+            <div className="mt-6 rounded-md border border-border/60 bg-[#111] px-4 py-3 text-center">
+              <div className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground">
+                VÆLG ADRESSE
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Start med en adresse for at hente matrikel-, BBR- og plandata.
+              </p>
+            </div>
+          ) : (hasHard || softBlockers.length > 0) && !overrideContinue ? (
             <button
               onClick={() => setShowBlockerDialog(true)}
               className="mt-6 w-full inline-flex items-center justify-center rounded-md bg-danger px-6 py-3 font-mono text-sm text-white transition-all hover:brightness-110"
@@ -344,16 +361,13 @@ function AddressStep() {
           {/* Spring over: fortsæt uden adresse */}
           <button
             type="button"
-            onClick={() => {
-              setAddress(null);
-              navigate({ to: "/projekt/adresse" });
-            }}
+            onClick={startWithoutAddress}
             className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
           >
-            Fortsæt uden adresse →
+            Start uden adresse →
           </button>
           <p className="mt-1 text-[11px] text-muted-foreground text-center">
-            Vi henter automatisk data om grunden fra offentlige registre.
+            Du kan beskrive ønsker og budget først. Registerdata og compliance kræver en adresse.
           </p>
 
           {import.meta.env.DEV && (

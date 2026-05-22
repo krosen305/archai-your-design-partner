@@ -18,14 +18,16 @@ import {
 import { useProject } from "@/lib/project-store";
 import type { ComplianceFlag } from "@/types/project-state";
 import { cn } from "@/lib/utils";
+import {
+  getComplianceFlagCategory,
+  type ComplianceFeedCategory,
+} from "@/lib/compliance-view-model";
 
 /**
  * RisikoFeed — sammensmeltning af tidligere ComplianceFeed + RiskOverview +
  * USYNLIGE BUDGETRISICI fra CompliancePanel. Én sorteret feed, kategori-filterpills
  * i toppen, OK-flag skjult bag toggle.
  */
-
-type Kategori = "alle" | "plan" | "fredning" | "geoteknik" | "natur" | "naboer" | "forsyning";
 
 const STATUS_ORDER: Record<ComplianceFlag["status"], number> = {
   blocker: 0,
@@ -45,7 +47,7 @@ const KILDE_LABEL: Record<ComplianceFlag["kilde"], string> = {
   regelkerne: "Regelkerne",
 };
 
-const KATEGORIER: Array<{ key: Kategori; label: string; Icon: LucideIcon }> = [
+const KATEGORIER: Array<{ key: ComplianceFeedCategory; label: string; Icon: LucideIcon }> = [
   { key: "alle", label: "Alle", Icon: Filter },
   { key: "plan", label: "Plan", Icon: Building2 },
   { key: "fredning", label: "Fredning", Icon: Landmark },
@@ -55,28 +57,16 @@ const KATEGORIER: Array<{ key: Kategori; label: string; Icon: LucideIcon }> = [
   { key: "forsyning", label: "Forsyning", Icon: Plug },
 ];
 
-function flagKategori(flag: ComplianceFlag): Kategori {
-  const id = flag.id?.toLowerCase() ?? "";
-  const label = flag.label?.toLowerCase() ?? "";
-  if (flag.kilde === "geus" || /geo|jord|grund|radon/.test(id)) return "geoteknik";
-  if (flag.kilde === "fbb" || /save|fredet|bevaringsvaerdi|fredning|listed/.test(id))
-    return "fredning";
-  if (/strand|fredskov|klitfredning|natur/.test(id)) return "natur";
-  if (/nabo|skel|afstand/.test(id) || /nabo|skel/.test(label)) return "naboer";
-  if (/fjernvarme|forsyning|tilslutning|varme/.test(id)) return "forsyning";
-  return "plan";
-}
-
 export function RisikoFeed({ onOpenDetails }: { onOpenDetails: () => void }) {
   const { complianceFlags, hard_stop, hard_stop_reason } = useProject();
-  const [kategori, setKategori] = useState<Kategori>("alle");
+  const [kategori, setKategori] = useState<ComplianceFeedCategory>("alle");
   const [visOk, setVisOk] = useState(false);
 
   const filtered = useMemo(() => {
     const base =
       kategori === "alle"
         ? complianceFlags
-        : complianceFlags.filter((f) => flagKategori(f) === kategori);
+        : complianceFlags.filter((f) => getComplianceFlagCategory(f) === kategori);
     return [...base].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
   }, [complianceFlags, kategori]);
 
@@ -85,10 +75,13 @@ export function RisikoFeed({ onOpenDetails }: { onOpenDetails: () => void }) {
 
   // Tæl pr. kategori for pill-badges
   const counts = useMemo(() => {
-    const c = new Map<Kategori, { blocker: number; advarsel: number; ok: number; total: number }>();
+    const c = new Map<
+      ComplianceFeedCategory,
+      { blocker: number; advarsel: number; ok: number; total: number }
+    >();
     for (const k of KATEGORIER) c.set(k.key, { blocker: 0, advarsel: 0, ok: 0, total: 0 });
     for (const f of complianceFlags) {
-      const k = flagKategori(f);
+      const k = getComplianceFlagCategory(f);
       const row = c.get(k)!;
       row[f.status]++;
       row.total++;

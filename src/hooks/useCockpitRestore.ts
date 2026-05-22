@@ -1,4 +1,3 @@
-// src/hooks/useCockpitRestore.ts
 import { useState, useEffect } from "react";
 import { useProject } from "@/lib/project-store";
 import { parseComplianceData, deriveSourceStatus } from "@/types/project-state";
@@ -13,23 +12,7 @@ import type { FbbResultat } from "@/integrations/fbb/client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { AnalysisSnapshot } from "./useCockpitAnalysis";
-
-function routeMatchesAddress(
-  currentAddress: { adresseid?: string | null; adgangsadresseid?: string | null } | null,
-  routeAddressId: string,
-) {
-  return (
-    !!currentAddress &&
-    (currentAddress.adresseid === routeAddressId ||
-      currentAddress.adgangsadresseid === routeAddressId)
-  );
-}
-
-function objectField<T>(value: unknown, key: string): T | null {
-  if (typeof value !== "object" || value === null) return null;
-  const field = (value as Record<string, unknown>)[key];
-  return typeof field === "object" && field !== null ? (field as T) : null;
-}
+import { routeMatchesAddress, objectField } from "@/hooks/cockpit-restore-utils";
 
 export { routeMatchesAddress, objectField };
 
@@ -131,14 +114,46 @@ export function useCockpitRestore(params: {
           store.setDataStatusBulk({
             bbr: deriveSourceStatus("bbr", s.bbrData, lastFetched),
             lokalplaner: deriveSourceStatus("lokalplaner", s.lokalplaner, lastFetched),
-            kommuneplanramme: deriveSourceStatus("kommuneplanramme", s.kommuneplanramme, lastFetched),
-            fbb: deriveSourceStatus("fbb", objectField(project.compliance_data, "fbbData"), lastFetched),
-            naturbeskyttelse: deriveSourceStatus("naturbeskyttelse", objectField(project.compliance_data, "naturbeskyttelse"), lastFetched),
-            geusRisk: deriveSourceStatus("geusRisk", objectField(project.compliance_data, "geusRisk"), lastFetched),
-            servitutter: deriveSourceStatus("servitutter", objectField(project.compliance_data, "servitutter"), lastFetched),
-            terrain: deriveSourceStatus("terrain", objectField(project.compliance_data, "terrain"), lastFetched),
-            fjernvarme: deriveSourceStatus("fjernvarme", objectField(project.compliance_data, "fjernvarme"), lastFetched),
-            naboer: deriveSourceStatus("naboer", objectField(project.compliance_data, "naboer"), lastFetched),
+            kommuneplanramme: deriveSourceStatus(
+              "kommuneplanramme",
+              s.kommuneplanramme,
+              lastFetched,
+            ),
+            fbb: deriveSourceStatus(
+              "fbb",
+              objectField(project.compliance_data, "fbbData"),
+              lastFetched,
+            ),
+            naturbeskyttelse: deriveSourceStatus(
+              "naturbeskyttelse",
+              objectField(project.compliance_data, "naturbeskyttelse"),
+              lastFetched,
+            ),
+            geusRisk: deriveSourceStatus(
+              "geusRisk",
+              objectField(project.compliance_data, "geusRisk"),
+              lastFetched,
+            ),
+            servitutter: deriveSourceStatus(
+              "servitutter",
+              objectField(project.compliance_data, "servitutter"),
+              lastFetched,
+            ),
+            terrain: deriveSourceStatus(
+              "terrain",
+              objectField(project.compliance_data, "terrain"),
+              lastFetched,
+            ),
+            fjernvarme: deriveSourceStatus(
+              "fjernvarme",
+              objectField(project.compliance_data, "fjernvarme"),
+              lastFetched,
+            ),
+            naboer: deriveSourceStatus(
+              "naboer",
+              objectField(project.compliance_data, "naboer"),
+              lastFetched,
+            ),
             vurdering: deriveSourceStatus("vurdering", s.vurderingData, lastFetched),
             byggeanalyse: deriveSourceStatus("byggeanalyse", s.byggeanalyseResultat, lastFetched),
             billedanalyse: deriveSourceStatus("billedanalyse", project.billedanalyse, lastFetched),
