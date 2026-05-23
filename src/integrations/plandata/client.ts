@@ -30,6 +30,7 @@
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import { selectKommuneplanrammeForCompliance } from "./selectors";
 import { logServerEvent } from "@/lib/server-logger";
+import { z } from "zod";
 
 // WFS er et offentligt endpoint — retry på 502/503/504, ikke 429.
 const WFS_RETRY = { timeoutMs: 15_000, retries: 1, retryOnStatuses: [502, 503, 504] };
@@ -120,6 +121,19 @@ type PlandataWfsFeature = {
   properties: Record<string, unknown> | null;
 };
 
+const plandataWfsFeatureSchema = z.object({
+  id: z.string().optional(),
+  properties: z.record(z.unknown()).nullable().optional().default(null),
+});
+
+const plandataWfsResponseSchema = z.object({
+  features: z.array(plandataWfsFeatureSchema).optional().default([]),
+});
+
+function parseWfsResponse(payload: unknown): PlandataWfsFeature[] {
+  return plandataWfsResponseSchema.parse(payload).features;
+}
+
 function str(v: unknown): string | null {
   if (v == null) return null;
   return String(v);
@@ -209,10 +223,9 @@ export class PlandataService {
         throw new Error(`Plandata WFS HTTP ${vedtagetRes.status}: ${body.slice(0, 300)}`);
       }
 
-      const vedtagetJson = (await vedtagetRes.json()) as any;
-      const vedtagetFeatures: any[] = vedtagetJson?.features ?? [];
+      const vedtagetFeatures = parseWfsResponse(await vedtagetRes.json());
 
-      let forslagFeatures: any[] = [];
+      let forslagFeatures: PlandataWfsFeature[] = [];
       if (includeForslag) {
         try {
           const forslagRes = await fetchWithRetry(
@@ -221,8 +234,7 @@ export class PlandataService {
             WFS_RETRY,
           );
           if (forslagRes.ok) {
-            const forslagJson = (await forslagRes.json()) as any;
-            forslagFeatures = forslagJson?.features ?? [];
+            forslagFeatures = parseWfsResponse(await forslagRes.json());
           }
         } catch {
           // Forslag er ikke kritisk – ignorer fejl
@@ -276,8 +288,7 @@ export class PlandataService {
         throw new Error(`Plandata WFS HTTP ${res.status}`);
       }
 
-      const json = (await res.json()) as any;
-      const features: any[] = json?.features ?? [];
+      const features = parseWfsResponse(await res.json());
 
       if (!features.length) {
         return { ramme: null, fejl: "Ingen kommuneplanramme fundet" };

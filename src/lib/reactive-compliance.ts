@@ -11,30 +11,33 @@ import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import { assembleRuleEngineInput } from "@/lib/rule-engine/input-assembler";
 import { runRuleEngine } from "@/lib/rule-engine/engine";
 import { deriveComplianceFlags } from "@/lib/compliance-flags";
+import type {
+  RuleEngineBbrData,
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+  RuleEngineLokalplanExtract,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 import type { Byggeoenske, ComplianceFlag } from "@/types/project-state";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme, Lokalplan } from "@/integrations/plandata/client";
-import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { FbbResultat } from "@/integrations/fbb/client";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 
 export type PartialUpdateParams = {
-  bbr: BbrKompliantData;
-  ramme: Kommuneplanramme | null;
-  lokalplanExtract: LokalplanExtract | null;
-  lokalplaner: Lokalplan[];
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  geusRisk: GeusRiskData | null;
-  servitutter: TinglysningResult | null;
-  terrain: TerrainData | null;
-  fbbData: FbbResultat | null;
-  dkjord: DkJordResultat | null;
+  bbr: RuleEngineBbrData;
+  ramme: RuleEngineKommuneplanramme | null;
+  lokalplanExtract: RuleEngineLokalplanExtract | null;
+  lokalplaner: RuleEngineLokalplan[];
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  geusRisk: RuleEngineGeusRiskData | null;
+  servitutter: RuleEngineTinglysningResult | null;
+  terrain: RuleEngineTerrainData | null;
+  fbbData: RuleEngineFbbResult | null;
+  dkjord: RuleEngineDkJordResultat | null;
   byggeoenske: Byggeoenske;
   municipality: string;
   kommunekode: string;

@@ -1,23 +1,50 @@
 // SERVER-SIDE ONLY — loads trusted compliance state from Supabase.
 // Never call directly from client code.
 
+import { z, type ZodType } from "zod";
 import { loadProject } from "@/integrations/supabase/repositories/projects.repository";
 import { getSiteConstraints } from "@/integrations/supabase/repositories/site-constraints.repository";
+import type {
+  RuleEngineBbrData,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+  RuleEngineLokalplanExtract,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
 import { logServerEvent } from "@/lib/server-logger";
 import type { Byggeoenske } from "@/types/project-state";
 import type { ByggeanalyseGatedResult } from "@/integrations/ai/byggeanalyse";
+import {
+  lokalplanExtractSchema,
+  ruleEngineBbrDataSchema,
+  ruleEngineFbbResultSchema,
+  ruleEngineGeusRiskDataSchema,
+  ruleEngineKommuneplanrammeSchema,
+  ruleEngineLokalplanSchema,
+  ruleEngineNaturbeskyttelsesResultatSchema,
+  ruleEngineTerrainDataSchema,
+  ruleEngineTinglysningResultSchema,
+} from "@/types/project-restore.schemas";
 
-function extractComplianceField<T>(complianceData: unknown, key: string): T | null {
-  if (
-    typeof complianceData !== "object" ||
-    complianceData === null ||
-    !(key in (complianceData as Record<string, unknown>))
-  ) {
+function decodeComplianceField<T>(
+  complianceData: unknown,
+  keys: string[],
+  schema: ZodType<T>,
+): T | null {
+  if (typeof complianceData !== "object" || complianceData === null) {
     return null;
   }
-  const value = (complianceData as Record<string, unknown>)[key];
-  return (value ?? null) as T | null;
+  const record = complianceData as Record<string, unknown>;
+  for (const key of keys) {
+    const parsed = schema.safeParse(record[key]);
+    if (parsed.success) return parsed.data;
+  }
+  return null;
 }
 
 export async function runByggeanalyseGated(params: {
@@ -74,15 +101,24 @@ export async function runByggeanalyseGated(params: {
 
   const cd = project.compliance_data;
 
-  const bbrData = extractComplianceField(cd, "bbrData");
-  const fbbData = extractComplianceField(cd, "fbbData");
-  const lokalplaner = extractComplianceField<unknown[]>(cd, "lokalplaner") ?? [];
-  const lokalplanExtract = extractComplianceField(cd, "lokalplanExtract");
-  const kommuneplanramme = extractComplianceField(cd, "kommuneplanramme");
-  const naturbeskyttelse = extractComplianceField(cd, "naturbeskyttelse");
-  const geusRisk = extractComplianceField(cd, "geusRisk");
-  const servitutter = extractComplianceField(cd, "servitutter");
-  const terrain = extractComplianceField(cd, "terrain");
+  const bbrData = decodeComplianceField(cd, ["bbr", "bbrData"], ruleEngineBbrDataSchema);
+  const fbbData = decodeComplianceField(cd, ["fbbData"], ruleEngineFbbResultSchema);
+  const lokalplaner =
+    decodeComplianceField(cd, ["lokalplaner"], z.array(ruleEngineLokalplanSchema)) ?? [];
+  const lokalplanExtract = decodeComplianceField(cd, ["lokalplanExtract"], lokalplanExtractSchema);
+  const kommuneplanramme = decodeComplianceField(
+    cd,
+    ["kommuneplanramme"],
+    ruleEngineKommuneplanrammeSchema,
+  );
+  const naturbeskyttelse = decodeComplianceField(
+    cd,
+    ["naturbeskyttelse"],
+    ruleEngineNaturbeskyttelsesResultatSchema,
+  );
+  const geusRisk = decodeComplianceField(cd, ["geusRisk"], ruleEngineGeusRiskDataSchema);
+  const servitutter = decodeComplianceField(cd, ["servitutter"], ruleEngineTinglysningResultSchema);
+  const terrain = decodeComplianceField(cd, ["terrain"], ruleEngineTerrainDataSchema);
 
   if (!bbrData) {
     return {
@@ -97,20 +133,15 @@ export async function runByggeanalyseGated(params: {
     const { assembleRuleEngineInput } = await import("@/lib/rule-engine/input-assembler");
     const { runRuleEngine } = await import("@/lib/rule-engine/engine");
     const { input, missingFields } = assembleRuleEngineInput({
-      bbr: bbrData as import("@/integrations/bbr/client").BbrKompliantData,
-      kommuneplanramme:
-        (kommuneplanramme as import("@/integrations/plandata/client").Kommuneplanramme) ?? null,
-      lokalplaner: (lokalplaner as import("@/integrations/plandata/client").Lokalplan[]) ?? [],
-      lokalplanExtract:
-        (lokalplanExtract as import("@/integrations/ai/pdf-extractor").LokalplanExtract) ?? null,
-      naturbeskyttelse:
-        (naturbeskyttelse as import("@/integrations/sdfi/naturbeskyttelse").NaturbeskyttelsesResultat) ??
-        null,
-      geusRisk: (geusRisk as import("@/integrations/geus/client").GeusRiskData) ?? null,
-      servitutter:
-        (servitutter as import("@/integrations/tinglysning/client").TinglysningResult) ?? null,
-      terrain: (terrain as import("@/integrations/sdfi/dhm-client").TerrainData) ?? null,
-      fbbData: (fbbData as import("@/integrations/fbb/client").FbbResultat) ?? null,
+      bbr: bbrData,
+      kommuneplanramme,
+      lokalplaner,
+      lokalplanExtract: (lokalplanExtract as RuleEngineLokalplanExtract) ?? null,
+      naturbeskyttelse,
+      geusRisk,
+      servitutter,
+      terrain,
+      fbbData,
       dkjord: null,
       // Partial<Byggeoenske> is structurally compatible — assembler handles undefined fields via missingFields
       byggeoenske: (byggeoenske ?? null) as import("@/types/project-state").Byggeoenske | null,
@@ -142,28 +173,21 @@ export async function runByggeanalyseGated(params: {
   const { ByggeanalyseService } = await import("@/integrations/ai/byggeanalyse");
   const { selectPrimaryLokalplanForPdf } = await import("@/integrations/plandata/selectors");
 
-  const primaryLp = selectPrimaryLokalplanForPdf(
-    lokalplaner as import("@/integrations/plandata/client").Lokalplan[],
-  );
+  const primaryLp = selectPrimaryLokalplanForPdf(lokalplaner);
   const lokalplanNavn = primaryLp?.plannavn ?? primaryLp?.plannr ?? "Ukendt lokalplan";
 
   const resultat = await ByggeanalyseService.analyse({
     byggeoenske,
-    lokalplanExtract:
-      (lokalplanExtract as import("@/integrations/ai/pdf-extractor").LokalplanExtract) ?? null,
-    bbr: bbrData as import("@/integrations/bbr/client").BbrKompliantData,
+    lokalplanExtract,
+    bbr: bbrData,
     lokalplanNavn,
-    kommuneplanramme:
-      (kommuneplanramme as import("@/integrations/plandata/client").Kommuneplanramme) ?? null,
-    lokalplaner: (lokalplaner as import("@/integrations/plandata/client").Lokalplan[]) ?? [],
-    naturbeskyttelse:
-      (naturbeskyttelse as import("@/integrations/sdfi/naturbeskyttelse").NaturbeskyttelsesResultat) ??
-      null,
-    geusRisk: (geusRisk as import("@/integrations/geus/client").GeusRiskData) ?? null,
-    servitutter:
-      (servitutter as import("@/integrations/tinglysning/client").TinglysningResult) ?? null,
-    terrain: (terrain as import("@/integrations/sdfi/dhm-client").TerrainData) ?? null,
-    fbbData: (fbbData as import("@/integrations/fbb/client").FbbResultat) ?? null,
+    kommuneplanramme,
+    lokalplaner,
+    naturbeskyttelse,
+    geusRisk,
+    servitutter,
+    terrain,
+    fbbData,
     ruleEngineResult,
   });
 

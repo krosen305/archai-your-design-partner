@@ -1,4 +1,4 @@
-import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 
 /**
  * Checks if a property has hard-stop conditions that make expensive layer-4 analysis unnecessary.
@@ -15,7 +15,7 @@ import type { BbrKompliantData } from "@/integrations/bbr/client";
  * @param bbr BBR data with compliance flags, or null if not available
  * @returns true if any hard stop is detected, false otherwise
  */
-export function shouldSkipExpensiveLayer4(bbr: BbrKompliantData | null): boolean {
+export function shouldSkipExpensiveLayer4(bbr: RuleEngineBbrData | null): boolean {
   if (!bbr) return false;
   return (
     bbr.fredet === true ||

@@ -10,7 +10,6 @@ implementation agents must not update `AGENTS.md` or `CLAUDE.md` unless the
 user explicitly asks and the change receives human review.
 
 For architecture doctrine, see `CLAUDE.md`.
-For the current refactoring backlog, see `ROADMAP2.md`.
 For integration details, see `docs/INTEGRATIONS.md`.
 
 ---

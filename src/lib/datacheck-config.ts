@@ -16,8 +16,6 @@ export type DataPointEntry = {
   updatedAt: string;
 };
 
-export type DataStatusMap = Record<string, DataPointEntry>;
-
 export type Phase = "skitse" | "myndighed" | "udbud";
 
 export type DataPointDef = {
@@ -661,20 +659,6 @@ export const PHASE_LABELS: Record<Phase, string> = {
   udbud: "Udbudsfase",
 };
 
-export function getReadinessScores(statusMap: DataStatusMap): ReadinessScore[] {
-  const phases: Phase[] = ["skitse", "myndighed", "udbud"];
-  return phases.map((phase) => {
-    const kritisk = DATA_POINT_DEFS.filter((d) => d.phase === phase && d.kritisk);
-    const done = kritisk.filter((d) => {
-      const s = statusMap[d.id]?.status;
-      return s === "done" || s === "not_applicable";
-    });
-    const total = kritisk.length;
-    const pct = total > 0 ? Math.round((done.length / total) * 100) : 0;
-    return { phase, label: PHASE_LABELS[phase], done: done.length, total, pct };
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Risk flags
 // ---------------------------------------------------------------------------
@@ -692,30 +676,3 @@ export const MEDIUM_RISK_IDS = new Set([
   "udbudsmateriale",
   "kloak_tilslutning",
 ]);
-
-export function getRiskFlags(statusMap: DataStatusMap): RiskFlag[] {
-  const flags: RiskFlag[] = [];
-
-  for (const def of DATA_POINT_DEFS) {
-    const status = statusMap[def.id]?.status ?? "not_started";
-    if (status === "done" || status === "not_applicable") continue;
-
-    if (HIGH_RISK_IDS.has(def.id)) {
-      flags.push({
-        fieldId: def.id,
-        label: def.label,
-        severity: "high",
-        message: `${def.label} mangler — blokerer fremskridt i ${PHASE_LABELS[def.phase].toLowerCase()}`,
-      });
-    } else if (MEDIUM_RISK_IDS.has(def.id) && status === "not_started") {
-      flags.push({
-        fieldId: def.id,
-        label: def.label,
-        severity: "medium",
-        message: `${def.label} er ikke igangsat`,
-      });
-    }
-  }
-
-  return flags;
-}

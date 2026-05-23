@@ -10,6 +10,18 @@ import type {
 } from "@/integrations/ai/byggeanalyse";
 import type { assembleRuleEngineInput } from "@/lib/rule-engine/input-assembler";
 import type { runRuleEngine } from "@/lib/rule-engine/engine";
+import {
+  lokalplanExtractSchema,
+  ruleEngineBbrDataSchema,
+  ruleEngineFbbResultSchema,
+  ruleEngineGeusRiskDataSchema,
+  ruleEngineKommuneplanrammeSchema,
+  ruleEngineLokalplanSchema,
+  ruleEngineNaturbeskyttelsesResultatSchema,
+  ruleEngineTerrainDataSchema,
+  ruleEngineTinglysningResultSchema,
+} from "@/types/project-restore.schemas";
+import { byggeoenskeSchema } from "@/types/project-sync.schemas";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -34,6 +46,25 @@ const analysisInputSchema = z.object({
 const byggeanalyseTokenSchema = z.object({
   token: z.string().min(1),
 });
+
+const byggeanalyseInputSchema = z
+  .object({
+    token: z.string().min(1),
+    byggeoenske: byggeoenskeSchema.optional().default({}),
+    lokalplanExtract: lokalplanExtractSchema.nullable(),
+    bbr: ruleEngineBbrDataSchema.nullable(),
+    lokalplanNavn: z.string(),
+    kommuneplanramme: ruleEngineKommuneplanrammeSchema.nullable().optional(),
+    lokalplaner: z.array(ruleEngineLokalplanSchema).optional(),
+    naturbeskyttelse: ruleEngineNaturbeskyttelsesResultatSchema.nullable().optional(),
+    geusRisk: ruleEngineGeusRiskDataSchema.nullable().optional(),
+    servitutter: ruleEngineTinglysningResultSchema.nullable().optional(),
+    terrain: ruleEngineTerrainDataSchema.nullable().optional(),
+    fbbData: ruleEngineFbbResultSchema.nullable().optional(),
+    municipality: z.string().optional(),
+    kommunekode: z.string().optional(),
+  })
+  .passthrough();
 
 // ---------------------------------------------------------------------------
 // Dependency injection types
@@ -79,10 +110,8 @@ export async function handleRunByggeanalyse(
     "withAuth" | "assembleRuleEngineInput" | "runRuleEngine" | "ByggeanalyseService"
   >,
 ): Promise<ByggeanalyseResultat> {
-  // Validate that a token is present (full ByggeanalyseInput shape is not schema-validated
-  // here because it is a large union of optional fields; the AI service validates its own input).
   const { token } = byggeanalyseTokenSchema.parse(rawData);
-  const analysisInput = rawData as ByggeanalyseInput;
+  const analysisInput: ByggeanalyseInput = byggeanalyseInputSchema.parse(rawData);
 
   return deps.withAuth(token, async () => {
     let ruleEngineResult: import("@/lib/rule-engine/types").RuleEngineResult | undefined;
@@ -144,7 +173,7 @@ export const fetchCompliance = createServerFn({ method: "POST" })
 const runByggeanalyseInputSchema = z.object({
   projectId: z.string().uuid("projectId skal være et UUID"),
   accessToken: z.string().min(1, "accessToken er påkrævet"),
-  byggeoenske: z.record(z.unknown()).optional().default({}),
+  byggeoenske: byggeoenskeSchema.optional().default({}),
 });
 
 export const runByggeanalyse = createServerFn({ method: "POST" })
@@ -156,7 +185,7 @@ export const runByggeanalyse = createServerFn({ method: "POST" })
         return runByggeanalyseGated({
           projectId: data.projectId,
           userId,
-          byggeoenske: data.byggeoenske as Partial<import("@/types/project-state").Byggeoenske>,
+          byggeoenske: data.byggeoenske,
         });
       });
     },

@@ -2,19 +2,22 @@
 // SERVER-SIDE ONLY.
 
 import { getCachedCompliance, setCachedCompliance } from "@/integrations/cache/client";
+import type { VurData } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+} from "@/domain/contracts/rule-engine.types";
 import { fetchBbrWithMat, fetchPlandata, fetchVurViaEbr } from "@/lib/compliance-layer1";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
-import type { VurData } from "@/integrations/vur/client";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 
 export type ComplianceBase = {
-  bbr: BbrKompliantData | null;
-  lokalplaner: Lokalplan[];
-  kommuneplanramme: Kommuneplanramme | null;
+  bbr: RuleEngineBbrData | null;
+  lokalplaner: RuleEngineLokalplan[];
+  kommuneplanramme: RuleEngineKommuneplanramme | null;
   analysedAt: string;
   vurderingData: VurData | null;
 };

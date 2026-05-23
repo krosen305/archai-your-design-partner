@@ -223,7 +223,7 @@ describe("handleFetchCompliance", () => {
 describe("handleRunByggeanalyse", () => {
   const VALID_BYGGEANALYSE_INPUT = {
     token: "valid-token-xyz",
-    byggeoenske: { byggetype: "Nyt hus" },
+    byggeoenske: { byggetype: "nybyg" },
     lokalplanExtract: null,
     bbr: null,
     lokalplanNavn: "Lokalplan 42",

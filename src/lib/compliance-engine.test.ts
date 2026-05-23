@@ -1,36 +1,34 @@
 import { describe, it, expect } from "bun:test";
 import { calculateComplianceMetrics } from "./compliance-engine";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+} from "@/domain/contracts/rule-engine.types";
 
-const baseBbr: BbrKompliantData = {
+const baseBbr: RuleEngineBbrData = {
   byggeaar: "1985",
   bebygget_areal: 120,
   samlet_areal: 240,
   antal_etager: 2,
   anvendelseskode: "120",
-  anvendelse_tekst: "Fritliggende enfamilieshus",
   grundareal: 800,
   bebyggelsesprocent: 15,
   beregning_mulig: true,
-  fejl: null,
+  opvarmningsmiddel: null,
+  ydervaegs_materiale: null,
+  fredet: null,
+  mat_strandbeskyttelse: null,
+  mat_fredskov: null,
+  mat_klitfredning: null,
 };
 
-const baseRamme: Kommuneplanramme = {
-  planid: "test-1",
-  plannavn: "Testramme",
-  plannr: "1.1.B",
-  kommunenavn: "Testkommune",
-  komnr: 101,
+const baseRamme: RuleEngineKommuneplanramme = {
   bebygpct: 30,
   maxetager: 2,
   maxbygnhjd: 8.5,
   anvgen: 1,
   anvendelseGenerel: "Boligformål",
   fremtidigzonestatus: null,
-  sforhold: null,
-  plandokumentLink: null,
-  datoIkraft: null,
 };
 
 describe("calculateComplianceMetrics", () => {

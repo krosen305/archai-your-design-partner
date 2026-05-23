@@ -1,4 +1,4 @@
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
+import type { RuleEngineKommuneplanramme } from "@/domain/contracts/rule-engine.types";
 import type { RuleEngineInput } from "./types";
 
 export function parseSetbackM(byggelinjer: string | null): number | null {
@@ -21,7 +21,9 @@ export function parseRoofTypes(tagform: string | null): string[] | null {
   return types.length > 0 ? types : [tagform.trim()];
 }
 
-export function parseZone(ramme: Kommuneplanramme | null): RuleEngineInput["plot"]["zone"] {
+export function parseZone(
+  ramme: RuleEngineKommuneplanramme | null,
+): RuleEngineInput["plot"]["zone"] {
   const raw = (ramme?.fremtidigzonestatus ?? "").toUpperCase();
   if (raw.includes("BYZONE") || raw.includes("BY")) return "urban";
   if (raw.includes("SOMMERHUS")) return "summerhouse";

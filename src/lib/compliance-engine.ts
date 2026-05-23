@@ -1,5 +1,7 @@
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+} from "@/domain/contracts/rule-engine.types";
 
 // ---------------------------------------------------------------------------
 // Output type — ARCH-33
@@ -32,8 +34,8 @@ export type ComplianceMetrics = {
 // ---------------------------------------------------------------------------
 
 export function calculateComplianceMetrics(
-  bbr: BbrKompliantData | null,
-  ramme: Kommuneplanramme | null,
+  bbr: RuleEngineBbrData | null,
+  ramme: RuleEngineKommuneplanramme | null,
 ): ComplianceMetrics {
   const grundareal = bbr?.grundareal ?? null;
   const currentBygningsareal = bbr?.bebygget_areal ?? null;

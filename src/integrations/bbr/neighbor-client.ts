@@ -3,21 +3,9 @@
 // ARCH-226: dawa.aws.dk er forbudt (DAWA er udfaset).
 // GeoDanmarkNaboService erstatter dette — se src/integrations/geodanmark/client.ts (ARCH-240).
 
-export type NeighborBuilding = {
-  adgangsadresseid: string;
-  adresse: string;
-  distanceM: number;
-};
+import type { NeighborBuildingData } from "@/domain/contracts/analysis.types";
 
-export type NeighborBuildingData = {
-  count: number;
-  nearestDistanceM: number | null;
-  buildings: NeighborBuilding[];
-  fejl: string | null;
-  kilde: string | null; // "geodanmark" | null — tri-state source tag
-  accessRoadNearby: boolean | null; // true/false/null — null = ukendt
-  roadDistanceM: number | null; // meter til nærmeste vej, null = ukendt
-};
+export type { NeighborBuilding, NeighborBuildingData } from "@/domain/contracts/analysis.types";
 
 export class NaboService {
   /**

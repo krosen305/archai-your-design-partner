@@ -1,15 +1,17 @@
 import type { ComplianceFlag } from "@/types/project-state";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { FbbResultat } from "@/integrations/fbb/client";
+import type {
+  RuleEngineBbrData,
+  RuleEngineFbbResult,
+  RuleEngineKommuneplanramme,
+  RuleEngineNaturbeskyttelsesResultat,
+} from "@/domain/contracts/rule-engine.types";
 import { isSaveDispensationRequired, isSaveWarning } from "@/lib/rule-engine/hard-stop-adapter";
 
 export function buildPreCheckFlags(
-  bbr: BbrKompliantData | null,
-  ramme: Kommuneplanramme | null,
-  naturbeskyttelse: NaturbeskyttelsesResultat | null,
-  fbbData: FbbResultat | null,
+  bbr: RuleEngineBbrData | null,
+  ramme: RuleEngineKommuneplanramme | null,
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null,
+  fbbData: RuleEngineFbbResult | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 

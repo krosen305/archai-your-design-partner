@@ -10,6 +10,7 @@
 //
 // OBS: Det tidligere antagne typename `pdk:theme_pdk_varmeforsyning_vedtaget` eksisterer ikke.
 
+import type { FjernvarmeResultat } from "@/domain/contracts/analysis.types";
 import { logServerEvent } from "@/lib/server-logger";
 
 const IS_MOCK = false;
@@ -19,10 +20,7 @@ const VARMEFORSYNING_TYPE = "pdk:theme_pdk_varmeplansomraade_vedtaget_v";
 
 type Koordinat = { lat: number; lng: number };
 
-export type FjernvarmeResultat = {
-  fjernvarmeDaekket: boolean | null;
-  fejl: string | null;
-};
+export type { FjernvarmeResultat } from "@/domain/contracts/analysis.types";
 
 async function erIndenforFjernvarme(koordinat: Koordinat): Promise<boolean> {
   const { lat, lng } = koordinat;

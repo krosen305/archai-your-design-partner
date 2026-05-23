@@ -1,66 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { PersistedProject, ProjectPatch } from "@/integrations/supabase/project-persistence";
 import { logger } from "@/lib/logger";
 import { withAuth } from "@/lib/server-auth";
 import { useProject } from "@/lib/project-store";
+import {
+  createProjectSchema,
+  deleteProjectSchema,
+  loadProjectSchema,
+  projectPatchSchema,
+  saveProjectSchema,
+} from "@/types/project-sync.schemas";
 
-// ---------------------------------------------------------------------------
-// Input schemas — runtime-validated (replaces TypeScript-only pass-through)
-// ---------------------------------------------------------------------------
-
-const tokenSchema = z.string().min(1);
-
-const createProjectSchema = z.object({ accessToken: tokenSchema });
-
-// Top-level shape of ProjectPatch validated with .strict() to reject unknown keys.
-// Nested types (BbrKompliantData, FbbResultat, etc.) are complex — validated as
-// opaque records/arrays at this layer. The TypeScript types enforce inner shape.
-export const projectPatchSchema = z
-  .object({
-    address: z.record(z.string(), z.unknown()).optional(),
-    bbrData: z.record(z.string(), z.unknown()).nullable().optional(),
-    husDna: z.record(z.string(), z.unknown()).nullable().optional(),
-    byggeoenske: z.record(z.string(), z.unknown()).optional(),
-    complianceFlags: z.array(z.record(z.string(), z.unknown())).optional(),
-    lokalplaner: z.array(z.record(z.string(), z.unknown())).optional(),
-    kommuneplanramme: z.record(z.string(), z.unknown()).nullable().optional(),
-    byggeanalyseResultat: z.record(z.string(), z.unknown()).nullable().optional(),
-    vurderingData: z.record(z.string(), z.unknown()).nullable().optional(),
-    naturbeskyttelse: z.record(z.string(), z.unknown()).nullable().optional(),
-    dkjord: z.record(z.string(), z.unknown()).nullable().optional(),
-    geusRisk: z.record(z.string(), z.unknown()).nullable().optional(),
-    servitutter: z.record(z.string(), z.unknown()).nullable().optional(),
-    terrain: z.record(z.string(), z.unknown()).nullable().optional(),
-    naboer: z.record(z.string(), z.unknown()).nullable().optional(),
-    fjernvarme: z.record(z.string(), z.unknown()).nullable().optional(),
-    fbbData: z.record(z.string(), z.unknown()).nullable().optional(),
-    billedanalyse: z.record(z.string(), z.unknown()).nullable().optional(),
-    complianceDone: z.boolean().optional(),
-    currentStep: z.string().optional(),
-    projectDataStatus: z.unknown().nullable().optional(),
-    analysisRunId: z.string().uuid().nullable().optional(),
-    budget_estimate: z.number().nullable().optional(),
-  })
-  .strict();
-
-export const saveProjectSchema = z.object({
-  accessToken: tokenSchema,
-  patch: projectPatchSchema,
-  projectId: z.string().uuid().nullable().optional(),
-});
-
-const loadProjectSchema = z.object({
-  accessToken: tokenSchema,
-  projectId: z.string().uuid().nullable().optional(),
-  addressId: z.string().optional().nullable(),
-});
-
-const deleteProjectSchema = z.object({
-  accessToken: tokenSchema,
-  projectId: z.string().uuid(),
-});
+export { projectPatchSchema, saveProjectSchema } from "@/types/project-sync.schemas";
 
 // ---------------------------------------------------------------------------
 // Server functions — auth validated via withAuth before delegating to persistence

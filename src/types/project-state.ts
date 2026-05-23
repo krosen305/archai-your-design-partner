@@ -2,10 +2,15 @@
 // Domain and pipeline types that are safe to import in both server and client code.
 // project-store.ts imports these — it does NOT define them.
 
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
-import type { VurData } from "@/integrations/vur/client";
+import type { z } from "zod";
+import type { VurData } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+} from "@/domain/contracts/rule-engine.types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
+import { husDnaSchema, restoredComplianceDataSchema } from "./project-restore.schemas";
 
 // ---------------------------------------------------------------------------
 // Adresse
@@ -144,6 +149,7 @@ export type ComplianceFlag = {
     | "fbb";
   dispensationMulig?: boolean;
   dispensationMyndighed?: string;
+  appliesTo?: Array<keyof Byggeoenske>;
 };
 
 export type BoligoenskeValidering = {
@@ -174,9 +180,9 @@ export type AdressePreCheckResultat = {
     ejendomsvaerdi: number | null;
     grundvaerdi: number | null;
   };
-  bbr: BbrKompliantData | null;
-  lokalplaner: Lokalplan[];
-  kommuneplanramme: Kommuneplanramme | null;
+  bbr: RuleEngineBbrData | null;
+  lokalplaner: RuleEngineLokalplan[];
+  kommuneplanramme: RuleEngineKommuneplanramme | null;
   vurderingData: VurData | null;
   complianceMetrics: ComplianceMetrics | null;
 };
@@ -252,12 +258,7 @@ export const PIPELINE_SERVICE_STATE_LABELS: Record<PipelineServiceState, string>
 // ---------------------------------------------------------------------------
 
 export function isHusDna(v: unknown): v is HusDna {
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    typeof (v as Record<string, unknown>).stil === "string" &&
-    typeof (v as Record<string, unknown>).confidence === "number"
-  );
+  return husDnaSchema.safeParse(v).success;
 }
 
 // Stale thresholds per source (days). Mirror of cache TTL — UI display only.
@@ -293,28 +294,9 @@ export function deriveSourceStatus(
   return ageMs > staleMs ? "stale" : "fresh";
 }
 
-type ParsedComplianceData = {
-  bbr: BbrKompliantData | null;
-  flags: ComplianceFlag[];
-  lokalplaner: Lokalplan[];
-  kommuneplanramme: Kommuneplanramme | null;
-  byggeanalyseResultat: import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null;
-  vurderingData: VurData | null;
-};
+type ParsedComplianceData = z.infer<typeof restoredComplianceDataSchema>;
 
 export function parseComplianceData(v: unknown): ParsedComplianceData | null {
-  if (typeof v !== "object" || v === null) return null;
-  const o = v as Record<string, unknown>;
-  return {
-    bbr: (typeof o.bbr === "object" ? o.bbr : null) as BbrKompliantData | null,
-    flags: Array.isArray(o.flags) ? (o.flags as ComplianceFlag[]) : [],
-    lokalplaner: Array.isArray(o.lokalplaner) ? (o.lokalplaner as Lokalplan[]) : [],
-    kommuneplanramme: (typeof o.kommuneplanramme === "object"
-      ? o.kommuneplanramme
-      : null) as Kommuneplanramme | null,
-    byggeanalyseResultat: (typeof o.byggeanalyseResultat === "object"
-      ? o.byggeanalyseResultat
-      : null) as import("@/integrations/ai/byggeanalyse").ByggeanalyseResultat | null,
-    vurderingData: (typeof o.vurderingData === "object" ? o.vurderingData : null) as VurData | null,
-  };
+  const parsed = restoredComplianceDataSchema.safeParse(v);
+  return parsed.success ? parsed.data : null;
 }

@@ -5,15 +5,18 @@
 // Følger Option A fra ARCH-106: newBuilding = null serverside,
 // routes kan efterfølgende kalde med Byggeoenske.
 
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { FbbResultat } from "@/integrations/fbb/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
-import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import type {
+  RuleEngineBbrData,
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+  RuleEngineLokalplanExtract,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 import type { Byggeoenske, DesignPlacement } from "@/types/project-state";
 import type {
   RuleEngineInput,
@@ -29,16 +32,16 @@ import { mapByggetypeToProjectType, mapAntalEtager, mapUsageFromBbr } from "./ma
 // ---------------------------------------------------------------------------
 
 export type AssemblerParams = {
-  bbr: BbrKompliantData | null;
-  kommuneplanramme: Kommuneplanramme | null;
-  lokalplaner: Lokalplan[];
-  lokalplanExtract: LokalplanExtract | null;
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  geusRisk: GeusRiskData | null;
-  servitutter: TinglysningResult | null;
-  terrain: TerrainData | null;
-  fbbData: FbbResultat | null; // ARCH-131: SAVE-bevaringsværdi fra FBB
-  dkjord: DkJordResultat | null; // jordforurening V1/V2/omraadeklassificering
+  bbr: RuleEngineBbrData | null;
+  kommuneplanramme: RuleEngineKommuneplanramme | null;
+  lokalplaner: RuleEngineLokalplan[];
+  lokalplanExtract: RuleEngineLokalplanExtract | null;
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  geusRisk: RuleEngineGeusRiskData | null;
+  servitutter: RuleEngineTinglysningResult | null;
+  terrain: RuleEngineTerrainData | null;
+  fbbData: RuleEngineFbbResult | null; // ARCH-131: SAVE-bevaringsvaerdi fra FBB
+  dkjord: RuleEngineDkJordResultat | null; // jordforurening V1/V2/omraadeklassificering
   byggeoenske: Byggeoenske | null; // null = serverside kørslen (Option A)
   designPlacement?: DesignPlacement | null; // ARCH-180: præcis footprint/skelafstand fra korteditor
   municipality: string;

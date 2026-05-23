@@ -4,9 +4,10 @@
 import { getCachedLokalplan, setCachedLokalplan } from "@/integrations/cache/client";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
+import { toJsonValue } from "@/lib/json-value";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
-import type { Json } from "@/integrations/supabase/types";
+import { lokalplanExtractSchema } from "@/types/project-restore.schemas";
 
 export async function runLokalplanExtractionStep(
   addressId: string,
@@ -25,7 +26,11 @@ export async function runLokalplanExtractionStep(
       () => getCachedLokalplan(addressId, primaryPdfUrl ?? undefined),
       { cacheHit: (value) => !!value, metadata: { has_pdf_url: !!primaryPdfUrl } },
     );
-    if (cached) return cached as unknown as LokalplanExtract;
+    if (cached) {
+      const parsedCached = lokalplanExtractSchema.safeParse(cached);
+      if (parsedCached.success) return parsedCached.data;
+      return null;
+    }
 
     if (!primaryPdfUrl) {
       await recordAnalysisEvent(trace, {
@@ -58,7 +63,7 @@ export async function runLokalplanExtractionStep(
         service: "Supabase",
         operation: "address_analysis.lokalplan_extracted.write",
       },
-      () => setCachedLokalplan(addressId, primaryPdfUrl, extract as unknown as Json),
+      () => setCachedLokalplan(addressId, primaryPdfUrl, toJsonValue(extract) ?? null),
     );
     return extract;
   } catch (e) {

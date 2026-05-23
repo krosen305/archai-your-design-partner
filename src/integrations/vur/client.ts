@@ -6,8 +6,10 @@
 //   VUR_Ejendomsvurdering(id=recordId) → fkVurderingsejendomID (ejendoms-ID)
 //   VUR_Ejendomsvurdering(fkVurderingsejendomID) → hent historik, vælg nyeste
 
+import { z } from "zod";
 import { getEnvRequired } from "@/lib/env";
-import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+import type { VurData } from "@/domain/contracts/analysis.types";
+import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { logServerEvent } from "@/lib/server-logger";
 import { runtimeConfig } from "@/lib/runtime-config";
@@ -16,14 +18,7 @@ import { runtimeConfig } from "@/lib/runtime-config";
 // Typer
 // ---------------------------------------------------------------------------
 
-export type VurData = {
-  ejendomsvaerdi: number | null;
-  grundvaerdi: number | null;
-  vurderetAreal: number | null;
-  vurderingsaar: number | null;
-  bfeNr: string;
-  fejl: string | null;
-};
+export type { VurData } from "@/domain/contracts/analysis.types";
 
 type VurClientConfig = {
   apiKey?: string;
@@ -71,6 +66,40 @@ query GetVurderingHistory($propId: Long!) {
   }
 }`;
 
+const vurKrydsreferenceSchema = z.object({
+  VUR_BFEKrydsreference: z.object({
+    nodes: z.array(
+      z.object({
+        fkEjendomsvurderingID: z.coerce.number().nullable().optional().default(null),
+        BFEnummer: z.coerce.number().nullable().optional().default(null),
+      }),
+    ),
+  }),
+});
+
+const vurPropertyIdSchema = z.object({
+  VUR_Ejendomsvurdering: z.object({
+    nodes: z.array(
+      z.object({
+        fkVurderingsejendomID: z.coerce.number().nullable().optional().default(null),
+      }),
+    ),
+  }),
+});
+
+const vurHistorySchema = z.object({
+  VUR_Ejendomsvurdering: z.object({
+    nodes: z.array(
+      z.object({
+        ejendomvaerdiBeloeb: z.coerce.number().nullable().optional().default(null),
+        grundvaerdiBeloeb: z.coerce.number().nullable().optional().default(null),
+        vurderetAreal: z.coerce.number().nullable().optional().default(null),
+        aar: z.coerce.number().nullable().optional().default(null),
+      }),
+    ),
+  }),
+});
+
 // ---------------------------------------------------------------------------
 // VurService
 // ---------------------------------------------------------------------------
@@ -101,6 +130,7 @@ export class VurService {
         BFE_KRYDS_QUERY,
         { bfe },
         "VUR_BFEKrydsreference",
+        vurKrydsreferenceSchema,
         trace,
       );
       const recordId = krydsData?.VUR_BFEKrydsreference?.nodes?.[0]?.fkEjendomsvurderingID;
@@ -115,6 +145,7 @@ export class VurService {
         GET_PROPERTY_ID_QUERY,
         { recordId },
         "VUR_Ejendomsvurdering_property_id",
+        vurPropertyIdSchema,
         trace,
       );
       const propertyId = propData?.VUR_Ejendomsvurdering?.nodes?.[0]?.fkVurderingsejendomID;
@@ -129,9 +160,10 @@ export class VurService {
         VURDERING_HISTORY_QUERY,
         { propId: propertyId },
         "VUR_Ejendomsvurdering_history",
+        vurHistorySchema,
         trace,
       );
-      const nodes: any[] = historyData?.VUR_Ejendomsvurdering?.nodes ?? [];
+      const nodes = historyData.VUR_Ejendomsvurdering.nodes;
 
       if (nodes.length === 0) {
         return this.errorResult(bfeNr, `Ingen vurderingsdata fundet for ejendoms-ID ${propertyId}`);
@@ -169,42 +201,19 @@ export class VurService {
     return { apiKey, endpoint };
   }
 
-  private static async gqlFetch(
+  private static async gqlFetch<T>(
     url: URL,
     query: string,
     variables: Record<string, unknown>,
     operation: string,
+    dataSchema: z.ZodType<T>,
     trace?: AnalysisTraceContext | null,
-  ): Promise<any> {
-    const response = await fetchWithRetry(
-      url.toString(),
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, variables }),
-      },
-      { timeoutMs: 12_000 },
-      {
-        trace,
-        service: "Datafordeler VUR",
-        operation,
-        phase: "layer1",
-        metadata: { endpoint: "VUR/v1" },
-      },
-    );
-
-    const bodyText = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${bodyText.slice(0, 200)}`);
-    }
-
-    const parsed = JSON.parse(bodyText);
-    if (parsed.errors?.length) {
-      throw new Error(`GraphQL Fejl: ${parsed.errors[0].message}`);
-    }
-
-    return parsed.data;
+  ): Promise<T> {
+    return datafordelerGraphqlFetch(url, query, variables, operation, dataSchema, {
+      trace,
+      phase: "layer1",
+      metadata: { endpoint: "VUR/v1" },
+    });
   }
 
   private static errorResult(bfeNr: string, msg: string): VurData {

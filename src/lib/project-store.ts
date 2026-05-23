@@ -1,12 +1,11 @@
 import { create } from "zustand";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
+import type { FjernvarmeResultat, VurData } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+} from "@/domain/contracts/rule-engine.types";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { VurData } from "@/integrations/vur/client";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type {
@@ -49,7 +48,7 @@ export type { ComplianceMetrics } from "@/lib/compliance-engine";
 type State = {
   // Eksisterende felter (backward compatible)
   address: Address | null;
-  bbrData: BbrKompliantData | null;
+  bbrData: RuleEngineBbrData | null;
   complianceDone: boolean;
   project: ProjectData;
   briefDone: boolean;
@@ -62,9 +61,9 @@ type State = {
   billedanalyse: import("@/lib/billede-analyse-vocabulary").BilledeAnalyseResultat | null;
   complianceFlags: ComplianceFlag[];
   complianceMetrics: ComplianceMetrics | null;
-  lokalplaner: Lokalplan[];
+  lokalplaner: RuleEngineLokalplan[];
   lokalplanExtract: LokalplanExtract | null;
-  kommuneplanramme: Kommuneplanramme | null;
+  kommuneplanramme: RuleEngineKommuneplanramme | null;
   vurderingData: VurData | null;
 
   // ARCH-121: tidlig compliance-gate
@@ -103,7 +102,7 @@ type State = {
 
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
-  setBbrData: (d: BbrKompliantData | null) => void;
+  setBbrData: (d: RuleEngineBbrData | null) => void;
   setComplianceDone: (v: boolean) => void;
   setProject: (p: Partial<ProjectData>) => void;
   setBriefDone: (v: boolean) => void;
@@ -121,9 +120,9 @@ type State = {
   resetByggeoenske: () => void;
   setComplianceFlags: (flags: ComplianceFlag[]) => void;
   setComplianceMetrics: (m: ComplianceMetrics | null) => void;
-  setLokalplaner: (lp: Lokalplan[]) => void;
+  setLokalplaner: (lp: RuleEngineLokalplan[]) => void;
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
-  setKommuneplanramme: (ramme: Kommuneplanramme | null) => void;
+  setKommuneplanramme: (ramme: RuleEngineKommuneplanramme | null) => void;
   setVurderingData: (v: VurData | null) => void;
   setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
   setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;

@@ -1,847 +1,269 @@
-# ArchAI Refactoring Roadmap
-
-Status: proposed architecture backlog. Do not treat these items as Linear tickets
-until they have been reviewed and approved by the project owner.
+# Refactoring Roadmap
+Prioriteret rækkefølge for teknisk gæld og arkitektur-opretning:
+1. [x] **Domain Contract Extraction:** Bryd afhængigheden fra `src/lib/rule-engine` og `src/lib/compliance-engine` til `src/integrations`.
+2. [ ] **Boundary Cleanup:** Flyt inline Supabase/storage/AI-kald ud af `createServerFn` til repositories.
+3. [ ] **Validation:** Erstat `as any`/`as unknown` casts med Zod-schemas.
+4. [ ] **Fase-normalisering:** Synkronisér alle faser med de 4 kanoniske faser fra AGENTS.md.
+
+## Components audit (`src/components`)
+
+### Prioriterede findings
+
+1. [ ] **`AiDesignHero` er blevet workflow-lag i UI**
+   - Fil: `src/components/cockpit/AiDesignHero.tsx`
+   - Problem: Komponenten henter auth-session, uploader billeder, kalder AI-funktioner, merger store-state via `useProject.getState()` og persisterer direkte med `syncPatch`.
+   - AGENTS-brud: Rule 2 (UI Is An Adapter), Rule 7 (Refactor Dirty Domain Boundaries Before Extending).
+   - Refaktorering: Flyt upload/analyse/generering/persistens til en fokuseret hook eller application service, fx `useAiDesignWorkflow`, så komponenten kun renderer state og videresender brugerintention.
+
+2. [ ] **`MatrikelMap` kalder serverfunktioner og persistence direkte fra UI**
+   - Fil: `src/components/cockpit/MatrikelMap.tsx`
+   - Problem: Komponenten importerer route server functions fra `@/routes/api.map-tiles`, bruger `useServerFn` direkte, henter geometri/preview i `useEffect` og skriver adresseændringer tilbage med `syncPatch`.
+   - AGENTS-brud: Rule 2 (UI Is An Adapter), Rule 3 ånd (serverfunktioner bør forblive inbound adapters), Rule 7.
+   - Refaktorering: Indfør et typed hook eller adapterlag, fx `useParcelPreview` og `usePlacementSync`, så komponenten ikke kender routes, server functions eller sync-mekanismen.
+
+3. [ ] **`cockpit/index.tsx` rummer domænepolitik og dispensation-workflow**
+   - Fil: `src/components/cockpit/index.tsx`
+   - Problem: `StepExtras` og `DispensationModal` tolker `boligoenskeValidering`, matcher konkrete compliance-flag IDs og bruger tekstmatch på labels for at udlede regler.
+   - AGENTS-brud: Rule 2 (UI Is An Adapter), Rule 7, samt forbuddet mod regex/free-text parsing til compliance-kategorier i UI.
+   - Refaktorering: Flyt constraint- og dispensation-logik til typed view-model builders eller hooks, fx `buildByggeoenskeConstraintViewModel()` og `useDispensationFlow()`.
+
+4. [ ] **`BudgetKalkulator` blander pure budgetdomæne med UI-persistence**
+   - Fil: `src/components/cockpit/BudgetKalkulator.tsx`
+   - Problem: Beregningsfunktionerne er pure, men de bor i komponentfilen, og komponenten skriver `budget_estimate` tilbage til store og sync-lag i et effect.
+   - AGENTS-brud: Rule 2, Rule 7.
+   - Refaktorering: Flyt budgetberegning til et rent domæne/helper-modul og flyt synkronisering til et fokuseret hook eller service.
+
+5. [ ] **`AnalyseTab` indeholder spredte threshold-regler og semantisk tolkning i præsentationslaget**
+   - Fil: `src/components/cockpit/AnalyseTab.tsx`
+   - Problem: Lokalplaner klassificeres via tekstmatch, naboafstande og terrænrisiko vurderes via inline thresholds, og fallback-vurderingstekst genereres direkte i komponenten.
+   - AGENTS-brud: Rule 2, Rule 7.
+   - Refaktorering: Flyt regel- og klassificeringslogik til view-model helpers eller domænenære pure moduler, og lad komponenten kun renderere færdigformaterede sektioner.
+
+6. [ ] **`FreeDesignCockpit` bruger usikre casts mod store-state**
+   - Fil: `src/components/cockpit/FreeDesignCockpit.tsx`
+   - Problem: Flere `as never`-casts bruges for at skrive direkte til `setByggeoenske`.
+   - AGENTS-brud: Validation/typed boundary-principperne.
+   - Refaktorering: Indfør typed field-actions eller et lille form-hook, så UI ikke skal omgå typesystemet.
+
+### Sekundære observationer
+
+- [ ] **`EjendomPanel` er overvejende præsentationsnær, men beregner stadig fallback- og sammenstillingslogik lokalt**
+  - Fil: `src/components/cockpit/EjendomPanel.tsx`
+  - Problem: Komponenten sammenstykker selv værdier fra typed columns, compliance metrics, BBR og `adressePreCheck`.
+  - Refaktorering: Overvej en samlet `buildPropertyPanelViewModel()` for at reducere ad hoc fallbackkæder i UI.
+
+- [ ] **`RisikoFeed` og `RiskOverview` peger på den rigtige retning**
+  - Filer: `src/components/cockpit/RisikoFeed.tsx`, `src/components/cockpit/RiskOverview.tsx`
+  - Observation: De bruger i højere grad eksisterende view-model helpers og er tættere på AGENTS-målet om UI som adapter.
+  - Opfølgning: Brug disse som reference, når de mere workflow-tunge cockpit-komponenter splittes op.
+
+## Routes audit (`src/routes`)
+
+### Prioriterede findings
+
+1. [ ] **`__root.tsx` udfører restore-orchestration og hydrerer store direkte fra route-laget**
+   - Fil: `src/routes/__root.tsx`
+   - Problem: Root-routen kalder `restoreProject()`, parser route/path/query selv, og skriver et stort antal felter direkte ind i `useProject()`-store med mange ad hoc branch/fallbacks.
+   - AGENTS-brud: Rule 1 (boundary validation), Rule 7 (dirty boundary), samt generel architectural drift væk fra ports/adapters.
+   - Særligt risikabelt: `project.billedanalyse as unknown as BilledeAnalyseResultat`, `project.brief_data as Record<string, unknown>` og restore af JSONB/data uden et samlet typed restore-contract.
+   - Refaktorering: Flyt restore til en dedikeret application service eller typed restore-adapter, der returnerer en valideret `ProjectRestoreSnapshot`, som route-laget kun anvender.
+
+2. [ ] **`projekt.adresse.tsx` ejer compliance-gate og dispensation-politik i UI**
+   - Fil: `src/routes/projekt.adresse.tsx`
+   - Problem: Routen opdeler blockers i hard/soft ud fra `dispensationMulig`, styrer override-flow og afgør, hvornår brugeren må fortsætte.
+   - AGENTS-brud: Rule 2 (UI Is An Adapter), Rule 4 (server-side compliance authority), Rule 7.
+   - Refaktorering: Flyt gate-semantik til et typed precheck view-model/hook, fx `useAddressGateViewModel()`, hvor UI kun gengiver server-/domain-afgjorte states.
+
+3. [ ] **`projekt.datacheck.tsx` har server functions, der går direkte til persistence uden `withAuth()` eller service-lag**
+   - Fil: `src/routes/projekt.datacheck.tsx`
+   - Problem: `loadDatacheck` og `saveDatacheck` validerer input, men går direkte til `project-persistence` og håndterer auth-token som rå data i stedet for at bruge den etablerede server function pattern.
+   - AGENTS-brud: Rule 3 (Server Functions Are Inbound Adapters), Rule 1.
+   - Refaktorering: Lad server functions være tynde wrappers med `withAuth()` og et import af en fokuseret datacheck-service, som ejer load/save-workflowet.
+
+4. [ ] **`api.map-tiles.ts` bruger type-only inputValidator og validerer ikke reelt boundary-data**
+   - Fil: `src/routes/api.map-tiles.ts`
+   - Problem: `inputValidator((data: ParcelGeometryRequest) => data)` og tilsvarende giver TypeScript-tryghed, men ingen runtime-validering.
+   - AGENTS-brud: Rule 1 (Contract-First Boundaries).
+   - Refaktorering: Indfør Zod-schemas eller eksplicitte decoders for `ParcelGeometryRequest`, `ParcelPreviewRequest`, `TileRequest` og `jordstykkeLokalId`.
+
+5. [ ] **`debug.analyse.tsx` mangler tydelig auth-gating på server-side**
+   - Fil: `src/routes/debug.analyse.tsx`
+   - Problem: Server functionen modtager token i payload og sender det videre, men følger ikke det etablerede `withAuth()`-mønster. Debug-routen er omtalt som intern, men den kontrakt håndhæves ikke her.
+   - AGENTS-brud: Rule 3.
+   - Refaktorering: Indfør eksplicit auth/role-gate i serverfunktionen eller flyt debug-opslaget til en service, der håndhæver miljø- og brugerkrav.
+
+### Sekundære observationer
+
+- [ ] **`projekt.start.tsx` samler for meget projekt-workflow i route-komponenten**
+  - Fil: `src/routes/projekt.start.tsx`
+  - Problem: Route-komponenten står selv for session-check, projektliste-load, projektoprettelse, sletning og delvis state-restore før navigation.
+  - Refaktorering: Overvej et `useProjectStartPage()`-hook eller en dedikeret facade for projektliste-handlinger, så route-komponenten bliver mere præsentationsnær.
+
+- [ ] **`projekt.$id.cockpit.tsx` er i bedre form end de øvrige routes**
+  - Fil: `src/routes/projekt.$id.cockpit.tsx`
+  - Observation: Routen bruger allerede `useCockpitRestore` og `useCockpitAnalysis`, hvilket er tættere på AGENTS’ ønskede separering.
+  - Opfølgning: Brug denne route som referencepunkt, når `projekt.adresse.tsx` og `projekt.start.tsx` senere tyndes ud.
+
+## Hooks audit (`src/hooks`)
+
+### Prioriterede findings
+
+1. [ ] **`useCockpitAnalysis` fungerer som application service, persistence-adapter og UI-hook på samme tid**
+   - Fil: `src/hooks/useCockpitAnalysis.ts`
+   - Problem: Hooken henter auth-session, kalder `fetchCompliance` og `runByggeanalyse`, afleder compliance flags og metrics, opdaterer store, sætter fase-status og persisterer direkte via `syncPatch`.
+   - AGENTS-brud: Rule 2 (workflowlogik bør ikke ejes af UI-nære lag), Rule 7 (dirty boundary), samt gråzone mod Rule 4 fordi compliance- og AI-gating flyder sammen med klientorkestrering.
+   - Refaktorering: Split i mindst tre lag: en typed compliance-fetch service, en ren snapshot/view-model transformer og en tynd hook, der kun koordinerer React-livscyklus.
+
+2. [ ] **`useCockpitRestore` hydrerer store direkte fra rå persisted payloads**
+   - Fil: `src/hooks/useCockpitRestore.ts`
+   - Problem: Hooken kalder `restoreProject()`, læser JSONB-lignende felter, sætter store-felter direkte og caster persisted data til domænetyper uden samlet boundary-contract.
+   - AGENTS-brud: Rule 1 (Contract-First Boundaries), Rule 7.
+   - Særligt risikabelt: `address_koordinater as { lat: number; lng: number } | null`, `project.billedanalyse as ...BilledeAnalyseResultat`, `project.hus_dna as ...HusDna`.
+   - Refaktorering: Flyt restore-decoding til en dedikeret restore-adapter, der returnerer et valideret `CockpitRestoreSnapshot` plus separat metadata for store-hydrering.
+
+3. [ ] **`cockpit-restore-utils.ts` indeholder usikker generic-object decoding**
+   - Fil: `src/hooks/cockpit-restore-utils.ts`
+   - Problem: `objectField<T>()` returnerer `field as T` uden runtime-validering.
+   - AGENTS-brud: Rule 1.
+   - Refaktorering: Erstat med Zod-baserede decoders pr. felt eller en lille typed decoding registry for `geusRisk`, `terrain`, `servitutter`, `fbbData` osv.
+
+4. [ ] **Hook-laget er stadig koblet hårdt til global store-mutation**
+   - Filer: `src/hooks/useCockpitAnalysis.ts`, `src/hooks/useCockpitRestore.ts`
+   - Problem: Begge hooks bruger `useProject.getState()` og mange imperative setters som deres primære integrationsmekanisme.
+   - AGENTS-brud: Rule 7 og generel ports/adapters-separation.
+   - Refaktorering: Introducér et smalt facade-lag for cockpit-state, så hooks kan arbejde mod et mindre, typed interface i stedet for hele store-kontrakten.
+
+### Sekundære observationer
 
-Last updated: 2026-05-19
-
-## Review Round 1: Backend Architecture Sanitation
-
-Scope: modules that either persist domain truth, orchestrate external data sources,
-or define shared cache/state contracts.
-
-| Priority | Module                                              | Finding                                                                                                                     | Architectural Risk                                                                         | Proposed Task |
-| -------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------- |
-| P0       | `src/integrations/supabase/project-persistence.ts`  | God Object: auth, DB writes, JSON merge, hard-stop logic, site constraints, task generation and storage cleanup in one file | Business rules drift from rule engine; hard to test without Supabase; weak type boundaries | ROADMAP-001   |
-| P0       | `src/lib/rule-engine/` + persistence/pre-check      | Hard-stop thresholds and consequences are interpreted in multiple places                                                    | Users can see different blockers depending on entry path; future rules will diverge        | ROADMAP-002   |
-| P0       | `src/integrations/cache/client.ts` + Supabase types | `address_source_results` uses `supabaseAdmin.from as any`; cached JSON is trusted without parsing                           | Runtime cache shape errors bypass TypeScript and can poison the pipeline                   | ROADMAP-003   |
-| P0       | `src/integrations/plandata/client.ts`               | Pure selector `selectPrimaryLokalplanForPdf` lives inside WFS client with server-only dependencies                          | Client routes can accidentally pull server-only imports and break TanStack build           | ROADMAP-004   |
-| P1       | `src/lib/analysis-orchestrator.ts`                  | God Object pipeline: cache, tracing, dynamic imports, fallback policy and result assembly in one function                   | Changes to one source can regress unrelated layers; low unit-testability                   | ROADMAP-005   |
-| P1       | `src/lib/pre-check-adresse.ts`                      | createServerFn handler, orchestration and pure flag generation are mixed                                                    | Address gate can drift from full analysis and rule engine                                  | ROADMAP-006   |
-| P1       | `src/integrations/bbr/client.ts`                    | Code lists, GraphQL transport, canonical building selection and output mapping are coupled                                  | Hard to test canonical selection and hard to update BBR code lists safely                  | ROADMAP-007   |
-| P1       | `src/lib/project-store.ts`                          | Zustand store also owns domain types consumed by server modules                                                             | Server/client coupling and accidental imports across boundaries                            | ROADMAP-008   |
-| P2       | Cross-cutting logging/error handling                | `console.warn` is scattered through server pipeline                                                                         | Non-fatal failures are inconsistent and hard to observe                                    | ROADMAP-009   |
-
----
-
-## ROADMAP-001: `project-persistence` - Split persistence into repositories and pure domain policies
-
-**Title:** `project-persistence` - Split God Object into repositories and pure policies
-
-**Description:**
-`project-persistence.ts` currently owns too many responsibilities: token auth,
-project CRUD, JSONB archive merging, typed compliance-column mapping,
-`site_constraints` sync, `building_tasks` generation, hard-stop reasoning,
-storage cleanup and tracing. This violates Single Responsibility Principle and
-makes the database writer a hidden domain engine. The module should become a thin
-application service that delegates business decisions to pure functions and
-database access to repositories.
-
-**Acceptance Criteria:**
-
-- `saveProject()` delegates update construction to a pure `buildProjectUpdate()`
-  function that can be unit-tested without Supabase.
-- `projects.repository.ts`, `site-constraints.repository.ts`,
-  `building-tasks.repository.ts` and `project-storage.repository.ts` own all
-  Supabase calls for their tables/storage buckets.
-- `project-persistence.ts` no longer contains `deriveAutoTasks`,
-  `deriveHardStopReason` or `deriveSiteConstraintsPatch`.
-- No `(update as Record<string, unknown>)` casts remain in
-  `project-persistence.ts`.
-- Unit tests cover at least: partial compliance patch merge, typed column
-  extraction, owner guard, and non-blocking secondary sync behavior.
-
-**Dependencies:**
-
-- ROADMAP-003 should be completed first or in parallel, so generated Supabase
-  types include all active tables/columns.
-- ROADMAP-002 should define the canonical hard-stop output consumed by this task.
-
----
-
-## ROADMAP-002: `rule-engine` - Make hard-stop logic the single source of truth
-
-**Title:** `rule-engine` - Centralize hard-stop decisions and downstream consequences
-
-**Description:**
-Hard-stop semantics currently appear in the rule engine, persistence, pre-check
-flag generation and task generation. That creates a high-risk divergence: a SAVE
-value or MAT flag can block in one path but only warn in another. The rule engine
-must own the canonical severity, authority and reason; persistence and UI should
-map that result, not reinterpret thresholds.
-
-**Acceptance Criteria:**
-
-- Hard-stop thresholds exist only in `src/lib/rule-engine/rules/stop-rules.ts`
-  and shared domain constants/types.
-- Persistence derives `hard_stop`, `hard_stop_reason` and related task triggers
-  from `RuleEngineResult` or a typed adapter around it.
-- Pre-check flags use the same rule-engine adapter as full analysis.
-- Add unit tests proving SAVE 1-3, SAVE 4, fredet, strandbeskyttelse,
-  fredskov and klitfredning produce consistent results across pre-check,
-  persistence and full analysis.
-- Static search shows no duplicated threshold checks like `saveValue <= 3`
-  outside the rule-engine domain module/test fixtures.
-
-**Dependencies:**
-
-- None, but ROADMAP-001 and ROADMAP-006 should consume the new adapter.
-
----
-
-## ROADMAP-003: `cache`/Supabase types - Remove untyped cache access and parse cached JSON
-
-**Title:** `cache` - Type `address_source_results` and validate cached payloads
-
-**Description:**
-`src/integrations/cache/client.ts` currently uses
-`(supabaseAdmin.from as any)("address_source_results")` because generated
-Supabase types do not expose the table. It also returns cached JSON as trusted
-domain objects. That weakens the type system exactly at the boundary where stale
-or malformed data is most likely.
-
-**Acceptance Criteria:**
-
-- Supabase `Database` types include `address_source_results` and all active
-  `projects` columns used by persistence.
-- `cache/client.ts` contains no `any` or `as unknown as ComplianceResult`
-  casts for cache payloads.
-- Add Zod schemas or typed decoders for cached `ComplianceResult`,
-  `LokalplanExtract`, `TinglysningResult` and `SourceResult<T>` envelopes.
-- TTL values move to a named config module, e.g. `src/lib/cache-policy.ts`.
-- Unit tests cover expired cache, PDF URL invalidation, malformed payload and
-  `address_source_results` round-trip.
-
-**Dependencies:**
-
-- Requires Supabase type generation/update after migration
-  `20260519120000_address_source_results.sql`.
-
----
-
-## ROADMAP-004: `plandata` - Split pure selectors from WFS client
-
-**Title:** `plandata` - Move client-safe selectors out of server WFS client
-
-**Description:**
-`selectPrimaryLokalplanForPdf()` is a pure selector but currently lives in
-`src/integrations/plandata/client.ts`, which imports WFS/fetch infrastructure.
-When client routes import this selector, they can pull server-only dependencies
-into the client build. This already matches the observed build failure pattern
-around TanStack import protection.
-
-**Acceptance Criteria:**
-
-- Create `src/integrations/plandata/selectors.ts` or
-  `src/lib/plandata/selectors.ts` with pure functions only.
-- Route/components and persistence import selectors from the pure selector
-  module, not from `plandata/client.ts`.
-- `plandata/client.ts` owns WFS transport only.
-- Add unit tests for primary lokalplan selection, including missing PDF links
-  and multiple plans.
-- `bun run build` no longer fails due to client import of server-only Supabase
-  or tracing modules through Plandata.
-
-**Dependencies:**
-
-- None. This is a high-leverage quick win.
-
----
-
-## ROADMAP-005: `analysis-orchestrator` - Decompose pipeline into layer services
-
-**Title:** `analysis-orchestrator` - Split full analysis pipeline into typed layer services
-
-**Description:**
-`analyseAddressWithTrace()` owns address enrichment, cache reads/writes, Layer 1
-fetching, PDF extraction, servitut extraction, expensive Layer 4 policy, dynamic
-imports, service-state construction and final result assembly. It is difficult
-to reason about and difficult to test without many mocks. It should become an
-application-level coordinator over focused layer modules.
-
-**Acceptance Criteria:**
-
-- Extract focused modules: `address-enrichment.ts`, `layer1-analysis.ts`,
-  `lokalplan-extraction-step.ts`, `servitut-step.ts`, `geo-risk-step.ts` and
-  `analysis-result-assembler.ts`.
-- Orchestrator no longer imports types from `project-store`; shared pipeline
-  state types move to a server/client-neutral domain module.
-- Cached payloads are parsed through ROADMAP-003 decoders.
-- Expensive-layer skip policy is a pure function with unit tests.
-- `analyseAddressWithTrace()` is reduced to orchestration of named steps and has
-  no inline dynamic-import business logic.
-
-**Dependencies:**
-
-- ROADMAP-003 for typed cache decoders.
-- ROADMAP-008 for shared pipeline state types.
-
----
-
-## ROADMAP-006: `pre-check-adresse` - Align pre-check with full analysis and rule engine
-
-**Title:** `pre-check-adresse` - Extract pre-check policy and remove duplicated flag logic
-
-**Description:**
-`pre-check-adresse.ts` mixes `createServerFn`, Layer 1 orchestration, FBB lookup,
-metrics calculation and `ComplianceFlag` generation. The flag logic duplicates
-hard-stop interpretation and contains stale comments around BBR Public. This
-route must remain fast, but its business output should be derived from the same
-domain policies as full analysis.
-
-**Acceptance Criteria:**
-
-- Extract `buildPreCheckFlags()` into a pure domain module that consumes the
-  rule-engine adapter from ROADMAP-002.
-- Remove stale BBR Public wording and document that FBB candidates are
-  Datafordeler/FBB-derived.
-- `preCheckAdresse` handler only validates input, calls a pre-check service and
-  returns the result.
-- Unit tests cover pre-check output for: no BBR, SAVE 3, SAVE 4, fredet,
-  MAT protection flags and missing coordinates.
-- No `console.warn` remains after ROADMAP-009 logging adapter is available.
-
-**Dependencies:**
-
-- ROADMAP-002 should land first.
-- ROADMAP-009 can be parallel.
-
----
-
-## ROADMAP-007: `bbr/client` - Extract code lists and canonical building selection
-
-**Title:** `bbr/client` - Separate BBR transport, code lists and canonical selection
-
-**Description:**
-`BbrService` currently combines GraphQL transport, BBR code-list labels,
-canonical building selection and output mapping. The code lists are hardcoded
-inside the client, and selection logic is not clearly isolated as a pure domain
-function. This makes it harder to validate the core "which building did we
-choose?" behavior without network mocks.
-
-**Acceptance Criteria:**
-
-- Move BBR code lists to `src/domain/bbr/code-lists.ts` or equivalent.
-- Move canonical building selection to a pure module with typed input/output.
-- Add unit tests for canonical building selection: single building,
-  multiple primary buildings, secondary-only buildings and missing areas.
-- Add a typed parser/decoder for raw BBR GraphQL nodes before mapping to
-  `BbrKompliantData`.
-- Remove stale comments that mention grundareal coming from a DAWA layer.
-
-**Dependencies:**
-
-- None, but this improves ROADMAP-005 and ROADMAP-006 testability.
-
----
-
-## ROADMAP-008: `project-store` - Move shared domain types out of Zustand store
-
-**Title:** `project-store` - Split domain types from client state container
-
-**Description:**
-`project-store.ts` is both a Zustand store and a source of domain types such as
-`DataSourceKind`, `PipelineServiceState`, `Byggeoenske`, `ComplianceFlag` and
-project phase metadata. Server modules importing types from the store increase
-the risk of server/client boundary leakage. Domain types should live in neutral
-type modules; Zustand should own only client state and setters.
-
-**Acceptance Criteria:**
-
-- Move shared domain/pipeline types to `src/types/building-platform.ts` or a new
-  `src/types/project-state.ts`.
-- Server modules import shared types from type modules, never from
-  `project-store.ts`.
-- `project-store.ts` is reduced to initial state, selectors and actions.
-- Add type-level tests or compile checks for moved exports.
-- No runtime imports from server code to `project-store.ts`.
-
-**Dependencies:**
-
-- Coordinate with ROADMAP-005 because orchestrator currently references
-  project-store pipeline types.
-
----
-
-## ROADMAP-009: Cross-cutting - Centralize logging and non-fatal error policy
-
-**Title:** `logging` - Replace scattered `console.warn` with typed logger/error policy
-
-**Description:**
-Server modules use `console.warn` for non-fatal failures in analysis,
-pre-check, cache and persistence. That makes error severity inconsistent and
-hard to trace. ArchAI already has tracing concepts; logging should be explicit
-about whether a failure is fatal, degraded or ignored.
-
-**Acceptance Criteria:**
-
-- Define a small server logging/error helper that records module, operation,
-  severity and optional trace context.
-- Replace `console.warn` in `analysis-orchestrator.ts`,
-  `pre-check-adresse.ts`, `project-persistence.ts` and cache modules.
-- Non-fatal failures return typed degraded states where appropriate.
-- Tests cover at least one non-fatal persistence sync failure and one degraded
-  external-source failure.
-
-**Dependencies:**
-
-- None.
-
----
-
-## Review Round 2: Route Boundaries, Client State and Server Actions
-
-Scope: route files, client/server boundary modules, frontend-owned orchestration
-and security gates around AI generation.
-
-| Priority | Module                                            | Finding                                                                                                      | Architectural Risk                                                                             | Proposed Task |
-| -------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- | ------------- |
-| P0       | `src/routes/projekt.$id.cockpit.tsx`              | 1600+ line route owns server functions, restore, analysis flow, local mirrors and UI composition             | Route changes can break data integrity, auth, build boundaries and UI at once                  | ROADMAP-010   |
-| P0       | `src/lib/ai-design.functions.ts` + `AiDesignHero` | Server trusts client-supplied `hasHardStop` to gate AI design generation                                     | Hard-stop gate can be bypassed by direct endpoint calls                                        | ROADMAP-011   |
-| P1       | `src/lib/project-sync.ts`                         | Server functions accept typed objects without runtime schemas and sync writes are ad hoc                     | Invalid patches can cross the server boundary; save ordering and failure semantics are unclear | ROADMAP-012   |
-| P1       | `src/routes/projekt.adresse.tsx`                  | Address route mixes autocomplete server functions, pre-check orchestration, gate logic and UI event handling | Address gate behavior becomes hard to test and can drift from full analysis                    | ROADMAP-013   |
-| P1       | `src/lib/reactive-compliance.ts`                  | Pure compute imports `deriveComplianceFlags` from Zustand store module                                       | Client state container becomes part of domain computation and server/shared code coupling      | ROADMAP-014   |
-| P1       | `src/integrations/gsearch/client.ts`              | Raw GSearch JSON is cast directly; coordinate conversion is duplicated from DAR                              | Bad API responses can become valid suggestions; geometry helpers drift                         | ROADMAP-015   |
-| P1       | `createServerFn` usage across routes/libs         | Auth checks, token parsing and Zod patterns are duplicated per server function                               | Inconsistent authorization and validation across boundary endpoints                            | ROADMAP-016   |
-| P2       | `src/lib/feature-flags.ts` + `src/lib/env.ts`     | Feature flags are hardcoded constants; optional env usage is not fully modeled                               | Runtime behavior cannot be safely changed per environment and docs can drift                   | ROADMAP-017   |
-
----
-
-## ROADMAP-010: `projekt.$id.cockpit` - Split route God Object into server actions, hooks and shell components
-
-**Title:** `projekt.$id.cockpit` - Decompose cockpit route into maintainable slices
-
-**Description:**
-`src/routes/projekt.$id.cockpit.tsx` is currently a route, server-action module,
-restore coordinator, analysis runner, local-state mirror and UI shell in one
-file. At more than 1600 lines it is too expensive to reason about and too easy
-to break. The route should only bind URL params/search state to a small cockpit
-container; data restore and analysis should live in tested hooks/services.
-
-**Acceptance Criteria:**
-
-- Move `fetchCompliance` and `runByggeanalyse` to a dedicated server-action
-  module, e.g. `src/lib/cockpit.functions.ts`.
-- Extract restore logic into `useCockpitRestore()`.
-- Extract full-analysis trigger logic into `useCockpitAnalysis()`.
-- Extract free-design cockpit into its own component/module.
-- Route file is reduced to route definition, auth wrapper and high-level shell
-  composition; target under 400 lines.
-- Remove local mirrors for data already owned by `useProject()` unless a local UI
-  state is strictly transient.
-- Add focused tests for restore decision logic and "do not auto-refetch when
-  restored data is present".
-
-**Dependencies:**
-
-- ROADMAP-004 should land first to avoid selector/server import issues.
-- ROADMAP-005 and ROADMAP-008 make the extracted hooks cleaner but are not hard
-  blockers.
-
----
-
-## ROADMAP-011: `ai-design` - Revalidate hard-stop gate server-side
-
-**Title:** `ai-design` - Replace client-supplied hard-stop gate with server-side validation
-
-**Description:**
-`generateDesignProposals` currently accepts `hasHardStop` from the client. The
-UI computes this from local compliance flags, but a direct call can pass
-`false`. Because AI design generation is explicitly forbidden before
-constraint-checking, the server action must load trusted project/address
-constraints and run the gate itself.
-
-**Acceptance Criteria:**
-
-- Remove `hasHardStop` from the public input schema as an authorization/gate
-  signal.
-- Require a trusted `projectId` or `addressId` plus access token/session context.
-- Server action loads the relevant typed project/site-constraint data and runs
-  the rule-engine gate or ROADMAP-002 adapter before generation.
-- Add tests proving direct calls cannot generate designs for a known hard-stop
-  project.
-- UI may still disable the button client-side, but server remains authoritative.
-
-**Dependencies:**
-
-- ROADMAP-002 for the canonical hard-stop adapter.
-- ROADMAP-016 for shared authenticated server-action utilities.
-
----
-
-## ROADMAP-012: `project-sync` - Add runtime schemas and deterministic mutation flow
-
-**Title:** `project-sync` - Type and validate project mutations across the server boundary
-
-**Description:**
-`project-sync.ts` defines create/load/save/delete server functions, but the
-input validators currently trust TypeScript shapes at runtime. `syncPatch()` is
-also used from many UI places without a clear mutation queue, conflict policy or
-failure surface. This is risky because `ProjectPatch` can include JSONB archive
-payloads and typed compliance fields.
-
-**Acceptance Criteria:**
-
-- Add Zod schemas or domain decoders for all server function inputs, including
-  `ProjectPatch`.
-- Split client sync facade from server actions if needed, so browser code never
-  imports server persistence types at runtime.
-- Define a mutation policy: fire-and-forget, awaited critical writes and retry
-  behavior are explicit.
-- Add a per-project in-flight save queue or documented last-write-wins policy.
-- Unit tests cover invalid patch rejection, missing token behavior and
-  overlapping save calls.
-
-**Dependencies:**
-
-- ROADMAP-003 for typed JSON/cache payloads.
-- ROADMAP-001 for a cleaner persistence write contract.
-
----
-
-## ROADMAP-013: `projekt.adresse` - Extract address search and gate controller
-
-**Title:** `projekt.adresse` - Split autocomplete, address enrichment and pre-check gate
-
-**Description:**
-The address route owns GSearch server actions, DAR detail fetch, debounced
-autocomplete, address selection, Supabase sync, pre-check invocation, blocker
-dialog state and rendered UI. This makes the first compliance gate hard to test.
-The route should delegate search and pre-check flow to focused hooks and pure
-gate helpers.
-
-**Acceptance Criteria:**
-
-- Move `searchAddresses` and `fetchAddressDetails` server functions to a
-  dedicated address functions module.
-- Extract `useAddressSearch()` for debounced autocomplete.
-- Extract `useAddressSelectionPrecheck()` or equivalent controller for
-  select/enrich/pre-check/sync flow.
-- Replace React event `any` usages with typed events.
-- Move `flagIcon()` and hard/soft blocker grouping into pure helpers tested with
-  representative flags.
-- Remove stale comments that imply BBR Public is active.
-
-**Dependencies:**
-
-- ROADMAP-006 for shared pre-check flag policy.
-- ROADMAP-015 for typed GSearch response parsing.
-
----
-
-## ROADMAP-014: `reactive-compliance` - Move compliance flag derivation out of Zustand
-
-**Title:** `reactive-compliance` - Make client-side compliance compute fully domain-pure
-
-**Description:**
-`computePartialUpdate()` is intended to be a client-safe pure computation, but it
-imports `deriveComplianceFlags` and `Byggeoenske`/`ComplianceFlag` from
-`project-store.ts`. That makes Zustand part of the domain layer and complicates
-reuse in server-side policies and tests.
-
-**Acceptance Criteria:**
-
-- Move `deriveComplianceFlags` to a pure domain module, e.g.
-  `src/lib/compliance-flags.ts`.
-- Move `Byggeoenske` and `ComplianceFlag` types to shared type modules.
-- `reactive-compliance.ts` imports no symbols from `project-store.ts`.
-- Add unit tests for `computePartialUpdate()` using plain input objects and no
-  Zustand setup.
-- `project-store.ts` imports the pure flag/types module instead of defining the
-  logic inline.
-
-**Dependencies:**
-
-- ROADMAP-008 should land first or in the same PR.
-- ROADMAP-002 should provide canonical hard-stop mapping.
-
----
-
-## ROADMAP-015: `gsearch` - Decode GSearch responses and centralize coordinate conversion
-
-**Title:** `gsearch` - Add response schema and shared EPSG:25832 conversion
-
-**Description:**
-`GsearchService` casts `await res.json()` directly to `GsearchResult[]` and
-contains its own EPSG:25832 to WGS84 conversion, mirroring DAR. This makes API
-shape drift and coordinate conversion drift likely. GSearch is UX-only, but bad
-suggestions feed the first project state and pre-check input.
-
-**Acceptance Criteria:**
-
-- Add a Zod schema or decoder for GSearch API responses.
-- Centralize EPSG:25832 -> WGS84 conversion in a shared geo utility used by DAR
-  and GSearch.
-- Replace `{ lat: 0, lng: 0 }` fallback with `null` or a typed
-  `coordinatesMissing` state; do not create fake Denmark coordinates.
-- Make result limit and endpoint configurable through a typed config.
-- Unit tests cover valid response, malformed geometry, empty response and token
-  query parameter behavior.
-
-**Dependencies:**
-
-- ROADMAP-017 if config/env handling is centralized first.
-
----
-
-## ROADMAP-016: `server-functions` - Standardize authenticated server actions
-
-**Title:** `server-functions` - Create shared auth and validation wrappers for createServerFn
-
-**Description:**
-Several route/server modules repeat the same pattern: accept a token, call
-`supabaseAdmin.auth.getUser()`, throw `401`, then dynamically import a server
-service. This duplicates security-sensitive code and makes validation quality
-uneven across endpoints.
-
-**Acceptance Criteria:**
-
-- Create a shared helper for authenticated `createServerFn` handlers that
-  validates input, resolves `userId`, and normalizes unauthorized errors.
-- Migrate cockpit, project-sync and address server functions to the shared
-  helper.
-- Add tests for missing token, invalid token and valid token pathways using a
-  mocked auth adapter.
-- Server functions expose domain-specific input schemas rather than raw
-  pass-through TypeScript types.
-
-**Dependencies:**
-
-- None, but it supports ROADMAP-010, ROADMAP-011, ROADMAP-012 and ROADMAP-013.
-
----
-
-## ROADMAP-017: `runtime-config` - Replace hardcoded feature flags with typed runtime config
-
-**Title:** `runtime-config` - Make feature flags and optional env vars typed and environment-aware
-
-**Description:**
-`FEATURE_FLAGS` is a hardcoded object and `env.ts` models only a subset of
-optional variables. This makes integration behavior difficult to change safely
-between local, preview and production. Feature flags are infrastructure policy
-and should be validated once, then consumed as typed config.
-
-**Acceptance Criteria:**
-
-- Introduce a typed runtime config module that reads env once and exposes
-  feature flags plus integration endpoints/tokens.
-- Include optional variables currently used outside the explicit optional list,
-  such as `DATAFORSYNINGEN_TOKEN` and Datafordeler endpoint overrides.
-- Document defaults for local, preview and production.
-- Services consume `runtimeConfig` rather than reading env/feature flags
-  directly.
-- Add tests for missing required env, optional fallback and feature flag parsing.
-
-**Dependencies:**
-
-- None.
-
----
-
-## Review Round 3: Domain, integration clients, UI components and AI governance
-
-| Severity | Module                                                                          | Finding                                                                                                                                                                     | Roadmap     |
-| -------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Critical | `src/types/building-platform.ts`                                                | Domain types include hard-stop helper logic and ad-hoc JSON parsing that duplicate the rule engine.                                                                         | ROADMAP-018 |
-| Critical | `src/integrations/{dar,bbr,mat,ebr,plandata}`                                   | Datafordeler clients repeat GraphQL transport, use `any`/`Promise<any>`, and parse raw nodes without shared schemas.                                                        | ROADMAP-019 |
-| Medium   | `src/integrations/ai/*`                                                         | Anthropic calls, JSON extraction and fallback handling are duplicated across AI services with uneven type safety.                                                           | ROADMAP-020 |
-| Medium   | `src/components/cockpit/index.tsx`                                              | Cockpit UI remains a large coordination component mixing upload flow, Supabase sync, reactive compute and presentation.                                                     | ROADMAP-021 |
-| Medium   | `src/components/cockpit/MatrikelMap.tsx`                                        | OpenLayers integration, geometry calculations, server sync and UI state are coupled and rely heavily on `any`.                                                              | ROADMAP-022 |
-| Medium   | `src/lib/rule-engine/input-assembler.ts`                                        | Input assembly contains many embedded parsers, mapper heuristics and imports from Zustand-owned types.                                                                      | ROADMAP-023 |
-| Medium   | `src/lib/datacheck.ts`                                                          | Static datapoint definitions, scoring logic and persistence-oriented status shapes live in one large module.                                                                | ROADMAP-024 |
-| Medium   | `src/lib/analysis-tracing.ts`, `src/routes/debug.analyse.tsx`, regression tests | Debug/tracing code bypasses typed Supabase access and tests duplicate loose fetch/mock setup.                                                                               | ROADMAP-025 |
-| Critical | AI-facing `.md` instructions                                                    | Agent instructions must be updated as architecture patterns land, otherwise future AI-generated code will keep recreating route God Objects and mixed infra/domain modules. | ROADMAP-026 |
-
----
-
-## ROADMAP-018: `building-platform` - Keep domain types free of rule decisions
-
-**Title:** `building-platform` - Remove duplicate hard-stop decisions from shared domain types
-
-**Description:**
-`src/types/building-platform.ts` should describe the domain, not decide
-compliance outcomes. It currently contains helpers such as `hasAbsoluteHardStop`
-and `getSaveHardStop`, while canonical thresholds live in the rule engine. That
-creates a long-term risk that UI, persistence and AI flows evaluate different
-versions of the same legal constraint.
-
-**Acceptance Criteria:**
-
-- Move hard-stop helper behavior behind a rule-engine adapter or pure domain
-  policy that imports canonical rule thresholds.
-- `building-platform.ts` exports types, enums, constants and narrow helpers only;
-  no independent hard-stop decision trees.
-- Replace ad-hoc `Record<string, unknown>` parsing for design iteration payloads
-  with a runtime schema.
-- Add tests proving SAVE, fredning and MAT flags produce the same result through
-  both persistence and client-safe adapters.
-- Remove duplicate threshold comments from non-rule files and link to the
-  canonical module instead.
-
-**Dependencies:**
-
-- ROADMAP-002 should define the canonical rule-engine boundary first.
-- ROADMAP-008 should move shared domain types out of Zustand first or in the same
-  PR.
-
----
-
-## ROADMAP-019: `datafordeler-clients` - Share GraphQL transport and typed decoders
-
-**Title:** `datafordeler-clients` - Replace loose Datafordeler parsing with typed client contracts
-
-**Description:**
-DAR, BBR, MAT, EBR and Plandata clients repeat transport setup, endpoint
-handling, logging and raw JSON parsing. Several functions expose `Promise<any>`
-or map GraphQL nodes through `any`, which means register shape drift only appears
-at runtime. Datafordeler is the compliance backbone, so this needs a shared
-contract layer.
-
-**Acceptance Criteria:**
-
-- Introduce a shared `datafordelerGraphqlFetch<T>()` transport with timeout,
-  retry, endpoint, auth and normalized error handling.
-- Add schemas or typed decoders for the GraphQL response shapes used by DAR, BBR,
-  MAT, EBR and Plandata.
-- Remove `Promise<any>`, `any[]` and `map((node: any) => ...)` from the
-  integration clients.
-- Remove stale DAWA comments from Datafordeler client code.
-- Replace direct `console.warn/error` with the shared logging/error policy from
-  ROADMAP-009.
-- Add contract tests for valid response, empty response, GraphQL errors and
-  malformed payloads.
-
-**Dependencies:**
-
-- ROADMAP-017 for runtime config and endpoint handling.
-- ROADMAP-009 for shared logging and error reporting.
-
----
-
-## ROADMAP-020: `ai-integrations` - Centralize Anthropic calls and JSON extraction
-
-**Title:** `ai-integrations` - Create a typed AI gateway for prompt execution
-
-**Description:**
-AI services such as PDF extraction, Hus-DNA generation, image analysis and
-byggeanalyse repeat message construction, response parsing and fallback policy.
-Some paths cast `res.json()` or extracted JSON directly. That makes AI behavior
-hard to test and increases the chance that malformed model output leaks into
-domain state.
-
-**Acceptance Criteria:**
-
-- Create a shared AI gateway for Anthropic calls with typed input, timeout,
-  logging and normalized error handling.
-- Add a reusable `extractStructuredOutput(schema, response)` helper for JSON
-  extraction and schema validation.
-- Store prompt names/versions in a small prompt registry so model changes are
-  traceable.
-- Remove `as any` and unchecked `JSON.parse` usage from AI integrations.
-- Add unit tests for valid JSON, fenced JSON, invalid JSON, missing fields and
-  model/API failure paths.
-
-**Dependencies:**
-
-- ROADMAP-017 for model/runtime config.
-- ROADMAP-009 for logging/error policy.
-
----
-
-## ROADMAP-021: `cockpit-components` - Split the cockpit monolith into focused modules
-
-**Title:** `cockpit-components` - Decompose cockpit UI into hooks, panels and pure helpers
-
-**Description:**
-`src/components/cockpit/index.tsx` is still responsible for too much: presentation
-layout, upload flow, project sync, compliance recomputation and local UI
-coordination. This makes every future cockpit change risky because unrelated
-concerns share one large file.
-
-**Acceptance Criteria:**
-
-- Keep `index.tsx` as a public export/composition layer rather than a large
-  implementation file.
-- Extract upload/sync behavior into hooks or services with explicit input/output
-  types.
-- Move reactive compliance calls behind a small cockpit controller hook that
-  consumes `useProject()` and emits typed patches.
-- Extract major panels into focused components with no direct Supabase client
-  dependency.
-- Add component or hook tests around upload failure, compliance recompute and
-  patch sync behavior.
-
-**Dependencies:**
-
-- ROADMAP-012 for deterministic mutation flow.
-- ROADMAP-014 for pure reactive compliance.
-
----
-
-## ROADMAP-022: `MatrikelMap` - Separate map adapter, geometry domain and UI state
-
-**Title:** `MatrikelMap` - Make parcel geometry testable without OpenLayers
-
-**Description:**
-`MatrikelMap` mixes OpenLayers runtime objects, parcel geometry calculations,
-drag handling, sync behavior and rendering state. The current `any` casts hide
-runtime risks around map events and tile/layer instances, while the business
-geometry cannot be tested without browser/map setup.
-
-**Acceptance Criteria:**
-
-- Extract pure geometry helpers for footprint placement, boundary distance and
-  outside-parcel area.
-- Add unit tests for geometry helpers using plain coordinates and polygons.
-- Wrap OpenLayers imports in a typed adapter module so component code avoids
-  broad `any` casts.
-- Move server sync/patch emission out of map rendering code.
-- Ensure the UI component only coordinates user interaction and visual state.
-
-**Dependencies:**
-
-- ROADMAP-015 for shared coordinate conversion.
-- ROADMAP-012 if map state persists through project patches.
-
----
-
-## ROADMAP-023: `rule-engine-input-assembler` - Split parsers and mappers from assembly
-
-**Title:** `rule-engine-input-assembler` - Isolate parsing heuristics from rule input assembly
-
-**Description:**
-`input-assembler.ts` is pure, but it contains many responsibilities: setback
-parsing, roof parsing, zone mapping, project type mapping, usage inference and
-fallback heuristics. It also imports domain shapes from `project-store.ts`,
-pulling UI state ownership into the rule-engine boundary.
-
-**Acceptance Criteria:**
-
-- Move parsing helpers such as setback, roof types and zone into small tested
-  modules.
-- Move BBR usage and project-type mapping into named domain mappers.
-- Replace magic fallback values with named constants and comments explaining the
-  uncertainty model.
-- Remove imports from `project-store.ts`; use shared domain types only.
-- Add tests for parser edge cases and default/fallback behavior.
-
-**Dependencies:**
-
-- ROADMAP-008 for shared domain type ownership.
-- ROADMAP-002 for canonical rule-engine thresholds and terminology.
-
----
-
-## ROADMAP-024: `datacheck` - Split datapoint definitions from scoring logic
-
-**Title:** `datacheck` - Make data checklist definitions configurable and scoring pure
-
-**Description:**
-`src/lib/datacheck.ts` combines static datapoint definitions, phase grouping,
-score calculation and status shapes used by routes. That makes it easy to add
-new datapoints in a way that accidentally changes scoring behavior or route
-persistence.
-
-**Acceptance Criteria:**
-
-- Move datapoint definitions into a dedicated config module with typed IDs and
-  phase ownership.
-- Keep scoring/status derivation in pure functions that accept explicit input.
-- Add a runtime schema for persisted `DataStatusMap` values.
-- Update `projekt.datacheck.tsx` to stop writing route-step strings as workflow
-  control state.
-- Add tests for unknown datapoints, phase score calculation, empty status maps
-  and persisted status validation.
-
-**Dependencies:**
-
-- ROADMAP-012 for project mutation/persistence flow.
-
----
-
-## ROADMAP-025: `testing-tracing-debug` - Type tracing tables and test harnesses
-
-**Title:** `testing-tracing-debug` - Remove debug `any` casts and stabilize regression tests
-
-**Description:**
-`analysis-tracing.ts` and `debug.analyse.tsx` access tracing tables through
-`supabaseAdmin.from as any`, and several regression tests carry large local mock
-setups. Debug and observability code is allowed to be internal, but it still
-needs typed boundaries because it sits near compliance analysis.
-
-**Acceptance Criteria:**
-
-- Add generated or handwritten Supabase types for `analysis_runs` and
-  `analysis_events`.
-- Remove `supabaseAdmin.from as any` from tracing/debug code.
-- Gate debug routes behind a dev/admin-only policy with tests or an explicit
-  server-side guard.
-- Extract repeated fetch/mock setup into shared typed test utilities.
-- Fix or quarantine mock cache pollution so integration regression tests are
-  deterministic.
-
-**Dependencies:**
-
-- ROADMAP-003 for typed cache/source result contracts.
-- ROADMAP-016 for shared server auth/validation wrappers.
-
----
-
-## AI Model Instruction Update Note
-
-As the P0/P1 architecture tasks land, the AI-facing documentation must be kept in
-lockstep with the code. Otherwise future AI agents will keep generating code
-against old patterns: direct route-level infrastructure imports, local
-compliance state, route God Objects, duplicated hard-stop logic and unchecked
-`any` parsing.
-
-Future AI instructions should include these concrete architectural contracts:
-
-- Routes call typed `createServerFn` handlers and compose UI. They do not own
-  register clients, persistence logic or compliance decisions.
-- Domain logic lives in pure modules with explicit input/output types and tests.
-- Infrastructure is accessed through repositories, gateways or shared clients.
-- Runtime data from APIs, AI models and JSONB columns is decoded through schemas
-  before it reaches domain state.
-- Hard Stops are evaluated only through the rule-engine boundary.
-- Cockpit data persists through `useProject()` and typed project patches; no
-  local duplicated compliance state.
-- New large files are treated as a design smell and must be split by
-  responsibility before merge.
-
----
-
-## ROADMAP-026: `ai-agent-instructions` - Update AI-facing architecture rules
-
-**Title:** `ai-agent-instructions` - Make AGENTS/CLAUDE enforce the new architecture patterns
-
-**Description:**
-The project relies on AI agents for implementation and review. Once the new
-module boundaries are accepted, `AGENTS.md`, `CLAUDE.md` and supporting docs must
-teach future models the actual architecture, not only the current product
-domain. Without this, the same spaghetti patterns will reappear in generated
-code.
-
-**Acceptance Criteria:**
-
-- Update `AGENTS.md` and `CLAUDE.md` with the accepted architecture contracts for
-  routes, server functions, repositories/gateways, rule engine, project store and
-  runtime schemas.
-- Add a "new feature checklist" for AI agents covering type safety, pure
-  functions, server boundary, Datafordeler usage, Supabase writes and tests.
-- Add short allowed/forbidden examples for common patterns:
-  route-to-server-function flow, Datafordeler client usage, project persistence
-  writes and cockpit state updates.
-- Update `docs/DOCUMENTATION.md` so documentation drift checks include
-  `ROADMAP.md` and AI-facing instruction files.
-- Update `.claude/commands/sync-docs.md` so doc sync explicitly checks whether
-  accepted roadmap patterns need to be reflected in AI instructions.
-- Mark `AGENTS.md` and `CLAUDE.md` changes as protected-file changes requiring
-  human review.
-
-**Dependencies:**
-
-- Initial version can land after ROADMAP-001, ROADMAP-004, ROADMAP-010 and
-  ROADMAP-016 establish the target patterns.
-- The note should be revisited after each P0/P1 roadmap item that changes module
-  boundaries.
+- [ ] **Der er tæt kobling mellem `useCockpitRestore` og `useCockpitAnalysis`**
+  - Filer: `src/hooks/useCockpitRestore.ts`, `src/hooks/useCockpitAnalysis.ts`
+  - Problem: `useCockpitRestore` importerer `AnalysisSnapshot` type fra analyse-hooken, mens analyse-hooken runtime-importerer `routeMatchesAddress` fra restore-hooken.
+  - AGENTS-relevans: Ikke en runtime-cycle nu, men tæt nok på Rule 8 til at shared typer og hjælpefunktioner bør flyttes til et lavere niveau.
+  - Refaktorering: Flyt fælles snapshot-typer og `routeMatchesAddress` til et neutralt `cockpit-shared.ts` eller lignende.
+
+- [ ] **`use-mobile.tsx` ser ren og lav-risiko ud**
+  - Fil: `src/hooks/use-mobile.tsx`
+  - Observation: Hooken er lokal, UI-teknisk og uden domæne- eller boundary-problemer.
+
+## Targeted lib audit (`src/lib`, `src/types`)
+
+### Prioriterede findings
+
+1. [ ] **`project-state.ts` bryder fase-invarianten og parser persisted compliance-data usikkert**
+   - Fil: `src/types/project-state.ts`
+   - Problem: `PhaseName` bruger stadig de gamle faser (`"hus-dna" | "match" | "finans" | "engineering" | "udbud"`) i stedet for de 4 kanoniske faser fra AGENTS.md.
+   - Problem: `parseComplianceData()` og `isHusDna()` bruger kun meget lette shape-checks og flere direkte casts fra `unknown`.
+   - AGENTS-brud: Fase-normalisering, Rule 1 (Contract-First Boundaries).
+   - Refaktorering: Indfør canonical fase-typer og Zod-baseret parsing for persisted compliance/Hus-DNA payloads.
+
+2. [ ] **`project-sync.ts` validerer kun patch-overfladen og skjuler persistence bag en global store-afhængighed**
+   - Fil: `src/lib/project-sync.ts`
+   - Problem: `projectPatchSchema` accepterer store dele af domænedata som `z.record(z.string(), z.unknown())`, hvilket reelt ikke validerer nested boundary-data.
+   - Problem: `syncPatch()` slår selv auth-token op og læser `currentProjectId` via `useProject.getState()`, hvilket gør persistence svært at isolere og teste.
+   - AGENTS-brud: Rule 1, Rule 7.
+   - Refaktorering: Erstat opaque records med typed schemas for kritiske patch-felter, og flyt `currentProjectId`/auth-afhængighed op i et service- eller hook-lag.
+
+3. [ ] **`byggeanalyse.server.ts` decoder trusted JSONB med generiske casts**
+   - Fil: `src/lib/byggeanalyse.server.ts`
+   - Problem: `extractComplianceField<T>()` og den efterfølgende brug af `as RuleEngine...` caster persisted compliance-data til domænekontrakter uden runtime-validering.
+   - AGENTS-brud: Rule 1, selv om modulet ellers respekterer Rule 4 ved at hente trusted state server-side.
+   - Refaktorering: Dekodér `compliance_data` gennem typed contract decoders, før rule engine og AI-service får data.
+
+4. [ ] **`cockpit.functions.ts` er strukturelt bedre, men `handleRunByggeanalyse()` læner sig stadig på et råt cast**
+   - Fil: `src/lib/cockpit.functions.ts`
+   - Problem: `handleRunByggeanalyse()` validerer kun token og caster derefter `rawData as ByggeanalyseInput`.
+   - AGENTS-brud: Rule 1.
+   - Refaktorering: Definér et eksplicit schema eller en decoder for det AI-relevante input, også hvis det sker som et reduceret server-side contract.
+
+5. [ ] **`use-address-precheck.ts` er et workflow-hook placeret i `lib` og muterer store/persistence direkte**
+   - Fil: `src/lib/use-address-precheck.ts`
+   - Problem: Hooken henter address details, kører precheck, skriver mange felter direkte til store og persisterer med `syncPatch`.
+   - AGENTS-brud: Rule 2/Rule 7-typen af dirty boundary, selv om filen ikke ligger i `src/hooks`.
+   - Refaktorering: Del den i et typed address-selection service-lag og et tyndt React-hook, så orchestration og UI-state ikke blandes.
+
+### Sekundære observationer
+
+- [ ] **`datacheck.ts` ser relativt sund ud**
+  - Fil: `src/lib/datacheck.ts`
+  - Observation: Modulet bruger Zod, filtrerer kendte IDs og holder logikken pure og testbar.
+  - Opfølgning: Brug dette modul som reference for, hvordan flere af de øvrige `lib`-parsers bør se ud.
+
+- [ ] **`cockpit.functions.ts` er tættere på AGENTS-målet end meget af det tilkoblede UI-lag**
+  - Fil: `src/lib/cockpit.functions.ts`
+  - Observation: `fetchCompliance`-delen følger i højere grad mønstret “validate -> auth -> delegate”.
+  - Opfølgning: Hvis cockpit-flowet deles op yderligere, så brug denne fil som stedet, hvor server-boundary-kontrakter kan strammes først.
+
+## Domain audit (`src/domain`, `src/domain/contracts`)
+
+### Observationer
+
+- [ ] **Domænelaget ser overordnet sundt ud**
+  - Filer: `src/domain/bbr/canonical-building.ts`, `src/domain/bbr/node-decoder.ts`, `src/domain/contracts/*.ts`
+  - Observation: Filerne er små, rene og uden tydelige imports tilbage til UI, routes eller Supabase runtime-klienter. `node-decoder.ts` bruger reel Zod-validering, og `canonical-building.ts` holder udvælgelseslogik pure.
+  - Opfølgning: Brug dette lag som reference for, hvordan boundary-dekodning og domænebeslutninger bør se ud andre steder i systemet.
+
+- [ ] **Ingen større AGENTS-brud fundet i `src/domain` i denne runde**
+  - Observation: Jeg fandt ikke tegn på React-, Supabase- eller route-afhængigheder i domænekernen.
+  - Rest-risiko: De typed contracts er gode, men flere højere lag caster stadig data ind i dem uden runtime-validering. Risikoen ligger derfor primært i adapterne omkring domænet, ikke i domænet selv.
+
+## Supabase repositories audit (`src/integrations/supabase/repositories`)
+
+### Prioriterede findings
+
+1. [ ] **`projects.repository.ts` returnerer persisted data via rå casts uden decoder**
+   - Fil: `src/integrations/supabase/repositories/projects.repository.ts`
+   - Problem: `getProjectComplianceSnapshot()` returnerer `data as ExistingProjectSnapshot | null`, og `loadProject()` returnerer `data as unknown as PersistedProject`.
+   - AGENTS-brud: Rule 1 (Contract-First Boundaries).
+   - Refaktorering: Indfør en eksplicit decoder for `PersistedProject`/snapshot-formerne ved repository-boundary, så resten af appen ikke modtager uvaliderede rækker.
+
+### Sekundære observationer
+
+- [ ] **`site-constraints.repository.ts` er relativt sund**
+  - Fil: `src/integrations/supabase/repositories/site-constraints.repository.ts`
+  - Observation: Repositoryet holder DB-kald samlet, og derivationen er udskilt i pure helpers. Det er en god retning, selv om upstream `ProjectPatch` stadig er for svagt valideret.
+
+- [ ] **`building-tasks.repository.ts` og derivation-filen er tæt på AGENTS-målet**
+  - Filer: `src/integrations/supabase/repositories/building-tasks.repository.ts`, `src/integrations/supabase/repositories/building-tasks.derivation.ts`
+  - Observation: Sideeffekter og rene derivationer er delt fornuftigt op, og repositoryet respekterer den aktive `building_tasks`-tabel samt upsert-kontrakten.
+
+- [ ] **`project-storage.repository.ts` ser ren og lav-risiko ud**
+  - Fil: `src/integrations/supabase/repositories/project-storage.repository.ts`
+  - Observation: Modulet er lille, fokuseret og uden domænelogik.
+
+## Analysis/functions audit (`src/lib/analysis`, `src/lib/*.functions.ts`)
+
+### Prioriterede findings
+
+1. [ ] **`pre-check-adresse.ts` blander inbound adapter og analyse-workflow i samme modul**
+  - Fil: `src/lib/pre-check-adresse.ts`
+  - Problem: `createServerFn`-handleren validerer input, men kalder derefter `runPreCheckAdresse()` i samme fil uden `withAuth()` og uden at delegere til et separat application service-lag. Selve modulet ejer samtidig orchestration over Layer1, naturbeskyttelse, FBB, metrics og flagbygning.
+  - AGENTS-brud: Rule 3 (Server Functions Are Inbound Adapters), Rule 7 (dirty boundary).
+  - Refaktorering: Behold Zod-contracten, men flyt `runPreCheckAdresse()` til en dedikeret service, og lad server functionen være en tynd wrapper med eksplicit auth-strategi.
+
+2. [ ] **`billede-analyse.functions.ts` har inline auth-, projekt- og storage-workflow i server functionen**
+  - Fil: `src/lib/billede-analyse.functions.ts`
+  - Problem: `uploadBillede` bruger `supabaseAdmin.auth.getUser()`, slår projekt-ejerskab op i `projects` og uploader direkte til storage i samme handler.
+  - AGENTS-brud: Rule 3, samt persistence/storage-bekymringen i Boundary Cleanup-roadmapsporet.
+  - Refaktorering: Flyt auth/ownership/upload til en fokuseret service eller repository-kombination, så server functionen kun validerer input og delegerer.
+
+3. [ ] **`ai-design.functions.ts` har god server-side gate, men `resolveHardStop()` går direkte til Supabase-tabeller**
+  - Fil: `src/lib/ai-design.functions.ts`
+  - Problem: Hard Stop-authority ligger rigtigt på serveren, men hjælpefunktionen læser `projects` og `site_constraints` direkte via `supabaseAdmin` i samme modul, i stedet for at gå gennem repositories eller et lille compliance-gate service-lag.
+  - AGENTS-brud: Ikke et Rule 4-brud, men stadig en boundary-læk ift. Rule 3/Rule 7 og persistence-patternet.
+  - Refaktorering: Bevar server-side gate-semantikken, men flyt opslagene til repository-/service-lag, fx `loadProjectComplianceSnapshot()` og `loadSiteConstraintGate()`.
+
+### Sekundære observationer
+
+- [ ] **`analysis-orchestrator.ts` er et af de sundere servermoduler**
+  - Fil: `src/lib/analysis-orchestrator.ts`
+  - Observation: Modulet er en relativt ren koordinator over step-moduler, bruger dependency injection og holder compliance-orchestration væk fra UI/routelaget.
+  - Rest-risiko: Kontrakten er kun så stærk som decodingen i de underliggende adapters og caches.
+
+- [ ] **`layer1-analysis.ts`, `address-enrichment.ts` og `geo-risk-step.ts` følger generelt den rigtige retning**
+  - Filer: `src/lib/analysis/layer1-analysis.ts`, `src/lib/analysis/address-enrichment.ts`, `src/lib/analysis/geo-risk-step.ts`
+  - Observation: De holder sig server-side, logger struktureret og samler integrationstrin i fokuserede moduler i stedet for at lægge dem i UI.
+  - Opfølgning: Brug disse moduler som reference, når dirty workflows i hooks og komponenter flyttes ned i services.
+
+- [ ] **`adresse.functions.ts` er tæt på den ønskede inbound-adapter-form**
+  - Fil: `src/lib/adresse.functions.ts`
+  - Observation: Input valideres med Zod, og handlerne delegerer direkte til integrationsklienter uden ekstra workflow- eller persistence-logik.

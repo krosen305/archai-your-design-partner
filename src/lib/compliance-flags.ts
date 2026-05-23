@@ -1,20 +1,22 @@
 // Pure function — no Zustand dependency. Derives ComplianceFlag[] from pipeline data.
 
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Kommuneplanramme } from "@/integrations/plandata/client";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
+import type { FjernvarmeResultat } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineBbrData,
+  RuleEngineDkJordResultat,
+  RuleEngineGeusRiskData,
+  RuleEngineKommuneplanramme,
+  RuleEngineNaturbeskyttelsesResultat,
+} from "@/domain/contracts/rule-engine.types";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceFlag } from "@/types/project-state";
 
 export function deriveComplianceFlags(
-  bbr: BbrKompliantData | null,
-  ramme: Kommuneplanramme | null,
-  naturbeskyttelse?: NaturbeskyttelsesResultat | null,
-  dkjord?: DkJordResultat | null,
-  geusRisk?: GeusRiskData | null,
+  bbr: RuleEngineBbrData | null,
+  ramme: RuleEngineKommuneplanramme | null,
+  naturbeskyttelse?: RuleEngineNaturbeskyttelsesResultat | null,
+  dkjord?: RuleEngineDkJordResultat | null,
+  geusRisk?: RuleEngineGeusRiskData | null,
   ruleEngine?: RuleEngineResult | null,
   fjernvarme?: FjernvarmeResultat | null,
 ): ComplianceFlag[] {
@@ -176,35 +178,38 @@ export function deriveComplianceFlags(
 
   // ── Naturbeskyttelseslinjer (ARCH-65) ───────────────────────────────────
   if (naturbeskyttelse) {
-    const linjer: Array<{ key: keyof NaturbeskyttelsesResultat; label: string; detalje: string }> =
-      [
-        {
-          key: "strandbeskyttelse",
-          label: "Strandbeskyttelseslinje",
-          detalje: "300 m fra kyst — byggestop uden dispensation fra Kystdirektoratet",
-        },
-        {
-          key: "skovbyggelinje",
-          label: "Skovbyggelinje",
-          detalje: "300 m fra statsskov — byggestop uden dispensation",
-        },
-        {
-          key: "soebeskyttelse",
-          label: "Søbeskyttelseslinje",
-          detalje: "150 m fra søer >3 ha — byggestop uden dispensation",
-        },
-        {
-          key: "aabeskyttelse",
-          label: "Åbeskyttelseslinje",
-          detalje: "150 m fra vandløb — byggestop uden dispensation",
-        },
-        { key: "klitfredning", label: "Klitfredning", detalje: "Byggestop i klitfredet område" },
-        {
-          key: "kirkebyggelinje",
-          label: "Kirkebyggelinje",
-          detalje: "Op til 300 m fra kirke — højdebegrænsning",
-        },
-      ];
+    const linjer: Array<{
+      key: keyof RuleEngineNaturbeskyttelsesResultat;
+      label: string;
+      detalje: string;
+    }> = [
+      {
+        key: "strandbeskyttelse",
+        label: "Strandbeskyttelseslinje",
+        detalje: "300 m fra kyst — byggestop uden dispensation fra Kystdirektoratet",
+      },
+      {
+        key: "skovbyggelinje",
+        label: "Skovbyggelinje",
+        detalje: "300 m fra statsskov — byggestop uden dispensation",
+      },
+      {
+        key: "soebeskyttelse",
+        label: "Søbeskyttelseslinje",
+        detalje: "150 m fra søer >3 ha — byggestop uden dispensation",
+      },
+      {
+        key: "aabeskyttelse",
+        label: "Åbeskyttelseslinje",
+        detalje: "150 m fra vandløb — byggestop uden dispensation",
+      },
+      { key: "klitfredning", label: "Klitfredning", detalje: "Byggestop i klitfredet område" },
+      {
+        key: "kirkebyggelinje",
+        label: "Kirkebyggelinje",
+        detalje: "Op til 300 m fra kirke — højdebegrænsning",
+      },
+    ];
 
     for (const { key, label, detalje } of linjer) {
       if (naturbeskyttelse[key]) {

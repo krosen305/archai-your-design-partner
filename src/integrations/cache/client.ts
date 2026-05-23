@@ -14,12 +14,14 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import type { ComplianceResult } from "@/lib/analysis-orchestrator";
 import type * as GeoJSON from "geojson";
+import { toJsonValue } from "@/lib/json-value";
 import type { SourceResult } from "@/lib/source-result";
 import { CACHE_TTL_DAYS, sourceResultTtlDays, daysToMs } from "@/lib/cache-policy";
 import {
+  decodeComplianceResult,
+  decodeGeoJsonFeatureCollection,
+  decodeLokalplanExtract,
   decodeSourceResultRow,
-  isValidComplianceResultShape,
-  isValidLokalplanExtractShape,
 } from "./decoders";
 
 function isFresh(timestamp: string | null, ttlMs: number): boolean {
@@ -61,8 +63,9 @@ export async function getCachedLokalplan(
   if (!isFresh(row.lokalplan_extracted_at, daysToMs(CACHE_TTL_DAYS.lokalplan))) return null;
   // Invalidate if the PDF URL has changed
   if (currentPdfUrl && row.lokalplan_pdf_url !== currentPdfUrl) return null;
-  if (row.lokalplan_extracted !== null && !isValidLokalplanExtractShape(row.lokalplan_extracted))
+  if (row.lokalplan_extracted !== null && !decodeLokalplanExtract(row.lokalplan_extracted)) {
     return null;
+  }
   return row.lokalplan_extracted;
 }
 
@@ -104,8 +107,7 @@ export async function getCachedCompliance(addressId: string): Promise<Compliance
   const row = await getRow(addressId);
   if (!row) return null;
   if (!isFresh(row.compliance_result_at, daysToMs(CACHE_TTL_DAYS.compliance))) return null;
-  if (!isValidComplianceResultShape(row.compliance_result)) return null;
-  return row.compliance_result as unknown as ComplianceResult;
+  return decodeComplianceResult(row.compliance_result);
 }
 
 export async function setCachedCompliance(
@@ -113,7 +115,7 @@ export async function setCachedCompliance(
   result: ComplianceResult,
 ): Promise<void> {
   await upsert(addressId, {
-    compliance_result: result as unknown as Json,
+    compliance_result: toJsonValue(result) ?? null,
     compliance_result_at: new Date().toISOString(),
   });
 }
@@ -146,7 +148,7 @@ export async function getCachedJordstykkePolygon(
   const row = await getRow(addressId);
   if (!row) return null;
   if (!isFresh(row.jordstykke_polygon_at, daysToMs(CACHE_TTL_DAYS.jordstykke))) return null;
-  return row.jordstykke_polygon as GeoJSON.FeatureCollection | null;
+  return decodeGeoJsonFeatureCollection(row.jordstykke_polygon);
 }
 
 export async function setCachedJordstykkePolygon(
@@ -154,7 +156,7 @@ export async function setCachedJordstykkePolygon(
   featureCollection: GeoJSON.FeatureCollection,
 ): Promise<void> {
   await upsert(addressId, {
-    jordstykke_polygon: featureCollection as unknown as Json,
+    jordstykke_polygon: toJsonValue(featureCollection) ?? null,
     jordstykke_polygon_at: new Date().toISOString(),
   });
 }
@@ -166,6 +168,7 @@ export async function setCachedJordstykkePolygon(
 export async function getCachedSourceResult<T>(
   addressId: string,
   sourceKind: string,
+  payloadSchema?: import("zod").ZodType<T>,
 ): Promise<SourceResult<T> | null> {
   const { data, error } = await supabaseAdmin
     .from("address_source_results")
@@ -181,7 +184,7 @@ export async function getCachedSourceResult<T>(
     );
   if (!data) return null;
 
-  return decodeSourceResultRow<T>(data);
+  return decodeSourceResultRow<T>(data, payloadSchema);
 }
 
 export async function setCachedSourceResult<T>(
@@ -203,7 +206,7 @@ export async function setCachedSourceResult<T>(
       fetched_at: result.fetchedAt,
       source_url: result.sourceUrl,
       raw_feature_count: result.rawFeatureCount,
-      payload: result.data as unknown as Json,
+      payload: toJsonValue(result.data) ?? null,
       expires_at: expiresAt,
     },
     { onConflict: "address_id,source_kind" },

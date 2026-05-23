@@ -6,24 +6,26 @@
 //  - Kald `patch()` fra event handlers — ikke under render.
 
 import { useEffect, useRef } from "react";
+import type {
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 import { useProject } from "@/lib/project-store";
 import { syncPatch } from "@/lib/project-sync";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import type { Byggeoenske } from "@/types/project-state";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { FbbResultat } from "@/integrations/fbb/client";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 
 export type ReactiveContext = {
-  geusRisk: GeusRiskData | null;
-  servitutter: TinglysningResult | null;
-  terrain: TerrainData | null;
-  fbbData: FbbResultat | null;
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  dkjord: DkJordResultat | null;
+  geusRisk: RuleEngineGeusRiskData | null;
+  servitutter: RuleEngineTinglysningResult | null;
+  terrain: RuleEngineTerrainData | null;
+  fbbData: RuleEngineFbbResult | null;
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  dkjord: RuleEngineDkJordResultat | null;
 };
 
 /**

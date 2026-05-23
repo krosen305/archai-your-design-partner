@@ -32,6 +32,14 @@ describe("PlandataService", () => {
     expect(result.lokalplaner[0]?.plannavn).toBe("Plan A");
     expect(result.fejl).toBeNull();
   });
+
+  it("returns structured error on invalid WFS response", async () => {
+    installSequentialJsonFetch([{ features: "invalid" }]);
+
+    const result = await PlandataService.getLokalplanerForKoordinat(12.5, 55.7);
+    expect(result.lokalplaner).toEqual([]);
+    expect(result.fejl).toContain("features");
+  });
 });
 
 describe("selectKommuneplanrammeForCompliance (ARCH-228)", () => {

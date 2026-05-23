@@ -1,7 +1,8 @@
-// SERVER-SIDE ONLY — API key must never reach the browser.
+// SERVER-SIDE ONLY - API key must never reach the browser.
 // Shared typed GraphQL transport for all Datafordeler registers.
 // Replaces per-client gqlFetch functions in DAR, BBR, MAT and EBR.
 
+import { z } from "zod";
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import { logServerEvent } from "@/lib/server-logger";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
@@ -13,13 +14,28 @@ export type DatafordelerGraphqlOptions = {
   trace?: AnalysisTraceContext | null;
 };
 
+const graphQlErrorSchema = z.object({
+  message: z.string(),
+});
+
+const graphQlEnvelopeSchema = z.object({
+  data: z.unknown().optional(),
+  errors: z.array(graphQlErrorSchema).optional(),
+});
+
 export async function datafordelerGraphqlFetch<T>(
   url: URL,
   query: string,
   variables: Record<string, unknown>,
   operation: string,
-  options?: DatafordelerGraphqlOptions,
+  dataSchemaOrOptions?: z.ZodType<T> | DatafordelerGraphqlOptions,
+  maybeOptions?: DatafordelerGraphqlOptions,
 ): Promise<T> {
+  const dataSchema =
+    dataSchemaOrOptions && "safeParse" in dataSchemaOrOptions ? dataSchemaOrOptions : undefined;
+  const options =
+    dataSchemaOrOptions && "safeParse" in dataSchemaOrOptions ? maybeOptions : dataSchemaOrOptions;
+
   const module = operation.split("_")[0].toLowerCase() + "/client";
   const service = `Datafordeler ${operation.split("_")[0]}`;
 
@@ -51,14 +67,29 @@ export async function datafordelerGraphqlFetch<T>(
       message: "HTTP-fejl",
       metadata: {
         status: response.status,
-        keyHint: `${keyHint}…`,
+        keyHint: `${keyHint}...`,
         body: bodyText.slice(0, 500),
       },
     });
     throw new Error(`Datafordeler ${operation} HTTP ${response.status}: ${bodyText.slice(0, 300)}`);
   }
 
-  const parsed = JSON.parse(bodyText) as { data?: T; errors?: { message: string }[] };
+  let rawParsed: unknown;
+  try {
+    rawParsed = JSON.parse(bodyText);
+  } catch (error) {
+    logServerEvent({
+      module,
+      operation: "graphqlFetch",
+      severity: "fatal",
+      message: "Ugyldig JSON i GraphQL-svar",
+      error,
+      metadata: { body: bodyText.slice(0, 500) },
+    });
+    throw new Error(`Datafordeler ${operation} returnerede ugyldig JSON`);
+  }
+
+  const parsed = graphQlEnvelopeSchema.parse(rawParsed);
 
   if (parsed.errors?.length) {
     logServerEvent({
@@ -69,6 +100,10 @@ export async function datafordelerGraphqlFetch<T>(
       metadata: { errors: parsed.errors },
     });
     throw new Error(parsed.errors[0].message);
+  }
+
+  if (dataSchema) {
+    return dataSchema.parse(parsed.data);
   }
 
   return parsed.data as T;

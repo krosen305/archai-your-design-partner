@@ -7,7 +7,13 @@ import { CockpitStatusBar } from "@/components/cockpit/CockpitStatusBar";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { FreeDesignCockpit } from "@/components/cockpit/FreeDesignCockpit";
-import { AnalyseTab, LoadingView, ErrorView } from "@/components/cockpit/AnalyseTab";
+import {
+  AnalyseTab,
+  LoadingView,
+  ErrorView,
+  type AnalyseTabData,
+  type AnalyseTabCallbacks,
+} from "@/components/cockpit/AnalyseTab";
 import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
 import { useCockpitRestore } from "@/hooks/useCockpitRestore";
@@ -230,23 +236,31 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
               {activeTab === "analyse" && (
                 <AnalyseTab
                   adresse={address?.adresse ?? ""}
-                  data={bbrData}
-                  lokalplaner={analysisSnapshot.lokalplaner}
-                  byggeanalyse={useProject.getState().byggeanalyseResultat}
-                  metrics={complianceMetrics}
-                  fbbData={analysisSnapshot.fbbData}
-                  vurderingData={vurderingData}
-                  geusRisk={analysisSnapshot.geusRisk}
-                  servitutter={analysisSnapshot.servitutter}
-                  terrain={analysisSnapshot.terrain}
-                  fjernvarme={analysisSnapshot.fjernvarme}
-                  naboer={analysisSnapshot.naboer}
-                  naturbeskyttelse={analysisSnapshot.naturbeskyttelse}
-                  dkjord={analysisSnapshot.dkjord}
+                  analyseData={
+                    {
+                      data: bbrData,
+                      lokalplaner: analysisSnapshot.lokalplaner,
+                      byggeanalyse: useProject.getState().byggeanalyseResultat,
+                      metrics: complianceMetrics,
+                      fbbData: analysisSnapshot.fbbData,
+                      vurderingData,
+                      geusRisk: analysisSnapshot.geusRisk,
+                      servitutter: analysisSnapshot.servitutter,
+                      terrain: analysisSnapshot.terrain,
+                      fjernvarme: analysisSnapshot.fjernvarme,
+                      naboer: analysisSnapshot.naboer,
+                      naturbeskyttelse: analysisSnapshot.naturbeskyttelse,
+                      dkjord: analysisSnapshot.dkjord,
+                    } satisfies AnalyseTabData
+                  }
+                  callbacks={
+                    {
+                      onRunAnalyse: runManualAnalyse,
+                      onShowEjendom: () => setActiveTab("ejendom"),
+                      onShowOekonomi: () => setActiveTab("oekonomi"),
+                    } satisfies AnalyseTabCallbacks
+                  }
                   isRecomputing={isRecomputing}
-                  onRunAnalyse={runManualAnalyse}
-                  onShowEjendom={() => setActiveTab("ejendom")}
-                  onShowOekonomi={() => setActiveTab("oekonomi")}
                 />
               )}
               {activeTab === "ejendom" && <EjendomPanel />}

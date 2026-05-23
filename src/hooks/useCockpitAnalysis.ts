@@ -7,27 +7,28 @@ import { syncPatch } from "@/lib/project-sync";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import { fetchCompliance, runByggeanalyse } from "@/lib/cockpit.functions";
 import { logger } from "@/lib/logger";
-import type { Lokalplan } from "@/integrations/plandata/client";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
-import type { FbbResultat } from "@/integrations/fbb/client";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import type { FjernvarmeResultat, NeighborBuildingData } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineLokalplan,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 import { routeMatchesAddress } from "./useCockpitRestore";
 
 export type AnalysisSnapshot = {
-  lokalplaner: Lokalplan[];
-  geusRisk: GeusRiskData | null;
-  servitutter: TinglysningResult | null;
-  terrain: TerrainData | null;
+  lokalplaner: RuleEngineLokalplan[];
+  geusRisk: RuleEngineGeusRiskData | null;
+  servitutter: RuleEngineTinglysningResult | null;
+  terrain: RuleEngineTerrainData | null;
   fjernvarme: FjernvarmeResultat | null;
   naboer: NeighborBuildingData | null;
-  fbbData: FbbResultat | null;
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  dkjord: DkJordResultat | null;
+  fbbData: RuleEngineFbbResult | null;
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  dkjord: RuleEngineDkJordResultat | null;
 };
 
 type Status = "loading" | "done" | "error";

@@ -1,10 +1,14 @@
 ﻿// SERVER-SIDE ONLY — shared Layer-1 fetchers for pre-check + full analysis.
 
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { Lokalplan, Kommuneplanramme } from "@/integrations/plandata/client";
-import type { VurData } from "@/integrations/vur/client";
+import type {
+  RuleEngineBbrData,
+  RuleEngineKommuneplanramme,
+  RuleEngineLokalplan,
+} from "@/domain/contracts/rule-engine.types";
+import type { VurData } from "@/domain/contracts/analysis.types";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { traceStep } from "@/lib/analysis-tracing";
+import { logServerEvent } from "@/lib/server-logger";
 
 export type Layer1Input = {
   adgangsadresseid: string;
@@ -17,9 +21,9 @@ export type Layer1Input = {
 };
 
 export type Layer1Result = {
-  bbr: BbrKompliantData | null;
-  lokalplaner: Lokalplan[];
-  kommuneplanramme: Kommuneplanramme | null;
+  bbr: RuleEngineBbrData | null;
+  lokalplaner: RuleEngineLokalplan[];
+  kommuneplanramme: RuleEngineKommuneplanramme | null;
   vurderingData: VurData | null;
 };
 
@@ -45,7 +49,7 @@ export async function fetchBbrWithMat(input: {
   matrikelnummer: string | null;
   grundareal?: number | null;
   trace?: AnalysisTraceContext | null;
-}): Promise<BbrKompliantData | null> {
+}): Promise<RuleEngineBbrData | null> {
   const { adgangsadresseid, ejerlavskode, matrikelnummer } = input;
 
   try {
@@ -64,14 +68,26 @@ export async function fetchBbrWithMat(input: {
         input.trace,
       );
       if (grundareal === null && mat.registreretAreal !== null) grundareal = mat.registreretAreal;
-      if (mat.fejl) console.warn("[Layer1] MAT fejl:", mat.fejl);
-      if (grundareal === null && !mat.fejl)
-        console.error(
-          "[Layer1] MatService returnerede null registreretAreal for ejerlavskode:",
-          ejerlavskode,
-          "matrikelnummer:",
-          matrikelnummer,
-        );
+      if (mat.fejl) {
+        logServerEvent({
+          module: "compliance-layer1",
+          operation: "fetchBbrWithMat.mat",
+          severity: "degraded",
+          message: "MAT returnerede fejl under grundareal-opslag",
+          trace: input.trace,
+          metadata: { fejl: mat.fejl, ejerlavskode, matrikelnummer },
+        });
+      }
+      if (grundareal === null && !mat.fejl) {
+        logServerEvent({
+          module: "compliance-layer1",
+          operation: "fetchBbrWithMat.mat",
+          severity: "degraded",
+          message: "MAT returnerede ikke registreretAreal",
+          trace: input.trace,
+          metadata: { ejerlavskode, matrikelnummer },
+        });
+      }
       mat_strandbeskyttelse = mat.strandbeskyttelse;
       mat_fredskov = mat.fredskov;
       mat_klitfredning = mat.klitfredning;
@@ -105,10 +121,25 @@ export async function fetchBbrWithMat(input: {
           // Gem primær jordstykke-ID til MatrikelMap (ARCH-229)
           jordstykkeLokalId = resolved.jordstykker[0]?.id_lokalId ?? null;
         } else {
-          console.warn("[Layer1] GrundarealResolver fejlede:", resolved.fejl);
+          logServerEvent({
+            module: "compliance-layer1",
+            operation: "fetchBbrWithMat.grundarealResolver",
+            severity: "degraded",
+            message: "GrundarealResolver returnerede ingen grundareal",
+            trace: input.trace,
+            metadata: { fejl: resolved.fejl, adgangsadresseid: input.adgangsadresseid },
+          });
         }
       } catch (e) {
-        console.warn("[Layer1] GrundarealResolver exception:", (e as Error).message);
+        logServerEvent({
+          module: "compliance-layer1",
+          operation: "fetchBbrWithMat.grundarealResolver",
+          severity: "degraded",
+          message: "GrundarealResolver kastede exception",
+          error: e,
+          trace: input.trace,
+          metadata: { adgangsadresseid: input.adgangsadresseid },
+        });
       }
     }
 
@@ -127,7 +158,15 @@ export async function fetchBbrWithMat(input: {
     }
     return bbr;
   } catch (e) {
-    console.warn("[Layer1] BBR+MAT fejlede:", (e as Error).message);
+    logServerEvent({
+      module: "compliance-layer1",
+      operation: "fetchBbrWithMat",
+      severity: "degraded",
+      message: "BBR+MAT fetch fejlede",
+      error: e,
+      trace: input.trace,
+      metadata: { adgangsadresseid },
+    });
     return null;
   }
 }
@@ -135,7 +174,10 @@ export async function fetchBbrWithMat(input: {
 export async function fetchPlandata(
   koordinater: { lat: number; lng: number } | null,
   trace?: AnalysisTraceContext | null,
-): Promise<{ lokalplaner: Lokalplan[]; kommuneplanramme: Kommuneplanramme | null }> {
+): Promise<{
+  lokalplaner: RuleEngineLokalplan[];
+  kommuneplanramme: RuleEngineKommuneplanramme | null;
+}> {
   if (!koordinater) return { lokalplaner: [], kommuneplanramme: null };
 
   const { PlandataService } = await import("@/integrations/plandata/client");
@@ -186,7 +228,15 @@ export async function fetchVurViaEbr(
     const { VurService } = await import("@/integrations/vur/client");
     return await VurService.getVurdering(ebr.bfeNr, undefined, trace);
   } catch (e) {
-    console.warn("[Layer1] VUR fejlede:", (e as Error).message);
+    logServerEvent({
+      module: "compliance-layer1",
+      operation: "fetchVurViaEbr",
+      severity: "degraded",
+      message: "VUR-opslag fejlede",
+      error: e,
+      trace,
+      metadata: { adgangsadresseid },
+    });
     return null;
   }
 }

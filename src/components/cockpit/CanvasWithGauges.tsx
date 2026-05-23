@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 import { useProject } from "@/lib/project-store";
 import { estimerTotalpris } from "@/lib/byggeoenske-steps";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { NeighborBuildingData } from "@/domain/contracts/analysis.types";
+import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import { cn } from "@/lib/utils";
 
 /**
@@ -18,7 +18,7 @@ export function CanvasWithGauges({
   naboer,
   jordstykkeLokalId,
 }: {
-  bbr: BbrKompliantData | null;
+  bbr: RuleEngineBbrData | null;
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
   jordstykkeLokalId?: string | null;

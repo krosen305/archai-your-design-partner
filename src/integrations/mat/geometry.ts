@@ -4,6 +4,7 @@
 // is cached separately in address_analysis.jordstykke_polygon (90-day TTL).
 // Computed metrics (area, centroid, bbox) are the payload of this service.
 
+import type { MatParcelGeometryPayload } from "@/domain/contracts/analysis.types";
 import { fetchParcelGeometryByJordstykkeId } from "@/lib/map-proxy";
 import {
   computePolygonAreaM2,
@@ -15,16 +16,7 @@ import { makeErrorResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import type * as GeoJSON from "geojson";
 
-export type MatParcelGeometryPayload = {
-  polygonAreaM2: number | null;
-  registreretArealM2: number | null;
-  areaDiscrepancyM2: number | null;
-  centroidLat: number | null;
-  centroidLng: number | null;
-  bbox25832: [number, number, number, number] | null;
-  featureCount: number;
-  hasCanonicalPolygon: boolean;
-};
+export type { MatParcelGeometryPayload } from "@/domain/contracts/analysis.types";
 
 const SOURCE_URL = "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 

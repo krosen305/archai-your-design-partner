@@ -10,11 +10,12 @@
 //   2. ebr_adresse_ejerlejlighed: EBR.adresseLokalId → BFE → MAT_Ejerlejlighed → SFE → jordstykker
 
 import { getEnvRequired } from "@/lib/env";
-import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
 import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
+import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { logServerEvent } from "@/lib/server-logger";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Output-typer (eksporterede — bruges af compliance-layer1 og MatrikelMap)
@@ -63,36 +64,70 @@ function getConfig(explicit?: ResolverConfig) {
 // GraphQL-kald
 // ---------------------------------------------------------------------------
 
-async function gqlFetch(
+const ebrBfeSchema = z.object({
+  EBR_Ejendomsbeliggenhed: z.object({
+    nodes: z.array(
+      z.object({
+        bestemtFastEjendomBFENr: z.string().nullable().optional().default(null),
+      }),
+    ),
+  }),
+});
+
+const matSfeSchema = z.object({
+  MAT_SamletFastEjendom: z.object({
+    nodes: z.array(
+      z.object({
+        id_lokalId: z.string().nullable().optional().default(null),
+        BFEnummer: z.string().nullable().optional().default(null),
+      }),
+    ),
+  }),
+});
+
+const matEjerlejlighedSchema = z.object({
+  MAT_Ejerlejlighed: z.object({
+    nodes: z.array(
+      z.object({
+        BFEnummer: z.string().nullable().optional().default(null),
+        samletFastEjendomLokalId: z.string().nullable().optional().default(null),
+      }),
+    ),
+  }),
+});
+
+const matJordstykkerSchema = z.object({
+  MAT_Jordstykke: z.object({
+    nodes: z.array(
+      z.object({
+        id_lokalId: z.string(),
+        matrikelnummer: z.string().nullable().optional().default(null),
+        ejerlavLokalId: z.string().nullable().optional().default(null),
+        registreretAreal: z.number().nullable().optional().default(0),
+        strandbeskyttelse_omfang: z.string().nullable().optional().default(null),
+        fredskov_omfang: z.string().nullable().optional().default(null),
+        klitfredning_omfang: z.string().nullable().optional().default(null),
+      }),
+    ),
+  }),
+});
+
+async function gqlFetch<T>(
   endpoint: string,
   apiKey: string,
   query: string,
   variables: Record<string, unknown>,
   operationName: string,
+  dataSchema: z.ZodType<T>,
   trace?: AnalysisTraceContext | null,
-): Promise<any> {
+): Promise<T> {
   const url = new URL(endpoint);
   url.searchParams.set("apiKey", apiKey);
-  const res = await fetchWithRetry(
-    url.toString(),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables }),
-    },
-    { timeoutMs: 12_000 },
-    {
-      trace,
-      service: "GrundarealResolver",
-      operation: operationName,
-      phase: "layer1",
-    },
-  );
-  const text = await res.text();
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
-  const parsed = JSON.parse(text);
-  if (parsed.errors?.length) throw new Error(parsed.errors[0].message);
-  return parsed.data;
+  return datafordelerGraphqlFetch(url, query, variables, operationName, dataSchema, {
+    trace,
+    phase: "layer1",
+    metadata: { endpoint },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +212,17 @@ function parseOmfang(omfang: string | null | undefined): boolean | null {
   return s !== "" && s !== "Ingen" ? true : false;
 }
 
-function mapJordstykker(nodes: any[]): GrundarealJordstykke[] {
+type MatJordstykkeNode = {
+  id_lokalId: string;
+  matrikelnummer?: string | null;
+  ejerlavLokalId?: string | null;
+  registreretAreal?: number | null;
+  strandbeskyttelse_omfang?: string | null;
+  fredskov_omfang?: string | null;
+  klitfredning_omfang?: string | null;
+};
+
+function mapJordstykker(nodes: MatJordstykkeNode[]): GrundarealJordstykke[] {
   const seen = new Set<string>();
   return nodes
     .filter((n) => {
@@ -227,6 +272,7 @@ export class GrundarealResolver {
         EBR_BY_HUSNUMMER,
         { husnummerLokalId: input.adgangsadresseid, ...bitemporalArgs },
         "EBR_husnummer",
+        ebrBfeSchema,
         trace,
       );
       const bfeNr: string | null =
@@ -239,6 +285,7 @@ export class GrundarealResolver {
           MAT_SFE_BY_BFE,
           { bfe: bfeNr, ...bitemporalArgs },
           "MAT_SFE",
+          matSfeSchema,
           trace,
         );
         const sfeLokalId: string | null =
@@ -251,6 +298,7 @@ export class GrundarealResolver {
             MAT_JORDSTYKKER_BY_SFE,
             { sfeLokalId, ...bitemporalArgs },
             "MAT_Jordstykker",
+            matJordstykkerSchema,
             trace,
           );
           const jordstykker = mapJordstykker(jsData?.MAT_Jordstykke?.nodes ?? []);
@@ -285,6 +333,7 @@ export class GrundarealResolver {
         EBR_BY_ADRESSE,
         { adresseLokalId: input.adresseid, ...bitemporalArgs },
         "EBR_adresse",
+        ebrBfeSchema,
         trace,
       );
       const bfeNr: string | null =
@@ -297,6 +346,7 @@ export class GrundarealResolver {
           MAT_EJERLEJLIGHED_BY_BFE,
           { bfe: bfeNr, ...bitemporalArgs },
           "MAT_Ejerlejlighed",
+          matEjerlejlighedSchema,
           trace,
         );
         const sfeLokalId: string | null =
@@ -309,6 +359,7 @@ export class GrundarealResolver {
             MAT_JORDSTYKKER_BY_SFE,
             { sfeLokalId, ...bitemporalArgs },
             "MAT_Jordstykker_ej",
+            matJordstykkerSchema,
             trace,
           );
           const jordstykker = mapJordstykker(jsData?.MAT_Jordstykke?.nodes ?? []);

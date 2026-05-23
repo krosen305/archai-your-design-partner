@@ -4,16 +4,17 @@
 import { getCachedServitut, setCachedServitut } from "@/integrations/cache/client";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep } from "@/lib/analysis-tracing";
+import { toJsonValue } from "@/lib/json-value";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { Json } from "@/integrations/supabase/types";
+import type { RuleEngineTinglysningResult } from "@/domain/contracts/rule-engine.types";
+import { ruleEngineTinglysningResultSchema } from "@/types/project-restore.schemas";
 
 export async function runServitutStep(
   addressId: string,
   ejerlavskode: number | null,
   matrikelnummer: string | null,
   trace: AnalysisTraceContext,
-): Promise<TinglysningResult | null> {
+): Promise<RuleEngineTinglysningResult | null> {
   try {
     const cachedServitut = await traceStep(
       trace,
@@ -26,7 +27,11 @@ export async function runServitutStep(
       () => getCachedServitut(addressId),
       { cacheHit: (value) => !!value },
     );
-    if (cachedServitut) return cachedServitut as unknown as TinglysningResult;
+    if (cachedServitut) {
+      const parsedCached = ruleEngineTinglysningResultSchema.safeParse(cachedServitut);
+      if (parsedCached.success) return parsedCached.data;
+      return null;
+    }
 
     const { TinglysningService } = await import("@/integrations/tinglysning/client");
     const result = await traceStep(
@@ -47,7 +52,7 @@ export async function runServitutStep(
         service: "Supabase",
         operation: "address_analysis.servitut_extracted.write",
       },
-      () => setCachedServitut(addressId, result as unknown as Json),
+      () => setCachedServitut(addressId, toJsonValue(result) ?? null),
     );
     return result;
   } catch (e) {
