@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useAnimatedNumber } from "@/hooks/use-animated-number";
 import { motion } from "framer-motion";
 import {
   ChevronDown,
@@ -39,20 +40,27 @@ import {
 import { syncPatch } from "@/lib/project-sync";
 import { useCockpitByggeoensker, type ReactiveContext } from "@/lib/use-cockpit-byggeoensker";
 import { useCockpitUpload } from "@/lib/use-cockpit-upload";
+import type { NeighborBuildingData, VurData } from "@/domain/contracts/analysis.types";
+import type {
+  RuleEngineBbrData,
+  RuleEngineDkJordResultat,
+  RuleEngineFbbResult,
+  RuleEngineGeusRiskData,
+  RuleEngineNaturbeskyttelsesResultat,
+  RuleEngineTerrainData,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
-import type { BbrKompliantData } from "@/integrations/bbr/client";
-import type { FbbResultat } from "@/integrations/fbb/client";
-import type { VurData } from "@/integrations/vur/client";
-import type { GeusRiskData } from "@/integrations/geus/client";
-import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
-import type { TinglysningResult } from "@/integrations/tinglysning/client";
-import type { TerrainData } from "@/integrations/sdfi/dhm-client";
-import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
-import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
 import { buildInvisibleBudgetRisks } from "@/lib/compliance-view-model";
+import { buildStepConstraintViewModel } from "@/lib/byggeoenske-constraint-view-model";
+import { useDispensationFlow } from "@/hooks/useDispensationFlow";
+import {
+  calculateProjectedSamletAreal,
+  calculateProjectedBebyggelsespct,
+} from "@/lib/compliance-projection";
 import { cn } from "@/lib/utils";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 
@@ -61,17 +69,17 @@ import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 // ---------------------------------------------------------------------------
 
 export type CockpitProps = {
-  bbr: BbrKompliantData | null;
+  bbr: RuleEngineBbrData | null;
   metrics: ComplianceMetrics | null;
   byggeanalyse: ByggeanalyseResultat | null;
-  fbbData: FbbResultat | null;
+  fbbData: RuleEngineFbbResult | null;
   vurderingData: VurData | null;
-  geusRisk: GeusRiskData | null;
+  geusRisk: RuleEngineGeusRiskData | null;
   naboer: NeighborBuildingData | null;
-  servitutter: TinglysningResult | null;
-  terrain: TerrainData | null;
-  naturbeskyttelse: NaturbeskyttelsesResultat | null;
-  dkjord: DkJordResultat | null;
+  servitutter: RuleEngineTinglysningResult | null;
+  terrain: RuleEngineTerrainData | null;
+  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+  dkjord: RuleEngineDkJordResultat | null;
   /** True når debounced re-analyse kører — viser kun skeletons på højre panel */
   isRecomputing: boolean;
 };
@@ -126,12 +134,12 @@ export function ProjektDnaPanel({
   reactiveContext,
 }: {
   reactiveContext: {
-    geusRisk: GeusRiskData | null;
-    servitutter: TinglysningResult | null;
-    terrain: TerrainData | null;
-    fbbData: FbbResultat | null;
-    naturbeskyttelse: NaturbeskyttelsesResultat | null;
-    dkjord: DkJordResultat | null;
+    geusRisk: RuleEngineGeusRiskData | null;
+    servitutter: RuleEngineTinglysningResult | null;
+    terrain: RuleEngineTerrainData | null;
+    fbbData: RuleEngineFbbResult | null;
+    naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
+    dkjord: RuleEngineDkJordResultat | null;
   };
 }) {
   return <ByggeoenskeAccordion reactiveContext={reactiveContext} />;
@@ -144,7 +152,7 @@ export function ProjektDnaPanel({
 function ByggeoenskeAccordion({ reactiveContext }: { reactiveContext: ReactiveContext }) {
   const { byggeoenske } = useProject();
   const { patch } = useCockpitByggeoensker(reactiveContext);
-  const [dispensationFor, setDispensationFor] = useState<"etager" | "areal" | null>(null);
+  const { dispensationFor, open: openDispensation, acknowledge, close: closeDispensation } = useDispensationFlow();
 
   const filledCount = STEPS.filter((s) => byggeoenske[s.key] !== undefined).length;
 
@@ -180,7 +188,7 @@ function ByggeoenskeAccordion({ reactiveContext }: { reactiveContext: ReactiveCo
                       step={step}
                       value={byggeoenske[step.key]}
                       onChange={(v) => patch({ [step.key]: v } as Partial<Byggeoenske>)}
-                      onOpenDispensation={(t) => setDispensationFor(t)}
+                      onOpenDispensation={(t) => openDispensation(t)}
                       onClearField={() => patch({ [step.key]: undefined } as Partial<Byggeoenske>)}
                     />
                   ))}
@@ -190,13 +198,13 @@ function ByggeoenskeAccordion({ reactiveContext }: { reactiveContext: ReactiveCo
           );
         })}
       </Accordion>
-      <DispensationModal type={dispensationFor} onClose={() => setDispensationFor(null)} />
+      <DispensationModal type={dispensationFor} onAcknowledge={acknowledge} onClose={closeDispensation} />
     </Card>
   );
 }
 
 // ===========================================================================
-// StepExtras — kontekst-chips + inline blocker per spørgsmål (ARCH-127/128)
+// StepExtras — kontekst-chips + inline blocker per spørgsmål
 // ===========================================================================
 
 function StepExtras({
@@ -211,162 +219,101 @@ function StepExtras({
   onClearField: () => void;
 }) {
   const { adressePreCheck, complianceFlags, boligoenskeValidering } = useProject();
-  const k = adressePreCheck?.kontekst;
 
-  if (stepKey === "antalEtager") {
-    const status = boligoenskeValidering?.etagerStatus;
-    const ack = boligoenskeValidering?.etagerDispensationAcknowledged;
-    return (
-      <div className="mt-1.5 space-y-1.5">
-        {k?.maxEtager != null && (
-          <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-2 py-1 font-mono text-[10px] text-muted-foreground">
-            <Info size={10} /> Kommuneplanen tillader: maks {k.maxEtager} etager
-          </div>
-        )}
-        {status === "dispensation" && !ack && (
-          <div className="rounded-md border border-danger/40 bg-danger/5 p-2.5 text-xs">
-            <div className="flex items-start gap-1.5 text-danger">
-              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-              <div>
-                <div className="font-medium">{String(value)} etager er ikke tilladt her</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">
-                  Kommuneplanen tillader maks {k?.maxEtager} etager. Du kan søge dispensation hos
-                  kommunen.
-                </div>
+  const vm = buildStepConstraintViewModel(
+    stepKey,
+    value,
+    boligoenskeValidering,
+    adressePreCheck,
+    complianceFlags,
+  );
+
+  if (!vm.contextChip && !vm.dispensation && !vm.fjernvarme && !vm.lokalplanHint) return null;
+
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      {vm.contextChip && (
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-2 py-1 font-mono text-[10px] text-muted-foreground">
+          <Info size={10} /> {vm.contextChip}
+        </div>
+      )}
+
+      {vm.dispensation?.needed && (
+        <div className="rounded-md border border-danger/40 bg-danger/5 p-2.5 text-xs">
+          <div className="flex items-start gap-1.5 text-danger">
+            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+            <div>
+              <div className="font-medium">{vm.dispensation.kontekst}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                Grænse: {vm.dispensation.graense}
+                {vm.dispensation.beregnetPct != null &&
+                  ` · Beregnet: ${vm.dispensation.beregnetPct.toFixed(0)}%`}
               </div>
             </div>
-            <div className="mt-2 flex gap-1.5">
-              <button
-                onClick={onClearField}
-                className="rounded border border-border/60 px-2 py-1 font-mono text-[10px] hover:bg-[#1a1a1a]"
-              >
-                Vælg andet
-              </button>
-              <button
-                onClick={() => onOpenDispensation("etager")}
-                className="rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-1 font-mono text-[10px] hover:bg-amber-500/30"
-              >
-                Fortsæt med dispensation
-              </button>
-            </div>
           </div>
-        )}
-        {status === "dispensation" && ack && (
-          <div className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-mono text-[10px] text-amber-300">
-            <AlertTriangle size={10} /> Dispensation nødvendig — accepteret
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (stepKey === "oensketAreal") {
-    const status = boligoenskeValidering?.arealStatus;
-    const ack = boligoenskeValidering?.arealDispensationAcknowledged;
-    const beregnet = boligoenskeValidering?.beregnetBebyggelsespct;
-    return (
-      <div className="mt-1.5 space-y-1.5">
-        {k?.restBygningsareal != null && (
-          <div className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-2 py-1 font-mono text-[10px] text-muted-foreground">
-            <Info size={10} /> Dit byggepotentiale: {k.restBygningsareal} m²
-          </div>
-        )}
-        {beregnet != null && k?.maxBebyggelsesprocent != null && (
-          <div className="font-mono text-[10px] text-muted-foreground">
-            Samlet bebyggelsesprocent:{" "}
-            <span
-              className={beregnet > k.maxBebyggelsesprocent ? "text-danger" : "text-emerald-400"}
+          <div className="mt-2 flex gap-1.5">
+            <button
+              onClick={onClearField}
+              className="rounded border border-border/60 px-2 py-1 font-mono text-[10px] hover:bg-[#1a1a1a]"
             >
-              {beregnet.toFixed(0)}%
-            </span>{" "}
-            af maks {k.maxBebyggelsesprocent}%
+              Vælg andet
+            </button>
+            <button
+              onClick={() =>
+                onOpenDispensation(stepKey === "antalEtager" ? "etager" : "areal")
+              }
+              className="rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-1 font-mono text-[10px] hover:bg-amber-500/30"
+            >
+              Fortsæt med dispensation
+            </button>
           </div>
-        )}
-        {status === "dispensation" && !ack && (
-          <div className="rounded-md border border-danger/40 bg-danger/5 p-2.5 text-xs">
-            <div className="flex items-start gap-1.5 text-danger">
-              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-              <div>
-                <div className="font-medium">{String(value)} m² overstiger dit byggepotentiale</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">
-                  Samlet: {beregnet?.toFixed(0)}% (maks {k?.maxBebyggelsesprocent}%). Max tilladt:{" "}
-                  {k?.restBygningsareal} m² tilbygning.
-                </div>
-              </div>
-            </div>
-            <div className="mt-2 flex gap-1.5">
-              <button
-                onClick={onClearField}
-                className="rounded border border-border/60 px-2 py-1 font-mono text-[10px] hover:bg-[#1a1a1a]"
-              >
-                Juster areal
-              </button>
-              <button
-                onClick={() => onOpenDispensation("areal")}
-                className="rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-1 font-mono text-[10px] hover:bg-amber-500/30"
-              >
-                Fortsæt med dispensation
-              </button>
-            </div>
-          </div>
-        )}
-        {status === "dispensation" && ack && (
-          <div className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-mono text-[10px] text-amber-300">
-            <AlertTriangle size={10} /> Dispensation nødvendig — accepteret
-          </div>
-        )}
-      </div>
-    );
-  }
+        </div>
+      )}
 
-  if (stepKey === "varmekilde") {
-    const tilslutning = complianceFlags.find((f) => f.id === "fjernvarme-tilslutningspligt");
-    const mismatch = complianceFlags.find((f) => f.id === "fjernvarme-mismatch-ingen-daekning");
-    const cls = tilslutning
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-      : mismatch
-        ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-        : "border-border/60 bg-[#111] text-muted-foreground";
-    const txt = tilslutning
-      ? "Fjernvarme tilgængeligt (mulig tilslutningspligt)"
-      : mismatch
-        ? "Fjernvarme: Ikke bekræftet på adressen"
-        : "Fjernvarme: Status ukendt";
-    return (
-      <div
-        className={`mt-1.5 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[10px] ${cls}`}
-      >
-        <Flame size={10} /> {txt}
-      </div>
-    );
-  }
+      {vm.dispensation?.acked && (
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-mono text-[10px] text-amber-300">
+          <AlertTriangle size={10} /> Dispensation nødvendig — accepteret
+        </div>
+      )}
 
-  if (stepKey === "tagform" || stepKey === "facademateriale") {
-    const hint = complianceFlags.find(
-      (f) =>
-        f.kilde === "plandata" &&
-        f.label.toLowerCase().includes(stepKey === "tagform" ? "tag" : "facade"),
-    );
-    if (!hint) return null;
-    return (
-      <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-mono text-[10px] text-amber-300">
-        📋 Lokalplanen specificerer: {hint.detalje ?? hint.label}
-      </div>
-    );
-  }
+      {vm.fjernvarme && (
+        <div
+          className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[10px] ${
+            vm.fjernvarme === "tilgaengelig"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+              : vm.fjernvarme === "mismatch"
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                : "border-border/60 bg-[#111] text-muted-foreground"
+          }`}
+        >
+          <Flame size={10} />
+          {vm.fjernvarme === "tilgaengelig"
+            ? "Fjernvarme tilgængeligt (mulig tilslutningspligt)"
+            : vm.fjernvarme === "mismatch"
+              ? "Fjernvarme: Ikke bekræftet på adressen"
+              : "Fjernvarme: Status ukendt"}
+        </div>
+      )}
 
-  return null;
+      {vm.lokalplanHint && (
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-mono text-[10px] text-amber-300">
+          📋 Lokalplanen specificerer: {vm.lokalplanHint}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DispensationModal({
   type,
+  onAcknowledge,
   onClose,
 }: {
   type: "etager" | "areal" | null;
+  onAcknowledge: (type: "etager" | "areal") => void;
   onClose: () => void;
 }) {
-  const { boligoenskeValidering, setBoligoenskeValidering, adressePreCheck, byggeoenske } =
-    useProject();
+  const { boligoenskeValidering, adressePreCheck, byggeoenske } = useProject();
   const k = adressePreCheck?.kontekst;
   const open = type !== null;
 
@@ -383,15 +330,8 @@ function DispensationModal({
   }
 
   const handleAcknowledge = () => {
-    if (!boligoenskeValidering || !type) return onClose();
-    setBoligoenskeValidering({
-      ...boligoenskeValidering,
-      etagerDispensationAcknowledged:
-        type === "etager" ? true : boligoenskeValidering.etagerDispensationAcknowledged,
-      arealDispensationAcknowledged:
-        type === "areal" ? true : boligoenskeValidering.arealDispensationAcknowledged,
-    });
-    onClose();
+    if (!type) return onClose();
+    onAcknowledge(type);
   };
 
   return (
@@ -650,24 +590,16 @@ function MatrikelCanvas({
   metrics,
   naboer,
 }: {
-  bbr: BbrKompliantData | null;
+  bbr: RuleEngineBbrData | null;
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
 }) {
-  const { address, setAddress } = useProject();
-
   return (
     <MatrikelMap
       bbr={bbr}
       metrics={metrics}
       naboer={naboer}
       jordstykkeLokalId={bbr?.jordstykke_lokal_id ?? null}
-      onPlacementChange={({ centroid }) => {
-        if (!address) return;
-        const next = { ...address, centroid };
-        setAddress(next);
-        void syncPatch({ address: next });
-      }}
     />
   );
 }
@@ -685,12 +617,12 @@ function CompliancePanel({
   geusRisk,
   isRecomputing,
 }: {
-  bbr: BbrKompliantData | null;
+  bbr: RuleEngineBbrData | null;
   metrics: ComplianceMetrics | null;
   byggeanalyse: ByggeanalyseResultat | null;
-  fbbData: FbbResultat | null;
+  fbbData: RuleEngineFbbResult | null;
   vurderingData: VurData | null;
-  geusRisk: GeusRiskData | null;
+  geusRisk: RuleEngineGeusRiskData | null;
   isRecomputing: boolean;
 }) {
   const { byggeoenske, complianceFlags, heritage_save_value, is_fredet } = useProject();
@@ -701,11 +633,8 @@ function CompliancePanel({
   const nuvaerendePct = bbr?.bebyggelsesprocent ?? null;
   const nuvaerendeEtager = bbr?.antal_etager ?? null;
   const oensket = byggeoenske.oensketAreal ?? 0;
-  const samlet =
-    byggeoenske.byggetype === "nybyg"
-      ? oensket
-      : (eksisterende ?? 0) + (byggeoenske.byggetype === "tilbyg" ? oensket : 0);
-  const beregnetPct = grundareal && samlet > 0 ? (samlet / grundareal) * 100 : null;
+  const samlet = calculateProjectedSamletAreal(byggeoenske.byggetype, oensket, eksisterende);
+  const beregnetPct = calculateProjectedBebyggelsespct(samlet, grundareal);
   const maxPct = metrics?.maxBebyggelsesprocent ?? null;
   const pctOver = maxPct !== null && beregnetPct !== null && beregnetPct > maxPct;
   const pctValue =
@@ -882,7 +811,7 @@ function CompliancePanel({
                       f.status === "blocker" ? "text-danger" : "text-warning",
                     )}
                   >
-                    <span>{f.status === "blocker" ? "🔴" : "🟡"}</span>
+                    <AlertTriangle size={12} className="shrink-0 mt-0.5" />
                     <span>{f.label}</span>
                   </div>
                 ))}
@@ -1044,24 +973,4 @@ function formatDKK(n: number): string {
     return `${(n / 1_000_000).toFixed(2)} mio. kr`;
   }
   return `${n.toLocaleString("da-DK")} kr`;
-}
-
-function useAnimatedNumber(target: number, duration = 500): number {
-  const [v, setV] = useState(target);
-  const fromRef = useRef(target);
-  useEffect(() => {
-    const from = fromRef.current;
-    const start = performance.now();
-    let raf: number;
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / duration);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setV(Math.round(from + (target - from) * eased));
-      if (p < 1) raf = requestAnimationFrame(tick);
-      else fromRef.current = target;
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-  return v;
 }
