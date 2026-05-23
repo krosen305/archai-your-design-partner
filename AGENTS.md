@@ -371,6 +371,47 @@ with `onConflict: "project_id,task_key"`.
 
 ---
 
+## Testing
+
+Use `bun:test` (not Vitest) for all unit and integration tests.
+
+### Three tiers
+
+**Tier 1 — Domain & pure functions** (highest value)
+Tests in `src/lib/rule-engine/` and co-located `*.test.ts` files.
+No network, no DB, no DOM. These are the compliance brain.
+
+**Tier 2 — Application service handlers**
+Test `handleFetchCompliance`, `handleRunByggeanalyse` and orchestrators
+via injected fake deps. No TanStack runtime, no real Supabase.
+
+**Tier 3 — Playwright acceptance** (3-6 journeys max)
+Critical user journeys only: address → cockpit, hard-stop gate, smoke.
+If a test can be a unit test instead, make it a unit test.
+
+### File organisation
+
+- `src/**/*.test.ts` — unit/integration tests, run by `bun test src`
+- `src/**/*.test.tsx` — React component/hook tests, require explicit `import "@/testing/react-test-setup"` at top
+- `tests/live/` — live Supabase integration, requires `RUN_LIVE_SUPABASE_TESTS=true`
+- `tests/*.spec.ts` — Playwright E2E acceptance tests
+
+### Rules
+
+- `mock.module` on `@/lib/project-store` or `@/lib/project-sync` is forbidden
+  at file scope. Extract pure helpers and test those directly.
+- Unit tests must pass without `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`.
+- CI unit job (`bun test src`) must not expose service-role credentials.
+- Lovable must never write or modify test files.
+
+### What not to test
+
+- CSS / visual appearance
+- Trivial React renders where TypeScript already proves correctness
+- Every permutation — representative cases suffice
+
+---
+
 ## Safe Work Areas
 
 These areas are usually safe for Codex-style implementation, provided all rules
