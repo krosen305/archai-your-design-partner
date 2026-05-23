@@ -28,7 +28,7 @@ function AddressStep() {
   const navigate = useNavigate();
   const [mode, setMode] = useCockpitMode();
 
-  const { address, setAddress, adressePreCheck } = useProject();
+  const { address, setAddress, adressePreCheck, setHardStop } = useProject();
 
   // Compliance gate UI state (ARCH-125)
   const [overrideContinue, setOverrideContinue] = useState(false);
@@ -371,7 +371,7 @@ function AddressStep() {
           </p>
 
           {import.meta.env.DEV && (
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -381,6 +381,20 @@ function AddressStep() {
                 className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-accent/40 bg-accent/5 px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-accent hover:bg-accent/10 transition-colors"
               >
                 ⚡ DEV: Brug mock-adresse (Hasselvej 48, Virum)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddress(MOCK_ADRESSE);
+                  setHardStop(
+                    true,
+                    "Strandbeskyttelseslinje — matriklen ligger inden for 300 m fra kystlinjen.",
+                  );
+                  navigate({ to: `/projekt/${MOCK_ADRESSE.adresseid}/cockpit` as never });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-danger/40 bg-danger/5 px-3 py-1.5 font-mono text-[10px] tracking-[0.1em] text-danger hover:bg-danger/10 transition-colors"
+              >
+                ⚡ DEV: Hard-stop mock (Strandbeskyttelse)
               </button>
             </div>
           )}
