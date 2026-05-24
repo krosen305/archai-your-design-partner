@@ -49,6 +49,7 @@ import { runGeoRiskStep } from "@/lib/analysis/geo-risk-step";
 import { runForsyningStep } from "@/lib/analysis/forsyning-step";
 import { shouldSkipExpensiveLayer4 } from "@/lib/analysis/hard-stop-gate";
 import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
+import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -73,6 +74,7 @@ export type ComplianceResult = {
   matGeometri: MatParcelGeometryPayload | null; // ARCH-240: parcelpolygon + skel-metrics
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   tjekditnetCoverage: TjekditnetCoverageData | null; // ARCH-247: bredbåndsdækning
+  energimaerke: EnergyLabelData | null; // ARCH-248: energimærke
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
   analysisRunId?: string | null;
   serviceStates?: Partial<Record<DataSourceKind, PipelineServiceState>>;
@@ -219,7 +221,13 @@ async function analyseAddressWithTrace(
       },
       trace,
     ),
-    runForsyningStep({ adgangsadresseid: enriched.adgangsadresseid }, trace),
+    runForsyningStep(
+      {
+        adgangsadresseid: enriched.adgangsadresseid,
+        bygningLokalId: complianceBase.bbr?.bygning_lokal_id ?? null,
+      },
+      trace,
+    ),
   ]);
 
   // ── Step 5: Merge service states from layer1 and geoRisk ─────────────────
@@ -245,6 +253,7 @@ async function analyseAddressWithTrace(
     matGeometri: geoRisk.matGeometri,
     vurderingData: complianceBase.vurderingData,
     tjekditnetCoverage: forsyning.tjekditnetCoverage,
+    energimaerke: forsyning.energimaerke,
     serviceStates,
   };
 }

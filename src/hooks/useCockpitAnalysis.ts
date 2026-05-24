@@ -266,6 +266,7 @@ export function useCockpitAnalysis(params: {
             byggeanalyseResultat: byggeanalyseResultat,
             vurderingData: result.vurderingData,
             tjekditnetCoverage: result.tjekditnetCoverage,
+            energimaerke: result.energimaerke,
             complianceDone: true,
             currentStep: "byggeanalyse",
             analysisRunId: result.analysisRunId,

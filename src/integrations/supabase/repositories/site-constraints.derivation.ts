@@ -146,6 +146,18 @@ export function deriveSiteConstraintsPatch(
     sitePatch.bluespot_risk = patch.terrain?.bluespotRisk ?? null;
   }
 
+  // ARCH-248: Energimærke
+  if (patch.energimaerke !== undefined) {
+    hasConstraintField = true;
+    const em = patch.energimaerke;
+    sitePatch.energimaerke_klasse = em?.energimaerke_klasse ?? null;
+    sitePatch.energimaerke_gyldig_til = em?.gyldig_til ?? null;
+    sitePatch.energimaerke_er_udloebet = em?.er_udloebet ?? null;
+    sitePatch.energimaerke_rapport_url = em?.rapport_url ?? null;
+    sitePatch.energimaerke_rapport_id = em?.rapport_id ?? null;
+    sitePatch.energimaerke_rapportdato = em?.rapportdato ?? null;
+  }
+
   // ARCH-247: Tjekditnet bredbåndscoverage
   if (patch.tjekditnetCoverage !== undefined) {
     hasConstraintField = true;

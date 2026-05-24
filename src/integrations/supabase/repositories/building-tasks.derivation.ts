@@ -37,6 +37,8 @@ export type ComplianceTriggers = {
   bbrSaneringsRisiko: "lav" | "moderat" | "hoej" | null;
   // ARCH-247: Tjekditnet bredbånd
   tjekditnetNoFixedBroadband: boolean | null;
+  // ARCH-248: Energimærke
+  energimaerkeMangler: boolean | null;
 };
 
 export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
@@ -426,6 +428,25 @@ export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
       is_auto_generated: true,
       blocked_by_constraint: "broadband_fiber_mbit",
       metadata: { kilde: "Tjekditnet (Digitaliseringsstyrelsen)" },
+    });
+  }
+
+  // ARCH-248: Energimærke mangler eller udløbet
+  if (t.energimaerkeMangler === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.ENERGIMAERKE_RAPPORT,
+      title: "Energimærke mangler eller udløbet — indhent rapport",
+      description:
+        "Der er ikke fundet et gyldigt energimærke for ejendommen. Et energimærke er " +
+        "lovpligtigt ved salg og kan være afgørende for 'renover vs. riv ned'-beslutningen. " +
+        "Kontakt en certificeret energikonsulent. Gyldighed: 7-10 år.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 3,
+      is_auto_generated: true,
+      blocked_by_constraint: "energimaerke_er_udloebet",
+      metadata: { myndighed: "Certificeret energikonsulent", lovgrundlag: "Energimærkningsloven" },
     });
   }
 

@@ -79,6 +79,7 @@ export type ProjectPatch = {
   fbbData?: FbbResultat | null;
   billedanalyse?: BilledeAnalyseResultat | null;
   tjekditnetCoverage?: import("@/integrations/tjekditnet/client").TjekditnetCoverageData | null;
+  energimaerke?: import("@/integrations/energimaerke/client").EnergyLabelData | null;
   complianceDone?: boolean;
   currentStep?: string;
   projectDataStatus?: Json | null;
@@ -289,6 +290,13 @@ export async function saveProject(
         jordforureningV1: patch.dkjord?.v1Kortlagt ?? null,
         jordforureningV2: patch.dkjord?.v2Kortlagt ?? null,
         omraadeklassificering: patch.dkjord?.omraadeklassificering ?? null,
+        // ARCH-248: Energimærke mangler eller udløbet
+        energimaerkeMangler: (() => {
+          const em = patch.energimaerke;
+          if (!em || em.match_type === "skipped") return null;
+          if (em.match_type === "no_hit") return true;
+          return em.er_udloebet === true ? true : false;
+        })(),
         // ARCH-247: Tjekditnet no fixed broadband
         tjekditnetNoFixedBroadband: (() => {
           const cov = patch.tjekditnetCoverage;

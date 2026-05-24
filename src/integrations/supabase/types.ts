@@ -628,6 +628,12 @@ export type Database = {
           broadband_mobil_mbit: number | null;
           broadband_max_fast_mbit: number | null;
           broadband_match_type: string | null;
+          energimaerke_klasse: string | null;
+          energimaerke_gyldig_til: string | null;
+          energimaerke_er_udloebet: boolean | null;
+          energimaerke_rapport_url: string | null;
+          energimaerke_rapport_id: string | null;
+          energimaerke_rapportdato: string | null;
         };
         Insert: {
           address_id: string;
@@ -687,6 +693,12 @@ export type Database = {
           broadband_mobil_mbit?: number | null;
           broadband_max_fast_mbit?: number | null;
           broadband_match_type?: string | null;
+          energimaerke_klasse?: string | null;
+          energimaerke_gyldig_til?: string | null;
+          energimaerke_er_udloebet?: boolean | null;
+          energimaerke_rapport_url?: string | null;
+          energimaerke_rapport_id?: string | null;
+          energimaerke_rapportdato?: string | null;
         };
         Update: {
           address_id?: string;
@@ -746,6 +758,12 @@ export type Database = {
           broadband_mobil_mbit?: number | null;
           broadband_max_fast_mbit?: number | null;
           broadband_match_type?: string | null;
+          energimaerke_klasse?: string | null;
+          energimaerke_gyldig_til?: string | null;
+          energimaerke_er_udloebet?: boolean | null;
+          energimaerke_rapport_url?: string | null;
+          energimaerke_rapport_id?: string | null;
+          energimaerke_rapportdato?: string | null;
         };
         Relationships: [
           {
