@@ -134,12 +134,11 @@ async function gqlFetch<T>(
 // GraphQL-queries (én root-field per query — Datafordeler-constraint)
 // ---------------------------------------------------------------------------
 
+// EBR v2 er ikke bitemporal — ingen virkningstid/registreringstid.
 const EBR_BY_HUSNUMMER = `
-query GrundarealEbrHusnummer($husnummerLokalId: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+query GrundarealEbrHusnummer($husnummerLokalId: String!) {
   EBR_Ejendomsbeliggenhed(
     where: { husnummerLokalId: { eq: $husnummerLokalId } }
-    virkningstid: $virkningstid
-    registreringstid: $registreringstid
     first: 1
   ) {
     nodes { bestemtFastEjendomBFENr }
@@ -147,11 +146,9 @@ query GrundarealEbrHusnummer($husnummerLokalId: String!, $virkningstid: DafDateT
 }`;
 
 const EBR_BY_ADRESSE = `
-query GrundarealEbrAdresse($adresseLokalId: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+query GrundarealEbrAdresse($adresseLokalId: String!) {
   EBR_Ejendomsbeliggenhed(
     where: { adresseLokalId: { eq: $adresseLokalId } }
-    virkningstid: $virkningstid
-    registreringstid: $registreringstid
     first: 1
   ) {
     nodes { bestemtFastEjendomBFENr }
@@ -270,7 +267,7 @@ export class GrundarealResolver {
         ebrEndpoint,
         apiKey,
         EBR_BY_HUSNUMMER,
-        { husnummerLokalId: input.adgangsadresseid, ...bitemporalArgs },
+        { husnummerLokalId: input.adgangsadresseid },
         "EBR_husnummer",
         ebrBfeSchema,
         trace,
@@ -331,7 +328,7 @@ export class GrundarealResolver {
         ebrEndpoint,
         apiKey,
         EBR_BY_ADRESSE,
-        { adresseLokalId: input.adresseid, ...bitemporalArgs },
+        { adresseLokalId: input.adresseid },
         "EBR_adresse",
         ebrBfeSchema,
         trace,
