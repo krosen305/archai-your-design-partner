@@ -7,6 +7,7 @@ import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { ProjectPatch } from "@/integrations/supabase/project-persistence";
 import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import { deriveSaneringsRisiko } from "@/domain/bbr/sanerings-risiko";
 
 type SiteConstraintsUpsert = Database["public"]["Tables"]["site_constraints"]["Insert"];
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
@@ -106,6 +107,16 @@ export function deriveSiteConstraintsPatch(
     sitePatch.strandbeskyttelse = patch.bbrData.mat_strandbeskyttelse ?? false;
     sitePatch.fredskov = patch.bbrData.mat_fredskov ?? false;
     sitePatch.klitfredning = patch.bbrData.mat_klitfredning ?? false;
+    // ARCH-246: BBR due-diligence
+    sitePatch.bbr_vandforsyning_kode = patch.bbrData.vandforsyning_kode ?? null;
+    sitePatch.bbr_afloebsforhold_kode = patch.bbrData.afloebsforhold_kode ?? null;
+    sitePatch.bbr_ombygningsaar = patch.bbrData.ombygningsaar ?? null;
+    sitePatch.bbr_sanerings_risiko =
+      deriveSaneringsRisiko(
+        patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
+        patch.bbrData.ydervaegs_materiale_kode ?? null,
+        patch.bbrData.tagdaekning_kode ?? null,
+      ) ?? null;
   }
 
   if (patch.dkjord !== undefined) {
