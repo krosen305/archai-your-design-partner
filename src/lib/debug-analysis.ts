@@ -15,10 +15,9 @@ export type LoadDebugAnalysisRunsInput = {
 
 export function canAccessDebugAnalysis(
   environment: string | undefined,
-  role: string | null | undefined,
+  _role?: string | null,
 ): boolean {
-  if (environment === "production") return false;
-  return role === "admin" || role === "service_role";
+  return environment !== "production";
 }
 
 export async function loadDebugAnalysisRuns(
@@ -28,8 +27,8 @@ export async function loadDebugAnalysisRuns(
   if (authError || !authData.user) throw new Error("401: Ikke autentificeret");
 
   const role = String(authData.user.app_metadata?.role ?? "");
-  if (!canAccessDebugAnalysis(getEnvOptional("ENVIRONMENT"), role)) {
-    throw new Error("403: Debug analyse er kun tilgaengelig for admin i ikke-produktionsmiljoer");
+  if (!canAccessDebugAnalysis(getEnvOptional("ENVIRONMENT"))) {
+    throw new Error("403: Debug analyse er ikke tilgaengelig i produktionsmiljoet");
   }
 
   let query = supabaseAdmin

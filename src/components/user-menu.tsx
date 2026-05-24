@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "@tanstack/react-router";
-import { LogOut, FolderOpen, LogIn, User as UserIcon } from "lucide-react";
+import { LogOut, FolderOpen, LogIn, User as UserIcon, Bug } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "@/lib/auth";
 import {
@@ -62,6 +62,18 @@ export function UserMenu() {
             Mine projekter
           </Link>
         </DropdownMenuItem>
+        {import.meta.env.DEV && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/debug/analyse" className="flex items-center gap-2 cursor-pointer text-muted-foreground">
+                <Bug size={14} />
+                Debug log
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer">
           <LogOut size={14} />
           Log ud

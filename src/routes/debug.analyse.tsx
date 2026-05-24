@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { z } from "zod";
 import type { AnalysisEventRow, AnalysisRunView } from "@/lib/debug-analysis";
 
@@ -21,6 +21,13 @@ export const Route = createFileRoute("/debug/analyse")({
   component: DebugAnalysePage,
 });
 
+function formatRunDate(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" });
+  const time = d.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return `${date} ${time}`;
+}
+
 function DebugAnalysePage() {
   const [addressId, setAddressId] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -29,7 +36,7 @@ function DebugAnalysePage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
 
-  async function handleSearch() {
+  const handleSearch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -50,7 +57,11 @@ function DebugAnalysePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [addressId, projectId]);
+
+  useEffect(() => {
+    handleSearch();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -145,7 +156,7 @@ function RunCard({
           {run.address_id && <span>adresse: {run.address_id.slice(0, 16)}...</span>}
           <span>{run.events.length} steps</span>
           {run.duration_ms != null && <span>{run.duration_ms}ms</span>}
-          <span>{new Date(run.started_at).toLocaleTimeString("da-DK")}</span>
+          <span>{formatRunDate(run.started_at)}</span>
         </div>
         {run.error_message && <div className="text-xs text-danger">{run.error_message}</div>}
       </button>
