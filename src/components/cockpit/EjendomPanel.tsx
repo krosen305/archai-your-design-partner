@@ -41,8 +41,7 @@ export function EjendomPanel() {
 
   const bbr = bbrData;
 
-  const grundareal =
-    grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? null;
+  const grundareal = grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? null;
   const bebyggetAreal = bebygget_areal_m2 ?? bbr?.bebygget_areal ?? null;
   const remaining = complianceMetrics?.remainingBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;

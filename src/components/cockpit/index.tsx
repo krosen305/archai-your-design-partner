@@ -152,7 +152,12 @@ export function ProjektDnaPanel({
 function ByggeoenskeAccordion({ reactiveContext }: { reactiveContext: ReactiveContext }) {
   const { byggeoenske } = useProject();
   const { patch } = useCockpitByggeoensker(reactiveContext);
-  const { dispensationFor, open: openDispensation, acknowledge, close: closeDispensation } = useDispensationFlow();
+  const {
+    dispensationFor,
+    open: openDispensation,
+    acknowledge,
+    close: closeDispensation,
+  } = useDispensationFlow();
 
   const filledCount = STEPS.filter((s) => byggeoenske[s.key] !== undefined).length;
 
@@ -198,7 +203,11 @@ function ByggeoenskeAccordion({ reactiveContext }: { reactiveContext: ReactiveCo
           );
         })}
       </Accordion>
-      <DispensationModal type={dispensationFor} onAcknowledge={acknowledge} onClose={closeDispensation} />
+      <DispensationModal
+        type={dispensationFor}
+        onAcknowledge={acknowledge}
+        onClose={closeDispensation}
+      />
     </Card>
   );
 }
@@ -259,9 +268,7 @@ function StepExtras({
               Vælg andet
             </button>
             <button
-              onClick={() =>
-                onOpenDispensation(stepKey === "antalEtager" ? "etager" : "areal")
-              }
+              onClick={() => onOpenDispensation(stepKey === "antalEtager" ? "etager" : "areal")}
               className="rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-1 font-mono text-[10px] hover:bg-amber-500/30"
             >
               Fortsæt med dispensation

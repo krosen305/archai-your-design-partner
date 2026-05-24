@@ -6,6 +6,7 @@ import { deriveComplianceFlags } from "@/lib/compliance-flags";
 import { syncPatch } from "@/lib/project-sync";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import { fetchCompliance, runByggeanalyse } from "@/lib/cockpit.functions";
+import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
 import { logger } from "@/lib/logger";
 import type { FjernvarmeResultat, NeighborBuildingData } from "@/domain/contracts/analysis.types";
 import type {
@@ -77,6 +78,12 @@ export function useCockpitAnalysis(params: {
     setKommuneplanramme,
     setVurderingData,
     setByggeanalyseResultat,
+    setHeritageSaveValue,
+    setIsFredet,
+    setGrundareal,
+    setBebyggetAreal,
+    setHardStop,
+    setBfeNr,
   } = useProject();
 
   const [status, setStatus] = useState<Status>(
@@ -218,6 +225,26 @@ export function useCockpitAnalysis(params: {
           );
           setComplianceFlags(flags);
           setComplianceMetrics(calculateComplianceMetrics(result.bbr, result.kommuneplanramme));
+
+          // Sync typed store fields immediately so UI reflects current analysis without reload.
+          // syncPatch persists these to Supabase typed columns; useCockpitRestore reads them back
+          // on next load — but the in-memory store must also be updated for the current session.
+          const saveVal = result.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
+          const isFredetVal = result.fbbData?.fbb_er_fredet ?? result.bbr?.fredet ?? null;
+          setHeritageSaveValue(saveVal);
+          setIsFredet(isFredetVal);
+          setGrundareal(result.bbr?.grundareal ?? null);
+          setBebyggetAreal(result.bbr?.bebygget_areal ?? null);
+          setBfeNr(result.vurderingData?.bfeNr ?? null);
+          const { hardStop, hardStopReason } = evaluateHardStop({
+            saveValue: saveVal,
+            isFredet: isFredetVal,
+            strandbeskyttelse: result.bbr?.mat_strandbeskyttelse ?? null,
+            fredskov: result.bbr?.mat_fredskov ?? null,
+            klitfredning: result.bbr?.mat_klitfredning ?? null,
+          });
+          setHardStop(hardStop, hardStopReason ?? null);
+
           setComplianceDone(true);
           setPhase("hus-dna", "complete");
           setPhase("match", "complete");
@@ -263,9 +290,9 @@ export function useCockpitAnalysis(params: {
         })
         .catch((e: unknown) => {
           const msg = e instanceof Error ? e.message : String(e);
-          logger.error("[Compliance] pipeline fejlede:", msg);
+          logger.error("[Compliance] pipeline fejlede:", e);
           setFetchError(
-            msg.startsWith("ArchAI: manglende") ? msg : "BBR-data kunne ikke hentes. Prøv igen.",
+            msg.startsWith("ArchAI: manglende") ? msg : "Analyse kunne ikke gennemføres. Prøv igen.",
           );
           setStatus("error");
         });
