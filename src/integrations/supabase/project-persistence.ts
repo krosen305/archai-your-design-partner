@@ -78,6 +78,7 @@ export type ProjectPatch = {
   fjernvarme?: FjernvarmeResultat | null;
   fbbData?: FbbResultat | null;
   billedanalyse?: BilledeAnalyseResultat | null;
+  tjekditnetCoverage?: import("@/integrations/tjekditnet/client").TjekditnetCoverageData | null;
   complianceDone?: boolean;
   currentStep?: string;
   projectDataStatus?: Json | null;
@@ -288,6 +289,17 @@ export async function saveProject(
         jordforureningV1: patch.dkjord?.v1Kortlagt ?? null,
         jordforureningV2: patch.dkjord?.v2Kortlagt ?? null,
         omraadeklassificering: patch.dkjord?.omraadeklassificering ?? null,
+        // ARCH-247: Tjekditnet no fixed broadband
+        tjekditnetNoFixedBroadband: (() => {
+          const cov = patch.tjekditnetCoverage;
+          if (!cov || cov.match_type === "no_hit" || cov.match_type === "db_error") return null;
+          const fiber = cov.fiber_tilgaengelig;
+          const kabel = cov.kabel_tilgaengelig;
+          const xdsl = cov.xdsl_tilgaengelig;
+          const fwa = cov.fast_traadloes_tilgaengelig;
+          if (fiber === null && kabel === null && xdsl === null && fwa === null) return null;
+          return fiber !== true && kabel !== true && xdsl !== true && fwa !== true;
+        })(),
         // ARCH-246: BBR Due-Diligence triggers
         jordforureningOlietank: patch.dkjord?.olietank.eksisterer ?? null,
         bbrAfloebsforholdKode: patch.bbrData?.afloebsforhold_kode ?? null,

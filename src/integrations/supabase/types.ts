@@ -121,6 +121,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      broadband_coverage: {
+        Row: {
+          adgangsadresse_id: string;
+          fast_traadloes_download_mbit: number | null;
+          fast_traadloes_upload_mbit: number | null;
+          fiber_download_mbit: number | null;
+          fiber_upload_mbit: number | null;
+          kabel_tv_download_mbit: number | null;
+          kabel_tv_upload_mbit: number | null;
+          xdsl_download_mbit: number | null;
+          xdsl_upload_mbit: number | null;
+          mobil_download_mbit: number | null;
+          source_url: string | null;
+          imported_at: string;
+        };
+        Insert: {
+          adgangsadresse_id: string;
+          fast_traadloes_download_mbit?: number | null;
+          fast_traadloes_upload_mbit?: number | null;
+          fiber_download_mbit?: number | null;
+          fiber_upload_mbit?: number | null;
+          kabel_tv_download_mbit?: number | null;
+          kabel_tv_upload_mbit?: number | null;
+          xdsl_download_mbit?: number | null;
+          xdsl_upload_mbit?: number | null;
+          mobil_download_mbit?: number | null;
+          source_url?: string | null;
+          imported_at?: string;
+        };
+        Update: {
+          adgangsadresse_id?: string;
+          fast_traadloes_download_mbit?: number | null;
+          fast_traadloes_upload_mbit?: number | null;
+          fiber_download_mbit?: number | null;
+          fiber_upload_mbit?: number | null;
+          kabel_tv_download_mbit?: number | null;
+          kabel_tv_upload_mbit?: number | null;
+          xdsl_download_mbit?: number | null;
+          xdsl_upload_mbit?: number | null;
+          mobil_download_mbit?: number | null;
+          source_url?: string | null;
+          imported_at?: string;
+        };
+        Relationships: [];
+      };
       address_source_results: {
         Row: {
           id: string;
@@ -576,6 +621,13 @@ export type Database = {
           bbr_afloebsforhold_kode: string | null;
           bbr_ombygningsaar: number | null;
           bbr_sanerings_risiko: string | null;
+          broadband_fiber_mbit: number | null;
+          broadband_kabel_mbit: number | null;
+          broadband_xdsl_mbit: number | null;
+          broadband_fast_traadloes_mbit: number | null;
+          broadband_mobil_mbit: number | null;
+          broadband_max_fast_mbit: number | null;
+          broadband_match_type: string | null;
         };
         Insert: {
           address_id: string;
@@ -628,6 +680,13 @@ export type Database = {
           bbr_afloebsforhold_kode?: string | null;
           bbr_ombygningsaar?: number | null;
           bbr_sanerings_risiko?: string | null;
+          broadband_fiber_mbit?: number | null;
+          broadband_kabel_mbit?: number | null;
+          broadband_xdsl_mbit?: number | null;
+          broadband_fast_traadloes_mbit?: number | null;
+          broadband_mobil_mbit?: number | null;
+          broadband_max_fast_mbit?: number | null;
+          broadband_match_type?: string | null;
         };
         Update: {
           address_id?: string;
@@ -680,6 +739,13 @@ export type Database = {
           bbr_afloebsforhold_kode?: string | null;
           bbr_ombygningsaar?: number | null;
           bbr_sanerings_risiko?: string | null;
+          broadband_fiber_mbit?: number | null;
+          broadband_kabel_mbit?: number | null;
+          broadband_xdsl_mbit?: number | null;
+          broadband_fast_traadloes_mbit?: number | null;
+          broadband_mobil_mbit?: number | null;
+          broadband_max_fast_mbit?: number | null;
+          broadband_match_type?: string | null;
         };
         Relationships: [
           {

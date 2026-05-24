@@ -146,5 +146,18 @@ export function deriveSiteConstraintsPatch(
     sitePatch.bluespot_risk = patch.terrain?.bluespotRisk ?? null;
   }
 
+  // ARCH-247: Tjekditnet bredbåndscoverage
+  if (patch.tjekditnetCoverage !== undefined) {
+    hasConstraintField = true;
+    const cov = patch.tjekditnetCoverage;
+    sitePatch.broadband_fiber_mbit = cov?.fiber_download_mbit ?? null;
+    sitePatch.broadband_kabel_mbit = cov?.kabel_tv_download_mbit ?? null;
+    sitePatch.broadband_xdsl_mbit = cov?.xdsl_download_mbit ?? null;
+    sitePatch.broadband_fast_traadloes_mbit = cov?.fast_traadloes_download_mbit ?? null;
+    sitePatch.broadband_mobil_mbit = cov?.mobil_download_mbit ?? null;
+    sitePatch.broadband_max_fast_mbit = cov?.max_fast_download_mbit ?? null;
+    sitePatch.broadband_match_type = cov?.match_type ?? null;
+  }
+
   return hasConstraintField ? sitePatch : null;
 }

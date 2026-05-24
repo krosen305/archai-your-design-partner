@@ -35,6 +35,8 @@ export type ComplianceTriggers = {
   jordforureningOlietank: boolean | null;
   bbrAfloebsforholdKode: string | null;
   bbrSaneringsRisiko: "lav" | "moderat" | "hoej" | null;
+  // ARCH-247: Tjekditnet bredbånd
+  tjekditnetNoFixedBroadband: boolean | null;
 };
 
 export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
@@ -405,6 +407,25 @@ export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
         lovgrundlag: "Affaldsbekendtgørelsen §57",
         myndighed: "Kommunen (byggesag)",
       },
+    });
+  }
+
+  // ARCH-247: Tjekditnet — ingen fast bredbåndsdækning
+  if (t.tjekditnetNoFixedBroadband === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.KORTLAEG_FORSYNINGER,
+      title: "Bredbåndsdækning mangler — forsyningsforhold skal kortlægges",
+      description:
+        "Tjekditnet registrerer ingen teknisk mulig fast bredbåndsdækning (fiber, kabel-tv, xDSL eller fast trådløst) " +
+        "på adressen. Mobildata er normalt ikke tilstrækkeligt til fjernarbejde. " +
+        "Undersøg muligheder for fiberfremføring med kommunen eller lokalt forsyningsselskab.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 3,
+      is_auto_generated: true,
+      blocked_by_constraint: "broadband_fiber_mbit",
+      metadata: { kilde: "Tjekditnet (Digitaliseringsstyrelsen)" },
     });
   }
 
