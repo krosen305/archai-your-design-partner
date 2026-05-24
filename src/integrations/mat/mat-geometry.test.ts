@@ -9,6 +9,7 @@ const mockFetchParcelGeometry = mock(async (_id: string) => ({
 
 mock.module("@/lib/map-proxy", () => ({
   fetchParcelGeometryByJordstykkeId: mockFetchParcelGeometry,
+  createBboxAroundPoint: () => ({ minX: 0, minY: 0, maxX: 1, maxY: 1 }),
 }));
 
 const { MatGeometryService } = await import("./geometry");

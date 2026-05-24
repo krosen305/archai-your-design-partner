@@ -11,6 +11,7 @@ import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { summarizeSourceResult } from "@/lib/source-result";
+import type { SourceResult } from "@/lib/source-result";
 import type {
   FjernvarmeResultat,
   MatParcelGeometryPayload,
@@ -24,6 +25,10 @@ import type {
   RuleEngineTerrainData,
 } from "@/domain/contracts/rule-engine.types";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
+import {
+  ruleEngineGeusRiskDataSchema,
+  ruleEngineTerrainDataSchema,
+} from "@/types/project-restore.schemas";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -49,6 +54,18 @@ export type GeoRiskResult = {
   matGeometri: MatParcelGeometryPayload | null;
   states: Partial<Record<DataSourceKind, PipelineServiceState>>;
 };
+
+function deriveSourceState<T>(
+  result: SourceResult<T> | null,
+  cacheHit = false,
+): PipelineServiceState {
+  if (result === null) return "error";
+  if (cacheHit) return "cache_hit";
+  if (result.status === "mock") return "mock";
+  if (result.status === "error") return "error";
+  if (result.status === "skipped") return "skipped";
+  return result.data !== null ? "success" : "no_hit";
+}
 
 // ---------------------------------------------------------------------------
 // runGeoRiskStep
@@ -276,9 +293,19 @@ export async function runGeoRiskStep(
         }),
 
       // geus
-      import("@/integrations/geus/client")
-        .then(({ GeusService }) =>
-          traceStep(
+      Promise.all([import("@/integrations/geus/client"), import("@/integrations/cache/client")])
+        .then(async ([{ GeusService }, { getCachedSourceResult, setCachedSourceResult }]) => {
+          const cached = await getCachedSourceResult(
+            addressId,
+            "geus",
+            ruleEngineGeusRiskDataSchema,
+          ).catch(() => null);
+
+          if (cached) {
+            return { result: cached, cacheHit: true as const };
+          }
+
+          const result = await traceStep(
             trace,
             {
               eventType: "api_call",
@@ -300,8 +327,11 @@ export async function runGeoRiskStep(
                 feature_count: r.rawFeatureCount,
               }),
             },
-          ),
-        )
+          );
+
+          await setCachedSourceResult(addressId, "geus", result).catch(() => undefined);
+          return { result, cacheHit: false as const };
+        })
         .catch((e: Error) => {
           logServerEvent({
             module: "geo-risk-step",
@@ -315,33 +345,51 @@ export async function runGeoRiskStep(
         }),
 
       // terrain
-      import("@/integrations/sdfi/dhm-client")
-        .then(({ DhmService, bboxFromPoint }) => {
-          const bbox = bboxFromPoint(koordinater.lat, koordinater.lng, grundareal);
-          return traceStep(
-            trace,
-            {
-              eventType: "api_call",
-              phase: "layer4",
-              service: "SDFI DHM",
-              operation: "getTerrainData",
-            },
-            () => DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng),
-            {
-              outputSummary: (r) =>
-                summarizeSourceResult(
-                  r,
-                  (d) =>
-                    `slope=${d.slopePercent} low=${d.lowPointM} bluespot=${d.bluespotRisk ?? "null"}`,
-                ),
-              metadata: (r) => ({
-                source: r.kilde,
-                isMock: r.isMock,
-                feature_count: r.rawFeatureCount,
-              }),
-            },
-          );
-        })
+      Promise.all([import("@/integrations/sdfi/dhm-client"), import("@/integrations/cache/client")])
+        .then(
+          async ([
+            { DhmService, bboxFromPoint },
+            { getCachedSourceResult, setCachedSourceResult },
+          ]) => {
+            const cached = await getCachedSourceResult(
+              addressId,
+              "dhm",
+              ruleEngineTerrainDataSchema,
+            ).catch(() => null);
+
+            if (cached) {
+              return { result: cached, cacheHit: true as const };
+            }
+
+            const bbox = bboxFromPoint(koordinater.lat, koordinater.lng, grundareal);
+            const result = await traceStep(
+              trace,
+              {
+                eventType: "api_call",
+                phase: "layer4",
+                service: "SDFI DHM",
+                operation: "getTerrainData",
+              },
+              () => DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng),
+              {
+                outputSummary: (r) =>
+                  summarizeSourceResult(
+                    r,
+                    (d) =>
+                      `slope=${d.slopePercent} low=${d.lowPointM} bluespot=${d.bluespotRisk ?? "null"}`,
+                  ),
+                metadata: (r) => ({
+                  source: r.kilde,
+                  isMock: r.isMock,
+                  feature_count: r.rawFeatureCount,
+                }),
+              },
+            );
+
+            await setCachedSourceResult(addressId, "dhm", result).catch(() => undefined);
+            return { result, cacheHit: false as const };
+          },
+        )
         .catch((e: Error) => {
           logServerEvent({
             module: "geo-risk-step",
@@ -435,41 +483,13 @@ export async function runGeoRiskStep(
 
     naturbeskyttelse = natur;
     dkjord = jord?.data ?? null;
-    states.dkjord =
-      jord === null ? "error" : jord.isMock ? "mock" : jord.data != null ? "success" : "no_hit";
-    geusRisk = geus?.data ?? null;
-    states.geusRisk =
-      geus === null
-        ? "error"
-        : geus.status === "mock"
-          ? "mock"
-          : geus.status === "error"
-            ? "error"
-            : geus.data !== null
-              ? "success"
-              : "no_hit";
-    terrain = terr?.data ?? null;
-    states.terrain =
-      terr === null
-        ? "error"
-        : terr.status === "mock"
-          ? "mock"
-          : terr.status === "error"
-            ? "error"
-            : terr.data !== null
-              ? "success"
-              : "no_hit";
+    states.dkjord = deriveSourceState(jord);
+    geusRisk = geus?.result.data ?? null;
+    states.geusRisk = deriveSourceState(geus?.result ?? null, geus?.cacheHit ?? false);
+    terrain = terr?.result.data ?? null;
+    states.terrain = deriveSourceState(terr?.result ?? null, terr?.cacheHit ?? false);
     naboer = nabo?.data ?? null;
-    states.naboer =
-      nabo == null
-        ? "error"
-        : nabo.status === "mock"
-          ? "mock"
-          : nabo.status === "error"
-            ? "error"
-            : nabo.data != null
-              ? "success"
-              : "no_hit";
+    states.naboer = deriveSourceState(nabo);
     fjernvarme = varme;
   }
 

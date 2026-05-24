@@ -1,9 +1,11 @@
 import { getEnvRequired } from "@/lib/env";
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
+import { ruleEngineTerrainDataSchema } from "@/types/project-restore.schemas";
 
-const IS_MOCK = true;
-const DHM_WCS = "https://services.datafordeler.dk/DHMNedboer/dhm/1.0.0/WCS";
+const DHM_WCS = "https://wcs.datafordeler.dk/DHMNedboer/dhm_wcs/1.0.0/WCS";
+const DHM_COVERAGE = "dhm_terraen";
 
 export type BoundingBox = {
   minX: number;
@@ -60,10 +62,7 @@ function wgs84ToUtm32(lat: number, lng: number): { x: number; y: number } {
 
   const y =
     k0 *
-    (m +
-      n *
-        Math.tan(latR) *
-        (angle ** 2 / 2 + ((5 - t + 9 * c + 4 * c ** 2) * angle ** 4) / 24));
+    (m + n * Math.tan(latR) * (angle ** 2 / 2 + ((5 - t + 9 * c + 4 * c ** 2) * angle ** 4) / 24));
 
   return { x: Math.round(x), y: Math.round(y) };
 }
@@ -135,7 +134,7 @@ function summarizeTerrain(
   const parcelWidth = Math.sqrt((bbox.maxX - bbox.minX) * (bbox.maxY - bbox.minY));
   const slopePercent = Math.round(((maxElevationM - minElevationM) / parcelWidth) * 100 * 10) / 10;
 
-  return {
+  return ruleEngineTerrainDataSchema.parse({
     minElevationM: Math.round(minElevationM * 10) / 10,
     maxElevationM: Math.round(maxElevationM * 10) / 10,
     avgElevationM,
@@ -145,7 +144,7 @@ function summarizeTerrain(
     northOrientation: getNorthOrientation(lat, lng),
     kotepunkter,
     kilde: "dhm",
-  };
+  });
 }
 
 async function fetchLiveTerrain(
@@ -161,12 +160,10 @@ async function fetchLiveTerrain(
   const rows = Math.ceil(height / pixelSizeM);
 
   const url =
-    `${DHM_WCS}?SERVICE=WCS&VERSION=1.1.1&REQUEST=GetCoverage` +
-    `&IDENTIFIER=dhm_terraen&apiKey=${apiKey}` +
-    `&BOUNDINGBOX=${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},urn:ogc:def:crs:EPSG::25832` +
-    `&FORMAT=image/tiff&GridBaseCRS=urn:ogc:def:crs:EPSG::25832` +
-    `&GridOffsets=${pixelSizeM},-${pixelSizeM}&GridCS=urn:ogc:def:cs:OGC:0.0:Grid2dSquareCS` +
-    `&GridOrigin=${bbox.minX},${bbox.maxY}&width=${cols}&height=${rows}`;
+    `${DHM_WCS}?apikey=${apiKey}&SERVICE=WCS&REQUEST=GetCoverage&VERSION=1.0.0` +
+    `&COVERAGE=${DHM_COVERAGE}&STYLE=default&FORMAT=GTiff` +
+    `&BBOX=${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY}` +
+    `&CRS=EPSG:25832&RESPONSE_CRS=EPSG:25832&WIDTH=${cols}&HEIGHT=${rows}`;
 
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
@@ -192,7 +189,7 @@ export const DhmService = {
     lat: number,
     lng: number,
   ): Promise<SourceResult<TerrainData>> {
-    if (IS_MOCK) {
+    if (FEATURE_FLAGS.dhmMock) {
       return makeMockResult(
         {
           minElevationM: 18.4,

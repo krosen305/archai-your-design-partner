@@ -1,12 +1,48 @@
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import { logServerEvent } from "@/lib/server-logger";
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
+import { z } from "zod";
 
-const IS_MOCK = true;
 const GEUS_OWS = "https://data.geus.dk/geusmap/ows/4258.jsp";
 const GROUNDWATER_RADIUS_M = 500;
 
 type Koordinat = { lat: number; lng: number };
+
+const geusRadonResponseSchema = z.object({
+  features: z
+    .array(
+      z.object({
+        properties: z
+          .object({
+            radon_klasse: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+      }),
+    )
+    .optional(),
+});
+
+const geusBoringResponseSchema = z.object({
+  features: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        properties: z
+          .object({
+            boringnr: z.string().optional(),
+            grundvand_kote: z.number().nullable().optional(),
+            terrænkote: z.number().nullable().optional(),
+            jordart: z.string().nullable().optional(),
+            lithologi: z.string().nullable().optional(),
+          })
+          .passthrough()
+          .optional(),
+      }),
+    )
+    .optional(),
+});
 
 export type GeusRiskData = {
   radonRisk: "low" | "medium" | "high" | "unknown";
@@ -40,7 +76,8 @@ async function fetchRadonRisk(
 
   if (!res.ok) throw new Error(`GEUS radon WMS HTTP ${res.status}`);
 
-  const data = (await res.json()) as { features?: { properties?: { radon_klasse?: string } }[] };
+  const raw = await res.json();
+  const data = geusRadonResponseSchema.parse(raw);
   const klasse = data.features?.[0]?.properties?.radon_klasse?.toLowerCase() ?? "";
 
   if (klasse.includes("hoj") || klasse.includes("høj") || klasse.includes("high")) return "high";
@@ -48,19 +85,6 @@ async function fetchRadonRisk(
   if (klasse.includes("lav") || klasse.includes("low")) return "low";
   return "unknown";
 }
-
-type WfsBoringResponse = {
-  features?: {
-    id?: string;
-    properties?: {
-      boringnr?: string;
-      grundvand_kote?: number | null;
-      terrænkote?: number | null;
-      jordart?: string | null;
-      lithologi?: string | null;
-    };
-  }[];
-};
 
 async function fetchGroundwater(
   koordinat: Koordinat,
@@ -81,7 +105,8 @@ async function fetchGroundwater(
 
   if (!res.ok) throw new Error(`GEUS Jupiter WFS HTTP ${res.status}`);
 
-  const data = (await res.json()) as WfsBoringResponse;
+  const raw = await res.json();
+  const data = geusBoringResponseSchema.parse(raw);
   const boring = data.features?.[0];
   if (!boring) return { depthM: null, boringId: null, jordart: null };
 
@@ -96,9 +121,19 @@ async function fetchGroundwater(
   };
 }
 
+type RadonFetchResult = {
+  value: "low" | "medium" | "high" | "unknown";
+  failed: boolean;
+};
+
+type GroundwaterFetchResult = {
+  value: { depthM: number | null; boringId: string | null; jordart: string | null };
+  failed: boolean;
+};
+
 export const GeusService = {
   async getRiskData(lat: number, lng: number): Promise<SourceResult<GeusRiskData>> {
-    if (IS_MOCK) {
+    if (FEATURE_FLAGS.geusMock) {
       return makeMockResult(
         {
           radonRisk: "medium",
@@ -118,43 +153,68 @@ export const GeusService = {
 
     try {
       const [radonRisk, groundwater] = await Promise.all([
-        fetchRadonRisk(koordinat).catch((error: Error) => {
-          logServerEvent({
-            module: "geus/client",
-            operation: "fetchRadonRisk",
-            severity: "degraded",
-            message: "Radon WMS fejlede",
-            error,
-          });
-          return "unknown" as const;
-        }),
-        fetchGroundwater(koordinat).catch((error: Error) => {
-          logServerEvent({
-            module: "geus/client",
-            operation: "fetchGroundwater",
-            severity: "degraded",
-            message: "Jupiter WFS fejlede",
-            error,
-          });
-          return { depthM: null, boringId: null, jordart: null };
-        }),
+        fetchRadonRisk(koordinat)
+          .then(
+            (value): RadonFetchResult => ({
+              value,
+              failed: false,
+            }),
+          )
+          .catch((error: Error): RadonFetchResult => {
+            logServerEvent({
+              module: "geus/client",
+              operation: "fetchRadonRisk",
+              severity: "degraded",
+              message: "Radon WMS fejlede",
+              error,
+            });
+            return { value: "unknown", failed: true };
+          }),
+        fetchGroundwater(koordinat)
+          .then(
+            (value): GroundwaterFetchResult => ({
+              value,
+              failed: false,
+            }),
+          )
+          .catch((error: Error): GroundwaterFetchResult => {
+            logServerEvent({
+              module: "geus/client",
+              operation: "fetchGroundwater",
+              severity: "degraded",
+              message: "Jupiter WFS fejlede",
+              error,
+            });
+            return {
+              value: { depthM: null, boringId: null, jordart: null },
+              failed: true,
+            };
+          }),
       ]);
+
+      if (radonRisk.failed && groundwater.failed) {
+        return makeErrorResult<GeusRiskData>(new Error("GEUS live fetch failed"), {
+          kilde: "geus",
+          sourceUrl: GEUS_OWS,
+        });
+      }
 
       return makeOkResult(
         {
-          radonRisk,
-          groundwaterDepthM: groundwater.depthM,
-          groundwaterDataSource: groundwater.boringId,
-          groundwaterDepthWinterM: groundwater.depthM,
-          groundwaterDepthSummerM: groundwater.depthM,
+          radonRisk: radonRisk.value,
+          groundwaterDepthM: groundwater.value.depthM,
+          groundwaterDataSource: groundwater.value.boringId,
+          groundwaterDepthWinterM: groundwater.value.depthM,
+          groundwaterDepthSummerM: groundwater.value.depthM,
           groundwaterModelUncertaintyM: null,
-          geoteknikJordart: groundwater.jordart,
+          geoteknikJordart: groundwater.value.jordart,
           kilde: "geus",
         },
         {
           kilde: "geus",
           sourceUrl: GEUS_OWS,
-          rawFeatureCount: groundwater.boringId ? 1 : 0,
+          rawFeatureCount: groundwater.value.boringId ? 1 : 0,
+          confidence: radonRisk.failed || groundwater.failed ? "unknown" : "confirmed",
         },
       );
     } catch (error) {

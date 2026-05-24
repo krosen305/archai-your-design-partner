@@ -41,8 +41,8 @@ Server-side integrations must not be imported directly in route files. Wrap call
 | `NaboService`             | `bbr/neighbor-client.ts`     | ⚠️ Superseded   | Returnerer tom liste. Superseded by GeoDanmarkNaboService (ARCH-240).                          |
 | `TinglysningService`      | `tinglysning/client.ts`      | 🟡 IS_MOCK=true | TingbogenV2 requires separate Datafordeler access/schema verification.                         |
 | `DkJordService`           | `miljoe/dkjord.ts`           | 🟡 IS_MOCK=true | Soil contamination model exists; live DK-Jord WFS remains to be verified.                      |
-| `GeusService`             | `geus/client.ts`             | 🟡 IS_MOCK=true | Geotechnical/radon/groundwater risk model; live GEUS layers need verification.                 |
-| `DhmService`              | `sdfi/dhm-client.ts`         | 🟡 IS_MOCK=true | Terrain data model; DHM WCS endpoint/layer names need verification.                            |
+| `GeusService`             | `geus/client.ts`             | 🟡 Mock flag default | GEUS/Jupiter-based radon + groundwater adapter on `SourceResult<T>`; raw JSON is schema-validated. Live path is gated by `FEATURE_GEUS_MOCK=false` and still needs field verification against production responses. |
+| `DhmService`              | `sdfi/dhm-client.ts`         | 🟡 Mock flag default | DHM terrain adapter on `SourceResult<T>`; wired to Datafordeler WCS 1.0.0 (`wcs.datafordeler.dk/.../dhm_wcs`) with `dhm_terraen`. Live path is gated by `FEATURE_DHM_MOCK=false` until GeoTIFF parsing is verified against production responses. |
 
 ## `BbrKompliantData`
 
@@ -92,3 +92,9 @@ new Datafordeler clients.
 - Raw/intermediate screening results go to `address_source_results`.
 - `compliance_data JSONB` is an archive, not the source of truth.
 - Never read or write `projekter`; it was dropped in migration `20260515100000`.
+
+## Live Smoke Flags
+
+- `RUN_LIVE_DATAFORDELER_SMOKE=true` enables existing Datafordeler smoke tests.
+- `RUN_LIVE_GEUS_SMOKE=true` with `FEATURE_GEUS_MOCK=false` enables GEUS live smoke in `tests/live/geus-dhm.live.test.ts`.
+- `RUN_LIVE_DHM_SMOKE=true` with `FEATURE_DHM_MOCK=false` enables DHM live smoke in `tests/live/geus-dhm.live.test.ts`.
