@@ -40,6 +40,8 @@ export const BUILDING_TASK_KEYS = {
   // Matriklen phase
   JORDBUNDSPROVE: "jordbundsprove",
   KORTLAEG_FORSYNINGER: "kortlaeg_forsyninger",
+  OLIETANK_MILJOESCREENING: "olietank_miljoescreening",
+  ASBEST_PCB_SCREENING: "asbest_pcb_screening",
   MILJOEUNDERSOEGELSE: "miljoeundersoegelse", // beholdes for unknown/error-case
   JORDFORURENING_V2_UNDERSOEGELSE: "jordforurening_v2_undersoegelse", // NY: V2-kortlagt
   JORDFORURENING_V1_SCREENING: "jordforurening_v1_screening", // NY: V1-kortlagt

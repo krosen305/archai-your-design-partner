@@ -40,6 +40,7 @@ import {
   syncSiteConstraints,
   deriveSoilContaminationStatus,
 } from "@/integrations/supabase/repositories/site-constraints.repository";
+import { deriveSaneringsRisiko } from "@/domain/bbr/sanerings-risiko";
 import {
   hasDesignIterationFields,
   syncActiveDesignIteration,
@@ -287,6 +288,16 @@ export async function saveProject(
         jordforureningV1: patch.dkjord?.v1Kortlagt ?? null,
         jordforureningV2: patch.dkjord?.v2Kortlagt ?? null,
         omraadeklassificering: patch.dkjord?.omraadeklassificering ?? null,
+        // ARCH-246: BBR Due-Diligence triggers
+        jordforureningOlietank: patch.dkjord?.olietank.eksisterer ?? null,
+        bbrAfloebsforholdKode: patch.bbrData?.afloebsforhold_kode ?? null,
+        bbrSaneringsRisiko: patch.bbrData
+          ? deriveSaneringsRisiko(
+              patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
+              patch.bbrData.ydervaegs_materiale_kode ?? null,
+              patch.bbrData.tagdaekning_kode ?? null,
+            )
+          : null,
       },
       trace,
     );

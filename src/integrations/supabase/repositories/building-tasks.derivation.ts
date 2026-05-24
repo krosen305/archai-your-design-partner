@@ -31,6 +31,10 @@ export type ComplianceTriggers = {
   jordforureningV1: boolean | null;
   jordforureningV2: boolean | null;
   omraadeklassificering: string | null;
+  // ARCH-246: BBR Due-Diligence triggers
+  jordforureningOlietank: boolean | null;
+  bbrAfloebsforholdKode: string | null;
+  bbrSaneringsRisiko: "lav" | "moderat" | "hoej" | null;
 };
 
 export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
@@ -358,6 +362,78 @@ export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
       is_auto_generated: true,
       blocked_by_constraint: "soil_contamination_status",
       metadata: { kortlaeggingsklasse: "unknown", reason: "dkjord_api_unavailable" },
+    });
+  }
+
+  // ARCH-246: Olietank (from DK-Jord WFS — jordforurening_olietank column)
+  if (t.jordforureningOlietank === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.OLIETANK_MILJOESCREENING,
+      title: "Olietank registreret — miljøscreening påkrævet",
+      description:
+        "DK-Jord registrerer en olietank på eller nær grunden. En miljøteknisk undersøgelse " +
+        "(jordprøver) er nødvendig inden nedrivning eller byggestart for at fastlægge eventuel forurening.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "jordforurening_olietank",
+      metadata: { kilde: "DK-Jord WFS olietank", myndighed: "Miljøstyrelsen" },
+    });
+  }
+
+  // ARCH-246: Asbest/PCB saneringsrisiko (from BBR byggeår + materialer)
+  if (t.bbrSaneringsRisiko === "hoej" || t.bbrSaneringsRisiko === "moderat") {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.ASBEST_PCB_SCREENING,
+      title: `Asbest/PCB-screening anbefales (${t.bbrSaneringsRisiko === "hoej" ? "høj risiko" : "moderat risiko"})`,
+      description:
+        t.bbrSaneringsRisiko === "hoej"
+          ? "Byggeår og materialer indikerer høj risiko for asbest, PCB og bly. " +
+            "En miljøscreening er lovpligtig inden nedrivning (Affaldsbekendtgørelsen). " +
+            "Budgettér screeningsrapport + evt. sanering som separat post."
+          : "Byggeår eller materialer (fx eternit) indikerer moderat risiko for asbestcement eller PCB. " +
+            "En screening anbefales inden nedrivning eller større renovering.",
+      phase: "matriklen",
+      status: t.bbrSaneringsRisiko === "hoej" ? "blocked" : "pending",
+      priority: t.bbrSaneringsRisiko === "hoej" ? 1 : 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "bbr_sanerings_risiko",
+      metadata: {
+        saneringsrisiko: t.bbrSaneringsRisiko,
+        lovgrundlag: "Affaldsbekendtgørelsen §57",
+        myndighed: "Kommunen (byggesag)",
+      },
+    });
+  }
+
+  // ARCH-246: BBR afløb — nedsivning/samletank kræver forsyningsafklaring
+  // Kode 4=nedsivning, 5=bundfælldningstank, 6=samletank, 7=ingen afledning
+  const AFLOEB_KODER_MED_AFKLARING = new Set(["4", "5", "6", "7"]);
+  if (
+    t.bbrAfloebsforholdKode !== null &&
+    AFLOEB_KODER_MED_AFKLARING.has(t.bbrAfloebsforholdKode)
+  ) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,
+      title: "Kloak- og afløbsforhold skal afklares",
+      description:
+        `BBR registrerer ikke offentlig kloak (afløbstype: kode ${t.bbrAfloebsforholdKode}). ` +
+        "Nedsivning, samletank eller manglende afledning skal afklares med kommunen/forsyningen " +
+        "inden projektet budgetteres og myndighedsbehandles.",
+      phase: "maskinrummet",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "bbr_afloebsforhold_kode",
+      metadata: {
+        afloebsforhold_kode: t.bbrAfloebsforholdKode,
+        kilde: "BBR byg031Afloebsforhold",
+        myndighed: "Kommune/Forsyning",
+      },
     });
   }
 
