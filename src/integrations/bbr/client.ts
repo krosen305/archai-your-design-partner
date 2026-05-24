@@ -268,10 +268,12 @@ export class BbrService {
         canonicalBuilding.byg038SamletBygningsareal ??
         null;
 
-      // 3. Bebyggelsesprocent (kræver grundareal fra MAT/DAR-laget)
+      // 3. Bebyggelsesprocent = samlet etageareal × 100 / grundareal
+      // byg038/byg039 (total etageareal) — IKKE byg041 (grundplan-footprint).
+      // Kommuneplanrammer angiver grænsen som etageareal, ikke grundplan.
       let bebyggelsesprocent: number | null = null;
-      if (bebygget_areal && grundareal && grundareal > 0) {
-        bebyggelsesprocent = Math.round((bebygget_areal / grundareal) * 1000) / 10;
+      if (samlet_areal && grundareal && grundareal > 0) {
+        bebyggelsesprocent = Math.round((samlet_areal / grundareal) * 1000) / 10;
       }
 
       const anv_kode: string | null = canonicalBuilding.byg021BygningensAnvendelse ?? null;

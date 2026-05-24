@@ -99,23 +99,23 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     expect(body.query).toContain("registreringstid");
   });
 
-  it("beregner bebyggelsesprocent: 120m² / 1000m² = 12.0%", async () => {
+  it("beregner bebyggelsesprocent: byg038=185m² / 1000m² = 18.5% (samlet etageareal, ikke footprint)", async () => {
     mockFetch([okResponse([MOCK_BYGNING])]);
 
     const result = await BbrService.getKompliantData("test-id", GRUNDAREAL, MOCK_CONFIG);
 
-    expect(result.bebygget_areal).toBe(120);
+    expect(result.bebygget_areal).toBe(120);   // footprint uændret
     expect(result.grundareal).toBe(1000);
-    expect(result.bebyggelsesprocent).toBe(12.0);
+    expect(result.bebyggelsesprocent).toBe(18.5); // byg038=185 / 1000 × 100
     expect(result.beregning_mulig).toBe(true);
     expect(result.fejl).toBeNull();
   });
 
-  it("beregner bebyggelsesprocent: 220m² / 1000m² = 22.0%", async () => {
-    mockFetch([okResponse([{ ...MOCK_BYGNING, byg041BebyggetAreal: 220 }])]);
+  it("beregner bebyggelsesprocent: byg038=300m² / 1000m² = 30.0%", async () => {
+    mockFetch([okResponse([{ ...MOCK_BYGNING, byg038SamletBygningsareal: 300 }])]);
 
     const result = await BbrService.getKompliantData("test-id", GRUNDAREAL, MOCK_CONFIG);
-    expect(result.bebyggelsesprocent).toBe(22.0);
+    expect(result.bebyggelsesprocent).toBe(30.0);
   });
 
   it("oversætter anvendelseskode 120 til tekst", async () => {
