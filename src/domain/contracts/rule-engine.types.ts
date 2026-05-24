@@ -101,6 +101,10 @@ export type RuleEngineGeusRiskData = {
   radonRisk: "low" | "medium" | "high" | "unknown";
   groundwaterDepthM: number | null;
   groundwaterDataSource: string | null;
+  groundwaterDepthWinterM: number | null;
+  groundwaterDepthSummerM: number | null;
+  groundwaterModelUncertaintyM: number | null;
+  geoteknikJordart: string | null;
   kilde: "geus" | "mock";
 };
 
@@ -123,6 +127,8 @@ export type RuleEngineTerrainData = {
   maxElevationM: number;
   avgElevationM: number;
   slopePercent: number;
+  lowPointM: number;
+  bluespotRisk: boolean | null;
   northOrientation: "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW";
   kotepunkter: Array<{ x: number; y: number; z: number }>;
   kilde: "dhm" | "mock";

@@ -527,9 +527,14 @@ export type Database = {
       site_constraints: {
         Row: {
           address_id: string;
+          bluespot_risk: boolean | null;
           confidence: string;
           extracted_at: string;
           fredskov: boolean;
+          geoteknik_jordart: string | null;
+          grundvand_depth_summer_m: number | null;
+          grundvand_depth_winter_m: number | null;
+          grundvand_model_uncertainty_m: number | null;
           id: string;
           is_fredet: boolean | null;
           jordforurening_lokalitet_id: string | null;
@@ -548,13 +553,20 @@ export type Database = {
           source_kommuneplan_id: string | null;
           source_lokalplan_id: string | null;
           strandbeskyttelse: boolean;
+          terrain_low_point_m: number | null;
+          terrain_slope_pct: number | null;
           updated_at: string;
         };
         Insert: {
           address_id: string;
+          bluespot_risk?: boolean | null;
           confidence?: string;
           extracted_at?: string;
           fredskov?: boolean;
+          geoteknik_jordart?: string | null;
+          grundvand_depth_summer_m?: number | null;
+          grundvand_depth_winter_m?: number | null;
+          grundvand_model_uncertainty_m?: number | null;
           id?: string;
           is_fredet?: boolean | null;
           jordforurening_lokalitet_id?: string | null;
@@ -573,13 +585,20 @@ export type Database = {
           source_kommuneplan_id?: string | null;
           source_lokalplan_id?: string | null;
           strandbeskyttelse?: boolean;
+          terrain_low_point_m?: number | null;
+          terrain_slope_pct?: number | null;
           updated_at?: string;
         };
         Update: {
           address_id?: string;
+          bluespot_risk?: boolean | null;
           confidence?: string;
           extracted_at?: string;
           fredskov?: boolean;
+          geoteknik_jordart?: string | null;
+          grundvand_depth_summer_m?: number | null;
+          grundvand_depth_winter_m?: number | null;
+          grundvand_model_uncertainty_m?: number | null;
           id?: string;
           is_fredet?: boolean | null;
           jordforurening_lokalitet_id?: string | null;
@@ -598,6 +617,8 @@ export type Database = {
           source_kommuneplan_id?: string | null;
           source_lokalplan_id?: string | null;
           strandbeskyttelse?: boolean;
+          terrain_low_point_m?: number | null;
+          terrain_slope_pct?: number | null;
           updated_at?: string;
         };
         Relationships: [

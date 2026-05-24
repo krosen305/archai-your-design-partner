@@ -1,45 +1,24 @@
-﻿// SERVER-SIDE ONLY — never import from browser code.
-//
-// GEUS (Danmarks og Grønlands Geologiske Undersøgelse) — geoteknisk risikoprofil.
-// Dækker radonrisiko og grundvandsdybde — ARCH-101.
-//
-// ⚠️  IS_MOCK=true — live endpoints kræver layer-verificering mod GetCapabilities.
-//
-// API: GEUS OGC tjenester (geologi.dk / data.geus.dk)
-//   Endpoint:    https://data.geus.dk/geusmap/ows/4258.jsp
-//   Auth:        Ingen (åbne tjenester)
-//   Radon:       WMS GetFeatureInfo, lag: "radon_risiko" (verificér navn)
-//   Grundvand:   WFS GetFeature, typeName: "jupiter_boring" (verificér navn)
-//   CRS:         EPSG:4326 (WGS84 lat/lng)
-//
-// Aktiver live API: sæt IS_MOCK = false og verificér layer-navne mod GetCapabilities.
-
+import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
+import type { SourceResult } from "@/lib/source-result";
 import { logServerEvent } from "@/lib/server-logger";
 
 const IS_MOCK = true;
-
 const GEUS_OWS = "https://data.geus.dk/geusmap/ows/4258.jsp";
 const GROUNDWATER_RADIUS_M = 500;
 
-// ---------------------------------------------------------------------------
-// Output type
-// ---------------------------------------------------------------------------
+type Koordinat = { lat: number; lng: number };
 
 export type GeusRiskData = {
   radonRisk: "low" | "medium" | "high" | "unknown";
   groundwaterDepthM: number | null;
-  groundwaterDataSource: string | null; // nærmeste boring-ID
+  groundwaterDataSource: string | null;
+  groundwaterDepthWinterM: number | null;
+  groundwaterDepthSummerM: number | null;
+  groundwaterModelUncertaintyM: number | null;
+  geoteknikJordart: string | null;
   kilde: "geus" | "mock";
 };
 
-// ---------------------------------------------------------------------------
-// Live API helpers
-// ---------------------------------------------------------------------------
-
-type Koordinat = { lat: number; lng: number };
-
-// WMS GetFeatureInfo — returnerer radonklasse for et punkt.
-// Bygger en ±0.001° bounding box (~100m) og spørger centerpixel.
 async function fetchRadonRisk(
   koordinat: Koordinat,
 ): Promise<"low" | "medium" | "high" | "unknown"> {
@@ -64,7 +43,7 @@ async function fetchRadonRisk(
   const data = (await res.json()) as { features?: { properties?: { radon_klasse?: string } }[] };
   const klasse = data.features?.[0]?.properties?.radon_klasse?.toLowerCase() ?? "";
 
-  if (klasse.includes("høj") || klasse.includes("high")) return "high";
+  if (klasse.includes("hoj") || klasse.includes("høj") || klasse.includes("high")) return "high";
   if (klasse.includes("middel") || klasse.includes("medium")) return "medium";
   if (klasse.includes("lav") || klasse.includes("low")) return "low";
   return "unknown";
@@ -77,14 +56,15 @@ type WfsBoringResponse = {
       boringnr?: string;
       grundvand_kote?: number | null;
       terrænkote?: number | null;
+      jordart?: string | null;
+      lithologi?: string | null;
     };
   }[];
 };
 
-// WFS DWITHIN — henter nærmeste boring inden for GROUNDWATER_RADIUS_M.
 async function fetchGroundwater(
   koordinat: Koordinat,
-): Promise<{ depthM: number | null; boringId: string | null }> {
+): Promise<{ depthM: number | null; boringId: string | null; jordart: string | null }> {
   const { lat, lng } = koordinat;
   const filter = encodeURIComponent(
     `DWITHIN(geometri,POINT(${lng} ${lat}),${GROUNDWATER_RADIUS_M},meters)`,
@@ -103,64 +83,82 @@ async function fetchGroundwater(
 
   const data = (await res.json()) as WfsBoringResponse;
   const boring = data.features?.[0];
-  if (!boring) return { depthM: null, boringId: null };
+  if (!boring) return { depthM: null, boringId: null, jordart: null };
 
-  const terræn = boring.properties?.terrænkote ?? null;
+  const terraen = boring.properties?.terrænkote ?? null;
   const vandkote = boring.properties?.grundvand_kote ?? null;
-  const depthM = terræn !== null && vandkote !== null ? terræn - vandkote : null;
+  const depthM = terraen !== null && vandkote !== null ? terraen - vandkote : null;
 
   return {
     depthM: depthM !== null ? Math.round(depthM * 10) / 10 : null,
     boringId: boring.properties?.boringnr ?? boring.id ?? null,
+    jordart: boring.properties?.jordart ?? boring.properties?.lithologi ?? null,
   };
 }
 
-// ---------------------------------------------------------------------------
-// GeusService
-// ---------------------------------------------------------------------------
-
 export const GeusService = {
-  async getRiskData(lat: number, lng: number): Promise<GeusRiskData> {
+  async getRiskData(lat: number, lng: number): Promise<SourceResult<GeusRiskData>> {
     if (IS_MOCK) {
-      // Realistisk mock for nordsjællandsk parcelhuskvarter (Hasselvej 48, Virum)
-      return {
-        radonRisk: "medium",
-        groundwaterDepthM: 3.8,
-        groundwaterDataSource: "DGU-boring 199.3042",
-        kilde: "mock",
-      };
+      return makeMockResult(
+        {
+          radonRisk: "medium",
+          groundwaterDepthM: 3.8,
+          groundwaterDataSource: "DGU-boring 199.3042",
+          groundwaterDepthWinterM: 3.4,
+          groundwaterDepthSummerM: 3.8,
+          groundwaterModelUncertaintyM: 0.6,
+          geoteknikJordart: "Moræneler",
+          kilde: "mock",
+        },
+        { kilde: "geus", sourceUrl: GEUS_OWS, rawFeatureCount: 1, confidence: "estimated" },
+      );
     }
 
     const koordinat = { lat, lng };
 
-    const [radonRisk, groundwater] = await Promise.all([
-      fetchRadonRisk(koordinat).catch((e: Error) => {
-        logServerEvent({
-          module: "geus/client",
-          operation: "fetchRadonRisk",
-          severity: "degraded",
-          message: "Radon WMS fejlede",
-          error: e,
-        });
-        return "unknown" as const;
-      }),
-      fetchGroundwater(koordinat).catch((e: Error) => {
-        logServerEvent({
-          module: "geus/client",
-          operation: "fetchGroundwater",
-          severity: "degraded",
-          message: "Jupiter WFS fejlede",
-          error: e,
-        });
-        return { depthM: null, boringId: null };
-      }),
-    ]);
+    try {
+      const [radonRisk, groundwater] = await Promise.all([
+        fetchRadonRisk(koordinat).catch((error: Error) => {
+          logServerEvent({
+            module: "geus/client",
+            operation: "fetchRadonRisk",
+            severity: "degraded",
+            message: "Radon WMS fejlede",
+            error,
+          });
+          return "unknown" as const;
+        }),
+        fetchGroundwater(koordinat).catch((error: Error) => {
+          logServerEvent({
+            module: "geus/client",
+            operation: "fetchGroundwater",
+            severity: "degraded",
+            message: "Jupiter WFS fejlede",
+            error,
+          });
+          return { depthM: null, boringId: null, jordart: null };
+        }),
+      ]);
 
-    return {
-      radonRisk,
-      groundwaterDepthM: groundwater.depthM,
-      groundwaterDataSource: groundwater.boringId,
-      kilde: "geus",
-    };
+      return makeOkResult(
+        {
+          radonRisk,
+          groundwaterDepthM: groundwater.depthM,
+          groundwaterDataSource: groundwater.boringId,
+          groundwaterDepthWinterM: groundwater.depthM,
+          groundwaterDepthSummerM: groundwater.depthM,
+          groundwaterModelUncertaintyM: null,
+          geoteknikJordart: groundwater.jordart,
+          kilde: "geus",
+        },
+        {
+          kilde: "geus",
+          sourceUrl: GEUS_OWS,
+          rawFeatureCount: groundwater.boringId ? 1 : 0,
+        },
+      );
+    } catch (error) {
+      return makeErrorResult<GeusRiskData>(error, { kilde: "geus", sourceUrl: GEUS_OWS });
+    }
   },
 };

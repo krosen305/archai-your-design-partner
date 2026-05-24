@@ -287,6 +287,19 @@ export async function runGeoRiskStep(
               operation: "getRiskData",
             },
             () => GeusService.getRiskData(koordinater.lat, koordinater.lng),
+            {
+              outputSummary: (r) =>
+                summarizeSourceResult(
+                  r,
+                  (d) =>
+                    `radon=${d.radonRisk} gw_summer=${d.groundwaterDepthSummerM ?? "null"} jordart=${d.geoteknikJordart ?? "null"}`,
+                ),
+              metadata: (r) => ({
+                source: r.kilde,
+                isMock: r.isMock,
+                feature_count: r.rawFeatureCount,
+              }),
+            },
           ),
         )
         .catch((e: Error) => {
@@ -314,6 +327,19 @@ export async function runGeoRiskStep(
               operation: "getTerrainData",
             },
             () => DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng),
+            {
+              outputSummary: (r) =>
+                summarizeSourceResult(
+                  r,
+                  (d) =>
+                    `slope=${d.slopePercent} low=${d.lowPointM} bluespot=${d.bluespotRisk ?? "null"}`,
+                ),
+              metadata: (r) => ({
+                source: r.kilde,
+                isMock: r.isMock,
+                feature_count: r.rawFeatureCount,
+              }),
+            },
           );
         })
         .catch((e: Error) => {
@@ -411,8 +437,28 @@ export async function runGeoRiskStep(
     dkjord = jord?.data ?? null;
     states.dkjord =
       jord === null ? "error" : jord.isMock ? "mock" : jord.data != null ? "success" : "no_hit";
-    geusRisk = geus;
-    terrain = terr;
+    geusRisk = geus?.data ?? null;
+    states.geusRisk =
+      geus === null
+        ? "error"
+        : geus.status === "mock"
+          ? "mock"
+          : geus.status === "error"
+            ? "error"
+            : geus.data !== null
+              ? "success"
+              : "no_hit";
+    terrain = terr?.data ?? null;
+    states.terrain =
+      terr === null
+        ? "error"
+        : terr.status === "mock"
+          ? "mock"
+          : terr.status === "error"
+            ? "error"
+            : terr.data !== null
+              ? "success"
+              : "no_hit";
     naboer = nabo?.data ?? null;
     states.naboer =
       nabo == null
@@ -431,8 +477,6 @@ export async function runGeoRiskStep(
   states.fbb = fbbData ? "success" : "no_hit";
   states.naturbeskyttelse = naturbeskyttelse ? "success" : "no_hit";
   // geus and terrain are IS_MOCK=true services.
-  states.geusRisk = "mock";
-  states.terrain = "mock";
   // servitutter is IS_MOCK=true (TingbogenV2 — feature flag).
   states.servitutter = "mock";
   // fjernvarme is live.

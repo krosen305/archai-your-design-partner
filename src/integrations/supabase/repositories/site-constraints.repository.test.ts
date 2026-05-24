@@ -250,6 +250,48 @@ describe("deriveSiteConstraintsPatch", () => {
     expect(result!.jordforurening_lokalitet_id).toBe("lok-99");
   });
 
+  it("maps geus fields to typed groundwater columns", () => {
+    const patch: ProjectPatch = {
+      geusRisk: {
+        radonRisk: "medium",
+        groundwaterDepthM: 3.8,
+        groundwaterDataSource: "DGU-1",
+        groundwaterDepthWinterM: 3.2,
+        groundwaterDepthSummerM: 3.8,
+        groundwaterModelUncertaintyM: 0.5,
+        geoteknikJordart: "Moræneler",
+        kilde: "geus",
+      },
+    };
+    const result = deriveSiteConstraintsPatch("addr-1", patch, emptyUpdate);
+    expect(result).not.toBe(null);
+    expect(result!.grundvand_depth_winter_m).toBe(3.2);
+    expect(result!.grundvand_depth_summer_m).toBe(3.8);
+    expect(result!.grundvand_model_uncertainty_m).toBe(0.5);
+    expect(result!.geoteknik_jordart).toBe("Moræneler");
+  });
+
+  it("maps terrain fields to typed DHM columns", () => {
+    const patch: ProjectPatch = {
+      terrain: {
+        minElevationM: 18.4,
+        maxElevationM: 21.7,
+        avgElevationM: 20.1,
+        slopePercent: 4.2,
+        lowPointM: 18.4,
+        bluespotRisk: false,
+        northOrientation: "S",
+        kotepunkter: [],
+        kilde: "dhm",
+      },
+    };
+    const result = deriveSiteConstraintsPatch("addr-1", patch, emptyUpdate);
+    expect(result).not.toBe(null);
+    expect(result!.terrain_slope_pct).toBe(4.2);
+    expect(result!.terrain_low_point_m).toBe(18.4);
+    expect(result!.bluespot_risk).toBe(false);
+  });
+
   it("sets address_id and confidence on result", () => {
     const patch: ProjectPatch = { kommuneplanramme: null };
     const result = deriveSiteConstraintsPatch("my-addr", patch, emptyUpdate);

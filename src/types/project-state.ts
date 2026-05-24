@@ -161,7 +161,7 @@ export type BoligoenskeValidering = {
 };
 
 // ---------------------------------------------------------------------------
-// AdressePreCheckResultat — defined here to avoid circular deps with pre-check-adresse.ts
+// AdressePreCheckResultat — compliance flags from address analysis
 // ---------------------------------------------------------------------------
 
 export type AdressePreCheckResultat = {

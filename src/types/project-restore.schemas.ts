@@ -192,6 +192,10 @@ export const ruleEngineGeusRiskDataSchema = z
     radonRisk: z.enum(["low", "medium", "high", "unknown"]),
     groundwaterDepthM: z.number().nullable(),
     groundwaterDataSource: z.string().nullable(),
+    groundwaterDepthWinterM: z.number().nullable(),
+    groundwaterDepthSummerM: z.number().nullable(),
+    groundwaterModelUncertaintyM: z.number().nullable(),
+    geoteknikJordart: z.string().nullable(),
     kilde: z.enum(["geus", "mock"]),
   })
   .passthrough();
@@ -220,6 +224,8 @@ export const ruleEngineTerrainDataSchema = z
     maxElevationM: z.number(),
     avgElevationM: z.number(),
     slopePercent: z.number(),
+    lowPointM: z.number(),
+    bluespotRisk: z.boolean().nullable(),
     northOrientation: z.enum(["N", "NE", "E", "SE", "S", "SW", "W", "NW"]),
     kotepunkter: z.array(
       z

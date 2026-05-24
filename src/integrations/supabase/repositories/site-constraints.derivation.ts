@@ -2,6 +2,8 @@
 // Importable in tests without live DB or Supabase credentials.
 
 import type { Database } from "@/integrations/supabase/types";
+import type { GeusRiskData } from "@/integrations/geus/client";
+import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { ProjectPatch } from "@/integrations/supabase/project-persistence";
 import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
@@ -17,6 +19,20 @@ export function deriveSoilContaminationStatus(
   if (dkjord.v2Kortlagt === true) return "contaminated";
   if (dkjord.v1Kortlagt === true) return "registered";
   return "clean";
+}
+
+export function deriveGroundwaterDepthForColumn(
+  geusRisk: GeusRiskData | null | undefined,
+  season: "winter" | "summer",
+): number | null {
+  if (!geusRisk) return null;
+  if (season === "winter") return geusRisk.groundwaterDepthWinterM ?? geusRisk.groundwaterDepthM;
+  return geusRisk.groundwaterDepthSummerM ?? geusRisk.groundwaterDepthM;
+}
+
+export function deriveTerrainLowPoint(terrain: TerrainData | null | undefined): number | null {
+  if (!terrain) return null;
+  return terrain.lowPointM ?? terrain.minElevationM;
 }
 
 export function deriveSiteConstraintsPatch(
@@ -73,6 +89,21 @@ export function deriveSiteConstraintsPatch(
     sitePatch.omraadeklassificering = patch.dkjord?.omraadeklassificering ?? null;
     sitePatch.jordforurening_nuancering = patch.dkjord?.nuancering ?? null;
     sitePatch.jordforurening_lokalitet_id = patch.dkjord?.lokalitetsId ?? null;
+  }
+
+  if (patch.geusRisk !== undefined) {
+    hasConstraintField = true;
+    sitePatch.grundvand_depth_winter_m = deriveGroundwaterDepthForColumn(patch.geusRisk, "winter");
+    sitePatch.grundvand_depth_summer_m = deriveGroundwaterDepthForColumn(patch.geusRisk, "summer");
+    sitePatch.grundvand_model_uncertainty_m = patch.geusRisk?.groundwaterModelUncertaintyM ?? null;
+    sitePatch.geoteknik_jordart = patch.geusRisk?.geoteknikJordart ?? null;
+  }
+
+  if (patch.terrain !== undefined) {
+    hasConstraintField = true;
+    sitePatch.terrain_slope_pct = patch.terrain?.slopePercent ?? null;
+    sitePatch.terrain_low_point_m = deriveTerrainLowPoint(patch.terrain);
+    sitePatch.bluespot_risk = patch.terrain?.bluespotRisk ?? null;
   }
 
   return hasConstraintField ? sitePatch : null;

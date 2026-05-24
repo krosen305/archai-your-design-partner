@@ -24,7 +24,7 @@ mock.module("@/integrations/supabase/client.server", () => ({
 }));
 
 // Must import AFTER mocking the module
-import { resolveHardStop } from "@/lib/ai-design.functions";
+import { resolveHardStop } from "@/lib/ai-design-hard-stop.server";
 
 // ---------------------------------------------------------------------------
 // Helpers
