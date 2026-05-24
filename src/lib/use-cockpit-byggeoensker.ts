@@ -76,18 +76,16 @@ export function useCockpitByggeoensker(reactiveContext: ReactiveContext): {
     }
 
     // Beregn boligoenske-validering (etager + areal) mod plangrænser
-    const k = state.adressePreCheck?.kontekst;
     const merged = { ...state.byggeoenske, ...partial };
     const valgtEtager = typeof merged.antalEtager === "number" ? merged.antalEtager : null;
     const valgtAreal = typeof merged.oensketAreal === "number" ? merged.oensketAreal : null;
     const eksAreal = state.bbrData?.bebygget_areal ?? 0;
-    const grundareal = k?.grundareal ?? state.complianceMetrics?.grundareal ?? null;
+    const grundareal = state.complianceMetrics?.grundareal ?? null;
     const samletAreal =
       merged.byggetype === "tilbyg" ? eksAreal + (valgtAreal ?? 0) : (valgtAreal ?? eksAreal);
     const beregnetPct = grundareal && grundareal > 0 ? (samletAreal / grundareal) * 100 : null;
-    const maxPct =
-      k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
-    const maxEtager = k?.maxEtager ?? state.complianceMetrics?.maxEtager ?? null;
+    const maxPct = state.complianceMetrics?.maxBebyggelsesprocent ?? null;
+    const maxEtager = state.complianceMetrics?.maxEtager ?? null;
     const etagerStatus: "ok" | "dispensation" | "ingen_data" =
       valgtEtager == null || maxEtager == null
         ? "ingen_data"

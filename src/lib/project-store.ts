@@ -21,7 +21,6 @@ import type {
   DataSourceStatus,
   DataSourceKind,
   PipelineServiceState,
-  AdressePreCheckResultat,
 } from "@/types/project-state";
 export type {
   Address,
@@ -36,7 +35,6 @@ export type {
   DataSourceStatus,
   DataSourceKind,
   PipelineServiceState,
-  AdressePreCheckResultat,
 } from "@/types/project-state";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 export type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -65,9 +63,6 @@ type State = {
   lokalplanExtract: LokalplanExtract | null;
   kommuneplanramme: RuleEngineKommuneplanramme | null;
   vurderingData: VurData | null;
-
-  // ARCH-121: tidlig compliance-gate
-  adressePreCheck: AdressePreCheckResultat | null;
 
   // ARCH-124: inline validering mod plangrænser i boligoensker-flow
   boligoenskeValidering: BoligoenskeValidering | null;
@@ -124,7 +119,6 @@ type State = {
   setLokalplanExtract: (extract: LokalplanExtract | null) => void;
   setKommuneplanramme: (ramme: RuleEngineKommuneplanramme | null) => void;
   setVurderingData: (v: VurData | null) => void;
-  setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
   setBoligoenskeValidering: (v: BoligoenskeValidering | null) => void;
   setCurrentProjectId: (id: string | null) => void;
 
@@ -191,7 +185,6 @@ export const useProject = create<State>((set) => ({
   lokalplanExtract: null,
   kommuneplanramme: null,
   vurderingData: null,
-  adressePreCheck: null,
   boligoenskeValidering: null,
   currentProjectId: null,
 
@@ -226,7 +219,6 @@ export const useProject = create<State>((set) => ({
   setLokalplanExtract: (lokalplanExtract) => set({ lokalplanExtract }),
   setKommuneplanramme: (kommuneplanramme) => set({ kommuneplanramme }),
   setVurderingData: (vurderingData) => set({ vurderingData }),
-  setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
   setBoligoenskeValidering: (boligoenskeValidering) => set({ boligoenskeValidering }),
   setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
 
@@ -263,7 +255,6 @@ export const useProject = create<State>((set) => ({
       lokalplanExtract: null,
       kommuneplanramme: null,
       vurderingData: null,
-      adressePreCheck: null,
       boligoenskeValidering: null,
       currentProjectId: null,
       _lastHusDnaInput: null,

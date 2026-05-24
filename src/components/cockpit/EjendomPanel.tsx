@@ -29,7 +29,6 @@ export function EjendomPanel() {
     vurderingData,
     complianceFlags,
     address,
-    adressePreCheck,
     heritage_save_value,
     grundareal_m2,
     bebygget_areal_m2,
@@ -40,25 +39,22 @@ export function EjendomPanel() {
   const [showFlags, setShowFlags] = useState(false);
   const [showDatakilder, setShowDatakilder] = useState(false);
 
-  // adressePreCheck bruges som fallback når compliance-pipeline ikke er kørt endnu
-  const k = adressePreCheck?.kontekst;
-  const bbr = bbrData ?? adressePreCheck?.bbr ?? null;
+  const bbr = bbrData;
 
   const grundareal =
-    grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? k?.grundareal ?? null;
+    grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? null;
   const bebyggetAreal = bebygget_areal_m2 ?? bbr?.bebygget_areal ?? null;
-  const remaining = complianceMetrics?.remainingBygningsareal ?? k?.restBygningsareal ?? null;
+  const remaining = complianceMetrics?.remainingBygningsareal ?? null;
   const maxBygningsareal = complianceMetrics?.maxBygningsareal ?? null;
   const currentPct =
     complianceMetrics?.currentBebyggelsesprocent ??
     (grundareal && bebyggetAreal ? Math.round((bebyggetAreal / grundareal) * 1000) / 10 : null) ??
     bbrData?.bebyggelsesprocent ??
-    k?.bebyggelsesprocent ??
     null;
-  const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? k?.maxBebyggelsesprocent ?? null;
-  const currentEtager = complianceMetrics?.currentEtager ?? k?.antalEtager ?? null;
-  const maxEtager = complianceMetrics?.maxEtager ?? k?.maxEtager ?? null;
-  const maxHoejde = complianceMetrics?.maxBygningshoejde ?? k?.maxBygningshoejde ?? null;
+  const maxPct = complianceMetrics?.maxBebyggelsesprocent ?? null;
+  const currentEtager = complianceMetrics?.currentEtager ?? null;
+  const maxEtager = complianceMetrics?.maxEtager ?? null;
+  const maxHoejde = complianceMetrics?.maxBygningshoejde ?? null;
 
   const blockers = complianceFlags.filter((f) => f.status === "blocker");
 

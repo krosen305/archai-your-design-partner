@@ -218,13 +218,13 @@ function StepExtras({
   onOpenDispensation: (t: "etager" | "areal") => void;
   onClearField: () => void;
 }) {
-  const { adressePreCheck, complianceFlags, boligoenskeValidering } = useProject();
+  const { complianceFlags, boligoenskeValidering } = useProject();
 
   const vm = buildStepConstraintViewModel(
     stepKey,
     value,
     boligoenskeValidering,
-    adressePreCheck,
+    null,
     complianceFlags,
   );
 
@@ -313,20 +313,19 @@ function DispensationModal({
   onAcknowledge: (type: "etager" | "areal") => void;
   onClose: () => void;
 }) {
-  const { boligoenskeValidering, adressePreCheck, byggeoenske } = useProject();
-  const k = adressePreCheck?.kontekst;
+  const { boligoenskeValidering, byggeoenske } = useProject();
   const open = type !== null;
 
   let kontekstTekst = "";
   let graense = "";
   if (type === "etager") {
     kontekstTekst = `${byggeoenske.antalEtager ?? "—"} etager`;
-    graense = `${k?.maxEtager ?? "—"} etager`;
+    graense = `${"—"} etager`;
   } else if (type === "areal") {
     kontekstTekst = `${byggeoenske.oensketAreal ?? "—"} m² (${
       boligoenskeValidering?.beregnetBebyggelsespct?.toFixed(0) ?? "—"
     }%)`;
-    graense = `${k?.maxBebyggelsesprocent ?? "—"}% bebyggelse`;
+    graense = `${"—"}% bebyggelse`;
   }
 
   const handleAcknowledge = () => {
