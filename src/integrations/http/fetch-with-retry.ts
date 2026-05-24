@@ -20,7 +20,7 @@ export type FetchTraceOptions = {
 
 const DEFAULTS: RetryOptions = {
   timeoutMs: 10_000,
-  retries: 1,
+  retries: 2,
   retryDelayBaseMs: 500,
   retryOnStatuses: [429, 502, 503, 504],
 };

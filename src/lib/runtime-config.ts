@@ -26,6 +26,8 @@ export type RuntimeConfig = {
     byggeanalyseMock: boolean;
     fjernvarmeMock: boolean;
     billedanalyseMock: boolean;
+    geusMock: boolean;
+    dhmMock: boolean;
   };
 };
 
@@ -79,6 +81,8 @@ export function buildRuntimeConfig(
       byggeanalyseMock: parseBooleanEnv(readEnv("FEATURE_BYGGEANALYSE_MOCK"), false),
       fjernvarmeMock: parseBooleanEnv(readEnv("FEATURE_FJERNVARME_MOCK"), false),
       billedanalyseMock: parseBooleanEnv(readEnv("FEATURE_BILLEDANALYSE_MOCK"), false),
+      geusMock: parseBooleanEnv(readEnv("FEATURE_GEUS_MOCK"), true),
+      dhmMock: parseBooleanEnv(readEnv("FEATURE_DHM_MOCK"), true),
     },
   };
 }

@@ -46,7 +46,7 @@ export async function datafordelerGraphqlFetch<T>(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, variables }),
     },
-    { timeoutMs: options?.timeoutMs ?? 20_000 },
+    { timeoutMs: options?.timeoutMs ?? 12_000 },
     {
       trace: options?.trace ?? null,
       service,

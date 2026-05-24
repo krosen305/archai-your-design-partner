@@ -27,6 +27,8 @@ describe("buildRuntimeConfig", () => {
     );
     expect(config.featureFlags.tinglysningMock).toBe(true);
     expect(config.featureFlags.pdfExtractorMock).toBe(false);
+    expect(config.featureFlags.geusMock).toBe(true);
+    expect(config.featureFlags.dhmMock).toBe(true);
   });
 
   it("uses env overrides and parses booleans and limits", () => {
@@ -47,6 +49,8 @@ describe("buildRuntimeConfig", () => {
       FEATURE_BYGGEANALYSE_MOCK: "1",
       FEATURE_FJERNVARME_MOCK: "on",
       FEATURE_BILLEDANALYSE_MOCK: "0",
+      FEATURE_GEUS_MOCK: "false",
+      FEATURE_DHM_MOCK: "false",
     };
     let reads = 0;
 
@@ -71,6 +75,8 @@ describe("buildRuntimeConfig", () => {
     expect(config.featureFlags.byggeanalyseMock).toBe(true);
     expect(config.featureFlags.fjernvarmeMock).toBe(true);
     expect(config.featureFlags.billedanalyseMock).toBe(false);
-    expect(reads).toBe(16);
+    expect(config.featureFlags.geusMock).toBe(false);
+    expect(config.featureFlags.dhmMock).toBe(false);
+    expect(reads).toBe(18);
   });
 });
