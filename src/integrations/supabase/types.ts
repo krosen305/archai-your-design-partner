@@ -572,6 +572,10 @@ export type Database = {
           zone_type: string | null;
           fortidsminde: boolean | null;
           fortidsminde_buffer: boolean | null;
+          bbr_vandforsyning_kode: string | null;
+          bbr_afloebsforhold_kode: string | null;
+          bbr_ombygningsaar: number | null;
+          bbr_sanerings_risiko: string | null;
         };
         Insert: {
           address_id: string;
@@ -620,6 +624,10 @@ export type Database = {
           zone_type?: string | null;
           fortidsminde?: boolean | null;
           fortidsminde_buffer?: boolean | null;
+          bbr_vandforsyning_kode?: string | null;
+          bbr_afloebsforhold_kode?: string | null;
+          bbr_ombygningsaar?: number | null;
+          bbr_sanerings_risiko?: string | null;
         };
         Update: {
           address_id?: string;
@@ -668,6 +676,10 @@ export type Database = {
           zone_type?: string | null;
           fortidsminde?: boolean | null;
           fortidsminde_buffer?: boolean | null;
+          bbr_vandforsyning_kode?: string | null;
+          bbr_afloebsforhold_kode?: string | null;
+          bbr_ombygningsaar?: number | null;
+          bbr_sanerings_risiko?: string | null;
         };
         Relationships: [
           {
