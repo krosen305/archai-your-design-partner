@@ -186,8 +186,7 @@ export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,
       title: "Kloak- og nedsivningsforhold skal afklares",
-      description:
-        `Plandata viser spildevandsforhold${t.sewerAreaType ? ` (${t.sewerAreaType})` : ""}. Kloakopland, nedsivning eller udtræden skal afklares med kommune/forsyning før projektets teknik og budget låses.`,
+      description: `Plandata viser spildevandsforhold${t.sewerAreaType ? ` (${t.sewerAreaType})` : ""}. Kloakopland, nedsivning eller udtræden skal afklares med kommune/forsyning før projektets teknik og budget låses.`,
       phase: "maskinrummet",
       status: "pending",
       priority: 2,
@@ -412,10 +411,7 @@ export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
   // ARCH-246: BBR afløb — nedsivning/samletank kræver forsyningsafklaring
   // Kode 4=nedsivning, 5=bundfælldningstank, 6=samletank, 7=ingen afledning
   const AFLOEB_KODER_MED_AFKLARING = new Set(["4", "5", "6", "7"]);
-  if (
-    t.bbrAfloebsforholdKode !== null &&
-    AFLOEB_KODER_MED_AFKLARING.has(t.bbrAfloebsforholdKode)
-  ) {
+  if (t.bbrAfloebsforholdKode !== null && AFLOEB_KODER_MED_AFKLARING.has(t.bbrAfloebsforholdKode)) {
     tasks.push({
       project_id: t.projectId,
       task_key: BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,

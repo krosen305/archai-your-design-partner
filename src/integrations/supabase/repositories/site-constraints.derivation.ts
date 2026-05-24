@@ -68,7 +68,8 @@ export function deriveSiteConstraintsPatch(
     sitePatch.zone_type = patch.plandataContext?.zoneType ?? null;
     sitePatch.future_zone_type = patch.plandataContext?.futureZoneType ?? null;
     sitePatch.landzone_permit_required = patch.plandataContext?.landzonePermitRequired ?? null;
-    sitePatch.lokalplan_byggefelt_present = patch.plandataContext?.lokalplanByggefeltPresent ?? null;
+    sitePatch.lokalplan_byggefelt_present =
+      patch.plandataContext?.lokalplanByggefeltPresent ?? null;
     sitePatch.within_building_field = patch.plandataContext?.withinBuildingField ?? null;
     sitePatch.building_field_source_id = patch.plandataContext?.buildingFieldSourceId ?? null;
     sitePatch.wastewater_plan_status = patch.plandataContext?.wastewaterPlanStatus ?? null;

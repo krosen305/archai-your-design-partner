@@ -137,13 +137,13 @@ export type BbrKompliantData = {
   aggregated_bebygget_areal_all_primary: number | null;
   bygning_samlet_boligareal: number | null; // byg039BygningensSamledeBoligAreal from canonical
   // ARCH-246: Due-diligence felter
-  ombygningsaar: number | null;           // byg027 — nu eksponeret i output
-  vandforsyning_kode: string | null;      // byg030 raw kode
-  vandforsyning: string | null;           // byg030 label
-  afloebsforhold_kode: string | null;     // byg031 raw kode
-  afloebsforhold: string | null;          // byg031 label
+  ombygningsaar: number | null; // byg027 — nu eksponeret i output
+  vandforsyning_kode: string | null; // byg030 raw kode
+  vandforsyning: string | null; // byg030 label
+  afloebsforhold_kode: string | null; // byg031 raw kode
+  afloebsforhold: string | null; // byg031 label
   ydervaegs_materiale_kode: string | null; // byg032 raw kode (bruges i saneringsrisiko)
-  tagdaekning_kode: string | null;         // byg033 raw kode (bruges i saneringsrisiko)
+  tagdaekning_kode: string | null; // byg033 raw kode (bruges i saneringsrisiko)
 };
 
 // ---------------------------------------------------------------------------
