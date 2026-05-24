@@ -586,7 +586,8 @@ describe("Regression: Ejerlejlighed — EBR adresse-BFE og GrundarealResolver (A
     globalThis.fetch = mock(async (_url: unknown, init?: unknown) => {
       const body = JSON.parse(String((init as RequestInit)?.body ?? "{}"));
       expect(body.query).toContain("adresseLokalId");
-      expect(body.variables.registreringstid).toBeDefined();
+      // EBR v2 er ikke bitemporal — ingen virkningstid/registreringstid
+      expect(body.variables.virkningstid).toBeUndefined();
       return {
         ok: true,
         status: 200,

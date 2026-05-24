@@ -2,6 +2,12 @@ import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 mock.module("@/lib/feature-flags", () => ({
   FEATURE_FLAGS: {
+    tinglysningMock: true,
+    pdfExtractorMock: false,
+    husDnaMock: false,
+    byggeanalyseMock: false,
+    fjernvarmeMock: false,
+    billedanalyseMock: false,
     geusMock: false,
     dhmMock: true,
   },
