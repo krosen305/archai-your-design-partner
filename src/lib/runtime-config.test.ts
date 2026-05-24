@@ -23,7 +23,7 @@ describe("buildRuntimeConfig", () => {
       "https://graphql.datafordeler.dk/EBR/v1",
     );
     expect(config.integrations.datafordeler.vurEndpoint).toBe(
-      "https://graphql.datafordeler.dk/VUR/v1",
+      "https://graphql.datafordeler.dk/VUR/v2",
     );
     expect(config.featureFlags.tinglysningMock).toBe(true);
     expect(config.featureFlags.pdfExtractorMock).toBe(false);
