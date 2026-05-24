@@ -57,7 +57,7 @@ export function buildRuntimeConfig(
       dataforsyningenToken: readEnv("DATAFORSYNINGEN_TOKEN") ?? "",
       datafordeler: {
         darEndpoint:
-          readEnv("DATAFORDELER_DAR_ENDPOINT") ?? "https://graphql.datafordeler.dk/DAR/v1",
+          readEnv("DATAFORDELER_DAR_ENDPOINT") ?? "https://graphql.datafordeler.dk/DAR/v2",
         bbrEndpoint:
           readEnv("DATAFORDELER_BBR_ENDPOINT") ?? "https://graphql.datafordeler.dk/BBR/v2",
         matEndpoint:

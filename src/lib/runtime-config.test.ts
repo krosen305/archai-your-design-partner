@@ -11,7 +11,7 @@ describe("buildRuntimeConfig", () => {
     expect(config.integrations.gsearch.resultLimit).toBe(5);
     expect(config.integrations.dataforsyningenToken).toBe("");
     expect(config.integrations.datafordeler.darEndpoint).toBe(
-      "https://graphql.datafordeler.dk/DAR/v1",
+      "https://graphql.datafordeler.dk/DAR/v2",
     );
     expect(config.integrations.datafordeler.bbrEndpoint).toBe(
       "https://graphql.datafordeler.dk/BBR/v2",
