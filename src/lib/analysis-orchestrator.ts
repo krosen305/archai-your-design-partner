@@ -14,6 +14,7 @@
 import { validateEnv } from "@/lib/env";
 
 import type {
+  RuleEngineArealdataContext,
   RuleEngineBbrData,
   RuleEngineDkJordResultat,
   RuleEngineFbbResult,
@@ -66,6 +67,7 @@ export type ComplianceResult = {
   fjernvarme: FjernvarmeResultat | null;
   fbbData: RuleEngineFbbResult | null; // ARCH-131: SAVE-bevaringsværdi (1-9) + fredningsstatus fra FBB
   plandataContext: RuleEnginePlandataContext | null; // ARCH-244: zone, byggefelt og spildevandskontekst
+  arealdataContext: RuleEngineArealdataContext | null; // ARCH-245: natur-, kultur- og miljøoverlap
   matGeometri: MatParcelGeometryPayload | null; // ARCH-240: parcelpolygon + skel-metrics
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
@@ -235,6 +237,7 @@ async function analyseAddressWithTrace(
     fjernvarme: geoRisk.fjernvarme,
     fbbData: geoRisk.fbbData,
     plandataContext: geoRisk.plandataContext,
+    arealdataContext: geoRisk.arealdataContext,
     matGeometri: geoRisk.matGeometri,
     vurderingData: complianceBase.vurderingData,
     serviceStates,

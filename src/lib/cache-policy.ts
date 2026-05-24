@@ -18,6 +18,7 @@ const SOURCE_RESULT_TTL_OVERRIDES: Partial<Record<string, number>> = {
   dhm: 30,
   geodanmark_mat: 90,
   dai_extended: 30,
+  arealdata_ext: 30,
   plandata_ext: 14,
 };
 

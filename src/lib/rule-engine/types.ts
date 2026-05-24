@@ -146,6 +146,17 @@ export type RuleEngineInput = {
     sewerAreaType: string | null;
   } | null;
 
+  environmental?: {
+    paragraph3Nature: boolean | null;
+    natura2000: boolean | null;
+    protectedDige: boolean | null;
+    fortidsminde: boolean | null;
+    fortidsmindeBuffer: boolean | null;
+    bnbo: boolean | null;
+    osd: boolean | null;
+    rawMaterialArea: boolean | null;
+  } | null;
+
   /**
    * Præcis bygningsplacering fra korteditor (ARCH-179/180).
    * Når tilstede overskriver disse værdier de estimerede newBuilding-værdier.

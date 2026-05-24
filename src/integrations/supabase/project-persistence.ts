@@ -17,6 +17,7 @@ import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
 import type { VurData } from "@/integrations/vur/client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
+import type { ArealdataContextResult } from "@/integrations/arealdata/client";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
@@ -64,6 +65,7 @@ export type ProjectPatch = {
   lokalplaner?: Lokalplan[];
   kommuneplanramme?: Kommuneplanramme | null;
   plandataContext?: PlanContextResult | null;
+  arealdataContext?: ArealdataContextResult | null;
   byggeanalyseResultat?: ByggeanalyseResultat | null;
   vurderingData?: VurData | null;
   naturbeskyttelse?: NaturbeskyttelsesResultat | null;
@@ -273,6 +275,14 @@ export async function saveProject(
         withinBuildingField: patch.plandataContext?.withinBuildingField ?? null,
         wastewaterPlanStatus: patch.plandataContext?.wastewaterPlanStatus ?? null,
         sewerAreaType: patch.plandataContext?.sewerAreaType ?? null,
+        paragraph3Nature: patch.arealdataContext?.paragraph3Nature ?? null,
+        natura2000: patch.arealdataContext?.natura2000 ?? null,
+        protectedDige: patch.arealdataContext?.protectedDige ?? null,
+        fortidsminde: patch.arealdataContext?.fortidsminde ?? null,
+        fortidsmindeBuffer: patch.arealdataContext?.fortidsmindeBuffer ?? null,
+        bnbo: patch.arealdataContext?.bnbo ?? null,
+        osd: patch.arealdataContext?.osd ?? null,
+        rawMaterialArea: patch.arealdataContext?.rawMaterialArea ?? null,
         soilContamination,
         jordforureningV1: patch.dkjord?.v1Kortlagt ?? null,
         jordforureningV2: patch.dkjord?.v2Kortlagt ?? null,

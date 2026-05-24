@@ -46,6 +46,12 @@ export const BUILDING_TASK_KEYS = {
   SAVE_4_PARAGRAPH14: "save_4_paragraph14",
   LANDZONE_TILLADELSE: "landzone_tilladelse",
   BYGGEFELT_DISPENSATION: "byggefelt_dispensation",
+  PARAGRAF3_AFKLARING: "paragraf3_afklaring",
+  NATURA2000_AFKLARING: "natura2000_afklaring",
+  DIGE_BESKYTTELSE: "dige_beskyttelse",
+  FORTIDSMINDE_AFKLARING: "fortidsminde_afklaring",
+  BNBO_OSD_AFKLARING: "bnbo_osd_afklaring",
+  RAASTOF_AFKLARING: "raastof_afklaring",
   // Maskinrummet phase
   JORDFLYTNING_ATTEST: "jordflytning_attest", // NY: omraadeklassificering
   KLOAK_NEDSIVNING_AFKLARING: "kloak_nedsivning_afklaring",

@@ -80,6 +80,7 @@ export function computePartialUpdate(params: PartialUpdateParams): PartialUpdate
     fbbData,
     dkjord,
     plandataContext: null,
+    arealdataContext: null,
     byggeoenske,
     municipality,
     kommunekode,

@@ -275,6 +275,19 @@ export const ruleEnginePlandataContextSchema = z
   })
   .passthrough();
 
+export const ruleEngineArealdataContextSchema = z
+  .object({
+    paragraph3Nature: z.boolean().nullable(),
+    natura2000: z.boolean().nullable(),
+    protectedDige: z.boolean().nullable(),
+    fortidsminde: z.boolean().nullable(),
+    fortidsmindeBuffer: z.boolean().nullable(),
+    bnbo: z.boolean().nullable(),
+    osd: z.boolean().nullable(),
+    rawMaterialArea: z.boolean().nullable(),
+  })
+  .passthrough();
+
 const byggeanalyseItemSchema = z.object({
   emne: z.string(),
   begrundelse: z.string(),
@@ -414,6 +427,7 @@ export const restoredComplianceDataSchema = z
     lokalplaner: z.array(ruleEngineLokalplanSchema).optional().default([]),
     kommuneplanramme: ruleEngineKommuneplanrammeSchema.nullable().optional().default(null),
     plandataContext: ruleEnginePlandataContextSchema.nullable().optional().default(null),
+    arealdataContext: ruleEngineArealdataContextSchema.nullable().optional().default(null),
     byggeanalyseResultat: byggeanalyseResultatSchema.nullable().optional().default(null),
     vurderingData: vurDataSchema.nullable().optional().default(null),
   })

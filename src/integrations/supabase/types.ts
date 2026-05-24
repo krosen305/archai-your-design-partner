@@ -527,6 +527,7 @@ export type Database = {
       site_constraints: {
         Row: {
           address_id: string;
+          bnbo: boolean | null;
           bluespot_risk: boolean | null;
           building_field_source_id: string | null;
           confidence: string;
@@ -551,7 +552,12 @@ export type Database = {
           max_etager: number | null;
           max_height_m: number | null;
           min_distance_to_boundary_m: number | null;
+          natura2000: boolean | null;
           omraadeklassificering: string | null;
+          osd: boolean | null;
+          paragraph3_nature: boolean | null;
+          protected_dige: boolean | null;
+          raw_material_area: boolean | null;
           save_value: number | null;
           sewer_area_type: string | null;
           soil_contamination_status: string | null;
@@ -564,9 +570,12 @@ export type Database = {
           wastewater_plan_status: string | null;
           within_building_field: boolean | null;
           zone_type: string | null;
+          fortidsminde: boolean | null;
+          fortidsminde_buffer: boolean | null;
         };
         Insert: {
           address_id: string;
+          bnbo?: boolean | null;
           bluespot_risk?: boolean | null;
           building_field_source_id?: string | null;
           confidence?: string;
@@ -591,7 +600,12 @@ export type Database = {
           max_etager?: number | null;
           max_height_m?: number | null;
           min_distance_to_boundary_m?: number | null;
+          natura2000?: boolean | null;
           omraadeklassificering?: string | null;
+          osd?: boolean | null;
+          paragraph3_nature?: boolean | null;
+          protected_dige?: boolean | null;
+          raw_material_area?: boolean | null;
           save_value?: number | null;
           sewer_area_type?: string | null;
           soil_contamination_status?: string | null;
@@ -604,9 +618,12 @@ export type Database = {
           wastewater_plan_status?: string | null;
           within_building_field?: boolean | null;
           zone_type?: string | null;
+          fortidsminde?: boolean | null;
+          fortidsminde_buffer?: boolean | null;
         };
         Update: {
           address_id?: string;
+          bnbo?: boolean | null;
           bluespot_risk?: boolean | null;
           building_field_source_id?: string | null;
           confidence?: string;
@@ -631,7 +648,12 @@ export type Database = {
           max_etager?: number | null;
           max_height_m?: number | null;
           min_distance_to_boundary_m?: number | null;
+          natura2000?: boolean | null;
           omraadeklassificering?: string | null;
+          osd?: boolean | null;
+          paragraph3_nature?: boolean | null;
+          protected_dige?: boolean | null;
+          raw_material_area?: boolean | null;
           save_value?: number | null;
           sewer_area_type?: string | null;
           soil_contamination_status?: string | null;
@@ -644,6 +666,8 @@ export type Database = {
           wastewater_plan_status?: string | null;
           within_building_field?: boolean | null;
           zone_type?: string | null;
+          fortidsminde?: boolean | null;
+          fortidsminde_buffer?: boolean | null;
         };
         Relationships: [
           {

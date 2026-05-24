@@ -78,6 +78,18 @@ export function deriveSiteConstraintsPatch(
       patch.plandataContext?.sourceKommuneplanId ?? sitePatch.source_kommuneplan_id ?? null;
   }
 
+  if (patch.arealdataContext !== undefined) {
+    hasConstraintField = true;
+    sitePatch.paragraph3_nature = patch.arealdataContext?.paragraph3Nature ?? null;
+    sitePatch.natura2000 = patch.arealdataContext?.natura2000 ?? null;
+    sitePatch.protected_dige = patch.arealdataContext?.protectedDige ?? null;
+    sitePatch.fortidsminde = patch.arealdataContext?.fortidsminde ?? null;
+    sitePatch.fortidsminde_buffer = patch.arealdataContext?.fortidsmindeBuffer ?? null;
+    sitePatch.bnbo = patch.arealdataContext?.bnbo ?? null;
+    sitePatch.osd = patch.arealdataContext?.osd ?? null;
+    sitePatch.raw_material_area = patch.arealdataContext?.rawMaterialArea ?? null;
+  }
+
   if (patch.fbbData !== undefined) {
     hasConstraintField = true;
     const saveValue = patch.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;

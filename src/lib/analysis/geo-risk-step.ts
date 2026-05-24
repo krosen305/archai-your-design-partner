@@ -18,6 +18,7 @@ import type {
   NeighborBuildingData,
 } from "@/domain/contracts/analysis.types";
 import type {
+  RuleEngineArealdataContext,
   RuleEngineDkJordResultat,
   RuleEngineFbbResult,
   RuleEngineGeusRiskData,
@@ -27,6 +28,7 @@ import type {
 } from "@/domain/contracts/rule-engine.types";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 import {
+  ruleEngineArealdataContextSchema,
   ruleEngineGeusRiskDataSchema,
   ruleEnginePlandataContextSchema,
   ruleEngineTerrainDataSchema,
@@ -54,6 +56,7 @@ export type GeoRiskResult = {
   fjernvarme: FjernvarmeResultat | null;
   fbbData: RuleEngineFbbResult | null;
   plandataContext: RuleEnginePlandataContext | null;
+  arealdataContext: RuleEngineArealdataContext | null;
   matGeometri: MatParcelGeometryPayload | null;
   states: Partial<Record<DataSourceKind, PipelineServiceState>>;
 };
@@ -90,6 +93,7 @@ export async function runGeoRiskStep(
   let fjernvarme: FjernvarmeResultat | null = null;
   let fbbData: RuleEngineFbbResult | null = null;
   let plandataContext: RuleEnginePlandataContext | null = null;
+  let arealdataContext: RuleEngineArealdataContext | null = null;
   let matGeometri: MatParcelGeometryPayload | null = null;
 
   // ── Step 1: MAT geometry ─────────────────────────────────────────────────
@@ -210,6 +214,7 @@ export async function runGeoRiskStep(
 
     states.fbb = fbbData ? "success" : "no_hit";
     states.naturbeskyttelse = naturbeskyttelse ? "success" : "no_hit";
+    states.arealdata = "skipped";
     states.geusRisk = "skipped";
     states.terrain = "skipped";
     states.servitutter = "mock";
@@ -224,6 +229,7 @@ export async function runGeoRiskStep(
       fjernvarme,
       fbbData,
       plandataContext,
+      arealdataContext,
       matGeometri,
       states,
     };
@@ -231,7 +237,7 @@ export async function runGeoRiskStep(
 
   // ── Step 4: Full parallel block ─────────────────────────────────────────
   if (koordinater) {
-    const [natur, jord, geus, terr, nabo, varme, plandataExt] = await Promise.all([
+    const [natur, jord, geus, terr, nabo, varme, plandataExt, arealdataExt] = await Promise.all([
       // naturbeskyttelse
       import("@/integrations/sdfi/naturbeskyttelse")
         .then(({ NaturbeskyttelseService }) =>
@@ -542,6 +548,60 @@ export async function runGeoRiskStep(
           });
           return null;
         }),
+
+      // arealdata extension
+      Promise.all([import("@/integrations/arealdata/client"), import("@/integrations/cache/client")])
+        .then(async ([{ ArealdataService }, { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult }]) => {
+          const cached = await getCachedSourceResult(
+            addressId,
+            "arealdata_ext",
+            ruleEngineArealdataContextSchema,
+          ).catch(() => null);
+
+          if (cached) {
+            return { result: cached, cacheHit: true as const };
+          }
+
+          const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+          const result = await traceStep(
+            trace,
+            {
+              eventType: "api_call",
+              phase: "layer4",
+              service: "DAI WFS",
+              operation: "getArealdataContext",
+              inputSummary: `polygon=${polygon ? "yes" : "no"} koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
+            },
+            () => ArealdataService.getContext(koordinater, polygon),
+            {
+              outputSummary: (r) =>
+                summarizeSourceResult(
+                  r,
+                  (d) =>
+                    `paragraph3=${d.paragraph3Nature ?? "null"} natura2000=${d.natura2000 ?? "null"} fortidsminde=${d.fortidsminde ?? "null"}`,
+                ),
+              metadata: (r) => ({
+                source: r.kilde,
+                isMock: r.isMock,
+                feature_count: r.rawFeatureCount,
+              }),
+            },
+          );
+
+          await setCachedSourceResult(addressId, "arealdata_ext", result).catch(() => undefined);
+          return { result, cacheHit: false as const };
+        })
+        .catch((e: Error) => {
+          logServerEvent({
+            module: "geo-risk-step",
+            operation: "layer4.arealdata_ext",
+            severity: "degraded",
+            message: "ArealdataService.getContext fejlede",
+            error: e,
+            trace,
+          });
+          return null;
+        }),
     ]);
 
     naturbeskyttelse = natur;
@@ -555,6 +615,11 @@ export async function runGeoRiskStep(
     states.naboer = deriveSourceState(nabo);
     fjernvarme = varme;
     plandataContext = plandataExt?.result.data ?? null;
+    arealdataContext = arealdataExt?.result.data ?? null;
+    states.arealdata = deriveSourceState(
+      arealdataExt?.result ?? null,
+      arealdataExt?.cacheHit ?? false,
+    );
   }
 
   // Set all remaining service states.
@@ -575,6 +640,7 @@ export async function runGeoRiskStep(
     fjernvarme,
     fbbData,
     plandataContext,
+    arealdataContext,
     matGeometri,
     states,
   };

@@ -17,6 +17,14 @@ const baseTriggers: ComplianceTriggers = {
   withinBuildingField: null,
   wastewaterPlanStatus: null,
   sewerAreaType: null,
+  paragraph3Nature: null,
+  natura2000: null,
+  protectedDige: null,
+  fortidsminde: null,
+  fortidsmindeBuffer: null,
+  bnbo: null,
+  osd: null,
+  rawMaterialArea: null,
   soilContamination: null,
   jordforureningV1: null,
   jordforureningV2: null,
@@ -29,34 +37,34 @@ describe("deriveAutoTasks", () => {
     expect(tasks).toEqual([]);
   });
 
-  it("SAVE 3 → task key SAVE_DISPENSATION with status blocked", () => {
+  it("SAVE 3 creates SAVE_DISPENSATION as blocked", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, saveValue: 3 });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.SAVE_DISPENSATION);
     expect(task).toBeDefined();
     expect(task!.status).toBe("blocked");
   });
 
-  it("SAVE 4 → task key SAVE_4_PARAGRAPH14 with status pending", () => {
+  it("SAVE 4 creates SAVE_4_PARAGRAPH14 as pending", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, saveValue: 4 });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.SAVE_4_PARAGRAPH14);
     expect(task).toBeDefined();
     expect(task!.status).toBe("pending");
   });
 
-  it("SAVE 4 does NOT produce SAVE_DISPENSATION task", () => {
+  it("SAVE 4 does not create SAVE_DISPENSATION", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, saveValue: 4 });
     const dispensation = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.SAVE_DISPENSATION);
     expect(dispensation).toBeUndefined();
   });
 
-  it("isFredet=true → task key FREDNING_JURIDISK with status blocked", () => {
+  it("isFredet=true creates FREDNING_JURIDISK as blocked", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, isFredet: true });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.FREDNING_JURIDISK);
     expect(task).toBeDefined();
     expect(task!.status).toBe("blocked");
   });
 
-  it("strandbeskyttelse=true → task key STRANDBESKYTTELSE_DISPENSATION", () => {
+  it("strandbeskyttelse=true creates STRANDBESKYTTELSE_DISPENSATION", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, strandbeskyttelse: true });
     const task = tasks.find(
       (t) => t.task_key === BUILDING_TASK_KEYS.STRANDBESKYTTELSE_DISPENSATION,
@@ -65,28 +73,28 @@ describe("deriveAutoTasks", () => {
     expect(task!.status).toBe("blocked");
   });
 
-  it("fredskov=true → task key FREDSKOV_DISPENSATION", () => {
+  it("fredskov=true creates FREDSKOV_DISPENSATION", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, fredskov: true });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.FREDSKOV_DISPENSATION);
     expect(task).toBeDefined();
     expect(task!.status).toBe("blocked");
   });
 
-  it("klitfredning=true → task key KLITFREDNING_DISPENSATION", () => {
+  it("klitfredning=true creates KLITFREDNING_DISPENSATION", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, klitfredning: true });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.KLITFREDNING_DISPENSATION);
     expect(task).toBeDefined();
     expect(task!.status).toBe("blocked");
   });
 
-  it("landzonePermitRequired=true → task key LANDZONE_TILLADELSE", () => {
+  it("landzonePermitRequired=true creates LANDZONE_TILLADELSE", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, landzonePermitRequired: true });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.LANDZONE_TILLADELSE);
     expect(task).toBeDefined();
     expect(task!.status).toBe("pending");
   });
 
-  it("outside registered building field → task key BYGGEFELT_DISPENSATION", () => {
+  it("outside building field creates BYGGEFELT_DISPENSATION", () => {
     const tasks = deriveAutoTasks({
       ...baseTriggers,
       lokalplanByggefeltPresent: true,
@@ -97,7 +105,7 @@ describe("deriveAutoTasks", () => {
     expect(task!.status).toBe("blocked");
   });
 
-  it("wastewater context → task key KLOAK_NEDSIVNING_AFKLARING", () => {
+  it("wastewater context creates KLOAK_NEDSIVNING_AFKLARING", () => {
     const tasks = deriveAutoTasks({
       ...baseTriggers,
       wastewaterPlanStatus: "Vedtaget",
@@ -110,7 +118,42 @@ describe("deriveAutoTasks", () => {
     expect(task!.status).toBe("pending");
   });
 
-  it("jordforureningV2=true → task key JORDFORURENING_V2_UNDERSOEGELSE with status blocked", () => {
+  it("paragraph3Nature=true creates PARAGRAF3_AFKLARING", () => {
+    const tasks = deriveAutoTasks({ ...baseTriggers, paragraph3Nature: true });
+    const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.PARAGRAF3_AFKLARING);
+    expect(task).toBeDefined();
+    expect(task!.status).toBe("blocked");
+  });
+
+  it("protectedDige=true creates DIGE_BESKYTTELSE", () => {
+    const tasks = deriveAutoTasks({ ...baseTriggers, protectedDige: true });
+    const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.DIGE_BESKYTTELSE);
+    expect(task).toBeDefined();
+    expect(task!.status).toBe("blocked");
+  });
+
+  it("fortidsmindeBuffer=true creates FORTIDSMINDE_AFKLARING", () => {
+    const tasks = deriveAutoTasks({ ...baseTriggers, fortidsmindeBuffer: true });
+    const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.FORTIDSMINDE_AFKLARING);
+    expect(task).toBeDefined();
+    expect(task!.status).toBe("pending");
+  });
+
+  it("natura2000, bnbo and rawMaterialArea create screening tasks", () => {
+    const tasks = deriveAutoTasks({
+      ...baseTriggers,
+      natura2000: true,
+      bnbo: true,
+      rawMaterialArea: true,
+    });
+    expect(
+      tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.NATURA2000_AFKLARING),
+    ).toBeDefined();
+    expect(tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.BNBO_OSD_AFKLARING)).toBeDefined();
+    expect(tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.RAASTOF_AFKLARING)).toBeDefined();
+  });
+
+  it("jordforureningV2=true creates JORDFORURENING_V2_UNDERSOEGELSE as blocked", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, jordforureningV2: true });
     const task = tasks.find(
       (t) => t.task_key === BUILDING_TASK_KEYS.JORDFORURENING_V2_UNDERSOEGELSE,
@@ -119,21 +162,21 @@ describe("deriveAutoTasks", () => {
     expect(task!.status).toBe("blocked");
   });
 
-  it("jordforureningV1=true → task key JORDFORURENING_V1_SCREENING with status pending", () => {
+  it("jordforureningV1=true creates JORDFORURENING_V1_SCREENING as pending", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, jordforureningV1: true });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.JORDFORURENING_V1_SCREENING);
     expect(task).toBeDefined();
     expect(task!.status).toBe("pending");
   });
 
-  it("omraadeklassificering set → task key JORDFLYTNING_ATTEST with status pending", () => {
+  it("omraadeklassificering creates JORDFLYTNING_ATTEST as pending", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, omraadeklassificering: "Klasse B" });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.JORDFLYTNING_ATTEST);
     expect(task).toBeDefined();
     expect(task!.status).toBe("pending");
   });
 
-  it("soilContamination=unknown → task key MILJOEUNDERSOEGELSE with status pending", () => {
+  it("soilContamination=unknown creates MILJOEUNDERSOEGELSE as pending", () => {
     const tasks = deriveAutoTasks({ ...baseTriggers, soilContamination: "unknown" });
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.MILJOEUNDERSOEGELSE);
     expect(task).toBeDefined();

@@ -60,6 +60,8 @@ const MOCK_GEO_RISK_RESULT: GeoRiskResult = {
   naboer: null,
   fjernvarme: null,
   fbbData: null,
+  plandataContext: null,
+  arealdataContext: null,
   matGeometri: null,
   states: {},
 };

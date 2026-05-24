@@ -14,6 +14,7 @@ describe("parseComplianceData", () => {
       lokalplaner: [],
       kommuneplanramme: null,
       plandataContext: null,
+      arealdataContext: null,
       byggeanalyseResultat: null,
       vurderingData: null,
     });

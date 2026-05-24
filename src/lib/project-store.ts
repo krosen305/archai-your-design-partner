@@ -155,6 +155,7 @@ const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
   kommuneplanramme: "missing",
   fbb: "missing",
   naturbeskyttelse: "missing",
+  arealdata: "missing",
   dkjord: "missing",
   geusRisk: "missing",
   servitutter: "missing",

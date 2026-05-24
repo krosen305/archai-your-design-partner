@@ -18,6 +18,7 @@ import { checkStopRules } from "@/lib/rule-engine/rules/stop-rules";
 import { runCalculations } from "@/lib/rule-engine/rules/calculations";
 import { checkEnergyProportionality } from "@/lib/rule-engine/rules/energy-rules";
 import { checkJordforureningRules } from "@/lib/rule-engine/rules/jordforurening-rules";
+import { checkArealdataRules } from "@/lib/rule-engine/rules/arealdata-rules";
 import { checkPlandataRules } from "@/lib/rule-engine/rules/plandata-rules";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,9 @@ const DISPENSATION_LABELS: Record<string, string> = {
   etager: "Overskridelse af max etager",
   skelafstand: "Underskridelse af skelafstand",
   lokalplan_building_field: "Byggeri uden for lokalplanens byggefelt",
+  paragraph3_nature: "Byggeri i §3-beskyttet natur",
+  protected_dige: "Indgreb i beskyttet dige",
+  fortidsminde: "Byggeri ved registreret fortidsminde",
 };
 
 function buildDispensationList(violations: RuleViolation[]): DispensationItem[] {
@@ -151,13 +155,27 @@ export function runRuleEngine(input: RuleEngineInput, missingFields: string[]): 
     "wastewater_plan_clarification",
   );
 
-  // ── 6. Sammensæt ──────────────────────────────────────────────────────────
+  // ── 6. Udvidet arealdata ──────────────────────────────────────────────────
+  const arealdataViolations = checkArealdataRules(input);
+  checkedRules.push(
+    "paragraph3_nature",
+    "natura2000_screening",
+    "protected_dige",
+    "fortidsminde",
+    "fortidsminde_buffer",
+    "bnbo",
+    "osd",
+    "raw_material_area",
+  );
+
+  // ── 7. Sammensæt ──────────────────────────────────────────────────────────
   const allViolations = [
     ...stopViolations,
     ...calcViolations,
     ...energyViolations,
     ...jordforureningViolations,
     ...plandataViolations,
+    ...arealdataViolations,
   ];
   const status = aggregateStatus(allViolations, missingFields);
   const dispensationList = buildDispensationList(allViolations);

@@ -5,6 +5,7 @@ import { z, type ZodType } from "zod";
 import { loadProject } from "@/integrations/supabase/repositories/projects.repository";
 import { getSiteConstraints } from "@/integrations/supabase/repositories/site-constraints.repository";
 import type {
+  RuleEngineArealdataContext,
   RuleEngineBbrData,
   RuleEngineFbbResult,
   RuleEngineGeusRiskData,
@@ -22,6 +23,7 @@ import type { Byggeoenske } from "@/types/project-state";
 import type { ByggeanalyseGatedResult } from "@/integrations/ai/byggeanalyse";
 import {
   lokalplanExtractSchema,
+  ruleEngineArealdataContextSchema,
   ruleEngineBbrDataSchema,
   ruleEngineFbbResultSchema,
   ruleEngineGeusRiskDataSchema,
@@ -118,6 +120,11 @@ export async function runByggeanalyseGated(params: {
     ["plandataContext"],
     ruleEnginePlandataContextSchema,
   );
+  const arealdataContext = decodeComplianceField(
+    cd,
+    ["arealdataContext"],
+    ruleEngineArealdataContextSchema,
+  );
   const naturbeskyttelse = decodeComplianceField(
     cd,
     ["naturbeskyttelse"],
@@ -151,6 +158,7 @@ export async function runByggeanalyseGated(params: {
       fbbData,
       dkjord: null,
       plandataContext: (plandataContext as RuleEnginePlandataContext) ?? null,
+      arealdataContext: (arealdataContext as RuleEngineArealdataContext) ?? null,
       // Partial<Byggeoenske> is structurally compatible — assembler handles undefined fields via missingFields
       byggeoenske: (byggeoenske ?? null) as import("@/types/project-state").Byggeoenske | null,
       municipality: "", // not available from JSONB — rule engine uses missingFields for locality-specific rules
@@ -192,6 +200,7 @@ export async function runByggeanalyseGated(params: {
     kommuneplanramme,
     lokalplaner,
     plandataContext,
+    arealdataContext,
     naturbeskyttelse,
     geusRisk,
     servitutter,

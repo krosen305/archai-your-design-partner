@@ -162,3 +162,14 @@ export type RuleEnginePlandataContext = {
   zoneSourcePlanId: string | null;
   wastewaterSourceId: string | null;
 };
+
+export type RuleEngineArealdataContext = {
+  paragraph3Nature: boolean | null;
+  natura2000: boolean | null;
+  protectedDige: boolean | null;
+  fortidsminde: boolean | null;
+  fortidsmindeBuffer: boolean | null;
+  bnbo: boolean | null;
+  osd: boolean | null;
+  rawMaterialArea: boolean | null;
+};

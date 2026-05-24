@@ -10,6 +10,7 @@ import type {
   RuleEngineDkJordResultat,
   RuleEngineFbbResult,
   RuleEngineGeusRiskData,
+  RuleEngineArealdataContext,
   RuleEngineKommuneplanramme,
   RuleEngineLokalplan,
   RuleEngineLokalplanExtract,
@@ -44,6 +45,7 @@ export type AssemblerParams = {
   fbbData: RuleEngineFbbResult | null; // ARCH-131: SAVE-bevaringsvaerdi fra FBB
   dkjord: RuleEngineDkJordResultat | null; // jordforurening V1/V2/omraadeklassificering
   plandataContext: RuleEnginePlandataContext | null;
+  arealdataContext: RuleEngineArealdataContext | null;
   byggeoenske: Byggeoenske | null; // null = serverside kørslen (Option A)
   designPlacement?: DesignPlacement | null; // ARCH-180: præcis footprint/skelafstand fra korteditor
   municipality: string;
@@ -85,6 +87,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     fbbData,
     dkjord,
     plandataContext,
+    arealdataContext,
     byggeoenske,
     designPlacement,
     municipality,
@@ -317,6 +320,19 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
       }
     : null;
 
+  const environmentalSection: RuleEngineInput["environmental"] = arealdataContext
+    ? {
+        paragraph3Nature: arealdataContext.paragraph3Nature,
+        natura2000: arealdataContext.natura2000,
+        protectedDige: arealdataContext.protectedDige,
+        fortidsminde: arealdataContext.fortidsminde,
+        fortidsmindeBuffer: arealdataContext.fortidsmindeBuffer,
+        bnbo: arealdataContext.bnbo,
+        osd: arealdataContext.osd,
+        rawMaterialArea: arealdataContext.rawMaterialArea,
+      }
+    : null;
+
   // ── Saml ──────────────────────────────────────────────────────────────────
 
   // ARCH-180: placement-sektion — kun sat når korteditor har leveret footprintAreaM2
@@ -355,6 +371,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     geotechnical,
     servituts: servitutsSection,
     planning: planningSection,
+    environmental: environmentalSection,
     placement: placementSection,
   };
 

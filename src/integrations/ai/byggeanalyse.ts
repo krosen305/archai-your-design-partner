@@ -8,6 +8,7 @@ import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import type { Byggeoenske } from "@/types/project-state";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
+import type { ArealdataContextResult } from "@/integrations/arealdata/client";
 import type { Kommuneplanramme, Lokalplan } from "@/integrations/plandata/client";
 import type { PlanContextResult } from "@/integrations/plandata/client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
@@ -68,6 +69,7 @@ export type ByggeanalyseInput = {
   kommuneplanramme?: Kommuneplanramme | null;
   lokalplaner?: Lokalplan[];
   plandataContext?: PlanContextResult | null;
+  arealdataContext?: ArealdataContextResult | null;
   naturbeskyttelse?: NaturbeskyttelsesResultat | null;
   geusRisk?: GeusRiskData | null;
   servitutter?: TinglysningResult | null;

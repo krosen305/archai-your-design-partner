@@ -23,6 +23,7 @@ import {
   ruleEngineDkJordResultatSchema,
   ruleEngineFbbResultSchema,
   ruleEngineGeusRiskDataSchema,
+  ruleEngineArealdataContextSchema,
   ruleEngineNaturbeskyttelsesResultatSchema,
   ruleEngineTerrainDataSchema,
   ruleEngineTinglysningResultSchema,
@@ -184,6 +185,15 @@ export function useCockpitRestore(params: {
                 project.compliance_data,
                 "naturbeskyttelse",
                 ruleEngineNaturbeskyttelsesResultatSchema,
+              ),
+              lastFetched,
+            ),
+            arealdata: deriveSourceStatus(
+              "arealdata",
+              objectField(
+                project.compliance_data,
+                "arealdataContext",
+                ruleEngineArealdataContextSchema,
               ),
               lastFetched,
             ),

@@ -56,6 +56,22 @@ const getCachedSourceResult = mock(async (_addressId: string, sourceKind: string
     );
   }
 
+  if (sourceKind === "arealdata_ext") {
+    return makeOkResult(
+      {
+        paragraph3Nature: false,
+        natura2000: false,
+        protectedDige: false,
+        fortidsminde: false,
+        fortidsmindeBuffer: false,
+        bnbo: null,
+        osd: null,
+        rawMaterialArea: false,
+      },
+      { kilde: "arealdata", sourceUrl: "mock://arealdata", rawFeatureCount: 0 },
+    );
+  }
+
   return null;
 });
 
@@ -159,9 +175,15 @@ describe("runGeoRiskStep", () => {
       "plandata_ext",
       expect.anything(),
     );
+    expect(getCachedSourceResult).toHaveBeenCalledWith(
+      "addr-1",
+      "arealdata_ext",
+      expect.anything(),
+    );
     expect(result.geusRisk?.geoteknikJordart).toBe("MorÃ¦neler");
     expect(result.terrain?.lowPointM).toBe(18.4);
     expect(result.plandataContext?.zoneType).toBe("byzone");
+    expect(result.arealdataContext?.paragraph3Nature).toBe(false);
     expect(result.states.geusRisk).toBe("cache_hit");
     expect(result.states.terrain).toBe("cache_hit");
     expect(setCachedSourceResult).not.toHaveBeenCalled();

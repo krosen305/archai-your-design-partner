@@ -325,6 +325,32 @@ describe("deriveSiteConstraintsPatch", () => {
     expect(result!.source_kommuneplan_id).toBe("kp-77");
   });
 
+  it("maps arealdataContext fields to typed site constraints", () => {
+    const patch: ProjectPatch = {
+      arealdataContext: {
+        paragraph3Nature: true,
+        natura2000: false,
+        protectedDige: true,
+        fortidsminde: false,
+        fortidsmindeBuffer: true,
+        bnbo: true,
+        osd: false,
+        rawMaterialArea: true,
+      },
+    };
+
+    const result = deriveSiteConstraintsPatch("addr-1", patch, emptyUpdate);
+    expect(result).not.toBe(null);
+    expect(result!.paragraph3_nature).toBe(true);
+    expect(result!.natura2000).toBe(false);
+    expect(result!.protected_dige).toBe(true);
+    expect(result!.fortidsminde).toBe(false);
+    expect(result!.fortidsminde_buffer).toBe(true);
+    expect(result!.bnbo).toBe(true);
+    expect(result!.osd).toBe(false);
+    expect(result!.raw_material_area).toBe(true);
+  });
+
   it("sets address_id and confidence on result", () => {
     const patch: ProjectPatch = { kommuneplanramme: null };
     const result = deriveSiteConstraintsPatch("my-addr", patch, emptyUpdate);

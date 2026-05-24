@@ -19,6 +19,14 @@ export type ComplianceTriggers = {
   withinBuildingField: boolean | null;
   wastewaterPlanStatus: string | null;
   sewerAreaType: string | null;
+  paragraph3Nature: boolean | null;
+  natura2000: boolean | null;
+  protectedDige: boolean | null;
+  fortidsminde: boolean | null;
+  fortidsmindeBuffer: boolean | null;
+  bnbo: boolean | null;
+  osd: boolean | null;
+  rawMaterialArea: boolean | null;
   soilContamination: "clean" | "registered" | "contaminated" | "unknown" | null;
   jordforureningV1: boolean | null;
   jordforureningV2: boolean | null;
@@ -186,6 +194,102 @@ export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
         sewer_area_type: t.sewerAreaType,
         myndighed: "Kommune/Forsyning",
       },
+    });
+  }
+
+  if (t.paragraph3Nature === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.PARAGRAF3_AFKLARING,
+      title: "§3-beskyttet natur skal afklares",
+      description:
+        "Arealet overlapper registreret §3-beskyttet natur. Projektet kraever tidlig myndighedsafklaring eller mulig dispensation, foer design og budget laases.",
+      phase: "myndighed",
+      status: "blocked",
+      priority: 1,
+      is_auto_generated: true,
+      blocked_by_constraint: "paragraph3_nature",
+      metadata: { myndighed: "Kommunen", lovgrundlag: "Naturbeskyttelsesloven §3" },
+    });
+  }
+
+  if (t.natura2000 === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.NATURA2000_AFKLARING,
+      title: "Natura 2000-screening skal afklares",
+      description:
+        "Arealet overlapper Natura 2000-interesser. Habitat- og artsforhold boer screenes tidligt med kommune/myndighed, foer projektet modnes videre.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "natura2000",
+      metadata: { myndighed: "Kommune/Miljoestyrelsen" },
+    });
+  }
+
+  if (t.protectedDige === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.DIGE_BESKYTTELSE,
+      title: "Beskyttet dige skal afklares",
+      description:
+        "Arealet overlapper registreret beskyttet sten- eller jorddige. Indgreb skal afklares med kommunen, og dispensation kan vaere noedvendig.",
+      phase: "myndighed",
+      status: "blocked",
+      priority: 1,
+      is_auto_generated: true,
+      blocked_by_constraint: "protected_dige",
+      metadata: { myndighed: "Kommunen" },
+    });
+  }
+
+  if (t.fortidsminde === true || t.fortidsmindeBuffer === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.FORTIDSMINDE_AFKLARING,
+      title: "Fortidsminde og arkæologi skal afklares",
+      description:
+        "Arealet overlapper fortidsminde eller fortidsmindebeskyttelseslinje. Jordarbejde og byggeri boer afklares tidligt med kulturarvsmyndigheden.",
+      phase: "myndighed",
+      status: t.fortidsminde === true ? "blocked" : "pending",
+      priority: 1,
+      is_auto_generated: true,
+      blocked_by_constraint: t.fortidsminde === true ? "fortidsminde" : "fortidsminde_buffer",
+      metadata: { myndighed: "Slots- og Kulturstyrelsen" },
+    });
+  }
+
+  if (t.bnbo === true || t.osd === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.BNBO_OSD_AFKLARING,
+      title: "BNBO/OSD-forhold skal afklares",
+      description:
+        "Arealet ligger i BNBO eller OSD. Vand-, jord- og kemiforhold boer afklares tidligt med kommune og/eller vandforsyning.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: t.bnbo === true ? "bnbo" : "osd",
+      metadata: { myndighed: "Kommune/Vandforsyning" },
+    });
+  }
+
+  if (t.rawMaterialArea === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.RAASTOF_AFKLARING,
+      title: "Råstofinteresser skal afklares",
+      description:
+        "Arealet overlapper raastofinteresser. Projektet boer screenes tidligt for plan- og miljoekonflikter med regionen.",
+      phase: "matriklen",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "raw_material_area",
+      metadata: { myndighed: "Regionen" },
     });
   }
 
