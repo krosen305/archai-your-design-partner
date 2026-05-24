@@ -1,7 +1,9 @@
 // src/lib/analysis/layer1-analysis.ts
 // SERVER-SIDE ONLY.
+//
+// Register data (BBR, VUR, Plandata) is always fetched live — no compliance-result cache.
+// Only AI-extracted lokalplan data is cached (see lokalplan-extraction-step.ts).
 
-import { getCachedCompliance, setCachedCompliance } from "@/integrations/cache/client";
 import type { VurData } from "@/domain/contracts/analysis.types";
 import type {
   RuleEngineBbrData,
@@ -9,8 +11,7 @@ import type {
   RuleEngineLokalplan,
 } from "@/domain/contracts/rule-engine.types";
 import { fetchBbrWithMat, fetchPlandata, fetchVurViaEbr } from "@/lib/compliance-layer1";
-import { logServerEvent } from "@/lib/server-logger";
-import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
+import { recordAnalysisEvent } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 
@@ -44,65 +45,6 @@ export async function runLayer1Analysis(
     input;
   const states: Partial<Record<DataSourceKind, PipelineServiceState>> = {};
 
-  // Cache read
-  try {
-    const cached = await traceStep(
-      trace,
-      {
-        eventType: "cache_read",
-        phase: "cache",
-        service: "Supabase",
-        operation: "address_analysis.compliance_result.read",
-        inputSummary: `adresseid=${addressId}`,
-      },
-      () => getCachedCompliance(addressId),
-      {
-        cacheHit: (value) => !!value,
-        outputSummary: (v) =>
-          v ? `cache_hit=true bbr=${v.bbr ? "present" : "null"}` : "cache_hit=false",
-      },
-    );
-    if (cached) {
-      // Bypass stale cache if BBR is missing grundareal and we can recover it —
-      // either via the pre-fetched grundareal or via MatService (requires ejerlavskode+matrikelnummer).
-      const canRecoverGrundareal =
-        grundareal !== null || (ejerlavskode !== null && matrikelnummer !== null);
-      if (cached.bbr?.grundareal === null && canRecoverGrundareal) {
-        logServerEvent({
-          module: "layer1-analysis",
-          operation: "cache.compliance.stale_bypass",
-          severity: "ignored",
-          message: "Stale cache bypassed — grundareal mangler, genberegner",
-          trace,
-          metadata: { grundareal, ejerlavskode, matrikelnummer },
-        });
-      } else {
-        const base: ComplianceBase = {
-          bbr: cached.bbr,
-          lokalplaner: cached.lokalplaner,
-          kommuneplanramme: cached.kommuneplanramme,
-          analysedAt: cached.analysedAt,
-          vurderingData: cached.vurderingData ?? null,
-        };
-        states.bbr = "cache_hit";
-        states.lokalplaner = "cache_hit";
-        states.kommuneplanramme = "cache_hit";
-        states.vurdering = "cache_hit";
-        return { complianceBase: base, states };
-      }
-    }
-  } catch (e) {
-    logServerEvent({
-      module: "layer1-analysis",
-      operation: "cache.compliance.read",
-      severity: "degraded",
-      message: "cache-læsning fejlede (behandles som cache-miss)",
-      error: e,
-      trace,
-    });
-  }
-
-  // Live fetch
   const [bbrResult, plandataResult, vurderingResult] = await Promise.all([
     fetchBbrWithMat({
       adgangsadresseid,
@@ -141,42 +83,6 @@ export async function runLayer1Analysis(
     analysedAt: new Date().toISOString(),
     vurderingData: vurderingResult,
   };
-
-  // Cache write (non-blocking best-effort)
-  try {
-    await traceStep(
-      trace,
-      {
-        eventType: "cache_write",
-        phase: "cache",
-        service: "Supabase",
-        operation: "address_analysis.compliance_result.write",
-      },
-      () =>
-        setCachedCompliance(addressId, {
-          ...complianceBase,
-          lokalplanExtract: null,
-          naturbeskyttelse: null,
-          dkjord: null,
-          geusRisk: null,
-          servitutter: null,
-          terrain: null,
-          naboer: null,
-          fjernvarme: null,
-          fbbData: null,
-          matGeometri: null,
-        }),
-    );
-  } catch (e) {
-    logServerEvent({
-      module: "layer1-analysis",
-      operation: "cache.compliance.write",
-      severity: "degraded",
-      message: "compliance-cache-skriv fejlede",
-      error: e,
-      trace,
-    });
-  }
 
   return { complianceBase, states };
 }
