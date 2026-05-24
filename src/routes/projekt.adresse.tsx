@@ -23,7 +23,6 @@ function AddressStep() {
   const [selected, setSelected] = useState<Address | null>(null);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (query.length < 2) {
@@ -46,6 +45,9 @@ function AddressStep() {
         setLoading(false);
       }
     }, 220);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [query]);
 
   function handleSelect(s: GsearchSuggestion) {
@@ -94,7 +96,6 @@ function AddressStep() {
           <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 focus-within:border-accent/60 transition-colors">
             <MapPin size={14} className="text-muted-foreground shrink-0" />
             <input
-              ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => {
