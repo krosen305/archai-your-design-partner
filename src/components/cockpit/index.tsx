@@ -313,19 +313,19 @@ function DispensationModal({
   onAcknowledge: (type: "etager" | "areal") => void;
   onClose: () => void;
 }) {
-  const { boligoenskeValidering, byggeoenske } = useProject();
+  const { boligoenskeValidering, byggeoenske, complianceMetrics } = useProject();
   const open = type !== null;
 
   let kontekstTekst = "";
   let graense = "";
   if (type === "etager") {
     kontekstTekst = `${byggeoenske.antalEtager ?? "—"} etager`;
-    graense = `${"—"} etager`;
+    graense = `${complianceMetrics?.maxEtager ?? "—"} etager`;
   } else if (type === "areal") {
     kontekstTekst = `${byggeoenske.oensketAreal ?? "—"} m² (${
       boligoenskeValidering?.beregnetBebyggelsespct?.toFixed(0) ?? "—"
     }%)`;
-    graense = `${"—"}% bebyggelse`;
+    graense = `${complianceMetrics?.maxBebyggelsesprocent ?? "—"}% bebyggelse`;
   }
 
   const handleAcknowledge = () => {
