@@ -26,6 +26,14 @@ export type RuleEngineBbrData = {
   canonical_candidates_count: number;
   aggregated_bebygget_areal_all_primary: number | null;
   bygning_samlet_boligareal: number | null;
+  // ARCH-246: Due-diligence felter
+  ombygningsaar: number | null;
+  vandforsyning_kode: string | null;
+  vandforsyning: string | null;
+  afloebsforhold_kode: string | null;
+  afloebsforhold: string | null;
+  ydervaegs_materiale_kode: string | null;
+  tagdaekning_kode: string | null;
 };
 
 export type RuleEngineFbbResult = {
