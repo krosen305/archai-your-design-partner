@@ -37,6 +37,8 @@ import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-cl
 type DarClientConfig = {
   apiKey?: string;
   endpoint?: string;
+  // Skip DAR_Adressepunkt + DAR_Postnummer when caller only needs adgangsadresseid/matrikel/grundareal
+  skipKoordinaterOgPostnummer?: boolean;
 };
 
 function getConfig(explicit?: DarClientConfig) {
@@ -305,8 +307,10 @@ export class DarService {
     const matUrl = getMatUrl(apiKey);
 
     // ── Kald 3a + 3b + 3c: postnummer, adressepunkt og MAT_Jordstykke (parallelt) ─
+    // 3a + 3b springes over ved enrichment-only kald (koordinater og postnr kommer fra GSearch)
+    const skip = config?.skipKoordinaterOgPostnummer ?? false;
     const [postnummerData, adressepunktData, jordstykkeData] = await Promise.all([
-      postnummerFK
+      postnummerFK && !skip
         ? datafordelerGraphqlFetch<{ DAR_Postnummer: { nodes: DarPostnummerNode[] } }>(
             url,
             POSTNUMMER_QUERY,
@@ -315,7 +319,7 @@ export class DarService {
             { trace, phase: "address_enrichment" },
           )
         : Promise.resolve(null),
-      adgangspunktFK
+      adgangspunktFK && !skip
         ? datafordelerGraphqlFetch<{ DAR_Adressepunkt: { nodes: DarAdressepunktNode[] } }>(
             url,
             ADRESSEPUNKT_QUERY,

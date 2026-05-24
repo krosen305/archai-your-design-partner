@@ -29,7 +29,7 @@ import { byggeoenskeSchema } from "@/types/project-sync.schemas";
 
 const analysisInputSchema = z.object({
   addressId: z.string().min(1).max(64),
-  adgangsadresseid: z.string().min(1).max(64),
+  adgangsadresseid: z.string().max(64),
   ejerlavskode: z.number().int().nullable(),
   matrikelnummer: z.string().max(32).nullable(),
   koordinater: z

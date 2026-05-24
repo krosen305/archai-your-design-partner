@@ -31,7 +31,7 @@ export async function enrichAddressDetails(
         operation: "getAddressDetails",
         inputSummary: `adresseid=${addressId}`,
       },
-      () => DarService.getAddressDetails(addressId, undefined, trace),
+      () => DarService.getAddressDetails(addressId, { skipKoordinaterOgPostnummer: true }, trace),
       {
         outputSummary: (r) =>
           `grundareal=${r.grundareal ?? "null"} matrikel=${r.matrikelnummer ?? "null"} ejerlavskode=${r.ejerlavskode ?? "null"}`,
