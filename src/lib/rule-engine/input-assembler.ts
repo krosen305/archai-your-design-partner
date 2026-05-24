@@ -14,6 +14,7 @@ import type {
   RuleEngineLokalplan,
   RuleEngineLokalplanExtract,
   RuleEngineNaturbeskyttelsesResultat,
+  RuleEnginePlandataContext,
   RuleEngineTerrainData,
   RuleEngineTinglysningResult,
 } from "@/domain/contracts/rule-engine.types";
@@ -42,6 +43,7 @@ export type AssemblerParams = {
   terrain: RuleEngineTerrainData | null;
   fbbData: RuleEngineFbbResult | null; // ARCH-131: SAVE-bevaringsvaerdi fra FBB
   dkjord: RuleEngineDkJordResultat | null; // jordforurening V1/V2/omraadeklassificering
+  plandataContext: RuleEnginePlandataContext | null;
   byggeoenske: Byggeoenske | null; // null = serverside kørslen (Option A)
   designPlacement?: DesignPlacement | null; // ARCH-180: præcis footprint/skelafstand fra korteditor
   municipality: string;
@@ -82,6 +84,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     terrain,
     fbbData,
     dkjord,
+    plandataContext,
     byggeoenske,
     designPlacement,
     municipality,
@@ -302,6 +305,18 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     criticalTexts: kritiskeServitutter.map((s) => s.tekst),
   };
 
+  const planningSection: RuleEngineInput["planning"] = plandataContext
+    ? {
+        zoneType: plandataContext.zoneType,
+        futureZoneType: plandataContext.futureZoneType,
+        landzonePermitRequired: plandataContext.landzonePermitRequired,
+        buildingFieldDefined: plandataContext.lokalplanByggefeltPresent,
+        withinBuildingField: plandataContext.withinBuildingField,
+        wastewaterPlanStatus: plandataContext.wastewaterPlanStatus,
+        sewerAreaType: plandataContext.sewerAreaType,
+      }
+    : null;
+
   // ── Saml ──────────────────────────────────────────────────────────────────
 
   // ARCH-180: placement-sektion — kun sat når korteditor har leveret footprintAreaM2
@@ -339,6 +354,7 @@ export function assembleRuleEngineInput(params: AssemblerParams): AssemblerResul
     newBuilding,
     geotechnical,
     servituts: servitutsSection,
+    planning: planningSection,
     placement: placementSection,
   };
 

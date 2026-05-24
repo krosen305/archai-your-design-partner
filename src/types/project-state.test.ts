@@ -13,6 +13,7 @@ describe("parseComplianceData", () => {
       flags: [],
       lokalplaner: [],
       kommuneplanramme: null,
+      plandataContext: null,
       byggeanalyseResultat: null,
       vurderingData: null,
     });

@@ -292,6 +292,39 @@ describe("deriveSiteConstraintsPatch", () => {
     expect(result!.bluespot_risk).toBe(false);
   });
 
+  it("maps plandataContext fields to typed site constraints", () => {
+    const patch: ProjectPatch = {
+      plandataContext: {
+        zoneType: "landzone",
+        futureZoneType: "byzone",
+        landzonePermitRequired: true,
+        lokalplanDelomraadeId: "del-1",
+        lokalplanByggefeltPresent: true,
+        withinBuildingField: false,
+        buildingFieldSourceId: "felt-42",
+        wastewaterPlanStatus: "Vedtaget",
+        sewerAreaType: "Separatkloakeret",
+        sourceLokalplanId: "lp-77",
+        sourceKommuneplanId: "kp-77",
+        zoneSourcePlanId: "zone-77",
+        wastewaterSourceId: "ww-77",
+      },
+    };
+
+    const result = deriveSiteConstraintsPatch("addr-1", patch, emptyUpdate);
+    expect(result).not.toBe(null);
+    expect(result!.zone_type).toBe("landzone");
+    expect(result!.future_zone_type).toBe("byzone");
+    expect(result!.landzone_permit_required).toBe(true);
+    expect(result!.lokalplan_byggefelt_present).toBe(true);
+    expect(result!.within_building_field).toBe(false);
+    expect(result!.building_field_source_id).toBe("felt-42");
+    expect(result!.wastewater_plan_status).toBe("Vedtaget");
+    expect(result!.sewer_area_type).toBe("Separatkloakeret");
+    expect(result!.source_lokalplan_id).toBe("lp-77");
+    expect(result!.source_kommuneplan_id).toBe("kp-77");
+  });
+
   it("sets address_id and confidence on result", () => {
     const patch: ProjectPatch = { kommuneplanramme: null };
     const result = deriveSiteConstraintsPatch("my-addr", patch, emptyUpdate);

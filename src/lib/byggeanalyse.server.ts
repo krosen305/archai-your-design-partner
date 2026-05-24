@@ -12,6 +12,7 @@ import type {
   RuleEngineLokalplan,
   RuleEngineLokalplanExtract,
   RuleEngineNaturbeskyttelsesResultat,
+  RuleEnginePlandataContext,
   RuleEngineTerrainData,
   RuleEngineTinglysningResult,
 } from "@/domain/contracts/rule-engine.types";
@@ -27,6 +28,7 @@ import {
   ruleEngineKommuneplanrammeSchema,
   ruleEngineLokalplanSchema,
   ruleEngineNaturbeskyttelsesResultatSchema,
+  ruleEnginePlandataContextSchema,
   ruleEngineTerrainDataSchema,
   ruleEngineTinglysningResultSchema,
 } from "@/types/project-restore.schemas";
@@ -111,6 +113,11 @@ export async function runByggeanalyseGated(params: {
     ["kommuneplanramme"],
     ruleEngineKommuneplanrammeSchema,
   );
+  const plandataContext = decodeComplianceField(
+    cd,
+    ["plandataContext"],
+    ruleEnginePlandataContextSchema,
+  );
   const naturbeskyttelse = decodeComplianceField(
     cd,
     ["naturbeskyttelse"],
@@ -143,6 +150,7 @@ export async function runByggeanalyseGated(params: {
       terrain,
       fbbData,
       dkjord: null,
+      plandataContext: (plandataContext as RuleEnginePlandataContext) ?? null,
       // Partial<Byggeoenske> is structurally compatible — assembler handles undefined fields via missingFields
       byggeoenske: (byggeoenske ?? null) as import("@/types/project-state").Byggeoenske | null,
       municipality: "", // not available from JSONB — rule engine uses missingFields for locality-specific rules
@@ -183,6 +191,7 @@ export async function runByggeanalyseGated(params: {
     lokalplanNavn,
     kommuneplanramme,
     lokalplaner,
+    plandataContext,
     naturbeskyttelse,
     geusRisk,
     servitutter,

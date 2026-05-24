@@ -10,7 +10,6 @@ export type AddressFields = {
   ejerlavskode: number | null;
   matrikelnummer: string | null;
   grundareal: number | null;
-  samletFastEjendomLokalId: string | null;
 };
 
 export async function enrichAddressDetails(
@@ -43,7 +42,6 @@ export async function enrichAddressDetails(
       ejerlavskode: initial.ejerlavskode ?? dar.ejerlavskode,
       matrikelnummer: initial.matrikelnummer ?? dar.matrikelnummer,
       grundareal: initial.grundareal ?? dar.grundareal,
-      samletFastEjendomLokalId: initial.samletFastEjendomLokalId ?? dar.samletFastEjendomLokalId,
     };
   } catch (e) {
     logServerEvent({

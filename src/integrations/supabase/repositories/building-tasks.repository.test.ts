@@ -12,6 +12,11 @@ const baseTriggers: ComplianceTriggers = {
   strandbeskyttelse: null,
   fredskov: null,
   klitfredning: null,
+  landzonePermitRequired: null,
+  lokalplanByggefeltPresent: null,
+  withinBuildingField: null,
+  wastewaterPlanStatus: null,
+  sewerAreaType: null,
   soilContamination: null,
   jordforureningV1: null,
   jordforureningV2: null,
@@ -72,6 +77,37 @@ describe("deriveAutoTasks", () => {
     const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.KLITFREDNING_DISPENSATION);
     expect(task).toBeDefined();
     expect(task!.status).toBe("blocked");
+  });
+
+  it("landzonePermitRequired=true → task key LANDZONE_TILLADELSE", () => {
+    const tasks = deriveAutoTasks({ ...baseTriggers, landzonePermitRequired: true });
+    const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.LANDZONE_TILLADELSE);
+    expect(task).toBeDefined();
+    expect(task!.status).toBe("pending");
+  });
+
+  it("outside registered building field → task key BYGGEFELT_DISPENSATION", () => {
+    const tasks = deriveAutoTasks({
+      ...baseTriggers,
+      lokalplanByggefeltPresent: true,
+      withinBuildingField: false,
+    });
+    const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.BYGGEFELT_DISPENSATION);
+    expect(task).toBeDefined();
+    expect(task!.status).toBe("blocked");
+  });
+
+  it("wastewater context → task key KLOAK_NEDSIVNING_AFKLARING", () => {
+    const tasks = deriveAutoTasks({
+      ...baseTriggers,
+      wastewaterPlanStatus: "Vedtaget",
+      sewerAreaType: "Separatkloakeret",
+    });
+    const task = tasks.find(
+      (t) => t.task_key === BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,
+    );
+    expect(task).toBeDefined();
+    expect(task!.status).toBe("pending");
   });
 
   it("jordforureningV2=true → task key JORDFORURENING_V2_UNDERSOEGELSE with status blocked", () => {

@@ -62,6 +62,22 @@ export function deriveSiteConstraintsPatch(
     sitePatch.source_lokalplan_id = selectPrimaryLokalplanForPdf(patch.lokalplaner)?.planid ?? null;
   }
 
+  if (patch.plandataContext !== undefined) {
+    hasConstraintField = true;
+    sitePatch.zone_type = patch.plandataContext?.zoneType ?? null;
+    sitePatch.future_zone_type = patch.plandataContext?.futureZoneType ?? null;
+    sitePatch.landzone_permit_required = patch.plandataContext?.landzonePermitRequired ?? null;
+    sitePatch.lokalplan_byggefelt_present = patch.plandataContext?.lokalplanByggefeltPresent ?? null;
+    sitePatch.within_building_field = patch.plandataContext?.withinBuildingField ?? null;
+    sitePatch.building_field_source_id = patch.plandataContext?.buildingFieldSourceId ?? null;
+    sitePatch.wastewater_plan_status = patch.plandataContext?.wastewaterPlanStatus ?? null;
+    sitePatch.sewer_area_type = patch.plandataContext?.sewerAreaType ?? null;
+    sitePatch.source_lokalplan_id =
+      patch.plandataContext?.sourceLokalplanId ?? sitePatch.source_lokalplan_id ?? null;
+    sitePatch.source_kommuneplan_id =
+      patch.plandataContext?.sourceKommuneplanId ?? sitePatch.source_kommuneplan_id ?? null;
+  }
+
   if (patch.fbbData !== undefined) {
     hasConstraintField = true;
     const saveValue = patch.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;

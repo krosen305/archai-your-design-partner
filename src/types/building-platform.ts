@@ -44,8 +44,11 @@ export const BUILDING_TASK_KEYS = {
   JORDFORURENING_V2_UNDERSOEGELSE: "jordforurening_v2_undersoegelse", // NY: V2-kortlagt
   JORDFORURENING_V1_SCREENING: "jordforurening_v1_screening", // NY: V1-kortlagt
   SAVE_4_PARAGRAPH14: "save_4_paragraph14",
+  LANDZONE_TILLADELSE: "landzone_tilladelse",
+  BYGGEFELT_DISPENSATION: "byggefelt_dispensation",
   // Maskinrummet phase
   JORDFLYTNING_ATTEST: "jordflytning_attest", // NY: omraadeklassificering
+  KLOAK_NEDSIVNING_AFKLARING: "kloak_nedsivning_afklaring",
   ARKITEKTTEGNINGER: "arkitekttegninger",
   STATIK: "statik",
   LCA_BEREGNING: "lca_beregning",

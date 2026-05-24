@@ -22,11 +22,13 @@ import type {
   RuleEngineFbbResult,
   RuleEngineGeusRiskData,
   RuleEngineNaturbeskyttelsesResultat,
+  RuleEnginePlandataContext,
   RuleEngineTerrainData,
 } from "@/domain/contracts/rule-engine.types";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 import {
   ruleEngineGeusRiskDataSchema,
+  ruleEnginePlandataContextSchema,
   ruleEngineTerrainDataSchema,
 } from "@/types/project-restore.schemas";
 
@@ -51,6 +53,7 @@ export type GeoRiskResult = {
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
   fbbData: RuleEngineFbbResult | null;
+  plandataContext: RuleEnginePlandataContext | null;
   matGeometri: MatParcelGeometryPayload | null;
   states: Partial<Record<DataSourceKind, PipelineServiceState>>;
 };
@@ -86,6 +89,7 @@ export async function runGeoRiskStep(
   let naboer: NeighborBuildingData | null = null;
   let fjernvarme: FjernvarmeResultat | null = null;
   let fbbData: RuleEngineFbbResult | null = null;
+  let plandataContext: RuleEnginePlandataContext | null = null;
   let matGeometri: MatParcelGeometryPayload | null = null;
 
   // ── Step 1: MAT geometry ─────────────────────────────────────────────────
@@ -219,6 +223,7 @@ export async function runGeoRiskStep(
       naboer,
       fjernvarme,
       fbbData,
+      plandataContext,
       matGeometri,
       states,
     };
@@ -226,7 +231,7 @@ export async function runGeoRiskStep(
 
   // ── Step 4: Full parallel block ─────────────────────────────────────────
   if (koordinater) {
-    const [natur, jord, geus, terr, nabo, varme] = await Promise.all([
+    const [natur, jord, geus, terr, nabo, varme, plandataExt] = await Promise.all([
       // naturbeskyttelse
       import("@/integrations/sdfi/naturbeskyttelse")
         .then(({ NaturbeskyttelseService }) =>
@@ -479,6 +484,64 @@ export async function runGeoRiskStep(
           });
           return null;
         }),
+
+      // plandata extension
+      Promise.all([import("@/integrations/plandata/client"), import("@/integrations/cache/client")])
+        .then(async ([{ PlandataService }, { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult }]) => {
+          const cached = await getCachedSourceResult(
+            addressId,
+            "plandata_ext",
+            ruleEnginePlandataContextSchema,
+          ).catch(() => null);
+
+          if (cached) {
+            return { result: cached, cacheHit: true as const };
+          }
+
+          const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+          const result = await traceStep(
+            trace,
+            {
+              eventType: "api_call",
+              phase: "layer4",
+              service: "Plandata WFS",
+              operation: "getPlanContextForParcel",
+              inputSummary: `polygon=${polygon ? "yes" : "no"} koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
+            },
+            () =>
+              PlandataService.getPlanContextForParcel({
+                koordinat: koordinater,
+                parcelPolygon: polygon,
+              }),
+            {
+              outputSummary: (r) =>
+                summarizeSourceResult(
+                  r,
+                  (d) =>
+                    `zone=${d.zoneType ?? "null"} future=${d.futureZoneType ?? "null"} byggefelt=${d.withinBuildingField ?? "null"}`,
+                ),
+              metadata: (r) => ({
+                source: r.kilde,
+                isMock: r.isMock,
+                feature_count: r.rawFeatureCount,
+              }),
+            },
+          );
+
+          await setCachedSourceResult(addressId, "plandata_ext", result).catch(() => undefined);
+          return { result, cacheHit: false as const };
+        })
+        .catch((e: Error) => {
+          logServerEvent({
+            module: "geo-risk-step",
+            operation: "layer4.plandata_ext",
+            severity: "degraded",
+            message: "PlandataService.getPlanContextForParcel fejlede",
+            error: e,
+            trace,
+          });
+          return null;
+        }),
     ]);
 
     naturbeskyttelse = natur;
@@ -491,6 +554,7 @@ export async function runGeoRiskStep(
     naboer = nabo?.data ?? null;
     states.naboer = deriveSourceState(nabo);
     fjernvarme = varme;
+    plandataContext = plandataExt?.result.data ?? null;
   }
 
   // Set all remaining service states.
@@ -510,6 +574,7 @@ export async function runGeoRiskStep(
     naboer,
     fjernvarme,
     fbbData,
+    plandataContext,
     matGeometri,
     states,
   };

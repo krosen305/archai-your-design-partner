@@ -528,9 +528,11 @@ export type Database = {
         Row: {
           address_id: string;
           bluespot_risk: boolean | null;
+          building_field_source_id: string | null;
           confidence: string;
           extracted_at: string;
           fredskov: boolean;
+          future_zone_type: string | null;
           geoteknik_jordart: string | null;
           grundvand_depth_summer_m: number | null;
           grundvand_depth_winter_m: number | null;
@@ -543,12 +545,15 @@ export type Database = {
           jordforurening_v1: boolean | null;
           jordforurening_v2: boolean | null;
           klitfredning: boolean;
+          landzone_permit_required: boolean | null;
+          lokalplan_byggefelt_present: boolean | null;
           max_bebyggelsesprocent: number | null;
           max_etager: number | null;
           max_height_m: number | null;
           min_distance_to_boundary_m: number | null;
           omraadeklassificering: string | null;
           save_value: number | null;
+          sewer_area_type: string | null;
           soil_contamination_status: string | null;
           source_kommuneplan_id: string | null;
           source_lokalplan_id: string | null;
@@ -556,13 +561,18 @@ export type Database = {
           terrain_low_point_m: number | null;
           terrain_slope_pct: number | null;
           updated_at: string;
+          wastewater_plan_status: string | null;
+          within_building_field: boolean | null;
+          zone_type: string | null;
         };
         Insert: {
           address_id: string;
           bluespot_risk?: boolean | null;
+          building_field_source_id?: string | null;
           confidence?: string;
           extracted_at?: string;
           fredskov?: boolean;
+          future_zone_type?: string | null;
           geoteknik_jordart?: string | null;
           grundvand_depth_summer_m?: number | null;
           grundvand_depth_winter_m?: number | null;
@@ -575,12 +585,15 @@ export type Database = {
           jordforurening_v1?: boolean | null;
           jordforurening_v2?: boolean | null;
           klitfredning?: boolean;
+          landzone_permit_required?: boolean | null;
+          lokalplan_byggefelt_present?: boolean | null;
           max_bebyggelsesprocent?: number | null;
           max_etager?: number | null;
           max_height_m?: number | null;
           min_distance_to_boundary_m?: number | null;
           omraadeklassificering?: string | null;
           save_value?: number | null;
+          sewer_area_type?: string | null;
           soil_contamination_status?: string | null;
           source_kommuneplan_id?: string | null;
           source_lokalplan_id?: string | null;
@@ -588,13 +601,18 @@ export type Database = {
           terrain_low_point_m?: number | null;
           terrain_slope_pct?: number | null;
           updated_at?: string;
+          wastewater_plan_status?: string | null;
+          within_building_field?: boolean | null;
+          zone_type?: string | null;
         };
         Update: {
           address_id?: string;
           bluespot_risk?: boolean | null;
+          building_field_source_id?: string | null;
           confidence?: string;
           extracted_at?: string;
           fredskov?: boolean;
+          future_zone_type?: string | null;
           geoteknik_jordart?: string | null;
           grundvand_depth_summer_m?: number | null;
           grundvand_depth_winter_m?: number | null;
@@ -607,12 +625,15 @@ export type Database = {
           jordforurening_v1?: boolean | null;
           jordforurening_v2?: boolean | null;
           klitfredning?: boolean;
+          landzone_permit_required?: boolean | null;
+          lokalplan_byggefelt_present?: boolean | null;
           max_bebyggelsesprocent?: number | null;
           max_etager?: number | null;
           max_height_m?: number | null;
           min_distance_to_boundary_m?: number | null;
           omraadeklassificering?: string | null;
           save_value?: number | null;
+          sewer_area_type?: string | null;
           soil_contamination_status?: string | null;
           source_kommuneplan_id?: string | null;
           source_lokalplan_id?: string | null;
@@ -620,6 +641,9 @@ export type Database = {
           terrain_low_point_m?: number | null;
           terrain_slope_pct?: number | null;
           updated_at?: string;
+          wastewater_plan_status?: string | null;
+          within_building_field?: boolean | null;
+          zone_type?: string | null;
         };
         Relationships: [
           {

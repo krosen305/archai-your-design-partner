@@ -29,8 +29,8 @@ describe("EbrService.getBfeNr", () => {
   it("returns bfe number from first node", async () => {
     const fetchSpy = mock(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body ?? "{}"));
-      // EBR v2 er ikke bitemporal — ingen virkningstid/registreringstid
-      expect(body.variables.virkningstid).toBeUndefined();
+      // EBR v1 er bitemporal — virkningstid og registreringstid sendes
+      expect(body.variables.virkningstid).toBeDefined();
       expect(body.query).toContain("husnummerLokalId");
       return {
         ok: true,

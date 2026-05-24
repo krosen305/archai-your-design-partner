@@ -11,8 +11,8 @@
 // Verificeret 2026-05-08: Hasselvej 48 (rækkehus) — adresseLokalId=null,
 // husnummerLokalId match giver BFE 2073922.
 //
-// EBR v2 er ikke bitemporal — virkningstid/registreringstid er ikke gyldige argumenter.
-// husnummerLokalId er et indekseret felt i v2 og kan filtres direkte uden bitemporal workaround.
+// EBR v1 kræver bitemporal parameter (virkningstid) for at filtrere på husnummerLokalId
+// (ikke-indekseret felt). Kæde: DAR_Husnummer.id_lokalId → EBR.husnummerLokalId → BFEnr → VUR.
 
 // ---------------------------------------------------------------------------
 // Konfiguration
@@ -20,6 +20,7 @@
 
 import { getEnvRequired } from "@/lib/env";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
+import { currentBitemporalArgs } from "@/integrations/datafordeler/bitemporal";
 import { logServerEvent } from "@/lib/server-logger";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
@@ -40,14 +41,13 @@ function getConfig(explicit?: EbrClientConfig) {
 // ---------------------------------------------------------------------------
 // GraphQL query — filtrerer på husnummerLokalId (= DAR_Husnummer.id_lokalId)
 // ---------------------------------------------------------------------------
-// EBR v2 er ikke bitemporal — virkningstid/registreringstid accepteres ikke.
-// husnummerLokalId er et indekseret felt i v2, så vi kan filtrere direkte.
-// ---------------------------------------------------------------------------
 
 const BELIGGENHED_QUERY = `
-query GetEjendomsbeliggenhed($husnummerLokalId: String!) {
+query GetEjendomsbeliggenhed($husnummerLokalId: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   EBR_Ejendomsbeliggenhed(
     where: { husnummerLokalId: { eq: $husnummerLokalId } }
+    virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -59,9 +59,11 @@ query GetEjendomsbeliggenhed($husnummerLokalId: String!) {
 }`;
 
 const BELIGGENHED_ADRESSE_QUERY = `
-query GetEjendomsbeliggenhedByAdresse($adresseLokalId: String!) {
+query GetEjendomsbeliggenhedByAdresse($adresseLokalId: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   EBR_Ejendomsbeliggenhed(
     where: { adresseLokalId: { eq: $adresseLokalId } }
+    virkningstid: $virkningstid
+    registreringstid: $registreringstid
     first: 1
   ) {
     nodes {
@@ -116,9 +118,9 @@ export class EbrService {
       }>(
         url,
         BELIGGENHED_QUERY,
-        { husnummerLokalId: id },
+        { husnummerLokalId: id, ...currentBitemporalArgs() },
         "EBR_Ejendomsbeliggenhed",
-        { trace, phase: "layer1", metadata: { endpoint: "EBR/v2" } },
+        { trace, phase: "layer1", metadata: { endpoint: "EBR/v1" } },
       );
       const nodes = data.EBR_Ejendomsbeliggenhed.nodes;
 
@@ -166,9 +168,9 @@ export class EbrService {
       }>(
         url,
         BELIGGENHED_ADRESSE_QUERY,
-        { adresseLokalId: id },
+        { adresseLokalId: id, ...currentBitemporalArgs() },
         "EBR_Ejendomsbeliggenhed",
-        { trace, phase: "layer1", metadata: { endpoint: "EBR/v2" } },
+        { trace, phase: "layer1", metadata: { endpoint: "EBR/v1" } },
       );
       const nodes = data.EBR_Ejendomsbeliggenhed.nodes;
 

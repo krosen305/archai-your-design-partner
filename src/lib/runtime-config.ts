@@ -65,9 +65,9 @@ export function buildRuntimeConfig(
         matEndpoint:
           readEnv("DATAFORDELER_MAT_ENDPOINT") ?? "https://graphql.datafordeler.dk/MAT/v2",
         ebrEndpoint:
-          readEnv("DATAFORDELER_EBR_ENDPOINT") ?? "https://graphql.datafordeler.dk/EBR/v2",
+          readEnv("DATAFORDELER_EBR_ENDPOINT") ?? "https://graphql.datafordeler.dk/EBR/v1",
         vurEndpoint:
-          readEnv("DATAFORDELER_VUR_ENDPOINT") ?? "https://graphql.datafordeler.dk/VUR/v2",
+          readEnv("DATAFORDELER_VUR_ENDPOINT") ?? "https://graphql.datafordeler.dk/VUR/v1",
       },
     },
     ai: {

@@ -146,3 +146,19 @@ export type RuleEngineDkJordResultat = {
   lokalitetsId: string | null;
   kilde: "dkjord" | "mock";
 };
+
+export type RuleEnginePlandataContext = {
+  zoneType: "byzone" | "landzone" | "sommerhusomraade" | "unknown" | null;
+  futureZoneType: "byzone" | "landzone" | "sommerhusomraade" | "unknown" | null;
+  landzonePermitRequired: boolean | null;
+  lokalplanDelomraadeId: string | null;
+  lokalplanByggefeltPresent: boolean | null;
+  withinBuildingField: boolean | null;
+  buildingFieldSourceId: string | null;
+  wastewaterPlanStatus: string | null;
+  sewerAreaType: string | null;
+  sourceLokalplanId: string | null;
+  sourceKommuneplanId: string | null;
+  zoneSourcePlanId: string | null;
+  wastewaterSourceId: string | null;
+};

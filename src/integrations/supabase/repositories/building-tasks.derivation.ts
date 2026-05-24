@@ -14,6 +14,11 @@ export type ComplianceTriggers = {
   strandbeskyttelse: boolean | null;
   fredskov: boolean | null;
   klitfredning: boolean | null;
+  landzonePermitRequired: boolean | null;
+  lokalplanByggefeltPresent: boolean | null;
+  withinBuildingField: boolean | null;
+  wastewaterPlanStatus: string | null;
+  sewerAreaType: string | null;
   soilContamination: "clean" | "registered" | "contaminated" | "unknown" | null;
   jordforureningV1: boolean | null;
   jordforureningV2: boolean | null;
@@ -129,6 +134,58 @@ export function deriveAutoTasks(t: ComplianceTriggers): BuildingTaskInsert[] {
       is_auto_generated: true,
       blocked_by_constraint: "klitfredning",
       metadata: { myndighed: "Kystdirektoratet" },
+    });
+  }
+
+  if (t.landzonePermitRequired === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.LANDZONE_TILLADELSE,
+      title: "Landzonetilladelse skal afklares",
+      description:
+        "Ejendommen ligger i landzone. Nybyggeri eller væsentlige ændringer kræver som udgangspunkt landzonetilladelse fra kommunen, før projektet kan modnes videre.",
+      phase: "myndighed",
+      status: "pending",
+      priority: 1,
+      is_auto_generated: true,
+      blocked_by_constraint: "landzone_permit_required",
+      metadata: { myndighed: "Kommunen", lovgrundlag: "Planloven" },
+    });
+  }
+
+  if (t.lokalplanByggefeltPresent === true && t.withinBuildingField === false) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.BYGGEFELT_DISPENSATION,
+      title: "Byggefelt overskrides – dispensation skal afklares",
+      description:
+        "Lokalplanen ser ud til at definere byggefelter, men parcelens planmæssige kontekst ligger uden for registreret byggefelt. Projektet kræver planfaglig afklaring eller dispensation, før det kan behandles som realistisk.",
+      phase: "myndighed",
+      status: "blocked",
+      priority: 1,
+      is_auto_generated: true,
+      blocked_by_constraint: "within_building_field",
+      metadata: { kilde: "Plandata WFS byggefelt", myndighed: "Kommunen" },
+    });
+  }
+
+  if (t.wastewaterPlanStatus !== null || t.sewerAreaType !== null) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,
+      title: "Kloak- og nedsivningsforhold skal afklares",
+      description:
+        `Plandata viser spildevandsforhold${t.sewerAreaType ? ` (${t.sewerAreaType})` : ""}. Kloakopland, nedsivning eller udtræden skal afklares med kommune/forsyning før projektets teknik og budget låses.`,
+      phase: "maskinrummet",
+      status: "pending",
+      priority: 2,
+      is_auto_generated: true,
+      blocked_by_constraint: "wastewater_plan_status",
+      metadata: {
+        wastewater_plan_status: t.wastewaterPlanStatus,
+        sewer_area_type: t.sewerAreaType,
+        myndighed: "Kommune/Forsyning",
+      },
     });
   }
 

@@ -18,6 +18,7 @@ import { checkStopRules } from "@/lib/rule-engine/rules/stop-rules";
 import { runCalculations } from "@/lib/rule-engine/rules/calculations";
 import { checkEnergyProportionality } from "@/lib/rule-engine/rules/energy-rules";
 import { checkJordforureningRules } from "@/lib/rule-engine/rules/jordforurening-rules";
+import { checkPlandataRules } from "@/lib/rule-engine/rules/plandata-rules";
 
 // ---------------------------------------------------------------------------
 // Kritiske felter — hvis manglende → status INCOMPLETE
@@ -69,6 +70,7 @@ const DISPENSATION_LABELS: Record<string, string> = {
   bygningshøjde: "Overskridelse af max bygningshøjde",
   etager: "Overskridelse af max etager",
   skelafstand: "Underskridelse af skelafstand",
+  lokalplan_building_field: "Byggeri uden for lokalplanens byggefelt",
 };
 
 function buildDispensationList(violations: RuleViolation[]): DispensationItem[] {
@@ -141,12 +143,21 @@ export function runRuleEngine(input: RuleEngineInput, missingFields: string[]): 
     "jordforurening_omraadeklassificering",
   );
 
-  // ── 5. Sammensæt ──────────────────────────────────────────────────────────
+  // ── 5. Udvidet plandata ───────────────────────────────────────────────────
+  const plandataViolations = checkPlandataRules(input);
+  checkedRules.push(
+    "lokalplan_building_field",
+    "landzone_permit_required",
+    "wastewater_plan_clarification",
+  );
+
+  // ── 6. Sammensæt ──────────────────────────────────────────────────────────
   const allViolations = [
     ...stopViolations,
     ...calcViolations,
     ...energyViolations,
     ...jordforureningViolations,
+    ...plandataViolations,
   ];
   const status = aggregateStatus(allViolations, missingFields);
   const dispensationList = buildDispensationList(allViolations);

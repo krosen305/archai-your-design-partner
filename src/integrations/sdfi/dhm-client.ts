@@ -1,8 +1,10 @@
 import { getEnvRequired } from "@/lib/env";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
+import { wgs84ToUtm32 } from "@/lib/geometry-utils";
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import { ruleEngineTerrainDataSchema } from "@/types/project-restore.schemas";
+import { fromArrayBuffer } from "geotiff";
 
 const DHM_WCS = "https://wcs.datafordeler.dk/DHMNedboer/dhm_wcs/1.0.0/WCS";
 const DHM_COVERAGE = "dhm_terraen";
@@ -32,41 +34,6 @@ export function getNorthOrientation(_lat: number, _lng: number): NorthOrientatio
   return "S";
 }
 
-function wgs84ToUtm32(lat: number, lng: number): { x: number; y: number } {
-  const a = 6378137.0;
-  const f = 1 / 298.257223563;
-  const k0 = 0.9996;
-  const e2 = 2 * f - f * f;
-  const lon0 = (9 * Math.PI) / 180;
-
-  const latR = (lat * Math.PI) / 180;
-  const lngR = (lng * Math.PI) / 180;
-  const n = a / Math.sqrt(1 - e2 * Math.sin(latR) ** 2);
-  const t = Math.tan(latR) ** 2;
-  const c = (e2 / (1 - e2)) * Math.cos(latR) ** 2;
-  const angle = Math.cos(latR) * (lngR - lon0);
-
-  const m =
-    a *
-    ((1 - e2 / 4 - (3 * e2 ** 2) / 64) * latR -
-      ((3 * e2) / 8 + (3 * e2 ** 2) / 32) * Math.sin(2 * latR) +
-      ((15 * e2 ** 2) / 256) * Math.sin(4 * latR));
-
-  const x =
-    k0 *
-      n *
-      (angle +
-        ((1 - t + c) * angle ** 3) / 6 +
-        ((5 - 18 * t + t ** 2 + 72 * c) * angle ** 5) / 120) +
-    500000;
-
-  const y =
-    k0 *
-    (m + n * Math.tan(latR) * (angle ** 2 / 2 + ((5 - t + 9 * c + 4 * c ** 2) * angle ** 4) / 24));
-
-  return { x: Math.round(x), y: Math.round(y) };
-}
-
 export function bboxFromPoint(lat: number, lng: number, grundareal: number | null): BoundingBox {
   const { x, y } = wgs84ToUtm32(lat, lng);
   const halfWidth = grundareal ? Math.round(Math.sqrt(grundareal) / 2) + 5 : 30;
@@ -78,41 +45,34 @@ export function bboxFromPoint(lat: number, lng: number, grundareal: number | nul
   };
 }
 
-function parseTiff(
+async function parseGeoTiff(
   buffer: ArrayBuffer,
   bbox: BoundingBox,
-  pixelSizeM: number,
-): TerrainData["kotepunkter"] {
-  const data = new DataView(buffer);
-  const littleEndian = data.getUint16(0) === 0x4949;
-  const ifdOffset = data.getUint32(4, littleEndian);
-  const numEntries = data.getUint16(ifdOffset, littleEndian);
-  let width = 0;
-  let height = 0;
-  let stripOffset = 0;
-
-  for (let i = 0; i < numEntries; i++) {
-    const base = ifdOffset + 2 + i * 12;
-    const tag = data.getUint16(base, littleEndian);
-    const value = data.getUint32(base + 8, littleEndian);
-    if (tag === 256) width = value;
-    else if (tag === 257) height = value;
-    else if (tag === 273) stripOffset = value;
-  }
-
-  if (!width || !height || !stripOffset) return [];
-
+): Promise<TerrainData["kotepunkter"]> {
+  const tiff = await fromArrayBuffer(buffer);
+  const image = await tiff.getImage();
+  const width = image.getWidth();
+  const height = image.getHeight();
+  const noDataRaw = image.getGDALNoData();
+  const noData =
+    noDataRaw === null || noDataRaw === undefined || `${noDataRaw}`.trim().length === 0
+      ? null
+      : Number(noDataRaw);
+  const raster = await image.readRasters({ interleave: true });
+  const pixelSizeX = (bbox.maxX - bbox.minX) / width;
+  const pixelSizeY = (bbox.maxY - bbox.minY) / height;
   const points: TerrainData["kotepunkter"] = [];
+
   for (let row = 0; row < height; row++) {
     for (let col = 0; col < width; col++) {
-      const offset = stripOffset + (row * width + col) * 4;
-      if (offset + 4 > buffer.byteLength) continue;
-      const z = data.getFloat32(offset, littleEndian);
-      if (!Number.isFinite(z) || z < -100 || z > 3000) continue;
+      const index = row * width + col;
+      const value = raster[index];
+      if (typeof value !== "number" || !Number.isFinite(value)) continue;
+      if (noData !== null && value === noData) continue;
       points.push({
-        x: Math.round((bbox.minX + col * pixelSizeM) * 10) / 10,
-        y: Math.round((bbox.maxY - row * pixelSizeM) * 10) / 10,
-        z: Math.round(z * 100) / 100,
+        x: Math.round((bbox.minX + col * pixelSizeX) * 10) / 10,
+        y: Math.round((bbox.maxY - row * pixelSizeY) * 10) / 10,
+        z: Math.round(value * 100) / 100,
       });
     }
   }
@@ -170,7 +130,7 @@ async function fetchLiveTerrain(
     if (!res.ok) throw new Error(`DHM WCS HTTP ${res.status}`);
 
     const buffer = await res.arrayBuffer();
-    const kotepunkter = parseTiff(buffer, bbox, pixelSizeM);
+    const kotepunkter = await parseGeoTiff(buffer, bbox);
     if (kotepunkter.length === 0) throw new Error("DHM: ingen kotepunkter fundet i GeoTIFF");
 
     return makeOkResult(summarizeTerrain(kotepunkter, bbox, lat, lng), {

@@ -257,6 +257,24 @@ export const ruleEngineDkJordResultatSchema = z
   })
   .passthrough();
 
+export const ruleEnginePlandataContextSchema = z
+  .object({
+    zoneType: z.enum(["byzone", "landzone", "sommerhusomraade", "unknown"]).nullable(),
+    futureZoneType: z.enum(["byzone", "landzone", "sommerhusomraade", "unknown"]).nullable(),
+    landzonePermitRequired: z.boolean().nullable(),
+    lokalplanDelomraadeId: z.string().nullable(),
+    lokalplanByggefeltPresent: z.boolean().nullable(),
+    withinBuildingField: z.boolean().nullable(),
+    buildingFieldSourceId: z.string().nullable(),
+    wastewaterPlanStatus: z.string().nullable(),
+    sewerAreaType: z.string().nullable(),
+    sourceLokalplanId: z.string().nullable(),
+    sourceKommuneplanId: z.string().nullable(),
+    zoneSourcePlanId: z.string().nullable(),
+    wastewaterSourceId: z.string().nullable(),
+  })
+  .passthrough();
+
 const byggeanalyseItemSchema = z.object({
   emne: z.string(),
   begrundelse: z.string(),
@@ -395,6 +413,7 @@ export const restoredComplianceDataSchema = z
     flags: z.array(complianceFlagSchema).optional().default([]),
     lokalplaner: z.array(ruleEngineLokalplanSchema).optional().default([]),
     kommuneplanramme: ruleEngineKommuneplanrammeSchema.nullable().optional().default(null),
+    plandataContext: ruleEnginePlandataContextSchema.nullable().optional().default(null),
     byggeanalyseResultat: byggeanalyseResultatSchema.nullable().optional().default(null),
     vurderingData: vurDataSchema.nullable().optional().default(null),
   })

@@ -23,6 +23,7 @@ import type { TinglysningResult } from "@/integrations/tinglysning/client";
 import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
+import type { PlanContextResult } from "@/integrations/plandata/client";
 import {
   getUserId,
   getOrCreateProject,
@@ -62,6 +63,7 @@ export type ProjectPatch = {
   complianceFlags?: ComplianceFlag[];
   lokalplaner?: Lokalplan[];
   kommuneplanramme?: Kommuneplanramme | null;
+  plandataContext?: PlanContextResult | null;
   byggeanalyseResultat?: ByggeanalyseResultat | null;
   vurderingData?: VurData | null;
   naturbeskyttelse?: NaturbeskyttelsesResultat | null;
@@ -266,6 +268,11 @@ export async function saveProject(
         strandbeskyttelse: patch.bbrData?.mat_strandbeskyttelse ?? null,
         fredskov: patch.bbrData?.mat_fredskov ?? null,
         klitfredning: patch.bbrData?.mat_klitfredning ?? null,
+        landzonePermitRequired: patch.plandataContext?.landzonePermitRequired ?? null,
+        lokalplanByggefeltPresent: patch.plandataContext?.lokalplanByggefeltPresent ?? null,
+        withinBuildingField: patch.plandataContext?.withinBuildingField ?? null,
+        wastewaterPlanStatus: patch.plandataContext?.wastewaterPlanStatus ?? null,
+        sewerAreaType: patch.plandataContext?.sewerAreaType ?? null,
         soilContamination,
         jordforureningV1: patch.dkjord?.v1Kortlagt ?? null,
         jordforureningV2: patch.dkjord?.v2Kortlagt ?? null,

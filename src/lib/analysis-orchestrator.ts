@@ -22,6 +22,7 @@ import type {
   RuleEngineLokalplan,
   RuleEngineLokalplanExtract,
   RuleEngineNaturbeskyttelsesResultat,
+  RuleEnginePlandataContext,
   RuleEngineTerrainData,
   RuleEngineTinglysningResult,
 } from "@/domain/contracts/rule-engine.types";
@@ -64,6 +65,7 @@ export type ComplianceResult = {
   naboer: NeighborBuildingData | null;
   fjernvarme: FjernvarmeResultat | null;
   fbbData: RuleEngineFbbResult | null; // ARCH-131: SAVE-bevaringsværdi (1-9) + fredningsstatus fra FBB
+  plandataContext: RuleEnginePlandataContext | null; // ARCH-244: zone, byggefelt og spildevandskontekst
   matGeometri: MatParcelGeometryPayload | null; // ARCH-240: parcelpolygon + skel-metrics
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
@@ -174,7 +176,6 @@ async function analyseAddressWithTrace(
       ejerlavskode: input.ejerlavskode,
       matrikelnummer: input.matrikelnummer,
       grundareal: input.grundareal ?? null,
-      samletFastEjendomLokalId: null,
     },
     trace,
   );
@@ -188,7 +189,6 @@ async function analyseAddressWithTrace(
       matrikelnummer: enriched.matrikelnummer,
       grundareal: enriched.grundareal,
       koordinater,
-      samletFastEjendomLokalId: enriched.samletFastEjendomLokalId,
     },
     trace,
   );
@@ -234,6 +234,7 @@ async function analyseAddressWithTrace(
     naboer: geoRisk.naboer,
     fjernvarme: geoRisk.fjernvarme,
     fbbData: geoRisk.fbbData,
+    plandataContext: geoRisk.plandataContext,
     matGeometri: geoRisk.matGeometri,
     vurderingData: complianceBase.vurderingData,
     serviceStates,

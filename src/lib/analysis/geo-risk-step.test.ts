@@ -11,7 +11,7 @@ const getCachedSourceResult = mock(async (_addressId: string, sourceKind: string
         groundwaterDepthWinterM: 3.2,
         groundwaterDepthSummerM: 3.8,
         groundwaterModelUncertaintyM: 0.5,
-        geoteknikJordart: "Moræneler",
+        geoteknikJordart: "MorÃ¦neler",
         kilde: "mock" as const,
       },
       { kilde: "geus", sourceUrl: "mock://geus", rawFeatureCount: 1, confidence: "estimated" },
@@ -32,6 +32,27 @@ const getCachedSourceResult = mock(async (_addressId: string, sourceKind: string
         kilde: "dhm" as const,
       },
       { kilde: "dhm", sourceUrl: "mock://dhm", rawFeatureCount: 2 },
+    );
+  }
+
+  if (sourceKind === "plandata_ext") {
+    return makeOkResult(
+      {
+        zoneType: "byzone" as const,
+        futureZoneType: "byzone" as const,
+        landzonePermitRequired: false,
+        lokalplanDelomraadeId: null,
+        lokalplanByggefeltPresent: null,
+        withinBuildingField: null,
+        buildingFieldSourceId: null,
+        wastewaterPlanStatus: null,
+        sewerAreaType: null,
+        sourceLokalplanId: null,
+        sourceKommuneplanId: null,
+        zoneSourcePlanId: null,
+        wastewaterSourceId: null,
+      },
+      { kilde: "plandata", sourceUrl: "mock://plandata", rawFeatureCount: 1 },
     );
   }
 
@@ -133,8 +154,14 @@ describe("runGeoRiskStep", () => {
 
     expect(getCachedSourceResult).toHaveBeenCalledWith("addr-1", "geus", expect.anything());
     expect(getCachedSourceResult).toHaveBeenCalledWith("addr-1", "dhm", expect.anything());
-    expect(result.geusRisk?.geoteknikJordart).toBe("Moræneler");
+    expect(getCachedSourceResult).toHaveBeenCalledWith(
+      "addr-1",
+      "plandata_ext",
+      expect.anything(),
+    );
+    expect(result.geusRisk?.geoteknikJordart).toBe("MorÃ¦neler");
     expect(result.terrain?.lowPointM).toBe(18.4);
+    expect(result.plandataContext?.zoneType).toBe("byzone");
     expect(result.states.geusRisk).toBe("cache_hit");
     expect(result.states.terrain).toBe("cache_hit");
     expect(setCachedSourceResult).not.toHaveBeenCalled();

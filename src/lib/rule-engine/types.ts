@@ -135,6 +135,17 @@ export type RuleEngineInput = {
     criticalTexts: string[];
   };
 
+  /** Planfaglig parcelkontekst fra Plandata udvidede lag */
+  planning?: {
+    zoneType: "byzone" | "landzone" | "sommerhusomraade" | "unknown" | null;
+    futureZoneType: "byzone" | "landzone" | "sommerhusomraade" | "unknown" | null;
+    landzonePermitRequired: boolean | null;
+    buildingFieldDefined: boolean | null;
+    withinBuildingField: boolean | null;
+    wastewaterPlanStatus: string | null;
+    sewerAreaType: string | null;
+  } | null;
+
   /**
    * Præcis bygningsplacering fra korteditor (ARCH-179/180).
    * Når tilstede overskriver disse værdier de estimerede newBuilding-værdier.

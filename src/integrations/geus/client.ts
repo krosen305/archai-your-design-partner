@@ -1,48 +1,74 @@
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
+import { wgs84ToUtm32 } from "@/lib/geometry-utils";
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
-import { logServerEvent } from "@/lib/server-logger";
-import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { z } from "zod";
 
-const GEUS_OWS = "https://data.geus.dk/geusmap/ows/4258.jsp";
+const GEUS_WFS = "https://data.geus.dk/geusmap/ows/25832.jsp";
 const GROUNDWATER_RADIUS_M = 500;
+const MAX_GROUNDWATER_FEATURES = 50;
 
-type Koordinat = { lat: number; lng: number };
+const nullableNumberSchema = z.preprocess((value) => {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value.replace(",", "."));
+  return value;
+}, z.number().finite().nullable());
 
-const geusRadonResponseSchema = z.object({
-  features: z
-    .array(
-      z.object({
-        properties: z
-          .object({
-            radon_klasse: z.string().optional(),
-          })
-          .passthrough()
-          .optional(),
-      }),
-    )
-    .optional(),
+const nullableStringSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}, z.string().nullable());
+
+const jupiterPejlingFeatureSchema = z
+  .object({
+    geometry: z
+      .object({
+        coordinates: z.tuple([z.number(), z.number()]).optional(),
+      })
+      .passthrough()
+      .optional(),
+    properties: z
+      .object({
+        borid: z.union([z.string(), z.number()]).optional(),
+        dgu_nr: nullableStringSchema.optional(),
+        url_borerapport: nullableStringSchema.optional(),
+        vsp_mtu_seneste: nullableNumberSchema.optional(),
+        terraen_kote: nullableNumberSchema.optional(),
+        kote_seneste: nullableNumberSchema.optional(),
+        indtags_bjergart: nullableStringSchema.optional(),
+        xutm32euref89: nullableNumberSchema.optional(),
+        yutm32euref89: nullableNumberSchema.optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough()
+  .transform((feature) => {
+    const x = feature.properties.xutm32euref89 ?? feature.geometry?.coordinates?.[0] ?? null;
+    const y = feature.properties.yutm32euref89 ?? feature.geometry?.coordinates?.[1] ?? null;
+    return {
+      borid:
+        typeof feature.properties.borid === "number"
+          ? `${feature.properties.borid}`
+          : (feature.properties.borid ?? null),
+      dguNr: feature.properties.dgu_nr ?? null,
+      reportUrl: feature.properties.url_borerapport ?? null,
+      groundwaterDepthM: feature.properties.vsp_mtu_seneste ?? null,
+      terrainKoteM: feature.properties.terraen_kote ?? null,
+      latestWaterKoteM: feature.properties.kote_seneste ?? null,
+      jordart: feature.properties.indtags_bjergart ?? null,
+      x,
+      y,
+    };
+  });
+
+const jupiterPejlingerResponseSchema = z.object({
+  features: z.array(jupiterPejlingFeatureSchema).default([]),
 });
 
-const geusBoringResponseSchema = z.object({
-  features: z
-    .array(
-      z.object({
-        id: z.string().optional(),
-        properties: z
-          .object({
-            boringnr: z.string().optional(),
-            grundvand_kote: z.number().nullable().optional(),
-            terrænkote: z.number().nullable().optional(),
-            jordart: z.string().nullable().optional(),
-            lithologi: z.string().nullable().optional(),
-          })
-          .passthrough()
-          .optional(),
-      }),
-    )
-    .optional(),
-});
+type JupiterPejling = z.infer<typeof jupiterPejlingFeatureSchema>;
 
 export type GeusRiskData = {
   radonRisk: "low" | "medium" | "high" | "unknown";
@@ -55,81 +81,81 @@ export type GeusRiskData = {
   kilde: "geus" | "mock";
 };
 
-async function fetchRadonRisk(
-  koordinat: Koordinat,
-): Promise<"low" | "medium" | "high" | "unknown"> {
-  const { lat, lng } = koordinat;
-  const delta = 0.001;
-  const bbox = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
+type GroundwaterFetchResult = {
+  depthM: number | null;
+  boringId: string | null;
+  jordart: string | null;
+  featureCount: number;
+};
 
-  const url =
-    `${GEUS_OWS}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo` +
-    `&LAYERS=radon_risiko&QUERY_LAYERS=radon_risiko` +
-    `&INFO_FORMAT=application%2Fjson` +
-    `&I=50&J=50&WIDTH=101&HEIGHT=101` +
-    `&CRS=EPSG:4326&BBOX=${bbox}`;
+function buildGroundwaterUrl(lat: number, lng: number): string {
+  const { x, y } = wgs84ToUtm32(lat, lng);
+  const minX = x - GROUNDWATER_RADIUS_M;
+  const minY = y - GROUNDWATER_RADIUS_M;
+  const maxX = x + GROUNDWATER_RADIUS_M;
+  const maxY = y + GROUNDWATER_RADIUS_M;
 
-  const res = await fetch(url, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(8_000),
-  });
-
-  if (!res.ok) throw new Error(`GEUS radon WMS HTTP ${res.status}`);
-
-  const raw = await res.json();
-  const data = geusRadonResponseSchema.parse(raw);
-  const klasse = data.features?.[0]?.properties?.radon_klasse?.toLowerCase() ?? "";
-
-  if (klasse.includes("hoj") || klasse.includes("høj") || klasse.includes("high")) return "high";
-  if (klasse.includes("middel") || klasse.includes("medium")) return "medium";
-  if (klasse.includes("lav") || klasse.includes("low")) return "low";
-  return "unknown";
+  return (
+    `${GEUS_WFS}?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature` +
+    `&TYPENAME=jupiter_pejlinger&SRSNAME=EPSG:25832` +
+    `&BBOX=${minX},${minY},${maxX},${maxY},EPSG:25832` +
+    `&MAXFEATURES=${MAX_GROUNDWATER_FEATURES}&OUTPUTFORMAT=geojson`
+  );
 }
 
-async function fetchGroundwater(
-  koordinat: Koordinat,
-): Promise<{ depthM: number | null; boringId: string | null; jordart: string | null }> {
-  const { lat, lng } = koordinat;
-  const filter = encodeURIComponent(
-    `DWITHIN(geometri,POINT(${lng} ${lat}),${GROUNDWATER_RADIUS_M},meters)`,
-  );
-  const url =
-    `${GEUS_OWS}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature` +
-    `&TYPENAMES=jupiter_boring&SRSNAME=EPSG:4326&COUNT=5` +
-    `&OUTPUTFORMAT=application%2Fjson&CQL_FILTER=${filter}`;
+function getDistanceSquared(
+  point: { x: number; y: number },
+  candidate: Pick<JupiterPejling, "x" | "y">,
+): number {
+  if (candidate.x === null || candidate.y === null) return Number.POSITIVE_INFINITY;
+  return (candidate.x - point.x) ** 2 + (candidate.y - point.y) ** 2;
+}
 
-  const res = await fetch(url, {
+function selectNearestGroundwaterFeature(
+  features: JupiterPejling[],
+  point: { x: number; y: number },
+): JupiterPejling | null {
+  const withDepth = features.filter((feature) => feature.groundwaterDepthM !== null);
+  if (withDepth.length === 0) return null;
+
+  return withDepth.reduce<JupiterPejling | null>((nearest, feature) => {
+    if (!nearest) return feature;
+    return getDistanceSquared(point, feature) < getDistanceSquared(point, nearest)
+      ? feature
+      : nearest;
+  }, null);
+}
+
+async function fetchGroundwater(lat: number, lng: number): Promise<GroundwaterFetchResult> {
+  const response = await fetch(buildGroundwaterUrl(lat, lng), {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(8_000),
   });
 
-  if (!res.ok) throw new Error(`GEUS Jupiter WFS HTTP ${res.status}`);
+  if (!response.ok) throw new Error(`GEUS Jupiter WFS HTTP ${response.status}`);
 
-  const raw = await res.json();
-  const data = geusBoringResponseSchema.parse(raw);
-  const boring = data.features?.[0];
-  if (!boring) return { depthM: null, boringId: null, jordart: null };
+  const raw = await response.json();
+  const data = jupiterPejlingerResponseSchema.parse(raw);
+  const point = wgs84ToUtm32(lat, lng);
+  const nearest = selectNearestGroundwaterFeature(data.features, point);
 
-  const terraen = boring.properties?.terrænkote ?? null;
-  const vandkote = boring.properties?.grundvand_kote ?? null;
-  const depthM = terraen !== null && vandkote !== null ? terraen - vandkote : null;
+  if (!nearest) {
+    return {
+      depthM: null,
+      boringId: null,
+      jordart: null,
+      featureCount: data.features.length,
+    };
+  }
 
   return {
-    depthM: depthM !== null ? Math.round(depthM * 10) / 10 : null,
-    boringId: boring.properties?.boringnr ?? boring.id ?? null,
-    jordart: boring.properties?.jordart ?? boring.properties?.lithologi ?? null,
+    depthM:
+      nearest.groundwaterDepthM !== null ? Math.round(nearest.groundwaterDepthM * 10) / 10 : null,
+    boringId: nearest.dguNr ?? nearest.borid ?? nearest.reportUrl ?? null,
+    jordart: nearest.jordart,
+    featureCount: data.features.length,
   };
 }
-
-type RadonFetchResult = {
-  value: "low" | "medium" | "high" | "unknown";
-  failed: boolean;
-};
-
-type GroundwaterFetchResult = {
-  value: { depthM: number | null; boringId: string | null; jordart: string | null };
-  failed: boolean;
-};
 
 export const GeusService = {
   async getRiskData(lat: number, lng: number): Promise<SourceResult<GeusRiskData>> {
@@ -145,80 +171,33 @@ export const GeusService = {
           geoteknikJordart: "Moræneler",
           kilde: "mock",
         },
-        { kilde: "geus", sourceUrl: GEUS_OWS, rawFeatureCount: 1, confidence: "estimated" },
+        { kilde: "geus", sourceUrl: GEUS_WFS, rawFeatureCount: 1, confidence: "estimated" },
       );
     }
 
-    const koordinat = { lat, lng };
-
     try {
-      const [radonRisk, groundwater] = await Promise.all([
-        fetchRadonRisk(koordinat)
-          .then(
-            (value): RadonFetchResult => ({
-              value,
-              failed: false,
-            }),
-          )
-          .catch((error: Error): RadonFetchResult => {
-            logServerEvent({
-              module: "geus/client",
-              operation: "fetchRadonRisk",
-              severity: "degraded",
-              message: "Radon WMS fejlede",
-              error,
-            });
-            return { value: "unknown", failed: true };
-          }),
-        fetchGroundwater(koordinat)
-          .then(
-            (value): GroundwaterFetchResult => ({
-              value,
-              failed: false,
-            }),
-          )
-          .catch((error: Error): GroundwaterFetchResult => {
-            logServerEvent({
-              module: "geus/client",
-              operation: "fetchGroundwater",
-              severity: "degraded",
-              message: "Jupiter WFS fejlede",
-              error,
-            });
-            return {
-              value: { depthM: null, boringId: null, jordart: null },
-              failed: true,
-            };
-          }),
-      ]);
-
-      if (radonRisk.failed && groundwater.failed) {
-        return makeErrorResult<GeusRiskData>(new Error("GEUS live fetch failed"), {
-          kilde: "geus",
-          sourceUrl: GEUS_OWS,
-        });
-      }
+      const groundwater = await fetchGroundwater(lat, lng);
 
       return makeOkResult(
         {
-          radonRisk: radonRisk.value,
-          groundwaterDepthM: groundwater.value.depthM,
-          groundwaterDataSource: groundwater.value.boringId,
-          groundwaterDepthWinterM: groundwater.value.depthM,
-          groundwaterDepthSummerM: groundwater.value.depthM,
+          radonRisk: "unknown",
+          groundwaterDepthM: groundwater.depthM,
+          groundwaterDataSource: groundwater.boringId,
+          groundwaterDepthWinterM: groundwater.depthM,
+          groundwaterDepthSummerM: groundwater.depthM,
           groundwaterModelUncertaintyM: null,
-          geoteknikJordart: groundwater.value.jordart,
+          geoteknikJordart: groundwater.jordart,
           kilde: "geus",
         },
         {
           kilde: "geus",
-          sourceUrl: GEUS_OWS,
-          rawFeatureCount: groundwater.value.boringId ? 1 : 0,
-          confidence: radonRisk.failed || groundwater.failed ? "unknown" : "confirmed",
+          sourceUrl: GEUS_WFS,
+          rawFeatureCount: groundwater.featureCount,
+          confidence: "unknown",
         },
       );
     } catch (error) {
-      return makeErrorResult<GeusRiskData>(error, { kilde: "geus", sourceUrl: GEUS_OWS });
+      return makeErrorResult<GeusRiskData>(error, { kilde: "geus", sourceUrl: GEUS_WFS });
     }
   },
 };

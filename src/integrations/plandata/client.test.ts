@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { PlandataService } from "./client";
-import { selectKommuneplanrammeForCompliance, selectPrimaryLokalplanForPdf } from "./selectors";
+import {
+  selectKommuneplanrammeForCompliance,
+  selectMostSpecificDelomraade,
+  selectPreferredByggefelt,
+  selectPreferredWastewaterPlan,
+  selectPrimaryLokalplanForPdf,
+} from "./selectors";
 import type { Kommuneplanramme, Lokalplan } from "./client";
 import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
@@ -154,5 +160,71 @@ describe("selectPrimaryLokalplanForPdf (ARCH-228)", () => {
     const ny = lp("V", "20230601", "ny");
     const forslag = lp("F", "20231201", "forslag");
     expect(selectPrimaryLokalplanForPdf([forslag, gammel, ny])!.planid).toBe("ny");
+  });
+});
+
+describe("Plandata extension selectors (ARCH-244)", () => {
+  it("selectMostSpecificDelomraade prefers the primary localplan", () => {
+    const result = selectMostSpecificDelomraade(
+      [
+        {
+          planid: "a",
+          delnr: "1",
+          datoVedtaget: "20200101",
+          datoIkraft: "20200115",
+          status: "V",
+          zoneStatus: null,
+        },
+        {
+          planid: "b",
+          delnr: "2",
+          datoVedtaget: "20250101",
+          datoIkraft: "20250115",
+          status: "V",
+          zoneStatus: "landzone",
+        },
+      ],
+      "a",
+    );
+
+    expect(result?.planid).toBe("a");
+  });
+
+  it("selectPreferredByggefelt prefers matching delnr over newer unrelated field", () => {
+    const result = selectPreferredByggefelt(
+      [
+        {
+          id: "felt-1",
+          planid: "1",
+          lokplanId: "100",
+          delnr: "A",
+          datoVedtaget: "20200101",
+          datoIkraft: "20200115",
+          status: "V",
+        },
+        {
+          id: "felt-2",
+          planid: "2",
+          lokplanId: "100",
+          delnr: "B",
+          datoVedtaget: "20250101",
+          datoIkraft: "20250115",
+          status: "V",
+        },
+      ],
+      "100",
+      "A",
+    );
+
+    expect(result?.id).toBe("felt-1");
+  });
+
+  it("selectPreferredWastewaterPlan prefers latest datoIkraft", () => {
+    const result = selectPreferredWastewaterPlan([
+      { sourceId: "old", datoIkraft: "20200101", datoVedtaget: "20190101" },
+      { sourceId: "new", datoIkraft: "20240101", datoVedtaget: "20230101" },
+    ]);
+
+    expect(result?.sourceId).toBe("new");
   });
 });

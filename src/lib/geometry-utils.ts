@@ -72,6 +72,14 @@ export function utm32ToWgs84(x: number, y: number): { lat: number; lng: number }
   return { lat, lng };
 }
 
+export function wgs84ToUtm32(lat: number, lng: number): { x: number; y: number } {
+  const [x, y] = proj4(WGS84, EPSG25832, [lng, lat]) as [number, number];
+  return {
+    x: Math.round(x * 100) / 100,
+    y: Math.round(y * 100) / 100,
+  };
+}
+
 export function computeBbox25832(
   geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
 ): [number, number, number, number] | null {

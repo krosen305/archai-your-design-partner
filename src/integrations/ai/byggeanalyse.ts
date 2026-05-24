@@ -9,6 +9,7 @@ import type { Byggeoenske } from "@/types/project-state";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { BbrKompliantData } from "@/integrations/bbr/client";
 import type { Kommuneplanramme, Lokalplan } from "@/integrations/plandata/client";
+import type { PlanContextResult } from "@/integrations/plandata/client";
 import type { NaturbeskyttelsesResultat } from "@/integrations/sdfi/naturbeskyttelse";
 import type { GeusRiskData } from "@/integrations/geus/client";
 import type { TinglysningResult } from "@/integrations/tinglysning/client";
@@ -66,6 +67,7 @@ export type ByggeanalyseInput = {
   // Ekstra kontekst til regelkerne (ARCH-109) — valgfri for bagudkompatibilitet
   kommuneplanramme?: Kommuneplanramme | null;
   lokalplaner?: Lokalplan[];
+  plandataContext?: PlanContextResult | null;
   naturbeskyttelse?: NaturbeskyttelsesResultat | null;
   geusRisk?: GeusRiskData | null;
   servitutter?: TinglysningResult | null;

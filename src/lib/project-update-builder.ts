@@ -15,6 +15,7 @@ export function hasComplianceFields(patch: ProjectPatch): boolean {
     patch.complianceFlags !== undefined ||
     patch.lokalplaner !== undefined ||
     patch.kommuneplanramme !== undefined ||
+    patch.plandataContext !== undefined ||
     patch.byggeanalyseResultat !== undefined ||
     patch.vurderingData !== undefined ||
     patch.naturbeskyttelse !== undefined ||
@@ -69,6 +70,9 @@ export function buildProjectUpdate(
       ...(patch.lokalplaner !== undefined && { lokalplaner: toJsonValue(patch.lokalplaner) }),
       ...(patch.kommuneplanramme !== undefined && {
         kommuneplanramme: toJsonValue(patch.kommuneplanramme),
+      }),
+      ...(patch.plandataContext !== undefined && {
+        plandataContext: toJsonValue(patch.plandataContext),
       }),
       ...(patch.byggeanalyseResultat !== undefined && {
         byggeanalyseResultat: toJsonValue(patch.byggeanalyseResultat),

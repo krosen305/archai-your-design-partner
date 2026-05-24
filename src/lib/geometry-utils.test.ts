@@ -5,6 +5,7 @@ import {
   computeBbox25832,
   minDistanceToBoundaryM,
   utm32ToWgs84,
+  wgs84ToUtm32,
 } from "./geometry-utils";
 import type * as GeoJSON from "geojson";
 
@@ -100,5 +101,15 @@ describe("utm32ToWgs84", () => {
     expect(lat).toBeLessThan(57);
     expect(lng).toBeGreaterThan(9);
     expect(lng).toBeLessThan(16);
+  });
+});
+
+describe("wgs84ToUtm32", () => {
+  it("konverterer WGS84 koordinater til UTM32 nær København", () => {
+    const { x, y } = wgs84ToUtm32(55.6761, 12.5683);
+    expect(x).toBeGreaterThan(300000);
+    expect(x).toBeLessThan(900000);
+    expect(y).toBeGreaterThan(6000000);
+    expect(y).toBeLessThan(6400000);
   });
 });

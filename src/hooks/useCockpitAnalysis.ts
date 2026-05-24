@@ -253,6 +253,7 @@ export function useCockpitAnalysis(params: {
             complianceFlags: flags,
             lokalplaner: result.lokalplaner,
             kommuneplanramme: result.kommuneplanramme,
+            plandataContext: result.plandataContext,
             naturbeskyttelse: result.naturbeskyttelse,
             dkjord: result.dkjord,
             geusRisk: result.geusRisk,
