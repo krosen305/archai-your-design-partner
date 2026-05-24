@@ -31,7 +31,7 @@ export async function fetchLayer1(input: Layer1Input): Promise<Layer1Result> {
   const [bbr, plandata, vurderingData] = await Promise.all([
     fetchBbrWithMat({ ...input }),
     fetchPlandata(input.koordinater, input.trace),
-    fetchVurViaEbr(input.adgangsadresseid, input.trace),
+    fetchVurViaMat(null, input.trace),
   ]);
 
   return {
@@ -216,26 +216,68 @@ export async function fetchPlandata(
   };
 }
 
-export async function fetchVurViaEbr(
-  adgangsadresseid: string,
+/**
+ * Henter VUR-data via MAT_SamletFastEjendom → BFE → VUR.
+ * Erstatter EBR-baseret opslag (EBR v2 eksisterer ikke, v1 kræver anden API-nøgle).
+ *
+ * Kæde: MAT_Jordstykke.samletFastEjendomLokalId → MAT_SamletFastEjendom.BFEnummer → VUR
+ */
+export async function fetchVurViaMat(
+  samletFastEjendomLokalId: string | null,
   trace?: AnalysisTraceContext | null,
 ): Promise<VurData | null> {
-  if (!adgangsadresseid) return null;
+  if (!samletFastEjendomLokalId) return null;
   try {
-    const { EbrService } = await import("@/integrations/ebr/client");
-    const ebr = await EbrService.getBfeNr(adgangsadresseid, undefined, trace);
-    if (ebr.fejl || !ebr.bfeNr) return null;
+    const { runtimeConfig } = await import("@/lib/runtime-config");
+    const { getEnvRequired } = await import("@/lib/env");
+    const { datafordelerGraphqlFetch } = await import(
+      "@/integrations/datafordeler/graphql-client"
+    );
+    const { currentBitemporalArgs } = await import("@/integrations/datafordeler/bitemporal");
+    const { z } = await import("zod");
+
+    const apiKey = getEnvRequired("DATAFORDELER_API_KEY");
+    const url = new URL(runtimeConfig.integrations.datafordeler.matEndpoint);
+    url.searchParams.set("apiKey", apiKey);
+
+    const sfeSchema = z.object({
+      MAT_SamletFastEjendom: z.object({
+        nodes: z.array(z.object({ BFEnummer: z.string().nullable().optional().default(null) })),
+      }),
+    });
+
+    const sfeData = await datafordelerGraphqlFetch(
+      url,
+      `query VurSfe($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+  MAT_SamletFastEjendom(
+    where: { id_lokalId: { eq: $id } }
+    virkningstid: $virkningstid
+    registreringstid: $registreringstid
+    first: 1
+  ) {
+    nodes { BFEnummer }
+  }
+}`,
+      { id: samletFastEjendomLokalId, ...currentBitemporalArgs() },
+      "MAT_SamletFastEjendom_vur",
+      sfeSchema,
+      { trace, phase: "layer1", metadata: { via: "MAT_SFE" } },
+    );
+
+    const bfeNr = sfeData.MAT_SamletFastEjendom.nodes[0]?.BFEnummer ?? null;
+    if (!bfeNr) return null;
+
     const { VurService } = await import("@/integrations/vur/client");
-    return await VurService.getVurdering(ebr.bfeNr, undefined, trace);
+    return await VurService.getVurdering(bfeNr, undefined, trace);
   } catch (e) {
     logServerEvent({
       module: "compliance-layer1",
-      operation: "fetchVurViaEbr",
+      operation: "fetchVurViaMat",
       severity: "degraded",
-      message: "VUR-opslag fejlede",
+      message: "VUR-opslag via MAT fejlede",
       error: e,
       trace,
-      metadata: { adgangsadresseid },
+      metadata: { samletFastEjendomLokalId },
     });
     return null;
   }

@@ -76,6 +76,7 @@ export type DarAddressDetails = {
   ejerlavskode: number | null;
   matrikelnummer: string | null;
   grundareal: number | null; // registreretAreal fra MAT_Jordstykke (hentes i samme kald som matrikelnummer)
+  samletFastEjendomLokalId: string | null; // MAT_Jordstykke → MAT_SamletFastEjendom (bruges til BFE-opslag uden EBR)
 };
 
 // ---------------------------------------------------------------------------
@@ -170,6 +171,7 @@ query GetMatJordstykke($id: String!, $virkningstid: DafDateTime!, $registrerings
       matrikelnummer
       ejerlavLokalId
       registreretAreal
+      samletFastEjendomLokalId
     }
   }
 }`;
@@ -233,6 +235,7 @@ type MatJordstykkeByIdNode = {
   matrikelnummer: string | null;
   ejerlavLokalId: string | null;
   registreretAreal: number | null;
+  samletFastEjendomLokalId: string | null;
 };
 type MatEjerlavByIdNode = { ejerlavskode: number | null; ejerlavsnavn: string | null };
 
@@ -372,6 +375,7 @@ export class DarService {
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
     const grundareal: number | null = jordstykkeNode?.registreretAreal ?? null;
+    const samletFastEjendomLokalId: string | null = jordstykkeNode?.samletFastEjendomLokalId ?? null;
 
     // ── Kald 4: MAT_Ejerlav (afhænger af ejerlavLokalId fra kald 3c) ────────
     let ejerlavskode: number | null = null;
@@ -424,6 +428,7 @@ export class DarService {
       ejerlavskode,
       matrikelnummer,
       grundareal,
+      samletFastEjendomLokalId,
     };
   }
 }

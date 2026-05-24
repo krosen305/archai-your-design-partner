@@ -10,7 +10,7 @@ import type {
   RuleEngineKommuneplanramme,
   RuleEngineLokalplan,
 } from "@/domain/contracts/rule-engine.types";
-import { fetchBbrWithMat, fetchPlandata, fetchVurViaEbr } from "@/lib/compliance-layer1";
+import { fetchBbrWithMat, fetchPlandata, fetchVurViaMat } from "@/lib/compliance-layer1";
 import { recordAnalysisEvent } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
@@ -35,14 +35,22 @@ export type Layer1Input = {
   matrikelnummer: string | null;
   grundareal: number | null;
   koordinater: { lat: number; lng: number } | null;
+  samletFastEjendomLokalId: string | null;
 };
 
 export async function runLayer1Analysis(
   input: Layer1Input,
   trace: AnalysisTraceContext,
 ): Promise<Layer1Result> {
-  const { addressId, adgangsadresseid, ejerlavskode, matrikelnummer, grundareal, koordinater } =
-    input;
+  const {
+    addressId,
+    adgangsadresseid,
+    ejerlavskode,
+    matrikelnummer,
+    grundareal,
+    koordinater,
+    samletFastEjendomLokalId,
+  } = input;
   const states: Partial<Record<DataSourceKind, PipelineServiceState>> = {};
 
   const [bbrResult, plandataResult, vurderingResult] = await Promise.all([
@@ -55,7 +63,7 @@ export async function runLayer1Analysis(
       trace,
     }),
     fetchPlandata(koordinater, trace),
-    fetchVurViaEbr(adgangsadresseid, trace),
+    fetchVurViaMat(samletFastEjendomLokalId, trace),
   ]);
 
   states.bbr = bbrResult ? "success" : "no_hit";

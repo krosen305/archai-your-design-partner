@@ -174,6 +174,7 @@ async function analyseAddressWithTrace(
       ejerlavskode: input.ejerlavskode,
       matrikelnummer: input.matrikelnummer,
       grundareal: input.grundareal ?? null,
+      samletFastEjendomLokalId: null,
     },
     trace,
   );
@@ -187,6 +188,7 @@ async function analyseAddressWithTrace(
       matrikelnummer: enriched.matrikelnummer,
       grundareal: enriched.grundareal,
       koordinater,
+      samletFastEjendomLokalId: enriched.samletFastEjendomLokalId,
     },
     trace,
   );
