@@ -68,7 +68,7 @@ export const authorityReadinessStatusSchema = z.enum([
 export const applicabilityConditionSchema = z.object({
   field: z.string(),
   operator: z.enum(["eq", "gt", "lt", "gte", "lte", "in", "present"]),
-  value: z.unknown(),
+  value: z.unknown().optional(),
 });
 
 export const br18RequirementSchema = z.object({

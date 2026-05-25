@@ -54,7 +54,7 @@ export type AuthorityReadinessStatus =
 export type ApplicabilityCondition = {
   field: string;
   operator: "eq" | "gt" | "lt" | "gte" | "lte" | "in" | "present";
-  value: unknown;
+  value?: unknown;
 };
 
 export type EvidenceRequirement = {
