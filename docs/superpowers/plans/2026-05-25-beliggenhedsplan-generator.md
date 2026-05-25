@@ -716,7 +716,7 @@ git commit -m "feat(drawing): DrawingReadinessDecisionEngine — alle 4 statuser
 - Create: `src/domain/drawing/geometry-engine.ts`
 - Create: `src/domain/drawing/geometry-engine.test.ts`
 
-- [ ] **Step 1: Installer jsts**
+- [x] **Step 1: Installer jsts**
 
 ```bash
 bun add jsts && bun add -d @types/jsts
@@ -724,7 +724,7 @@ bun add jsts && bun add -d @types/jsts
 
 Expected: jsts tilfoejt i package.json.
 
-- [ ] **Step 2: Skriv failing geometry tests**
+- [x] **Step 2: Skriv failing geometry tests**
 
 ```typescript
 // src/domain/drawing/geometry-engine.test.ts
@@ -806,7 +806,7 @@ describe("distanceToBoundarySegments", () => {
 });
 ```
 
-- [ ] **Step 3: Kjoer tests — verificer at de fejler**
+- [x] **Step 3: Kjoer tests — verificer at de fejler**
 
 ```bash
 bun test src/domain/drawing/geometry-engine.test.ts
@@ -814,7 +814,7 @@ bun test src/domain/drawing/geometry-engine.test.ts
 
 Expected: module not found.
 
-- [ ] **Step 4: Implementer geometry-engine.ts**
+- [x] **Step 4: Implementer geometry-engine.ts**
 
 ```typescript
 // src/domain/drawing/geometry-engine.ts
@@ -886,7 +886,7 @@ export function distanceToBoundarySegments(
 }
 ```
 
-- [ ] **Step 5: Kjoer geometry tests**
+- [x] **Step 5: Kjoer geometry tests**
 
 ```bash
 bun test src/domain/drawing/geometry-engine.test.ts
@@ -894,13 +894,13 @@ bun test src/domain/drawing/geometry-engine.test.ts
 
 Expected: alle groenne.
 
-- [ ] **Step 6: Fuld test-suite — ingen regressioner**
+- [x] **Step 6: Fuld test-suite — ingen regressioner**
 
 ```bash
 bun test src
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/domain/drawing/geometry-engine.ts src/domain/drawing/geometry-engine.test.ts
