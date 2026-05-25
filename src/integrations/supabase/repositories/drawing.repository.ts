@@ -19,7 +19,7 @@ export class DrawingRepository implements DrawingExportStorePort {
     const path = `drawings/${projectId}/${Date.now()}.pdf`;
     const { error } = await supabaseAdmin.storage
       .from("project-files")
-      .upload(path, new Blob([pdf.buffer as ArrayBuffer], { type: "application/pdf" }), {
+      .upload(path, new Blob([pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength) as ArrayBuffer], { type: "application/pdf" }), {
         upsert: true,
       });
     if (error) throw new Error(`PDF upload fejlede: ${error.message}`);
