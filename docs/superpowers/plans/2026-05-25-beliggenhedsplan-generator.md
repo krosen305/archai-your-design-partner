@@ -921,11 +921,11 @@ git commit -m "feat(drawing): geometry engine med jsts — areal, afstand, buffe
 - Create: `src/lib/drawing/footprint-builder.ts`
 - Modify: `src/components/cockpit/MatrikelMap.tsx`
 
-- [ ] **Step 1: Laes MatrikelMap.tsx og find geometriberegningerne**
+- [x] **Step 1: Laes MatrikelMap.tsx og find geometriberegningerne**
 
 Kig efter: kvadrat-konstruktion fra `buildingArea`, centroid-opdatering, eventuelle afstandsberegninger i komponenten.
 
-- [ ] **Step 2: Create footprint-builder.ts**
+- [x] **Step 2: Create footprint-builder.ts**
 
 ```typescript
 // src/lib/drawing/footprint-builder.ts
@@ -960,7 +960,7 @@ export function buildSquareFootprint25832(params: FootprintParams): GeoJsonPolyg
 }
 ```
 
-- [ ] **Step 3: Opdater MatrikelMap.tsx**
+- [x] **Step 3: Opdater MatrikelMap.tsx**
 
 Fjern al geometriberegning fra komponenten. Komponenten maa kun:
 - Vise parcelpolygon
@@ -969,7 +969,7 @@ Fjern al geometriberegning fra komponenten. Komponenten maa kun:
 
 Foraeldre-komponenten bruger `buildSquareFootprint25832` til at konstruere footprint inden den sender det ned.
 
-- [ ] **Step 4: TypeScript check**
+- [x] **Step 4: TypeScript check**
 
 ```bash
 bunx tsc --noEmit
@@ -977,7 +977,7 @@ bunx tsc --noEmit
 
 Expected: ingen fejl.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/drawing/footprint-builder.ts src/components/cockpit/MatrikelMap.tsx
@@ -993,7 +993,7 @@ git commit -m "refactor(map): fjern geometrilogik fra MatrikelMap til footprint-
 **Files:**
 - Create: `src/integrations/geodanmark/drawing-layers.ts`
 
-- [ ] **Step 1: Find hvilken funktion der henter parcelgeometri i den eksisterende klient**
+- [x] **Step 1: Find hvilken funktion der henter parcelgeometri i den eksisterende klient**
 
 ```bash
 grep -n "Jordstykke\|fetchJordstykke\|jordstykke" src/integrations/geodanmark/client.ts
@@ -1001,7 +1001,7 @@ grep -n "Jordstykke\|fetchJordstykke\|jordstykke" src/integrations/geodanmark/cl
 
 Noteer det eksakte funktionsnavn og retur-type.
 
-- [ ] **Step 2: Create drawing-layers.ts**
+- [x] **Step 2: Create drawing-layers.ts**
 
 ```typescript
 // src/integrations/geodanmark/drawing-layers.ts
@@ -1066,13 +1066,13 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
 
 Note: Tilpas `geodanmarkClient.fetchJordstykke` og retur-felternes navne til det faktiske API fra `client.ts` — brug `grep`-resultatet fra Step 1.
 
-- [ ] **Step 3: TypeScript check**
+- [x] **Step 3: TypeScript check**
 
 ```bash
 bunx tsc --noEmit
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/integrations/geodanmark/drawing-layers.ts
@@ -1087,7 +1087,7 @@ git commit -m "feat(geodanmark): DrawingGeometrySourcePort adapter for drawing l
 - Create: `src/integrations/survey/survey.schemas.ts`
 - Create: `src/integrations/survey/upload-decoder.ts`
 
-- [ ] **Step 1: Create survey.schemas.ts**
+- [x] **Step 1: Create survey.schemas.ts**
 
 ```typescript
 // src/integrations/survey/survey.schemas.ts
@@ -1109,7 +1109,7 @@ export const SurveyUploadPayloadSchema = z.object({
 });
 ```
 
-- [ ] **Step 2: Create upload-decoder.ts**
+- [x] **Step 2: Create upload-decoder.ts**
 
 ```typescript
 // src/integrations/survey/upload-decoder.ts
@@ -1142,13 +1142,13 @@ export class SurveyUploadDecoder implements SurveyUploadDecoderPort {
 }
 ```
 
-- [ ] **Step 3: TypeScript check**
+- [x] **Step 3: TypeScript check**
 
 ```bash
 bunx tsc --noEmit
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/integrations/survey/survey.schemas.ts src/integrations/survey/upload-decoder.ts
@@ -1163,7 +1163,7 @@ git commit -m "feat(survey): SurveyUploadDecoderPort adapter med Zod-validering"
 - Create: `src/services/drawing/assemble-beliggenhedsplan.service.ts`
 - Create: `src/services/drawing/assemble-beliggenhedsplan.service.test.ts`
 
-- [ ] **Step 1: Opret `src/services/drawing/` mappen og skriv failing Tier 2 tests**
+- [x] **Step 1: Opret `src/services/drawing/` mappen og skriv failing Tier 2 tests**
 
 ```typescript
 // src/services/drawing/assemble-beliggenhedsplan.service.test.ts
@@ -1260,13 +1260,13 @@ describe("assembleBeliggenhedsplan", () => {
 });
 ```
 
-- [ ] **Step 2: Kjoer tests — verificer at de fejler**
+- [x] **Step 2: Kjoer tests — verificer at de fejler**
 
 ```bash
 bun test src/services/drawing/assemble-beliggenhedsplan.service.test.ts
 ```
 
-- [ ] **Step 3: Implementer assemble-beliggenhedsplan.service.ts**
+- [x] **Step 3: Implementer assemble-beliggenhedsplan.service.ts**
 
 ```typescript
 // src/services/drawing/assemble-beliggenhedsplan.service.ts
@@ -1366,7 +1366,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
 }
 ```
 
-- [ ] **Step 4: Kjoer Tier 2 tests**
+- [x] **Step 4: Kjoer Tier 2 tests**
 
 ```bash
 bun test src/services/drawing/assemble-beliggenhedsplan.service.test.ts
@@ -1374,13 +1374,13 @@ bun test src/services/drawing/assemble-beliggenhedsplan.service.test.ts
 
 Expected: 3/3 passed.
 
-- [ ] **Step 5: Fuld test-suite**
+- [x] **Step 5: Fuld test-suite**
 
 ```bash
 bun test src
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/services/drawing/
@@ -1397,7 +1397,7 @@ git commit -m "feat(drawing): assembleBeliggenhedsplan service med Tier 2 tests"
 - Create: `src/domain/drawing/drawing-model.ts`
 - Create: `src/lib/drawing/drawing-symbols.ts`
 
-- [ ] **Step 1: Create drawing-model.ts**
+- [x] **Step 1: Create drawing-model.ts**
 
 ```typescript
 // src/domain/drawing/drawing-model.ts
@@ -1456,7 +1456,7 @@ export function computeViewport(
 }
 ```
 
-- [ ] **Step 2: Create drawing-symbols.ts**
+- [x] **Step 2: Create drawing-symbols.ts**
 
 ```typescript
 // src/lib/drawing/drawing-symbols.ts
@@ -1478,13 +1478,13 @@ export function lineDotted(): string {
 }
 ```
 
-- [ ] **Step 3: TypeScript check**
+- [x] **Step 3: TypeScript check**
 
 ```bash
 bunx tsc --noEmit
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/domain/drawing/drawing-model.ts src/lib/drawing/drawing-symbols.ts
@@ -1500,7 +1500,7 @@ git commit -m "feat(drawing): DrawingModel types og SVG-symbolhelpers"
 - Create: `src/lib/drawing/render-svg.test.ts`
 - Create: `src/lib/drawing/drawing-model-builder.ts`
 
-- [ ] **Step 1: Skriv failing strukturelle SVG-tests**
+- [x] **Step 1: Skriv failing strukturelle SVG-tests**
 
 ```typescript
 // src/lib/drawing/render-svg.test.ts
@@ -1550,13 +1550,13 @@ describe("renderSvg", () => {
 });
 ```
 
-- [ ] **Step 2: Kjoer tests — verificer at de fejler**
+- [x] **Step 2: Kjoer tests — verificer at de fejler**
 
 ```bash
 bun test src/lib/drawing/render-svg.test.ts
 ```
 
-- [ ] **Step 3: Implementer render-svg.ts**
+- [x] **Step 3: Implementer render-svg.ts**
 
 ```typescript
 // src/lib/drawing/render-svg.ts
@@ -1608,7 +1608,7 @@ export function renderSvg(model: DrawingModel): string {
 }
 ```
 
-- [ ] **Step 4: Create drawing-model-builder.ts**
+- [x] **Step 4: Create drawing-model-builder.ts**
 
 ```typescript
 // src/lib/drawing/drawing-model-builder.ts
@@ -1648,7 +1648,7 @@ export function buildDrawingModel(plan: BeliggenhedsplanInput, readiness: Drawin
 }
 ```
 
-- [ ] **Step 5: Kjoer SVG tests**
+- [x] **Step 5: Kjoer SVG tests**
 
 ```bash
 bun test src/lib/drawing/render-svg.test.ts
@@ -1656,13 +1656,13 @@ bun test src/lib/drawing/render-svg.test.ts
 
 Expected: 6/6 passed.
 
-- [ ] **Step 6: Fuld test suite**
+- [x] **Step 6: Fuld test suite**
 
 ```bash
 bun test src
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/drawing/render-svg.ts src/lib/drawing/render-svg.test.ts src/lib/drawing/drawing-model-builder.ts
@@ -1708,7 +1708,7 @@ Kjoer migrationen **foer Task 12**:
 **Files:**
 - Create: `src/integrations/supabase/repositories/drawing.repository.ts`
 
-- [ ] **Step 1: Find den eksisterende Supabase createClient-import i et andet repository**
+- [x] **Step 1: Find den eksisterende Supabase createClient-import i et andet repository**
 
 ```bash
 grep -n "createClient\|supabaseClient\|from.*supabase" src/integrations/supabase/repositories/design-iterations.repository.ts | head -5
@@ -1716,7 +1716,7 @@ grep -n "createClient\|supabaseClient\|from.*supabase" src/integrations/supabase
 
 Brug det samme import-maonster.
 
-- [ ] **Step 2: Create drawing.repository.ts**
+- [x] **Step 2: Create drawing.repository.ts**
 
 ```typescript
 // src/integrations/supabase/repositories/drawing.repository.ts
@@ -1790,13 +1790,13 @@ export class DrawingRepository implements DrawingExportStorePort {
 }
 ```
 
-- [ ] **Step 3: TypeScript check**
+- [x] **Step 3: TypeScript check**
 
 ```bash
 bunx tsc --noEmit
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/integrations/supabase/repositories/drawing.repository.ts
@@ -1810,7 +1810,7 @@ git commit -m "feat(supabase): DrawingRepository implementerer DrawingExportStor
 **Files:**
 - Create: `src/services/drawing/export-drawing.service.ts`
 
-- [ ] **Step 1: Create export-drawing.service.ts**
+- [x] **Step 1: Create export-drawing.service.ts**
 
 ```typescript
 // src/services/drawing/export-drawing.service.ts
@@ -1862,7 +1862,7 @@ export async function exportDrawing(input: ExportInput): Promise<ExportResult> {
 }
 ```
 
-- [ ] **Step 2: Find hvor andre server functions er defineret**
+- [x] **Step 2: Find hvor andre server functions er defineret**
 
 ```bash
 grep -rn "createServerFn" src --include="*.ts" --include="*.tsx" -l | head -5
@@ -1870,7 +1870,7 @@ grep -rn "createServerFn" src --include="*.ts" --include="*.tsx" -l | head -5
 
 Noer maonster-filen og brug samme struktur.
 
-- [ ] **Step 3: Tilfoej export server function til den relevante route-fil**
+- [x] **Step 3: Tilfoej export server function til den relevante route-fil**
 
 Foelg CLAUDE.md Rule 3 — server function maa max vaere ~20 linjer:
 
@@ -1911,13 +1911,13 @@ export const exportBeliggenhedsplanFn = createServerFn("POST", async (raw: unkno
 
 Note: Footprint-integration fra `design_iterations` og rigtig adresse fra projekt-repository er et separat follow-up.
 
-- [ ] **Step 4: TypeScript check**
+- [x] **Step 4: TypeScript check**
 
 ```bash
 bunx tsc --noEmit
 ```
 
-- [ ] **Step 5: Fuld test suite + build**
+- [x] **Step 5: Fuld test suite + build**
 
 ```bash
 bun test src && bun run build
@@ -1925,7 +1925,7 @@ bun test src && bun run build
 
 Expected: ingen fejl, ingen nye TypeScript-violations.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/services/drawing/export-drawing.service.ts
