@@ -24,7 +24,11 @@ export const Route = createFileRoute("/debug/analyse")({
 function formatRunDate(iso: string): string {
   const d = new Date(iso);
   const date = d.toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" });
-  const time = d.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const time = d.toLocaleTimeString("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
   return `${date} ${time}`;
 }
 

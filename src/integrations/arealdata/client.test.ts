@@ -6,9 +6,7 @@ function wfsResponse(totalFeatures: number) {
   return { totalFeatures, features: [] };
 }
 
-function mockFetchForScenario(
-  scenario: "clean" | "mixed" | "all_error",
-): ReturnType<typeof spyOn> {
+function mockFetchForScenario(scenario: "clean" | "mixed" | "all_error"): ReturnType<typeof spyOn> {
   return spyOn(globalThis, "fetch").mockImplementation(
     async (input: RequestInfo | URL): Promise<Response> => {
       const url = input.toString();

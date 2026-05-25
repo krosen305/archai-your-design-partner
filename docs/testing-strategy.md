@@ -104,8 +104,8 @@ Lovable generates React components. It must never write or modify test files.
 
 ## CI Structure
 
-| Job             | Command                  | Credentials                      |
-| --------------- | ------------------------ | -------------------------------- |
-| Unit + lint + build | `bun test src`       | `DATAFORDELER_API_KEY` only      |
-| E2E acceptance  | `bunx playwright test`   | Supabase publishable key         |
-| Live integration | `bun test tests/live`   | Service role (manual dispatch only) |
+| Job                 | Command                | Credentials                         |
+| ------------------- | ---------------------- | ----------------------------------- |
+| Unit + lint + build | `bun test src`         | `DATAFORDELER_API_KEY` only         |
+| E2E acceptance      | `bunx playwright test` | Supabase publishable key            |
+| Live integration    | `bun test tests/live`  | Service role (manual dispatch only) |

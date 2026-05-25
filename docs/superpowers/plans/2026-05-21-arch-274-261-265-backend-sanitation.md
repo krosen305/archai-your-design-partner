@@ -16,44 +16,44 @@
 
 ### ARCH-274 — building-platform hard-stop tests + Zod schema
 
-| Action | Path | Purpose |
-|--------|------|---------|
+| Action | Path                                  | Purpose                                                                    |
+| ------ | ------------------------------------- | -------------------------------------------------------------------------- |
 | Create | `src/types/building-platform.test.ts` | Unit tests for `hasAbsoluteHardStop`, `getSaveHardStop`, `getDesignAreaM2` |
-| Create | `src/lib/design-iteration-parsers.ts` | Zod schema for `DesignIteration.byggeoenske` JSONB |
-| Modify | `src/types/building-platform.ts` | Use `parseByggeoenskePayload` in `getDesignAreaM2` / `getDesignFloors` |
+| Create | `src/lib/design-iteration-parsers.ts` | Zod schema for `DesignIteration.byggeoenske` JSONB                         |
+| Modify | `src/types/building-platform.ts`      | Use `parseByggeoenskePayload` in `getDesignAreaM2` / `getDesignFloors`     |
 
 ### ARCH-261 — orchestrator decomposition
 
-| Action | Path | Purpose |
-|--------|------|---------|
-| Create | `src/lib/analysis/address-enrichment.ts` | DAR address enrichment step |
-| Create | `src/lib/analysis/layer1-analysis.ts` | Cache-first BBR + Plandata + VUR |
-| Create | `src/lib/analysis/hard-stop-gate.ts` | Pure predicate: should expensive Layer 4 be skipped? |
-| Create | `src/lib/analysis/lokalplan-extraction-step.ts` | Layer 2: PDF extraction + cache |
-| Create | `src/lib/analysis/servitut-step.ts` | Layer 3: Tinglysning + cache |
-| Create | `src/lib/analysis/geo-risk-step.ts` | Layer 4: naturbeskyttelse, dkjord, geus, terrain, naboer, fjernvarme, FBB, matGeometri |
-| Create | `src/lib/analysis/hard-stop-gate.test.ts` | Unit test for skip predicate |
-| Modify | `src/lib/analysis-orchestrator.ts` | Thin coordinator; fix project-store imports |
+| Action | Path                                            | Purpose                                                                                |
+| ------ | ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Create | `src/lib/analysis/address-enrichment.ts`        | DAR address enrichment step                                                            |
+| Create | `src/lib/analysis/layer1-analysis.ts`           | Cache-first BBR + Plandata + VUR                                                       |
+| Create | `src/lib/analysis/hard-stop-gate.ts`            | Pure predicate: should expensive Layer 4 be skipped?                                   |
+| Create | `src/lib/analysis/lokalplan-extraction-step.ts` | Layer 2: PDF extraction + cache                                                        |
+| Create | `src/lib/analysis/servitut-step.ts`             | Layer 3: Tinglysning + cache                                                           |
+| Create | `src/lib/analysis/geo-risk-step.ts`             | Layer 4: naturbeskyttelse, dkjord, geus, terrain, naboer, fjernvarme, FBB, matGeometri |
+| Create | `src/lib/analysis/hard-stop-gate.test.ts`       | Unit test for skip predicate                                                           |
+| Modify | `src/lib/analysis-orchestrator.ts`              | Thin coordinator; fix project-store imports                                            |
 
 ### ARCH-265 — replace console.warn/error
 
-| Action | Path | # calls |
-|--------|------|---------|
-| Modify | `src/integrations/ai/billede-analyse.ts` | 2 warn |
-| Modify | `src/integrations/ai/hus-dna-generator.ts` | 2 warn |
-| Modify | `src/integrations/ai/pdf-extractor.ts` | 2 warn |
-| Modify | `src/integrations/bbr/client.ts` | 3 error |
-| Modify | `src/integrations/dar/client.ts` | 2 error + 2 warn |
-| Modify | `src/integrations/ebr/client.ts` | 4 error |
-| Modify | `src/integrations/fbb/client.ts` | 2 warn |
-| Modify | `src/integrations/geus/client.ts` | 2 warn |
-| Modify | `src/integrations/mat/client.ts` | 3 error |
-| Modify | `src/integrations/mat/grundareal-resolver.ts` | 2 warn |
-| Modify | `src/integrations/plandata/client.ts` | 2 error |
-| Modify | `src/integrations/plandata/fjernvarme.ts` | 1 warn |
-| Modify | `src/integrations/tinglysning/client.ts` | 3 warn |
-| Modify | `src/integrations/vur/client.ts` | 1 error |
-| Create | `src/lib/server-logger.test.ts` | Test degraded/fatal paths |
+| Action | Path                                          | # calls                   |
+| ------ | --------------------------------------------- | ------------------------- |
+| Modify | `src/integrations/ai/billede-analyse.ts`      | 2 warn                    |
+| Modify | `src/integrations/ai/hus-dna-generator.ts`    | 2 warn                    |
+| Modify | `src/integrations/ai/pdf-extractor.ts`        | 2 warn                    |
+| Modify | `src/integrations/bbr/client.ts`              | 3 error                   |
+| Modify | `src/integrations/dar/client.ts`              | 2 error + 2 warn          |
+| Modify | `src/integrations/ebr/client.ts`              | 4 error                   |
+| Modify | `src/integrations/fbb/client.ts`              | 2 warn                    |
+| Modify | `src/integrations/geus/client.ts`             | 2 warn                    |
+| Modify | `src/integrations/mat/client.ts`              | 3 error                   |
+| Modify | `src/integrations/mat/grundareal-resolver.ts` | 2 warn                    |
+| Modify | `src/integrations/plandata/client.ts`         | 2 error                   |
+| Modify | `src/integrations/plandata/fjernvarme.ts`     | 1 warn                    |
+| Modify | `src/integrations/tinglysning/client.ts`      | 3 warn                    |
+| Modify | `src/integrations/vur/client.ts`              | 1 error                   |
+| Create | `src/lib/server-logger.test.ts`               | Test degraded/fatal paths |
 
 ---
 
@@ -62,6 +62,7 @@
 ### Task 1: Write failing tests for building-platform hard-stop helpers
 
 **Files:**
+
 - Create: `src/types/building-platform.test.ts`
 
 - [ ] **Step 1.1: Create the test file**
@@ -69,7 +70,12 @@
 ```typescript
 // src/types/building-platform.test.ts
 import { describe, test, expect } from "bun:test";
-import { hasAbsoluteHardStop, getSaveHardStop, getDesignAreaM2, getDesignFloors } from "./building-platform";
+import {
+  hasAbsoluteHardStop,
+  getSaveHardStop,
+  getDesignAreaM2,
+  getDesignFloors,
+} from "./building-platform";
 import type { SiteConstraints, DesignIteration } from "./building-platform";
 
 function mockSC(overrides: Partial<SiteConstraints> = {}): SiteConstraints {
@@ -170,16 +176,38 @@ describe("getDesignAreaM2", () => {
     expect(getDesignAreaM2(mockDI({ area_m2: 150 }))).toBe(150);
   });
   test("falls back to byggeoenske.bruttoAreal", () => {
-    expect(getDesignAreaM2(mockDI({ byggeoenske: { bruttoAreal: 120 } as unknown as import("@/integrations/supabase/types").Json }))).toBe(120);
+    expect(
+      getDesignAreaM2(
+        mockDI({
+          byggeoenske: {
+            bruttoAreal: 120,
+          } as unknown as import("@/integrations/supabase/types").Json,
+        }),
+      ),
+    ).toBe(120);
   });
   test("falls back to byggeoenske.bruttoareal (lowercase)", () => {
-    expect(getDesignAreaM2(mockDI({ byggeoenske: { bruttoareal: 130 } as unknown as import("@/integrations/supabase/types").Json }))).toBe(130);
+    expect(
+      getDesignAreaM2(
+        mockDI({
+          byggeoenske: {
+            bruttoareal: 130,
+          } as unknown as import("@/integrations/supabase/types").Json,
+        }),
+      ),
+    ).toBe(130);
   });
   test("returns null when both are missing", () => {
     expect(getDesignAreaM2(mockDI())).toBeNull();
   });
   test("returns null when byggeoenske is non-object", () => {
-    expect(getDesignAreaM2(mockDI({ byggeoenske: "invalid" as unknown as import("@/integrations/supabase/types").Json }))).toBeNull();
+    expect(
+      getDesignAreaM2(
+        mockDI({
+          byggeoenske: "invalid" as unknown as import("@/integrations/supabase/types").Json,
+        }),
+      ),
+    ).toBeNull();
   });
 });
 
@@ -188,7 +216,13 @@ describe("getDesignFloors", () => {
     expect(getDesignFloors(mockDI({ floors: 2 }))).toBe(2);
   });
   test("falls back to byggeoenske.etager", () => {
-    expect(getDesignFloors(mockDI({ byggeoenske: { etager: 1 } as unknown as import("@/integrations/supabase/types").Json }))).toBe(1);
+    expect(
+      getDesignFloors(
+        mockDI({
+          byggeoenske: { etager: 1 } as unknown as import("@/integrations/supabase/types").Json,
+        }),
+      ),
+    ).toBe(1);
   });
   test("returns null when both missing", () => {
     expect(getDesignFloors(mockDI())).toBeNull();
@@ -209,6 +243,7 @@ Expected: Most pass. The `"invalid"` case may pass if the current `as Record<str
 ### Task 2: Add Zod schema for byggeoenske + update helpers
 
 **Files:**
+
 - Create: `src/lib/design-iteration-parsers.ts`
 - Modify: `src/types/building-platform.ts`
 
@@ -298,6 +333,7 @@ git commit -m "feat(arch-274): add Zod schema for byggeoenske parsing + hard-sto
 The orchestrator currently references `DataSourceKind` and `PipelineServiceState` via inline `import("@/lib/project-store")` dynamic-type expressions. These types now live in `@/types/project-state`.
 
 **Files:**
+
 - Modify: `src/lib/analysis-orchestrator.ts`
 
 - [ ] **Step 3.1: Replace the project-store dynamic import references**
@@ -328,11 +364,11 @@ Replace the `states` variable declaration (currently at ~lines 144-150):
 ```typescript
 // OLD:
 const states: Partial<
-    Record<
-      import("@/lib/project-store").DataSourceKind,
-      import("@/lib/project-store").PipelineServiceState
-    >
-  > = {};
+  Record<
+    import("@/lib/project-store").DataSourceKind,
+    import("@/lib/project-store").PipelineServiceState
+  >
+> = {};
 
 // NEW:
 const states: Partial<Record<DataSourceKind, PipelineServiceState>> = {};
@@ -372,6 +408,7 @@ git commit -m "fix(arch-261): import DataSourceKind/PipelineServiceState from pr
 ### Task 4: Write failing test + extract `hard-stop-gate.ts`
 
 **Files:**
+
 - Create: `src/lib/analysis/hard-stop-gate.ts`
 - Create: `src/lib/analysis/hard-stop-gate.test.ts`
 
@@ -466,6 +503,7 @@ git commit -m "feat(arch-261): extract hard-stop skip gate as pure tested functi
 ### Task 5: Extract `address-enrichment.ts`
 
 **Files:**
+
 - Create: `src/lib/analysis/address-enrichment.ts`
 
 - [ ] **Step 5.1: Create the module**
@@ -552,6 +590,7 @@ git commit -m "feat(arch-261): extract address-enrichment step from orchestrator
 ### Task 6: Extract `layer1-analysis.ts`
 
 **Files:**
+
 - Create: `src/lib/analysis/layer1-analysis.ts`
 
 Layer 1 owns the cache-first BBR + Plandata + VUR fetch and writes back to the compliance cache.
@@ -562,10 +601,7 @@ Layer 1 owns the cache-first BBR + Plandata + VUR fetch and writes back to the c
 // src/lib/analysis/layer1-analysis.ts
 // SERVER-SIDE ONLY.
 
-import {
-  getCachedCompliance,
-  setCachedCompliance,
-} from "@/integrations/cache/client";
+import { getCachedCompliance, setCachedCompliance } from "@/integrations/cache/client";
 import { fetchBbrWithMat, fetchPlandata, fetchVurViaEbr } from "@/lib/compliance-layer1";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
@@ -656,7 +692,14 @@ export async function runLayer1Analysis(
 
   // Live fetch
   const [bbrResult, plandataResult, vurderingResult] = await Promise.all([
-    fetchBbrWithMat({ adgangsadresseid, adresseid: addressId, ejerlavskode, matrikelnummer, grundareal, trace }),
+    fetchBbrWithMat({
+      adgangsadresseid,
+      adresseid: addressId,
+      ejerlavskode,
+      matrikelnummer,
+      grundareal,
+      trace,
+    }),
     fetchPlandata(koordinater, trace),
     fetchVurViaEbr(adgangsadresseid, trace),
   ]);
@@ -747,6 +790,7 @@ git commit -m "feat(arch-261): extract layer1-analysis (cache-first BBR+Plandata
 ### Task 7: Extract `lokalplan-extraction-step.ts` and `servitut-step.ts`
 
 **Files:**
+
 - Create: `src/lib/analysis/lokalplan-extraction-step.ts`
 - Create: `src/lib/analysis/servitut-step.ts`
 
@@ -756,10 +800,7 @@ git commit -m "feat(arch-261): extract layer1-analysis (cache-first BBR+Plandata
 // src/lib/analysis/lokalplan-extraction-step.ts
 // SERVER-SIDE ONLY. Layer 2: PDF extraction with cache.
 
-import {
-  getCachedLokalplan,
-  setCachedLokalplan,
-} from "@/integrations/cache/client";
+import { getCachedLokalplan, setCachedLokalplan } from "@/integrations/cache/client";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
@@ -839,10 +880,7 @@ export async function runLokalplanExtractionStep(
 // src/lib/analysis/servitut-step.ts
 // SERVER-SIDE ONLY. Layer 3: Tinglysning servitut extraction with cache.
 
-import {
-  getCachedServitut,
-  setCachedServitut,
-} from "@/integrations/cache/client";
+import { getCachedServitut, setCachedServitut } from "@/integrations/cache/client";
 import { logServerEvent } from "@/lib/server-logger";
 import { traceStep } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
@@ -925,6 +963,7 @@ git commit -m "feat(arch-261): extract lokalplan-extraction-step and servitut-st
 ### Task 8: Extract `geo-risk-step.ts`
 
 **Files:**
+
 - Create: `src/lib/analysis/geo-risk-step.ts`
 
 This owns all of Layer 4: matGeometri, FBB, naturbeskyttelse, dkjord, geus, terrain, naboer, fjernvarme. The `skipExpensive` flag comes from `shouldSkipExpensiveLayer4`.
@@ -1007,7 +1046,8 @@ export async function runGeoRiskStep(
         outputSummary: (r) =>
           summarizeSourceResult(
             r,
-            (d) => `area=${d.polygonAreaM2?.toFixed(0) ?? "null"} canonical=${d.hasCanonicalPolygon}`,
+            (d) =>
+              `area=${d.polygonAreaM2?.toFixed(0) ?? "null"} canonical=${d.hasCanonicalPolygon}`,
           ),
         metadata: (r) => ({ source: r.kilde, isMock: r.isMock, feature_count: r.rawFeatureCount }),
       },
@@ -1075,7 +1115,12 @@ export async function runGeoRiskStep(
         .then(({ NaturbeskyttelseService }) =>
           traceStep(
             trace,
-            { eventType: "api_call", phase: "layer4", service: "DAI WFS", operation: "naturbeskyttelse.getTilstand" },
+            {
+              eventType: "api_call",
+              phase: "layer4",
+              service: "DAI WFS",
+              operation: "naturbeskyttelse.getTilstand",
+            },
             () => NaturbeskyttelseService.getTilstand(koordinater),
           ),
         )
@@ -1087,7 +1132,17 @@ export async function runGeoRiskStep(
     states.terrain = "skipped";
     states.servitutter = "mock";
     states.fjernvarme = "no_hit";
-    return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData, matGeometri, states };
+    return {
+      naturbeskyttelse,
+      dkjord,
+      geusRisk,
+      terrain,
+      naboer,
+      fjernvarme,
+      fbbData,
+      matGeometri,
+      states,
+    };
   }
 
   if (koordinater) {
@@ -1096,12 +1151,24 @@ export async function runGeoRiskStep(
         .then(({ NaturbeskyttelseService }) =>
           traceStep(
             trace,
-            { eventType: "api_call", phase: "layer4", service: "DAI WFS", operation: "naturbeskyttelse.getTilstand" },
+            {
+              eventType: "api_call",
+              phase: "layer4",
+              service: "DAI WFS",
+              operation: "naturbeskyttelse.getTilstand",
+            },
             () => NaturbeskyttelseService.getTilstand(koordinater),
           ),
         )
         .catch((e: Error) => {
-          logServerEvent({ module: "geo-risk-step", operation: "layer4.naturbeskyttelse", severity: "degraded", message: "naturbeskyttelse fejlede", error: e, trace });
+          logServerEvent({
+            module: "geo-risk-step",
+            operation: "layer4.naturbeskyttelse",
+            severity: "degraded",
+            message: "naturbeskyttelse fejlede",
+            error: e,
+            trace,
+          });
           return null;
         }),
       import("@/integrations/miljoe/dkjord")
@@ -1109,16 +1176,34 @@ export async function runGeoRiskStep(
           const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
           return traceStep(
             trace,
-            { eventType: "api_call", phase: "layer4", service: "DK-Jord WFS", operation: "getTilstand", inputSummary: `koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)} polygon=${polygon ? "yes" : "no"}` },
+            {
+              eventType: "api_call",
+              phase: "layer4",
+              service: "DK-Jord WFS",
+              operation: "getTilstand",
+              inputSummary: `koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)} polygon=${polygon ? "yes" : "no"}`,
+            },
             () => DkJordService.getTilstand(koordinater, polygon),
             {
-              outputSummary: (r) => summarizeSourceResult(r, (d) => `v1=${d.v1Kortlagt} v2=${d.v2Kortlagt}`),
-              metadata: (r) => ({ source: r.kilde, isMock: r.isMock, feature_count: r.rawFeatureCount }),
+              outputSummary: (r) =>
+                summarizeSourceResult(r, (d) => `v1=${d.v1Kortlagt} v2=${d.v2Kortlagt}`),
+              metadata: (r) => ({
+                source: r.kilde,
+                isMock: r.isMock,
+                feature_count: r.rawFeatureCount,
+              }),
             },
           );
         })
         .catch((e: Error) => {
-          logServerEvent({ module: "geo-risk-step", operation: "layer4.dkjord", severity: "degraded", message: "DK-Jord fejlede", error: e, trace });
+          logServerEvent({
+            module: "geo-risk-step",
+            operation: "layer4.dkjord",
+            severity: "degraded",
+            message: "DK-Jord fejlede",
+            error: e,
+            trace,
+          });
           return null;
         }),
       import("@/integrations/geus/client")
@@ -1130,7 +1215,14 @@ export async function runGeoRiskStep(
           ),
         )
         .catch((e: Error) => {
-          logServerEvent({ module: "geo-risk-step", operation: "layer4.geus", severity: "degraded", message: "GEUS fejlede", error: e, trace });
+          logServerEvent({
+            module: "geo-risk-step",
+            operation: "layer4.geus",
+            severity: "degraded",
+            message: "GEUS fejlede",
+            error: e,
+            trace,
+          });
           return null;
         }),
       import("@/integrations/sdfi/dhm-client")
@@ -1138,12 +1230,24 @@ export async function runGeoRiskStep(
           const bbox = bboxFromPoint(koordinater.lat, koordinater.lng, grundareal);
           return traceStep(
             trace,
-            { eventType: "api_call", phase: "layer4", service: "SDFI DHM", operation: "getTerrainData" },
+            {
+              eventType: "api_call",
+              phase: "layer4",
+              service: "SDFI DHM",
+              operation: "getTerrainData",
+            },
             () => DhmService.getTerrainData(bbox, koordinater.lat, koordinater.lng),
           );
         })
         .catch((e: Error) => {
-          logServerEvent({ module: "geo-risk-step", operation: "layer4.terrain", severity: "degraded", message: "DHM terrain fejlede", error: e, trace });
+          logServerEvent({
+            module: "geo-risk-step",
+            operation: "layer4.terrain",
+            severity: "degraded",
+            message: "DHM terrain fejlede",
+            error: e,
+            trace,
+          });
           return null;
         }),
       (async () => {
@@ -1159,16 +1263,39 @@ export async function runGeoRiskStep(
           .then(({ GeoDanmarkNaboService }) =>
             traceStep(
               trace,
-              { eventType: "api_call", phase: "layer4", service: "GeoDanmark WFS", operation: "getNabobygninger", inputSummary: `hasParcelBbox=${!!matGeometri?.bbox25832}` },
-              () => GeoDanmarkNaboService.getNabobygninger(matGeometri?.bbox25832 ?? null, fallbackBbox, null),
               {
-                outputSummary: (r) => summarizeSourceResult(r, (d) => `count=${d.count} kilde=${d.kilde}`),
-                metadata: (r) => ({ source: r.kilde, isMock: r.isMock, feature_count: r.rawFeatureCount }),
+                eventType: "api_call",
+                phase: "layer4",
+                service: "GeoDanmark WFS",
+                operation: "getNabobygninger",
+                inputSummary: `hasParcelBbox=${!!matGeometri?.bbox25832}`,
+              },
+              () =>
+                GeoDanmarkNaboService.getNabobygninger(
+                  matGeometri?.bbox25832 ?? null,
+                  fallbackBbox,
+                  null,
+                ),
+              {
+                outputSummary: (r) =>
+                  summarizeSourceResult(r, (d) => `count=${d.count} kilde=${d.kilde}`),
+                metadata: (r) => ({
+                  source: r.kilde,
+                  isMock: r.isMock,
+                  feature_count: r.rawFeatureCount,
+                }),
               },
             ),
           )
           .catch((e: Error) => {
-            logServerEvent({ module: "geo-risk-step", operation: "layer4.geodanmark_naboer", severity: "degraded", message: "GeoDanmarkNaboService fejlede", error: e, trace });
+            logServerEvent({
+              module: "geo-risk-step",
+              operation: "layer4.geodanmark_naboer",
+              severity: "degraded",
+              message: "GeoDanmarkNaboService fejlede",
+              error: e,
+              trace,
+            });
             return null;
           });
       })(),
@@ -1176,23 +1303,45 @@ export async function runGeoRiskStep(
         .then(({ FjernvarmeService }) =>
           traceStep(
             trace,
-            { eventType: "api_call", phase: "layer4", service: "Plandata WFS", operation: "fjernvarme.getDaekning" },
+            {
+              eventType: "api_call",
+              phase: "layer4",
+              service: "Plandata WFS",
+              operation: "fjernvarme.getDaekning",
+            },
             () => FjernvarmeService.getDaekning(koordinater),
           ),
         )
         .catch((e: Error) => {
-          logServerEvent({ module: "geo-risk-step", operation: "layer4.fjernvarme", severity: "degraded", message: "FjernvarmeService fejlede", error: e, trace });
+          logServerEvent({
+            module: "geo-risk-step",
+            operation: "layer4.fjernvarme",
+            severity: "degraded",
+            message: "FjernvarmeService fejlede",
+            error: e,
+            trace,
+          });
           return null;
         }),
     ]);
 
     naturbeskyttelse = natur;
     dkjord = jord?.data ?? null;
-    states.dkjord = jord === null ? "error" : jord.isMock ? "mock" : jord.data != null ? "success" : "no_hit";
+    states.dkjord =
+      jord === null ? "error" : jord.isMock ? "mock" : jord.data != null ? "success" : "no_hit";
     geusRisk = geus;
     terrain = terr;
     naboer = nabo?.data ?? null;
-    states.naboer = nabo == null ? "error" : nabo.status === "mock" ? "mock" : nabo.status === "error" ? "error" : nabo.data != null ? "success" : "no_hit";
+    states.naboer =
+      nabo == null
+        ? "error"
+        : nabo.status === "mock"
+          ? "mock"
+          : nabo.status === "error"
+            ? "error"
+            : nabo.data != null
+              ? "success"
+              : "no_hit";
     fjernvarme = varme;
   }
 
@@ -1203,7 +1352,17 @@ export async function runGeoRiskStep(
   states.servitutter = "mock";
   states.fjernvarme = fjernvarme ? "success" : "no_hit";
 
-  return { naturbeskyttelse, dkjord, geusRisk, terrain, naboer, fjernvarme, fbbData, matGeometri, states };
+  return {
+    naturbeskyttelse,
+    dkjord,
+    geusRisk,
+    terrain,
+    naboer,
+    fjernvarme,
+    fbbData,
+    matGeometri,
+    states,
+  };
 }
 ```
 
@@ -1227,6 +1386,7 @@ git commit -m "feat(arch-261): extract geo-risk-step (Layer 4 geodata) from orch
 ### Task 9: Rewrite orchestrator as thin coordinator
 
 **Files:**
+
 - Modify: `src/lib/analysis-orchestrator.ts` (protected file — PR must include `🔒 Rører beskyttet fil — kræver review`)
 
 Replace `analyseAddressWithTrace` with a thin coordinator that calls the extracted steps. The file keeps `ComplianceResult`, `AnalysisInput`, and `analyseAddress` public; `analyseAddressWithTrace` becomes a private coordinator.
@@ -1462,6 +1622,7 @@ git commit -m "feat(arch-261): 🔒 rewrite analysis-orchestrator as thin coordi
 ### Task 10: Replace console calls in AI integration files
 
 **Files:**
+
 - Modify: `src/integrations/ai/billede-analyse.ts`
 - Modify: `src/integrations/ai/hus-dna-generator.ts`
 - Modify: `src/integrations/ai/pdf-extractor.ts`
@@ -1471,6 +1632,7 @@ All AI files follow the same pattern: `console.warn("[ServiceName] reason:", ...
 - [ ] **Step 10.1: Add `logServerEvent` import to each AI file**
 
 In each file, add at the top:
+
 ```typescript
 import { logServerEvent } from "@/lib/server-logger";
 ```
@@ -1478,16 +1640,28 @@ import { logServerEvent } from "@/lib/server-logger";
 - [ ] **Step 10.2: Replace in `billede-analyse.ts`**
 
 Find and replace:
+
 ```typescript
 // OLD (~line 81):
 console.warn("[BilledeAnalyse] ANTHROPIC_API_KEY mangler — returnerer mock");
 // NEW:
-logServerEvent({ module: "billede-analyse", operation: "generate", severity: "degraded", message: "ANTHROPIC_API_KEY mangler — returnerer mock" });
+logServerEvent({
+  module: "billede-analyse",
+  operation: "generate",
+  severity: "degraded",
+  message: "ANTHROPIC_API_KEY mangler — returnerer mock",
+});
 
 // OLD (~line 88):
 console.warn("[BilledeAnalyse] Haiku-kald fejlede — returnerer mock:", (e as Error).message);
 // NEW:
-logServerEvent({ module: "billede-analyse", operation: "generate", severity: "degraded", message: "Haiku-kald fejlede — returnerer mock", error: e });
+logServerEvent({
+  module: "billede-analyse",
+  operation: "generate",
+  severity: "degraded",
+  message: "Haiku-kald fejlede — returnerer mock",
+  error: e,
+});
 ```
 
 - [ ] **Step 10.3: Replace in `hus-dna-generator.ts`**
@@ -1496,12 +1670,23 @@ logServerEvent({ module: "billede-analyse", operation: "generate", severity: "de
 // OLD (~line 97):
 console.warn("[HusDna] ANTHROPIC_API_KEY mangler — returnerer mock");
 // NEW:
-logServerEvent({ module: "hus-dna-generator", operation: "generate", severity: "degraded", message: "ANTHROPIC_API_KEY mangler — returnerer mock" });
+logServerEvent({
+  module: "hus-dna-generator",
+  operation: "generate",
+  severity: "degraded",
+  message: "ANTHROPIC_API_KEY mangler — returnerer mock",
+});
 
 // OLD (~line 104):
 console.warn("[HusDna] Anthropic-kald fejlede — returnerer mock:", (e as Error).message);
 // NEW:
-logServerEvent({ module: "hus-dna-generator", operation: "generate", severity: "degraded", message: "Anthropic-kald fejlede — returnerer mock", error: e });
+logServerEvent({
+  module: "hus-dna-generator",
+  operation: "generate",
+  severity: "degraded",
+  message: "Anthropic-kald fejlede — returnerer mock",
+  error: e,
+});
 ```
 
 - [ ] **Step 10.4: Replace in `pdf-extractor.ts`**
@@ -1538,6 +1723,7 @@ git commit -m "feat(arch-265): replace console.warn with logServerEvent in AI in
 ### Task 11: Replace console calls in Datafordeler + other integration files
 
 **Files:**
+
 - Modify: `src/integrations/bbr/client.ts`
 - Modify: `src/integrations/dar/client.ts`
 - Modify: `src/integrations/ebr/client.ts`
@@ -1556,44 +1742,59 @@ Use `severity: "fatal"` for `console.error` calls (HTTP errors, GraphQL errors, 
 - [ ] **Step 11.1: For each file, add the import and replace calls**
 
 Pattern for every file:
+
 ```typescript
 import { logServerEvent } from "@/lib/server-logger";
 ```
 
 Mapping table (apply to each file, find the exact surrounding context):
 
-| File | Old | severity |
-|------|-----|----------|
-| `bbr/client.ts:212` | `console.error("[BBR] HTTP-fejl:", ...)` | `fatal` |
-| `bbr/client.ts:224` | `console.error("[BBR] GraphQL-fejl:", ...)` | `fatal` |
-| `bbr/client.ts:367` | `console.error("[BBR] Service fejl:", ...)` | `fatal` |
-| `dar/client.ts:241` | `console.error("[DAR] GraphQL-fejl:", ...)` | `fatal` |
-| `dar/client.ts:353,373` | `console.error(...)` | `fatal` |
-| `dar/client.ts:362,399` | `console.warn(...)` | `degraded` |
-| `ebr/client.ts:120,131,179,219` | `console.error(...)` | `fatal` |
-| `fbb/client.ts:248,279` | `console.warn(...)` | `degraded` |
-| `geus/client.ts:136,140` | `console.warn(...)` | `degraded` |
-| `mat/client.ts:137,148,282` | `console.error(...)` | `fatal` |
-| `mat/grundareal-resolver.ts:275,327` | `console.warn(...)` | `degraded` |
-| `plandata/client.ts:224,266` | `console.error(...)` | `fatal` |
-| `plandata/fjernvarme.ts:63` | `console.warn(...)` | `degraded` |
-| `tinglysning/client.ts:88,190,216` | `console.warn(...)` | `degraded` |
-| `vur/client.ts:149` | `console.error(...)` | `fatal` |
+| File                                 | Old                                         | severity   |
+| ------------------------------------ | ------------------------------------------- | ---------- |
+| `bbr/client.ts:212`                  | `console.error("[BBR] HTTP-fejl:", ...)`    | `fatal`    |
+| `bbr/client.ts:224`                  | `console.error("[BBR] GraphQL-fejl:", ...)` | `fatal`    |
+| `bbr/client.ts:367`                  | `console.error("[BBR] Service fejl:", ...)` | `fatal`    |
+| `dar/client.ts:241`                  | `console.error("[DAR] GraphQL-fejl:", ...)` | `fatal`    |
+| `dar/client.ts:353,373`              | `console.error(...)`                        | `fatal`    |
+| `dar/client.ts:362,399`              | `console.warn(...)`                         | `degraded` |
+| `ebr/client.ts:120,131,179,219`      | `console.error(...)`                        | `fatal`    |
+| `fbb/client.ts:248,279`              | `console.warn(...)`                         | `degraded` |
+| `geus/client.ts:136,140`             | `console.warn(...)`                         | `degraded` |
+| `mat/client.ts:137,148,282`          | `console.error(...)`                        | `fatal`    |
+| `mat/grundareal-resolver.ts:275,327` | `console.warn(...)`                         | `degraded` |
+| `plandata/client.ts:224,266`         | `console.error(...)`                        | `fatal`    |
+| `plandata/fjernvarme.ts:63`          | `console.warn(...)`                         | `degraded` |
+| `tinglysning/client.ts:88,190,216`   | `console.warn(...)`                         | `degraded` |
+| `vur/client.ts:149`                  | `console.error(...)`                        | `fatal`    |
 
 Example replacement for `bbr/client.ts:212`:
+
 ```typescript
 // OLD:
 console.error("[BBR] HTTP-fejl:", { status: response.status, body: text });
 // NEW:
-logServerEvent({ module: "bbr/client", operation: "graphqlFetch", severity: "fatal", message: "HTTP-fejl", metadata: { status: response.status, body: text } });
+logServerEvent({
+  module: "bbr/client",
+  operation: "graphqlFetch",
+  severity: "fatal",
+  message: "HTTP-fejl",
+  metadata: { status: response.status, body: text },
+});
 ```
 
 Example for `fbb/client.ts:248`:
+
 ```typescript
 // OLD:
 console.warn("[FBB] GeoServer fejl:", (e as Error).message);
 // NEW:
-logServerEvent({ module: "fbb/client", operation: "getSaveData", severity: "degraded", message: "GeoServer fejl", error: e });
+logServerEvent({
+  module: "fbb/client",
+  operation: "getSaveData",
+  severity: "degraded",
+  message: "GeoServer fejl",
+  error: e,
+});
 ```
 
 - [ ] **Step 11.2: Write failing test for server-logger**
@@ -1649,7 +1850,7 @@ describe("logServerEvent", () => {
   test("non-fatal failures do not throw", () => {
     // Simulate a caller that ignores the return value
     expect(() =>
-      logServerEvent({ module: "m", operation: "o", severity: "degraded", message: "ok" })
+      logServerEvent({ module: "m", operation: "o", severity: "degraded", message: "ok" }),
     ).not.toThrow();
   });
 });
@@ -1700,17 +1901,17 @@ git commit -m "feat(arch-265): replace all console.warn/error in integration cli
 
 ### Spec coverage check
 
-| Acceptance criterion | Covered by |
-|---|---|
+| Acceptance criterion                                                    | Covered by                                                         |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | ARCH-274: `building-platform.ts` exports types only, no hard-stop trees | Task 2 — helpers already delegate; Zod schema replaces Record cast |
-| ARCH-274: Tests prove SAVE/fredning/MAT consistency | Task 1 (full test suite) |
-| ARCH-261: Orchestrator no longer imports from `project-store` | Task 3 |
-| ARCH-261: Extract 6 focused step modules | Tasks 4–8 |
-| ARCH-261: Hard-stop skip = pure function with tests | Task 4 |
-| ARCH-261: `analyseAddressWithTrace` is thin coordinator | Task 9 |
-| ARCH-265: Typed logger with module/operation/severity | Already exists; Task 10–11 migrate callers |
-| ARCH-265: Replace `console.warn` in all 4 named files | Tasks 10–11 |
-| ARCH-265: Tests for non-fatal persistence sync failure | Task 11 (server-logger.test.ts) |
+| ARCH-274: Tests prove SAVE/fredning/MAT consistency                     | Task 1 (full test suite)                                           |
+| ARCH-261: Orchestrator no longer imports from `project-store`           | Task 3                                                             |
+| ARCH-261: Extract 6 focused step modules                                | Tasks 4–8                                                          |
+| ARCH-261: Hard-stop skip = pure function with tests                     | Task 4                                                             |
+| ARCH-261: `analyseAddressWithTrace` is thin coordinator                 | Task 9                                                             |
+| ARCH-265: Typed logger with module/operation/severity                   | Already exists; Task 10–11 migrate callers                         |
+| ARCH-265: Replace `console.warn` in all 4 named files                   | Tasks 10–11                                                        |
+| ARCH-265: Tests for non-fatal persistence sync failure                  | Task 11 (server-logger.test.ts)                                    |
 
 ### Known limitations
 

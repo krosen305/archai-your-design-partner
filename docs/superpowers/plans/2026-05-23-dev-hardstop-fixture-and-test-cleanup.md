@@ -12,23 +12,24 @@
 
 ## File map
 
-| File | Change |
-|------|--------|
-| `tests/helpers/session.ts` | Add `enterCockpitWithHardStop` helper |
-| `tests/hard-stop-gate.spec.ts` | Replace placeholder with real acceptance test |
-| `src/routes/projekt.adresse.tsx` | Add `setHardStop` to useProject destructuring + new DEV button |
-| `tests/cockpit-data.spec.ts` | Remove tests 5–6 (debug routes), fix test 4 (`grundarealCard` undefined) |
-| `src/integrations/cache/client.test.ts` | Delete (comment-only file) |
-| `src/lib/pipeline-service-state.test.ts` | Delete (TypeScript-only assertions) |
-| `src/lib/orchestrator-service-states.test.ts` | Delete (type-level test, no runtime value) |
-| `tests/wizard-flow.spec.ts` | Delete (trivial DEV button + login gate render checks) |
-| `tests/address-flow.spec.ts` | Delete (trivial navigation + DEV button presence checks) |
+| File                                          | Change                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------ |
+| `tests/helpers/session.ts`                    | Add `enterCockpitWithHardStop` helper                                    |
+| `tests/hard-stop-gate.spec.ts`                | Replace placeholder with real acceptance test                            |
+| `src/routes/projekt.adresse.tsx`              | Add `setHardStop` to useProject destructuring + new DEV button           |
+| `tests/cockpit-data.spec.ts`                  | Remove tests 5–6 (debug routes), fix test 4 (`grundarealCard` undefined) |
+| `src/integrations/cache/client.test.ts`       | Delete (comment-only file)                                               |
+| `src/lib/pipeline-service-state.test.ts`      | Delete (TypeScript-only assertions)                                      |
+| `src/lib/orchestrator-service-states.test.ts` | Delete (type-level test, no runtime value)                               |
+| `tests/wizard-flow.spec.ts`                   | Delete (trivial DEV button + login gate render checks)                   |
+| `tests/address-flow.spec.ts`                  | Delete (trivial navigation + DEV button presence checks)                 |
 
 ---
 
 ## Task 1: Write failing Playwright test + session helper
 
 **Files:**
+
 - Modify: `tests/helpers/session.ts`
 - Modify: `tests/hard-stop-gate.spec.ts`
 
@@ -96,6 +97,7 @@ If it unexpectedly passes: stop and investigate — something is wrong.
 ## Task 2: Implement DEV hard-stop button in projekt.adresse.tsx
 
 **Files:**
+
 - Modify: `src/routes/projekt.adresse.tsx`
 
 - [ ] **Step 1: Add `setHardStop` to the useProject destructuring**
@@ -196,6 +198,7 @@ and navigates to cockpit. Completes the hard-stop-gate.spec.ts acceptance test."
 ## Task 3: Delete obsolete test files
 
 **Files:**
+
 - Delete: `src/integrations/cache/client.test.ts`
 - Delete: `src/lib/pipeline-service-state.test.ts`
 - Delete: `src/lib/orchestrator-service-states.test.ts`
@@ -203,6 +206,7 @@ and navigates to cockpit. Completes the hard-stop-gate.spec.ts acceptance test."
 - Delete: `tests/address-flow.spec.ts`
 
 Why each is removed:
+
 - `cache/client.test.ts` — only comments; live tests already live in `tests/live/`
 - `pipeline-service-state.test.ts` — checks `typeof label === "string"`. TypeScript enforces this at compile time.
 - `orchestrator-service-states.test.ts` — assigns a typed `ComplianceResult` literal and asserts one field equals its own value. No runtime logic tested.
@@ -242,9 +246,11 @@ presence and TanStack Router navigation URLs."
 ## Task 4: Fix cockpit-data.spec.ts
 
 **Files:**
+
 - Modify: `tests/cockpit-data.spec.ts`
 
 Two problems to fix:
+
 1. Tests 5 and 6 test the `/debug/analyse` dev route — not a user journey, one has a no-op `.or()` assertion.
 2. Test 4 references `grundarealCard` which is never defined — this is a latent bug that would crash on run.
 

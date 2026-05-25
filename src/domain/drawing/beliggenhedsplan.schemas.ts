@@ -21,7 +21,14 @@ export const GeoJsonPolygon25832Schema = z.object({
 });
 
 const DataConfidenceSchema = z.enum(["high", "medium", "low", "unknown"]);
-const DataSourceSchema = z.enum(["survey", "registry", "cad_upload", "manual", "generated", "estimated"]);
+const DataSourceSchema = z.enum([
+  "survey",
+  "registry",
+  "cad_upload",
+  "manual",
+  "generated",
+  "estimated",
+]);
 
 const LayerSourceMetaSchema = z.object({
   source: DataSourceSchema,
@@ -63,27 +70,31 @@ export const ParcelLayerSchema = z.object({
 export const SurveyLayerSchema = z.object({
   uploadedAt: z.string(),
   surveyDate: z.string().nullable(),
-  terrainPoints: z.array(z.object({
-    x: z.number(),
-    y: z.number(),
-    z: z.number(),
-    label: z.string(),
-    source: DataSourceSchema,
-  })),
+  terrainPoints: z.array(
+    z.object({
+      x: z.number(),
+      y: z.number(),
+      z: z.number(),
+      label: z.string(),
+      source: DataSourceSchema,
+    }),
+  ),
   boundaryPoints: z.array(GeoJsonPoint25832Schema),
   notes: z.array(z.string()),
   source: LayerSourceMetaSchema,
 });
 
 export const ExistingFeaturesLayerSchema = z.object({
-  buildings: z.array(z.object({
-    bbrId: z.string().nullable(),
-    footprint25832: GeoJsonPolygon25832Schema,
-    usageCode: z.string().nullable(),
-    areaM2: z.number(),
-    sokkelKoteM: z.number().nullable(),
-    source: LayerSourceMetaSchema,
-  })),
+  buildings: z.array(
+    z.object({
+      bbrId: z.string().nullable(),
+      footprint25832: GeoJsonPolygon25832Schema,
+      usageCode: z.string().nullable(),
+      areaM2: z.number(),
+      sokkelKoteM: z.number().nullable(),
+      source: LayerSourceMetaSchema,
+    }),
+  ),
   fences: z.array(GeoJsonLineString25832Schema),
   source: LayerSourceMetaSchema,
 });
@@ -99,7 +110,13 @@ export const ProposedBuildingLayerSchema = z.object({
 });
 
 export const ConstraintLayerSchema = z.object({
-  type: z.enum(["br18_setback", "localplan_building_line", "road_building_line", "servitut", "building_field"]),
+  type: z.enum([
+    "br18_setback",
+    "localplan_building_line",
+    "road_building_line",
+    "servitut",
+    "building_field",
+  ]),
   geometry25832: z.union([GeoJsonPolygon25832Schema, GeoJsonLineString25832Schema]),
   label: z.string(),
   ruleText: z.string().nullable(),

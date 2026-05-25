@@ -12,28 +12,29 @@
 
 ## File Map
 
-| File | Action | Responsibility |
-|------|--------|----------------|
-| `src/integrations/miljoe/dkjord.ts` | Modify | IS_MOCK flip + polygon support + extended type |
-| `src/integrations/miljoe/dkjord.test.ts` | Modify | 3 WFS fixture scenarios + polygon helper |
-| `supabase/migrations/20260520000000_site_constraints_jordforurening.sql` | Create | 6 nye typed kolonner |
-| `src/integrations/supabase/types.ts` | Modify | Tilføj nye kolonner til Row/Insert/Update |
-| `src/lib/rule-engine/types.ts` | Modify | Udvid `geotechnical` med V1/V2/omraade |
-| `src/lib/rule-engine/rules/jordforurening-rules.ts` | Create | V1/V2/omraade warnings — pure functions |
-| `src/lib/rule-engine/rules/jordforurening-rules.test.ts` | Create | Unit tests for jordforurening violations |
-| `src/lib/rule-engine/engine.ts` | Modify | Wire `checkJordforureningRules` |
-| `src/lib/rule-engine/input-assembler.ts` | Modify | Tilføj `dkjord` til `AssemblerParams` + mapping |
-| `src/lib/reactive-compliance.ts` | Modify | Tilføj `dkjord` til `PartialUpdateParams` |
-| `src/types/building-platform.ts` | Modify | 3 nye `BUILDING_TASK_KEYS` |
-| `src/integrations/supabase/project-persistence.ts` | Modify | `ComplianceTriggers` + `buildSiteConstraintsPatch` + `deriveAutoTasks` |
-| `src/lib/analysis-orchestrator.ts` | Modify | Hent parcelPolygon og send til `DkJordService` |
-| `src/routes/projekt.$id.cockpit.tsx` | Modify | Tilføj `dkjord` til `assembleRuleEngineInput` kald |
+| File                                                                     | Action | Responsibility                                                         |
+| ------------------------------------------------------------------------ | ------ | ---------------------------------------------------------------------- |
+| `src/integrations/miljoe/dkjord.ts`                                      | Modify | IS_MOCK flip + polygon support + extended type                         |
+| `src/integrations/miljoe/dkjord.test.ts`                                 | Modify | 3 WFS fixture scenarios + polygon helper                               |
+| `supabase/migrations/20260520000000_site_constraints_jordforurening.sql` | Create | 6 nye typed kolonner                                                   |
+| `src/integrations/supabase/types.ts`                                     | Modify | Tilføj nye kolonner til Row/Insert/Update                              |
+| `src/lib/rule-engine/types.ts`                                           | Modify | Udvid `geotechnical` med V1/V2/omraade                                 |
+| `src/lib/rule-engine/rules/jordforurening-rules.ts`                      | Create | V1/V2/omraade warnings — pure functions                                |
+| `src/lib/rule-engine/rules/jordforurening-rules.test.ts`                 | Create | Unit tests for jordforurening violations                               |
+| `src/lib/rule-engine/engine.ts`                                          | Modify | Wire `checkJordforureningRules`                                        |
+| `src/lib/rule-engine/input-assembler.ts`                                 | Modify | Tilføj `dkjord` til `AssemblerParams` + mapping                        |
+| `src/lib/reactive-compliance.ts`                                         | Modify | Tilføj `dkjord` til `PartialUpdateParams`                              |
+| `src/types/building-platform.ts`                                         | Modify | 3 nye `BUILDING_TASK_KEYS`                                             |
+| `src/integrations/supabase/project-persistence.ts`                       | Modify | `ComplianceTriggers` + `buildSiteConstraintsPatch` + `deriveAutoTasks` |
+| `src/lib/analysis-orchestrator.ts`                                       | Modify | Hent parcelPolygon og send til `DkJordService`                         |
+| `src/routes/projekt.$id.cockpit.tsx`                                     | Modify | Tilføj `dkjord` til `assembleRuleEngineInput` kald                     |
 
 ---
 
 ## Task 1: DB migration + Supabase types
 
 **Files:**
+
 - Create: `supabase/migrations/20260520000000_site_constraints_jordforurening.sql`
 - Modify: `src/integrations/supabase/types.ts:327-394`
 
@@ -165,6 +166,7 @@ site_constraints: {
 ```bash
 bunx tsc --noEmit
 ```
+
 Expected: ingen fejl
 
 - [ ] **Step 4: Commit**
@@ -179,6 +181,7 @@ git commit -m "feat(arch-241): add typed jordforurening columns to site_constrai
 ## Task 2: Udvid DkJordResultat + skriv fixture-tests (TDD)
 
 **Files:**
+
 - Modify: `src/integrations/miljoe/dkjord.ts` (kun type-ændring, IS_MOCK stadig true)
 - Modify: `src/integrations/miljoe/dkjord.test.ts`
 
@@ -196,8 +199,8 @@ export type DkJordResultat = {
     driftsstatus: string | null;
   };
   omraadeklassificering: string | null;
-  nuancering: string | null;      // fra V1/V2 feature properties — null hvis ikke udstillet
-  lokalitetsId: string | null;    // DK-Jord lokalitets-id til deep-link
+  nuancering: string | null; // fra V1/V2 feature properties — null hvis ikke udstillet
+  lokalitetsId: string | null; // DK-Jord lokalitets-id til deep-link
   kilde: "dkjord" | "mock";
 };
 ```
@@ -254,10 +257,14 @@ function mockFetchForScenario(scenario: "no_hit" | "v1_only" | "v2_hit") {
       if (scenario === "no_hit") {
         data = wfsResponse(0);
       } else if (scenario === "v1_only") {
-        data = isV1 ? wfsResponse(1, [{ nuancering: "Historisk", lokalitet_id: "LOK-001" }]) : wfsResponse(0);
+        data = isV1
+          ? wfsResponse(1, [{ nuancering: "Historisk", lokalitet_id: "LOK-001" }])
+          : wfsResponse(0);
       } else {
         // v2_hit
-        data = isV2 ? wfsResponse(1, [{ nuancering: "V2 Forurenet", lokalitet_id: "LOK-042" }]) : wfsResponse(0);
+        data = isV2
+          ? wfsResponse(1, [{ nuancering: "V2 Forurenet", lokalitet_id: "LOK-042" }])
+          : wfsResponse(0);
       }
 
       // olietank og omraadet returnerer altid 0 i disse scenarier
@@ -441,6 +448,7 @@ git commit -m "test(arch-241): add fixture scenarios for DkJord live path"
 ## Task 3: Implementer IS_MOCK flip + polygon support
 
 **Files:**
+
 - Modify: `src/integrations/miljoe/dkjord.ts`
 
 - [ ] **Step 1: Erstat hele dkjord.ts med live implementation**
@@ -477,8 +485,8 @@ export type DkJordResultat = {
     driftsstatus: string | null;
   };
   omraadeklassificering: string | null;
-  nuancering: string | null;      // fra V1/V2 feature properties
-  lokalitetsId: string | null;    // DK-Jord lokalitets-id
+  nuancering: string | null; // fra V1/V2 feature properties
+  lokalitetsId: string | null; // DK-Jord lokalitets-id
   kilde: "dkjord" | "mock";
 };
 
@@ -492,8 +500,7 @@ type WfsJsonResponse = {
 // Bygger WKT POLYGON fra første Polygon-feature i en GeoJSON FeatureCollection.
 // Returnerer null ved uventede geometrityper — caller falder tilbage til POINT.
 function wfsPolygonFilter(geojson: GeoJSON.Feature | GeoJSON.FeatureCollection): string | null {
-  const feature =
-    geojson.type === "FeatureCollection" ? geojson.features[0] : geojson;
+  const feature = geojson.type === "FeatureCollection" ? geojson.features[0] : geojson;
   if (!feature) return null;
 
   const geom = feature.geometry;
@@ -507,7 +514,10 @@ function wfsPolygonFilter(geojson: GeoJSON.Feature | GeoJSON.FeatureCollection):
   return `POLYGON((${wkt}))`;
 }
 
-function buildCqlFilter(koordinat: Koordinat, polygon: GeoJSON.Feature | GeoJSON.FeatureCollection | null | undefined): string {
+function buildCqlFilter(
+  koordinat: Koordinat,
+  polygon: GeoJSON.Feature | GeoJSON.FeatureCollection | null | undefined,
+): string {
   if (polygon) {
     const wkt = wfsPolygonFilter(polygon);
     if (wkt) return `INTERSECTS(geometry,${wkt})`;
@@ -546,10 +556,18 @@ export class DkJordService {
   ): Promise<SourceResult<DkJordResultat>> {
     try {
       const [v1Data, v2Data, olietankData, omraadeData] = await Promise.all([
-        getFeatures("dkjord:V1", koordinat, parcelPolygon).catch((): WfsJsonResponse => ({ features: [] })),
-        getFeatures("dkjord:V2", koordinat, parcelPolygon).catch((): WfsJsonResponse => ({ features: [] })),
-        getFeatures("dkjord:olietank", koordinat, parcelPolygon).catch((): WfsJsonResponse => ({ features: [] })),
-        getFeatures("dkjord:omraadet", koordinat, parcelPolygon).catch((): WfsJsonResponse => ({ features: [] })),
+        getFeatures("dkjord:V1", koordinat, parcelPolygon).catch(
+          (): WfsJsonResponse => ({ features: [] }),
+        ),
+        getFeatures("dkjord:V2", koordinat, parcelPolygon).catch(
+          (): WfsJsonResponse => ({ features: [] }),
+        ),
+        getFeatures("dkjord:olietank", koordinat, parcelPolygon).catch(
+          (): WfsJsonResponse => ({ features: [] }),
+        ),
+        getFeatures("dkjord:omraadet", koordinat, parcelPolygon).catch(
+          (): WfsJsonResponse => ({ features: [] }),
+        ),
       ]);
 
       const v1Count = v1Data.totalFeatures ?? v1Data.features?.length ?? 0;
@@ -559,7 +577,7 @@ export class DkJordService {
       const totalFeatures = v1Count + v2Count + olietankCount + omraadeCount;
 
       // Udtræk nuancering og lokalitetsId fra første V2- eller V1-feature
-      const hitFeature = (v2Data.features?.[0] ?? v1Data.features?.[0]) ?? null;
+      const hitFeature = v2Data.features?.[0] ?? v1Data.features?.[0] ?? null;
       const nuancering = (hitFeature?.properties?.["nuancering"] as string | undefined) ?? null;
       const lokalitetsId = (hitFeature?.properties?.["lokalitet_id"] as string | undefined) ?? null;
 
@@ -618,6 +636,7 @@ git commit -m "feat(arch-241): flip IS_MOCK=false + add polygon-INTERSECTS suppo
 ## Task 4: Udvid RuleEngineInput + skriv jordforurening-rules tests (TDD)
 
 **Files:**
+
 - Modify: `src/lib/rule-engine/types.ts:122-127`
 - Create: `src/lib/rule-engine/rules/jordforurening-rules.test.ts`
 
@@ -631,10 +650,10 @@ geotechnical: {
   radonRisk: "low" | "medium" | "high" | "unknown";
   groundwaterDepthM: number | null;
   slopePercent: number | null;
-  jordforureningV1: boolean | null;      // null = ukendt/API-fejl — ingen violation
-  jordforureningV2: boolean | null;      // null = ukendt/API-fejl — ingen violation
-  omraadeklassificering: string | null;  // null = ikke klassificeret
-};
+  jordforureningV1: boolean | null; // null = ukendt/API-fejl — ingen violation
+  jordforureningV2: boolean | null; // null = ukendt/API-fejl — ingen violation
+  omraadeklassificering: string | null; // null = ikke klassificeret
+}
 ```
 
 - [ ] **Step 2: Opdater baseInput i engine.test.ts**
@@ -672,7 +691,13 @@ import type { RuleEngineInput } from "@/lib/rule-engine/types";
 function baseInput(overrides: Partial<RuleEngineInput["geotechnical"]> = {}): RuleEngineInput {
   return {
     project: { type: "demolition_and_new", municipality: "København", kommunekode: "0101" },
-    plot: { areaM2: 800, zone: "urban", hasLocalplan: false, hasServitudes: false, localplanIds: [] },
+    plot: {
+      areaM2: 800,
+      zone: "urban",
+      hasLocalplan: false,
+      hasServitudes: false,
+      localplanIds: [],
+    },
     heritage: {
       listedBuilding: false,
       saveValue: null,
@@ -777,6 +802,7 @@ git commit -m "test(arch-241): extend RuleEngineInput.geotechnical + add jordfor
 ## Task 5: Implementer jordforurening-rules.ts + wire i engine.ts
 
 **Files:**
+
 - Create: `src/lib/rule-engine/rules/jordforurening-rules.ts`
 - Modify: `src/lib/rule-engine/engine.ts:17-19, 136`
 
@@ -856,7 +882,12 @@ const jordforureningViolations = checkJordforureningRules(input);
 checkedRules.push("jordforurening_v2", "jordforurening_v1", "jordforurening_omraadeklassificering");
 
 // ── 5. Sammensæt ──────────────────────────────────────────────────────────
-const allViolations = [...stopViolations, ...calcViolations, ...energyViolations, ...jordforureningViolations];
+const allViolations = [
+  ...stopViolations,
+  ...calcViolations,
+  ...energyViolations,
+  ...jordforureningViolations,
+];
 ```
 
 - [ ] **Step 4: Kør engine-tests**
@@ -879,6 +910,7 @@ git commit -m "feat(arch-241): add jordforurening-rules + wire into engine"
 ## Task 6: Opdater input-assembler + reactive-compliance
 
 **Files:**
+
 - Modify: `src/lib/rule-engine/input-assembler.ts:28-42, 341-347`
 - Modify: `src/lib/reactive-compliance.ts:26-39, 47-80`
 
@@ -903,7 +935,7 @@ export type AssemblerParams = {
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
   fbbData: FbbResultat | null;
-  dkjord: DkJordResultat | null;   // NY: V1/V2/omraadeklassificering til rule engine
+  dkjord: DkJordResultat | null; // NY: V1/V2/omraadeklassificering til rule engine
   byggeoenske: Byggeoenske | null;
   designPlacement?: DesignPlacement | null;
   municipality: string;
@@ -925,7 +957,7 @@ const {
   servitutter,
   terrain,
   fbbData,
-  dkjord,    // NY
+  dkjord, // NY
   byggeoenske,
   designPlacement,
   municipality,
@@ -967,7 +999,7 @@ export type PartialUpdateParams = {
   servitutter: TinglysningResult | null;
   terrain: TerrainData | null;
   fbbData: FbbResultat | null;
-  dkjord: DkJordResultat | null;   // NY
+  dkjord: DkJordResultat | null; // NY
   byggeoenske: Byggeoenske;
   municipality: string;
   kommunekode: string;
@@ -987,7 +1019,7 @@ const { input, missingFields } = assembleRuleEngineInput({
   servitutter: params.servitutter,
   terrain: params.terrain,
   fbbData: params.fbbData,
-  dkjord: params.dkjord,   // NY
+  dkjord: params.dkjord, // NY
   byggeoenske: params.byggeoenske,
   municipality: params.municipality,
   kommunekode: params.kommunekode,
@@ -1009,7 +1041,7 @@ const { input: ruleInput, missingFields } = assembleRuleEngineInput({
   servitutter: analysisInput.servitutter ?? null,
   terrain: analysisInput.terrain ?? null,
   fbbData: analysisInput.fbbData ?? null,
-  dkjord: analysisInput.dkjord ?? null,   // NY
+  dkjord: analysisInput.dkjord ?? null, // NY
   byggeoenske: analysisInput.byggeoenske,
   municipality: analysisInput.municipality ?? "",
   kommunekode: analysisInput.kommunekode ?? "",
@@ -1045,6 +1077,7 @@ git commit -m "feat(arch-241): wire dkjord into rule engine input-assembler + re
 ## Task 7: Tilføj nye BUILDING_TASK_KEYS + opdater project-persistence
 
 **Files:**
+
 - Modify: `src/types/building-platform.ts:37-61`
 - Modify: `src/integrations/supabase/project-persistence.ts:96-104, 219-353, 803-818`
 
@@ -1057,12 +1090,12 @@ export const BUILDING_TASK_KEYS = {
   // Matriklen phase
   JORDBUNDSPROVE: "jordbundsprove",
   KORTLAEG_FORSYNINGER: "kortlaeg_forsyninger",
-  MILJOEUNDERSOEGELSE: "miljoeundersoegelse",          // beholdes for unknown/error-case
-  JORDFORURENING_V2_UNDERSOEGELSE: "jordforurening_v2_undersoegelse",  // NY: V2-kortlagt
-  JORDFORURENING_V1_SCREENING: "jordforurening_v1_screening",          // NY: V1-kortlagt
+  MILJOEUNDERSOEGELSE: "miljoeundersoegelse", // beholdes for unknown/error-case
+  JORDFORURENING_V2_UNDERSOEGELSE: "jordforurening_v2_undersoegelse", // NY: V2-kortlagt
+  JORDFORURENING_V1_SCREENING: "jordforurening_v1_screening", // NY: V1-kortlagt
   SAVE_4_PARAGRAPH14: "save_4_paragraph14",
   // Maskinrummet phase
-  JORDFLYTNING_ATTEST: "jordflytning_attest",          // NY: omraadeklassificering
+  JORDFLYTNING_ATTEST: "jordflytning_attest", // NY: omraadeklassificering
   ARKITEKTTEGNINGER: "arkitekttegninger",
   STATIK: "statik",
   LCA_BEREGNING: "lca_beregning",
@@ -1096,9 +1129,9 @@ type ComplianceTriggers = {
   fredskov: boolean | null;
   klitfredning: boolean | null;
   soilContamination: "clean" | "registered" | "contaminated" | "unknown" | null;
-  jordforureningV1: boolean | null;       // NY: direkte boolean til task-generering
-  jordforureningV2: boolean | null;       // NY
-  omraadeklassificering: string | null;   // NY
+  jordforureningV1: boolean | null; // NY: direkte boolean til task-generering
+  jordforureningV2: boolean | null; // NY
+  omraadeklassificering: string | null; // NY
 };
 ```
 
@@ -1169,13 +1202,13 @@ I `buildSiteConstraintsPatch()`, udvid `dkjord`-blokken (linje ~175-178):
 ```typescript
 if (patch.dkjord !== undefined) {
   hasConstraintField = true;
-  sitePatch.soil_contamination_status    = deriveSoilContaminationStatus(patch.dkjord);
-  sitePatch.jordforurening_v1            = patch.dkjord?.v1Kortlagt ?? null;
-  sitePatch.jordforurening_v2            = patch.dkjord?.v2Kortlagt ?? null;
-  sitePatch.jordforurening_olietank      = patch.dkjord?.olietank.eksisterer ?? null;
-  sitePatch.omraadeklassificering        = patch.dkjord?.omraadeklassificering ?? null;
-  sitePatch.jordforurening_nuancering    = patch.dkjord?.nuancering ?? null;
-  sitePatch.jordforurening_lokalitet_id  = patch.dkjord?.lokalitetsId ?? null;
+  sitePatch.soil_contamination_status = deriveSoilContaminationStatus(patch.dkjord);
+  sitePatch.jordforurening_v1 = patch.dkjord?.v1Kortlagt ?? null;
+  sitePatch.jordforurening_v2 = patch.dkjord?.v2Kortlagt ?? null;
+  sitePatch.jordforurening_olietank = patch.dkjord?.olietank.eksisterer ?? null;
+  sitePatch.omraadeklassificering = patch.dkjord?.omraadeklassificering ?? null;
+  sitePatch.jordforurening_nuancering = patch.dkjord?.nuancering ?? null;
+  sitePatch.jordforurening_lokalitet_id = patch.dkjord?.lokalitetsId ?? null;
 }
 ```
 
@@ -1193,9 +1226,9 @@ await syncBuildingTasks(
     fredskov: patch.bbrData?.mat_fredskov ?? null,
     klitfredning: patch.bbrData?.mat_klitfredning ?? null,
     soilContamination,
-    jordforureningV1: patch.dkjord?.v1Kortlagt ?? null,    // NY
-    jordforureningV2: patch.dkjord?.v2Kortlagt ?? null,    // NY
-    omraadeklassificering: patch.dkjord?.omraadeklassificering ?? null,  // NY
+    jordforureningV1: patch.dkjord?.v1Kortlagt ?? null, // NY
+    jordforureningV2: patch.dkjord?.v2Kortlagt ?? null, // NY
+    omraadeklassificering: patch.dkjord?.omraadeklassificering ?? null, // NY
   },
   trace,
 );
@@ -1222,6 +1255,7 @@ git commit -m "feat(arch-241): typed task keys + V1/V2 building tasks + site_con
 ## Task 8: Opdater orchestrator til at sende parcelPolygon
 
 **Files:**
+
 - Modify: `src/lib/analysis-orchestrator.ts` (DkJordService-kaldet i Layer 4, ca. linje 580-606)
 
 - [ ] **Step 1: Tilføj polygon-hentning og send til DkJordService**
@@ -1269,13 +1303,7 @@ Find linje ~704-706 der sætter `states.dkjord` og tilføj live/mock-skelnen:
 ```typescript
 dkjord = jord?.data ?? null;
 states.dkjord =
-  jord === null
-    ? "error"
-    : jord.isMock
-      ? "mock"
-      : dkjord !== null
-        ? "success"
-        : "no_hit";
+  jord === null ? "error" : jord.isMock ? "mock" : dkjord !== null ? "success" : "no_hit";
 ```
 
 - [ ] **Step 3: Type-tjek**
@@ -1344,6 +1372,7 @@ bun dev
 ```
 
 Gå til en adresse i cockpit. Verificér i network-tab:
+
 - DK-Jord WFS-kald sker (ikke mock)
 - `serviceStates.dkjord` er "success" eller "no_hit" (ikke "mock")
 

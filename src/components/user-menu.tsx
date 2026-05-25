@@ -66,7 +66,10 @@ export function UserMenu() {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/debug/analyse" className="flex items-center gap-2 cursor-pointer text-muted-foreground">
+              <Link
+                to="/debug/analyse"
+                className="flex items-center gap-2 cursor-pointer text-muted-foreground"
+              >
                 <Bug size={14} />
                 Debug log
               </Link>

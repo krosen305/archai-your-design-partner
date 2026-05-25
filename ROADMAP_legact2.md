@@ -626,22 +626,22 @@ implementation notes should be clearly archived.
 
 **Inventory decisions from review:**
 
-| File or glob | Suggested status | Reason |
-| --- | --- | --- |
-| `AGENTS.md`, `CLAUDE.md` | Update only with explicit user task | Agent rules are important and protected. |
-| `README.md`, `docs/DOCUMENTATION.md` | Update | Should reflect current architecture and verification status. |
-| `ROADMAP.md` | Keep | Round 1 context is still useful. |
-| `docs/CI_CD.md` | Update | Quality gates currently fail and lint should ignore worktrees. |
-| `docs/INTEGRATIONS.md` | Update | Needs decoder/fetch/Datafordeler-only rules. |
-| `docs/data-ingestion-contract.md` | Update | Should define runtime decoding contracts. |
-| `docs/rule-engine-impact-analysis.md` | Update | Should mention remaining UI/flag duplication. |
-| `docs/testing-architecture-implementation-tickets.md` | Update | Should match current test failures and strategy. |
-| `docs/domain/journey-demolition-new-build.md` | Update | Align with 4 phases and state naming. |
-| `docs/datapunkt-bibel-api-kald.md` | Keep as snapshot | Add last verified date/status. |
-| `docs/datapunkter-hasselvej-48.md` | Keep as snapshot | Add last verified date/status. |
-| `docs/offentlige-datakilder-gap-analyse.md` | Update | Align with current Datafordeler-only rule. |
-| `agent/README.md`, `evals/README.md` | Update | Clarify current agent/eval contracts. |
-| `docs/superpowers/specs/*`, `docs/superpowers/plans/*` | Archive | Tactical plans should not be normative after implementation. |
+| File or glob                                           | Suggested status                    | Reason                                                         |
+| ------------------------------------------------------ | ----------------------------------- | -------------------------------------------------------------- |
+| `AGENTS.md`, `CLAUDE.md`                               | Update only with explicit user task | Agent rules are important and protected.                       |
+| `README.md`, `docs/DOCUMENTATION.md`                   | Update                              | Should reflect current architecture and verification status.   |
+| `ROADMAP.md`                                           | Keep                                | Round 1 context is still useful.                               |
+| `docs/CI_CD.md`                                        | Update                              | Quality gates currently fail and lint should ignore worktrees. |
+| `docs/INTEGRATIONS.md`                                 | Update                              | Needs decoder/fetch/Datafordeler-only rules.                   |
+| `docs/data-ingestion-contract.md`                      | Update                              | Should define runtime decoding contracts.                      |
+| `docs/rule-engine-impact-analysis.md`                  | Update                              | Should mention remaining UI/flag duplication.                  |
+| `docs/testing-architecture-implementation-tickets.md`  | Update                              | Should match current test failures and strategy.               |
+| `docs/domain/journey-demolition-new-build.md`          | Update                              | Align with 4 phases and state naming.                          |
+| `docs/datapunkt-bibel-api-kald.md`                     | Keep as snapshot                    | Add last verified date/status.                                 |
+| `docs/datapunkter-hasselvej-48.md`                     | Keep as snapshot                    | Add last verified date/status.                                 |
+| `docs/offentlige-datakilder-gap-analyse.md`            | Update                              | Align with current Datafordeler-only rule.                     |
+| `agent/README.md`, `evals/README.md`                   | Update                              | Clarify current agent/eval contracts.                          |
+| `docs/superpowers/specs/*`, `docs/superpowers/plans/*` | Archive                             | Tactical plans should not be normative after implementation.   |
 
 **Acceptance criteria:**
 
@@ -716,4 +716,3 @@ Future work should reject these patterns during review:
 - Regex or free-text matching for compliance categories.
 - New local React state for durable project/compliance data.
 - New docs that conflict with the 4 canonical phases.
-

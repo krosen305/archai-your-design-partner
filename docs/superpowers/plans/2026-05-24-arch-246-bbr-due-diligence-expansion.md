@@ -15,28 +15,31 @@
 ## File Structure
 
 ### Modified
-| File | Change |
-|------|--------|
-| `src/domain/bbr/code-lists.ts` | Add `vandforsyningLabel()` and `afloebsforholdLabel()` |
-| `src/domain/bbr/node-decoder.ts` | Add `byg030Vandforsyning` and `byg031Afloebsforhold` to Zod schema and `BbrBuildingNode` type |
-| `src/integrations/bbr/client.ts` | Add fields to `BYGNING_QUERY`, `BbrBygning`, `BbrKompliantData`; update return value |
-| `src/integrations/supabase/repositories/site-constraints.derivation.ts` | Map new BBR fields to site_constraints patch |
-| `src/integrations/supabase/repositories/building-tasks.derivation.ts` | Extend `ComplianceTriggers`; add olietank, asbest, afløb tasks |
-| `src/types/building-platform.ts` | Add `OLIETANK_MILJOESCREENING` and `ASBEST_PCB_SCREENING` to `BUILDING_TASK_KEYS` |
+
+| File                                                                    | Change                                                                                        |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `src/domain/bbr/code-lists.ts`                                          | Add `vandforsyningLabel()` and `afloebsforholdLabel()`                                        |
+| `src/domain/bbr/node-decoder.ts`                                        | Add `byg030Vandforsyning` and `byg031Afloebsforhold` to Zod schema and `BbrBuildingNode` type |
+| `src/integrations/bbr/client.ts`                                        | Add fields to `BYGNING_QUERY`, `BbrBygning`, `BbrKompliantData`; update return value          |
+| `src/integrations/supabase/repositories/site-constraints.derivation.ts` | Map new BBR fields to site_constraints patch                                                  |
+| `src/integrations/supabase/repositories/building-tasks.derivation.ts`   | Extend `ComplianceTriggers`; add olietank, asbest, afløb tasks                                |
+| `src/types/building-platform.ts`                                        | Add `OLIETANK_MILJOESCREENING` and `ASBEST_PCB_SCREENING` to `BUILDING_TASK_KEYS`             |
 
 ### Created
-| File | Purpose |
-|------|---------|
-| `src/domain/bbr/sanerings-risiko.ts` | Pure heuristic: byggeår + materialer → `SaneringsRisiko` |
-| `supabase/migrations/20260524160000_arch246_bbr_due_diligence.sql` | New typed columns on `site_constraints` |
-| `src/domain/bbr/sanerings-risiko.test.ts` | Unit tests for heuristic |
-| `src/integrations/supabase/repositories/building-tasks-bbr.derivation.test.ts` | Unit tests for three new task generators |
+
+| File                                                                           | Purpose                                                  |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `src/domain/bbr/sanerings-risiko.ts`                                           | Pure heuristic: byggeår + materialer → `SaneringsRisiko` |
+| `supabase/migrations/20260524160000_arch246_bbr_due_diligence.sql`             | New typed columns on `site_constraints`                  |
+| `src/domain/bbr/sanerings-risiko.test.ts`                                      | Unit tests for heuristic                                 |
+| `src/integrations/supabase/repositories/building-tasks-bbr.derivation.test.ts` | Unit tests for three new task generators                 |
 
 ---
 
 ## Task 1: Add code-list label functions
 
 **Files:**
+
 - Modify: `src/domain/bbr/code-lists.ts`
 
 - [ ] **Step 1.1: Add maps and exports at end of code-lists.ts**
@@ -90,6 +93,7 @@ git commit -m "feat(bbr): add vandforsyning and afloebsforhold code-list label f
 ## Task 2: Extend BBR Zod decoder
 
 **Files:**
+
 - Modify: `src/domain/bbr/node-decoder.ts`
 
 - [ ] **Step 2.1: Write failing test**
@@ -149,7 +153,11 @@ describe("parseBbrBygninger with new fields", () => {
     const withNulls = {
       BBR_Bygning: {
         nodes: [
-          { ...mockResponse.BBR_Bygning.nodes[0], byg030Vandforsyning: null, byg031Afloebsforhold: null },
+          {
+            ...mockResponse.BBR_Bygning.nodes[0],
+            byg030Vandforsyning: null,
+            byg031Afloebsforhold: null,
+          },
         ],
       },
     };
@@ -170,8 +178,8 @@ Expected: FAIL — `result[0].byg030Vandforsyning` is undefined (field not in sc
 Add after `byg027OmTilbygningsaar: number | null;`:
 
 ```typescript
-  byg030Vandforsyning: string | null;
-  byg031Afloebsforhold: string | null;
+byg030Vandforsyning: string | null;
+byg031Afloebsforhold: string | null;
 ```
 
 - [ ] **Step 2.4: Add fields to `bbrBuildingNodeSchema` in node-decoder.ts**
@@ -200,6 +208,7 @@ git commit -m "feat(bbr): add byg030Vandforsyning and byg031Afloebsforhold to Zo
 ## Task 3: Extend BBR GraphQL query and output types
 
 **Files:**
+
 - Modify: `src/integrations/bbr/client.ts`
 
 - [ ] **Step 3.1: Add fields to `BYGNING_QUERY` in client.ts**
@@ -216,8 +225,8 @@ In the `nodes { ... }` block of `BYGNING_QUERY`, add after `byg027OmTilbygningsa
 Add after `byg027OmTilbygningsaar: number | null;`:
 
 ```typescript
-  byg030Vandforsyning: string | null;
-  byg031Afloebsforhold: string | null;
+byg030Vandforsyning: string | null;
+byg031Afloebsforhold: string | null;
 ```
 
 - [ ] **Step 3.3: Add imports at top of client.ts**
@@ -241,12 +250,12 @@ import {
 Add after `bygning_samlet_boligareal`:
 
 ```typescript
-  // ARCH-246: Due-diligence felter
-  ombygningsaar: number | null;          // byg027 — nu eksponeret i output
-  vandforsyning_kode: string | null;     // byg030 raw kode
-  vandforsyning: string | null;          // byg030 label
-  afloebsforhold_kode: string | null;    // byg031 raw kode
-  afloebsforhold: string | null;         // byg031 label
+// ARCH-246: Due-diligence felter
+ombygningsaar: number | null; // byg027 — nu eksponeret i output
+vandforsyning_kode: string | null; // byg030 raw kode
+vandforsyning: string | null; // byg030 label
+afloebsforhold_kode: string | null; // byg031 raw kode
+afloebsforhold: string | null; // byg031 label
 ```
 
 - [ ] **Step 3.5: Populate new fields in `getKompliantData` return value**
@@ -290,6 +299,7 @@ git commit -m "feat(bbr): expose vandforsyning, afloebsforhold, ombygningsaar in
 ## Task 4: Create saneringsrisiko heuristic
 
 **Files:**
+
 - Create: `src/domain/bbr/sanerings-risiko.ts`
 - Create: `src/domain/bbr/sanerings-risiko.test.ts`
 
@@ -367,10 +377,7 @@ export function deriveSaneringsRisiko(
   if (byggeaar === null) return null;
   if (byggeaar < 1950) return "hoej";
   if (byggeaar < 1980) return "moderat";
-  if (
-    (ydervaegKode === ETERNIT_KODE || tagKode === ETERNIT_KODE) &&
-    byggeaar < 1985
-  ) {
+  if ((ydervaegKode === ETERNIT_KODE || tagKode === ETERNIT_KODE) && byggeaar < 1985) {
     return "moderat";
   }
   return "lav";
@@ -394,6 +401,7 @@ git commit -m "feat(bbr): add deriveSaneringsRisiko pure heuristic with unit tes
 ## Task 5: Database migration for new site_constraints columns
 
 **Files:**
+
 - Create: `supabase/migrations/20260524160000_arch246_bbr_due_diligence.sql`
 
 - [ ] **Step 5.1: Create migration file**
@@ -454,6 +462,7 @@ git commit -m "feat(db): add bbr due-diligence typed columns to site_constraints
 ## Task 6: Map new BBR fields to site_constraints patch
 
 **Files:**
+
 - Modify: `src/integrations/supabase/repositories/site-constraints.derivation.ts`
 
 - [ ] **Step 6.1: Add import for saneringsrisiko**
@@ -470,23 +479,24 @@ import { deriveSaneringsRisiko } from "@/domain/bbr/sanerings-risiko";
 The function already handles `patch.bbrData`. In that block (currently setting strandbeskyttelse/fredskov/klitfredning), add the new fields:
 
 ```typescript
-  if (patch.bbrData !== undefined && patch.bbrData !== null) {
-    hasConstraintField = true;
-    sitePatch.strandbeskyttelse = patch.bbrData.mat_strandbeskyttelse ?? false;
-    sitePatch.fredskov = patch.bbrData.mat_fredskov ?? false;
-    sitePatch.klitfredning = patch.bbrData.mat_klitfredning ?? false;
-    // ARCH-246: BBR due-diligence
-    sitePatch.bbr_vandforsyning_kode = patch.bbrData.vandforsyning_kode ?? null;
-    sitePatch.bbr_afloebsforhold_kode = patch.bbrData.afloebsforhold_kode ?? null;
-    sitePatch.bbr_ombygningsaar = patch.bbrData.ombygningsaar ?? null;
-    sitePatch.bbr_sanerings_risiko = deriveSaneringsRisiko(
+if (patch.bbrData !== undefined && patch.bbrData !== null) {
+  hasConstraintField = true;
+  sitePatch.strandbeskyttelse = patch.bbrData.mat_strandbeskyttelse ?? false;
+  sitePatch.fredskov = patch.bbrData.mat_fredskov ?? false;
+  sitePatch.klitfredning = patch.bbrData.mat_klitfredning ?? false;
+  // ARCH-246: BBR due-diligence
+  sitePatch.bbr_vandforsyning_kode = patch.bbrData.vandforsyning_kode ?? null;
+  sitePatch.bbr_afloebsforhold_kode = patch.bbrData.afloebsforhold_kode ?? null;
+  sitePatch.bbr_ombygningsaar = patch.bbrData.ombygningsaar ?? null;
+  sitePatch.bbr_sanerings_risiko =
+    deriveSaneringsRisiko(
       patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
       patch.bbrData.ydervaegs_materiale !== null
-        ? (patch.bbrData as BbrKompliantData).vandforsyning_kode  // use raw kode
+        ? (patch.bbrData as BbrKompliantData).vandforsyning_kode // use raw kode
         : null,
       null, // tag kode not exposed in BbrKompliantData yet; pass null
     ) ?? null;
-  }
+}
 ```
 
 Wait — `BbrKompliantData.byggeaar` is `string | null`, but `deriveSaneringsRisiko` expects `number | null`. And we need the raw ydervæg/tag **kodes**, not the label strings. Let me fix this: `BbrKompliantData` now has `afloebsforhold_kode` (added in Task 3) and the raw ydervæg code is NOT in BbrKompliantData.
@@ -503,11 +513,12 @@ These are already in canonicalBuilding as `byg032YdervaeggensMateriale` and `byg
 Then in site-constraints.derivation.ts:
 
 ```typescript
-    sitePatch.bbr_sanerings_risiko = deriveSaneringsRisiko(
-      patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
-      (patch.bbrData as BbrKompliantData).ydervaegs_materiale_kode ?? null,
-      (patch.bbrData as BbrKompliantData).tagdaekning_kode ?? null,
-    ) ?? null;
+sitePatch.bbr_sanerings_risiko =
+  deriveSaneringsRisiko(
+    patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
+    (patch.bbrData as BbrKompliantData).ydervaegs_materiale_kode ?? null,
+    (patch.bbrData as BbrKompliantData).tagdaekning_kode ?? null,
+  ) ?? null;
 ```
 
 **Correction to Task 3**: Add `ydervaegs_materiale_kode` and `tagdaekning_kode` to BbrKompliantData.
@@ -515,8 +526,8 @@ Then in site-constraints.derivation.ts:
 Add to BbrKompliantData type:
 
 ```typescript
-  ydervaegs_materiale_kode: string | null;  // byg032 raw kode (for saneringsrisiko)
-  tagdaekning_kode: string | null;           // byg033 raw kode (for saneringsrisiko)
+ydervaegs_materiale_kode: string | null; // byg032 raw kode (for saneringsrisiko)
+tagdaekning_kode: string | null; // byg033 raw kode (for saneringsrisiko)
 ```
 
 Add to getKompliantData return:
@@ -536,15 +547,15 @@ Add to getEmptyData:
 **Step 6.2 corrected**: In `site-constraints.derivation.ts`, add to the bbrData block:
 
 ```typescript
-    sitePatch.bbr_vandforsyning_kode = patch.bbrData.vandforsyning_kode ?? null;
-    sitePatch.bbr_afloebsforhold_kode = patch.bbrData.afloebsforhold_kode ?? null;
-    sitePatch.bbr_ombygningsaar = patch.bbrData.ombygningsaar ?? null;
-    sitePatch.bbr_sanerings_risiko =
-      deriveSaneringsRisiko(
-        patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
-        patch.bbrData.ydervaegs_materiale_kode ?? null,
-        patch.bbrData.tagdaekning_kode ?? null,
-      ) ?? null;
+sitePatch.bbr_vandforsyning_kode = patch.bbrData.vandforsyning_kode ?? null;
+sitePatch.bbr_afloebsforhold_kode = patch.bbrData.afloebsforhold_kode ?? null;
+sitePatch.bbr_ombygningsaar = patch.bbrData.ombygningsaar ?? null;
+sitePatch.bbr_sanerings_risiko =
+  deriveSaneringsRisiko(
+    patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
+    patch.bbrData.ydervaegs_materiale_kode ?? null,
+    patch.bbrData.tagdaekning_kode ?? null,
+  ) ?? null;
 ```
 
 Note: `patch.bbrData.byggeaar` is `string | null` (year as string like "1965"). `parseInt("1965", 10)` = 1965.
@@ -566,6 +577,7 @@ git commit -m "feat(bbr/site-constraints): map vandforsyning, afloebsforhold, om
 ## Task 7: Add new building task keys and task generators
 
 **Files:**
+
 - Modify: `src/types/building-platform.ts`
 - Modify: `src/integrations/supabase/repositories/building-tasks.derivation.ts`
 - Create: `src/integrations/supabase/repositories/building-tasks-bbr.derivation.test.ts`
@@ -683,10 +695,10 @@ In the `// Matriklen phase` section, add:
 Add three new fields to the `ComplianceTriggers` type after `omraadeklassificering`:
 
 ```typescript
-  // ARCH-246: BBR Due-Diligence triggers
-  jordforureningOlietank: boolean | null;
-  bbrAfloebsforholdKode: string | null;
-  bbrSaneringsRisiko: "lav" | "moderat" | "hoej" | null;
+// ARCH-246: BBR Due-Diligence triggers
+jordforureningOlietank: boolean | null;
+bbrAfloebsforholdKode: string | null;
+bbrSaneringsRisiko: "lav" | "moderat" | "hoej" | null;
 ```
 
 - [ ] **Step 7.5: Add three task generators in `deriveAutoTasks`**
@@ -694,74 +706,74 @@ Add three new fields to the `ComplianceTriggers` type after `omraadeklassificeri
 Add at the end of `deriveAutoTasks`, before `return tasks;`:
 
 ```typescript
-  // ARCH-246: Olietank (from DK-Jord WFS — jordforurening_olietank column)
-  if (t.jordforureningOlietank === true) {
-    tasks.push({
-      project_id: t.projectId,
-      task_key: BUILDING_TASK_KEYS.OLIETANK_MILJOESCREENING,
-      title: "Olietank registreret — miljøscreening påkrævet",
-      description:
-        "DK-Jord registrerer en olietank på eller nær grunden. En miljøteknisk undersøgelse " +
-        "(jordprøver) er nødvendig inden nedrivning eller byggestart for at fastlægge eventuel forurening.",
-      phase: "matriklen",
-      status: "pending",
-      priority: 2,
-      is_auto_generated: true,
-      blocked_by_constraint: "jordforurening_olietank",
-      metadata: { kilde: "DK-Jord WFS olietank", myndighed: "Miljøstyrelsen" },
-    });
-  }
+// ARCH-246: Olietank (from DK-Jord WFS — jordforurening_olietank column)
+if (t.jordforureningOlietank === true) {
+  tasks.push({
+    project_id: t.projectId,
+    task_key: BUILDING_TASK_KEYS.OLIETANK_MILJOESCREENING,
+    title: "Olietank registreret — miljøscreening påkrævet",
+    description:
+      "DK-Jord registrerer en olietank på eller nær grunden. En miljøteknisk undersøgelse " +
+      "(jordprøver) er nødvendig inden nedrivning eller byggestart for at fastlægge eventuel forurening.",
+    phase: "matriklen",
+    status: "pending",
+    priority: 2,
+    is_auto_generated: true,
+    blocked_by_constraint: "jordforurening_olietank",
+    metadata: { kilde: "DK-Jord WFS olietank", myndighed: "Miljøstyrelsen" },
+  });
+}
 
-  // ARCH-246: Asbest/PCB saneringsrisiko (from BBR byggeår + materialer)
-  if (t.bbrSaneringsRisiko === "hoej" || t.bbrSaneringsRisiko === "moderat") {
-    tasks.push({
-      project_id: t.projectId,
-      task_key: BUILDING_TASK_KEYS.ASBEST_PCB_SCREENING,
-      title: `Asbest/PCB-screening anbefales (${t.bbrSaneringsRisiko === "hoej" ? "høj risiko" : "moderat risiko"})`,
-      description:
-        t.bbrSaneringsRisiko === "hoej"
-          ? "Byggeår og materialer indikerer høj risiko for asbest, PCB og bly. " +
-            "En miljøscreening er lovpligtig inden nedrivning (Affaldsbekendtgørelsen). " +
-            "Budgettér screeningsrapport + evt. sanering som separat post."
-          : "Byggeår eller materialer (fx eternit) indikerer moderat risiko for asbestcement eller PCB. " +
-            "En screening anbefales inden nedrivning eller større renovering.",
-      phase: "matriklen",
-      status: t.bbrSaneringsRisiko === "hoej" ? "blocked" : "pending",
-      priority: t.bbrSaneringsRisiko === "hoej" ? 1 : 2,
-      is_auto_generated: true,
-      blocked_by_constraint: "bbr_sanerings_risiko",
-      metadata: {
-        saneringsrisiko: t.bbrSaneringsRisiko,
-        lovgrundlag: "Affaldsbekendtgørelsen §57",
-        myndighed: "Kommunen (byggesag)",
-      },
-    });
-  }
+// ARCH-246: Asbest/PCB saneringsrisiko (from BBR byggeår + materialer)
+if (t.bbrSaneringsRisiko === "hoej" || t.bbrSaneringsRisiko === "moderat") {
+  tasks.push({
+    project_id: t.projectId,
+    task_key: BUILDING_TASK_KEYS.ASBEST_PCB_SCREENING,
+    title: `Asbest/PCB-screening anbefales (${t.bbrSaneringsRisiko === "hoej" ? "høj risiko" : "moderat risiko"})`,
+    description:
+      t.bbrSaneringsRisiko === "hoej"
+        ? "Byggeår og materialer indikerer høj risiko for asbest, PCB og bly. " +
+          "En miljøscreening er lovpligtig inden nedrivning (Affaldsbekendtgørelsen). " +
+          "Budgettér screeningsrapport + evt. sanering som separat post."
+        : "Byggeår eller materialer (fx eternit) indikerer moderat risiko for asbestcement eller PCB. " +
+          "En screening anbefales inden nedrivning eller større renovering.",
+    phase: "matriklen",
+    status: t.bbrSaneringsRisiko === "hoej" ? "blocked" : "pending",
+    priority: t.bbrSaneringsRisiko === "hoej" ? 1 : 2,
+    is_auto_generated: true,
+    blocked_by_constraint: "bbr_sanerings_risiko",
+    metadata: {
+      saneringsrisiko: t.bbrSaneringsRisiko,
+      lovgrundlag: "Affaldsbekendtgørelsen §57",
+      myndighed: "Kommunen (byggesag)",
+    },
+  });
+}
 
-  // ARCH-246: BBR afløb — nedsivning/samletank kræver forsyningsafklaring
-  // Kode 4=nedsivning, 5=bundfælldningstank, 6=samletank, 7=ingen afledning
-  const AFLOEB_KODER_MED_AFKLARING = new Set(["4", "5", "6", "7"]);
-  if (t.bbrAfloebsforholdKode !== null && AFLOEB_KODER_MED_AFKLARING.has(t.bbrAfloebsforholdKode)) {
-    tasks.push({
-      project_id: t.projectId,
-      task_key: BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,
-      title: "Kloak- og afløbsforhold skal afklares",
-      description:
-        `BBR registrerer ikke offentlig kloak (afløbstype: kode ${t.bbrAfloebsforholdKode}). ` +
-        "Nedsivning, samletank eller manglende afledning skal afklares med kommunen/forsyningen " +
-        "inden projektet budgetteres og myndighedsbehandles.",
-      phase: "maskinrummet",
-      status: "pending",
-      priority: 2,
-      is_auto_generated: true,
-      blocked_by_constraint: "bbr_afloebsforhold_kode",
-      metadata: {
-        afloebsforhold_kode: t.bbrAfloebsforholdKode,
-        kilde: "BBR byg031Afloebsforhold",
-        myndighed: "Kommune/Forsyning",
-      },
-    });
-  }
+// ARCH-246: BBR afløb — nedsivning/samletank kræver forsyningsafklaring
+// Kode 4=nedsivning, 5=bundfælldningstank, 6=samletank, 7=ingen afledning
+const AFLOEB_KODER_MED_AFKLARING = new Set(["4", "5", "6", "7"]);
+if (t.bbrAfloebsforholdKode !== null && AFLOEB_KODER_MED_AFKLARING.has(t.bbrAfloebsforholdKode)) {
+  tasks.push({
+    project_id: t.projectId,
+    task_key: BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,
+    title: "Kloak- og afløbsforhold skal afklares",
+    description:
+      `BBR registrerer ikke offentlig kloak (afløbstype: kode ${t.bbrAfloebsforholdKode}). ` +
+      "Nedsivning, samletank eller manglende afledning skal afklares med kommunen/forsyningen " +
+      "inden projektet budgetteres og myndighedsbehandles.",
+    phase: "maskinrummet",
+    status: "pending",
+    priority: 2,
+    is_auto_generated: true,
+    blocked_by_constraint: "bbr_afloebsforhold_kode",
+    metadata: {
+      afloebsforhold_kode: t.bbrAfloebsforholdKode,
+      kilde: "BBR byg031Afloebsforhold",
+      myndighed: "Kommune/Forsyning",
+    },
+  });
+}
 ```
 
 - [ ] **Step 7.6: Run tests to see them pass**

@@ -12,22 +12,23 @@
 
 ## File Map
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Modify | `src/integrations/supabase/types.ts` | Add `hus_dna` column to projects Row/Insert/Update |
-| Create | `src/lib/project-update-builder.ts` | Pure `buildProjectUpdate(patch, prev) → ProjectUpdate` |
-| Create | `src/lib/project-update-builder.test.ts` | Unit tests — no Supabase required |
-| Create | `src/integrations/supabase/repositories/projects.repository.ts` | All project table reads/writes + auth helper |
-| Create | `src/integrations/supabase/repositories/site-constraints.repository.ts` | `deriveSiteConstraintsPatch` (pure) + `syncSiteConstraints` |
-| Create | `src/integrations/supabase/repositories/building-tasks.repository.ts` | `ComplianceTriggers` type + `deriveAutoTasks` (pure) + `syncBuildingTasks` |
-| Create | `src/integrations/supabase/repositories/project-storage.repository.ts` | Storage bucket cleanup |
-| Modify | `src/integrations/supabase/project-persistence.ts` | Thin orchestration — no inline domain logic |
+| Action | Path                                                                    | Responsibility                                                             |
+| ------ | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Modify | `src/integrations/supabase/types.ts`                                    | Add `hus_dna` column to projects Row/Insert/Update                         |
+| Create | `src/lib/project-update-builder.ts`                                     | Pure `buildProjectUpdate(patch, prev) → ProjectUpdate`                     |
+| Create | `src/lib/project-update-builder.test.ts`                                | Unit tests — no Supabase required                                          |
+| Create | `src/integrations/supabase/repositories/projects.repository.ts`         | All project table reads/writes + auth helper                               |
+| Create | `src/integrations/supabase/repositories/site-constraints.repository.ts` | `deriveSiteConstraintsPatch` (pure) + `syncSiteConstraints`                |
+| Create | `src/integrations/supabase/repositories/building-tasks.repository.ts`   | `ComplianceTriggers` type + `deriveAutoTasks` (pure) + `syncBuildingTasks` |
+| Create | `src/integrations/supabase/repositories/project-storage.repository.ts`  | Storage bucket cleanup                                                     |
+| Modify | `src/integrations/supabase/project-persistence.ts`                      | Thin orchestration — no inline domain logic                                |
 
 ---
 
 ## Task 1: Add `hus_dna` to generated Supabase types
 
 **Files:**
+
 - Modify: `src/integrations/supabase/types.ts`
 
 The `hus_dna JSONB` column was added by migration `20260516210000_add_hus_dna.sql` but is absent from the TypeScript types. This causes three `(update as Record<string, unknown>).hus_dna` casts in `project-persistence.ts:702-703`.
@@ -37,23 +38,25 @@ The `hus_dna JSONB` column was added by migration `20260516210000_add_hus_dna.sq
 In `src/integrations/supabase/types.ts`, find the `projects` `Row` block (around line 207). Add after `hus_dna` entry (alphabetically between `hard_stop_reason` and `id`):
 
 ```typescript
-          hus_dna: Json | null;
+hus_dna: Json | null;
 ```
 
 The Row block will look like:
+
 ```typescript
-        Row: {
-          // ... existing fields ...
-          hard_stop_reason: string | null;
-          hus_dna: Json | null;
-          id: string;
-          // ...
-        };
+Row: {
+  // ... existing fields ...
+  hard_stop_reason: string | null;
+  hus_dna: Json | null;
+  id: string;
+  // ...
+}
 ```
 
 - [ ] **Step 2: Add `hus_dna` to the projects `Insert` type**
 
 In the `Insert` block, add (after `hard_stop_reason?`):
+
 ```typescript
           hus_dna?: Json | null;
 ```
@@ -61,6 +64,7 @@ In the `Insert` block, add (after `hard_stop_reason?`):
 - [ ] **Step 3: Add `hus_dna` to the projects `Update` type**
 
 In the `Update` block, add (after `hard_stop_reason?`):
+
 ```typescript
           hus_dna?: Json | null;
 ```
@@ -78,6 +82,7 @@ Expected: no errors (the `(update as Record<string, unknown>).hus_dna` cast in p
 ## Task 2: Create `project-update-builder.ts`
 
 **Files:**
+
 - Create: `src/lib/project-update-builder.ts`
 
 - [ ] **Step 1: Create the file**
@@ -236,6 +241,7 @@ export function buildProjectUpdate(
 ## Task 3: Write unit tests for `buildProjectUpdate`
 
 **Files:**
+
 - Create: `src/lib/project-update-builder.test.ts`
 
 - [ ] **Step 1: Create the test file**
@@ -302,7 +308,7 @@ describe("buildProjectUpdate", () => {
           kommunekode: "0173",
           matrikel: "5a Lyngby By, Lyngby",
           adgangsadresseid: "adr-uuid-0",
-          koordinater: { lat: 55.77, lng: 12.50 },
+          koordinater: { lat: 55.77, lng: 12.5 },
           bbrId: null,
           ejerlavskode: 168951,
           matrikelnummer: "5a",
@@ -338,10 +344,7 @@ describe("buildProjectUpdate", () => {
   });
 
   it("sets hard_stop=true for strandbeskyttelse", () => {
-    const update = buildProjectUpdate(
-      { bbrData: minimalBbr({ mat_strandbeskyttelse: true }) },
-      {},
-    );
+    const update = buildProjectUpdate({ bbrData: minimalBbr({ mat_strandbeskyttelse: true }) }, {});
     expect(update.hard_stop).toBe(true);
   });
 
@@ -355,7 +358,10 @@ describe("buildProjectUpdate", () => {
 
   it("merges prevCompliance: preserves existing keys not in patch", () => {
     const prev = { bbr: { existing: true }, flags: [{ id: "x" }] };
-    const update = buildProjectUpdate({ vurderingData: { ejendomsvaerdi: 3_000_000, grundvaerdi: 1_500_000 } as any }, prev);
+    const update = buildProjectUpdate(
+      { vurderingData: { ejendomsvaerdi: 3_000_000, grundvaerdi: 1_500_000 } as any },
+      prev,
+    );
     const merged = update.compliance_data as Record<string, unknown>;
     expect(merged["bbr"]).toEqual({ existing: true });
     expect((merged["vurderingData"] as any).ejendomsvaerdi).toBe(3_000_000);
@@ -433,6 +439,7 @@ git commit -m "feat(arch-257): extract pure buildProjectUpdate + add hus_dna to 
 ## Task 4: Create `projects.repository.ts`
 
 **Files:**
+
 - Create: `src/integrations/supabase/repositories/projects.repository.ts`
 
 - [ ] **Step 1: Create the file**
@@ -615,6 +622,7 @@ Expected: no errors in the new file.
 ## Task 5: Create `site-constraints.repository.ts`
 
 **Files:**
+
 - Create: `src/integrations/supabase/repositories/site-constraints.repository.ts`
 
 - [ ] **Step 1: Create the file**
@@ -668,8 +676,7 @@ export function deriveSiteConstraintsPatch(
 
   if (patch.lokalplaner !== undefined) {
     hasConstraintField = true;
-    sitePatch.source_lokalplan_id =
-      selectPrimaryLokalplanForPdf(patch.lokalplaner)?.planid ?? null;
+    sitePatch.source_lokalplan_id = selectPrimaryLokalplanForPdf(patch.lokalplaner)?.planid ?? null;
   }
 
   if (patch.fbbData !== undefined) {
@@ -746,6 +753,7 @@ export async function syncSiteConstraints(
 ## Task 6: Create `building-tasks.repository.ts`
 
 **Files:**
+
 - Create: `src/integrations/supabase/repositories/building-tasks.repository.ts`
 
 - [ ] **Step 1: Create the file**
@@ -1046,6 +1054,7 @@ export async function syncBuildingTasks(
 ## Task 7: Create `project-storage.repository.ts`
 
 **Files:**
+
 - Create: `src/integrations/supabase/repositories/project-storage.repository.ts`
 
 - [ ] **Step 1: Create the file**
@@ -1057,15 +1066,10 @@ export async function syncBuildingTasks(
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logServerEvent } from "@/lib/server-logger";
 
-export async function cleanupProjectStorage(
-  userId: string,
-  projectId: string,
-): Promise<void> {
+export async function cleanupProjectStorage(userId: string, projectId: string): Promise<void> {
   const folder = `${userId}/${projectId}`;
   try {
-    const { data: files } = await supabaseAdmin.storage
-      .from("inspirationsbilleder")
-      .list(folder);
+    const { data: files } = await supabaseAdmin.storage.from("inspirationsbilleder").list(folder);
     if (files && files.length > 0) {
       const paths = files.map((f) => `${folder}/${f.name}`);
       await supabaseAdmin.storage.from("inspirationsbilleder").remove(paths);
@@ -1089,6 +1093,7 @@ export async function cleanupProjectStorage(
 ## Task 8: Refactor `project-persistence.ts` to thin orchestration
 
 **Files:**
+
 - Modify: `src/integrations/supabase/project-persistence.ts`
 
 - [ ] **Step 1: Replace the file content**
@@ -1130,9 +1135,7 @@ import {
   syncSiteConstraints,
   deriveSoilContaminationStatus,
 } from "@/integrations/supabase/repositories/site-constraints.repository";
-import {
-  syncBuildingTasks,
-} from "@/integrations/supabase/repositories/building-tasks.repository";
+import { syncBuildingTasks } from "@/integrations/supabase/repositories/building-tasks.repository";
 import { cleanupProjectStorage } from "@/integrations/supabase/repositories/project-storage.repository";
 import { buildProjectUpdate } from "@/lib/project-update-builder";
 import { recordAnalysisEvent, type AnalysisTraceContext } from "@/lib/analysis-tracing";
@@ -1342,8 +1345,7 @@ export async function saveProject(
     patch.fbbData !== undefined;
 
   if (hasComplianceData) {
-    const addressId =
-      patch.address?.adresseid ?? snapshot?.address_adresseid ?? null;
+    const addressId = patch.address?.adresseid ?? snapshot?.address_adresseid ?? null;
 
     const sitePatch = deriveSiteConstraintsPatch(addressId, patch, update);
     if (sitePatch) {
@@ -1427,6 +1429,7 @@ git commit -m "feat(arch-257): extract repositories + buildProjectUpdate — thi
 ## Self-Review
 
 **Spec coverage:**
+
 - ✅ `saveProject()` delegates update construction to pure `buildProjectUpdate()` (Task 2+8)
 - ✅ `projects.repository.ts`, `site-constraints.repository.ts`, `building-tasks.repository.ts`, `project-storage.repository.ts` created (Tasks 4–7)
 - ✅ `project-persistence.ts` no longer contains `deriveAutoTasks`, `deriveSiteConstraintsPatch` (Task 8)

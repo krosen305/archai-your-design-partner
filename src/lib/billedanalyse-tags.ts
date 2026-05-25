@@ -65,7 +65,10 @@ export function resolveKonflikt(
   };
 }
 
-export function removeExtraTag(tag: string, current: BilledeAnalyseResultat): BilledeAnalyseResultat {
+export function removeExtraTag(
+  tag: string,
+  current: BilledeAnalyseResultat,
+): BilledeAnalyseResultat {
   return {
     ...current,
     ekstraTags: current.ekstraTags.filter((t) => t !== tag),

@@ -29,16 +29,13 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: ExportInput) => ExportBeliggenhedsplanInputSchema.parse(data))
   .handler(async ({ data }) => {
-    const { assembleBeliggenhedsplan } = await import(
-      "@/services/drawing/assemble-beliggenhedsplan.service"
-    );
+    const { assembleBeliggenhedsplan } =
+      await import("@/services/drawing/assemble-beliggenhedsplan.service");
     const { exportDrawing } = await import("@/services/drawing/export-drawing.service");
-    const { GeoDanmarkDrawingLayersAdapter } = await import(
-      "@/integrations/geodanmark/drawing-layers"
-    );
-    const { DrawingRepository } = await import(
-      "@/integrations/supabase/repositories/drawing.repository"
-    );
+    const { GeoDanmarkDrawingLayersAdapter } =
+      await import("@/integrations/geodanmark/drawing-layers");
+    const { DrawingRepository } =
+      await import("@/integrations/supabase/repositories/drawing.repository");
 
     const assembled = await assembleBeliggenhedsplan({
       matrikelId: data.matrikelId,

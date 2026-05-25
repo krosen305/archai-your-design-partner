@@ -493,50 +493,55 @@ export async function runGeoRiskStep(
 
       // plandata extension
       Promise.all([import("@/integrations/plandata/client"), import("@/integrations/cache/client")])
-        .then(async ([{ PlandataService }, { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult }]) => {
-          const cached = await getCachedSourceResult(
-            addressId,
-            "plandata_ext",
-            ruleEnginePlandataContextSchema,
-          ).catch(() => null);
+        .then(
+          async ([
+            { PlandataService },
+            { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult },
+          ]) => {
+            const cached = await getCachedSourceResult(
+              addressId,
+              "plandata_ext",
+              ruleEnginePlandataContextSchema,
+            ).catch(() => null);
 
-          if (cached) {
-            return { result: cached, cacheHit: true as const };
-          }
+            if (cached) {
+              return { result: cached, cacheHit: true as const };
+            }
 
-          const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
-          const result = await traceStep(
-            trace,
-            {
-              eventType: "api_call",
-              phase: "layer4",
-              service: "Plandata WFS",
-              operation: "getPlanContextForParcel",
-              inputSummary: `polygon=${polygon ? "yes" : "no"} koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
-            },
-            () =>
-              PlandataService.getPlanContextForParcel({
-                koordinat: koordinater,
-                parcelPolygon: polygon,
-              }),
-            {
-              outputSummary: (r) =>
-                summarizeSourceResult(
-                  r,
-                  (d) =>
-                    `zone=${d.zoneType ?? "null"} future=${d.futureZoneType ?? "null"} byggefelt=${d.withinBuildingField ?? "null"}`,
-                ),
-              metadata: (r) => ({
-                source: r.kilde,
-                isMock: r.isMock,
-                feature_count: r.rawFeatureCount,
-              }),
-            },
-          );
+            const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+            const result = await traceStep(
+              trace,
+              {
+                eventType: "api_call",
+                phase: "layer4",
+                service: "Plandata WFS",
+                operation: "getPlanContextForParcel",
+                inputSummary: `polygon=${polygon ? "yes" : "no"} koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
+              },
+              () =>
+                PlandataService.getPlanContextForParcel({
+                  koordinat: koordinater,
+                  parcelPolygon: polygon,
+                }),
+              {
+                outputSummary: (r) =>
+                  summarizeSourceResult(
+                    r,
+                    (d) =>
+                      `zone=${d.zoneType ?? "null"} future=${d.futureZoneType ?? "null"} byggefelt=${d.withinBuildingField ?? "null"}`,
+                  ),
+                metadata: (r) => ({
+                  source: r.kilde,
+                  isMock: r.isMock,
+                  feature_count: r.rawFeatureCount,
+                }),
+              },
+            );
 
-          await setCachedSourceResult(addressId, "plandata_ext", result).catch(() => undefined);
-          return { result, cacheHit: false as const };
-        })
+            await setCachedSourceResult(addressId, "plandata_ext", result).catch(() => undefined);
+            return { result, cacheHit: false as const };
+          },
+        )
         .catch((e: Error) => {
           logServerEvent({
             module: "geo-risk-step",
@@ -550,47 +555,55 @@ export async function runGeoRiskStep(
         }),
 
       // arealdata extension
-      Promise.all([import("@/integrations/arealdata/client"), import("@/integrations/cache/client")])
-        .then(async ([{ ArealdataService }, { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult }]) => {
-          const cached = await getCachedSourceResult(
-            addressId,
-            "arealdata_ext",
-            ruleEngineArealdataContextSchema,
-          ).catch(() => null);
+      Promise.all([
+        import("@/integrations/arealdata/client"),
+        import("@/integrations/cache/client"),
+      ])
+        .then(
+          async ([
+            { ArealdataService },
+            { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult },
+          ]) => {
+            const cached = await getCachedSourceResult(
+              addressId,
+              "arealdata_ext",
+              ruleEngineArealdataContextSchema,
+            ).catch(() => null);
 
-          if (cached) {
-            return { result: cached, cacheHit: true as const };
-          }
+            if (cached) {
+              return { result: cached, cacheHit: true as const };
+            }
 
-          const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
-          const result = await traceStep(
-            trace,
-            {
-              eventType: "api_call",
-              phase: "layer4",
-              service: "DAI WFS",
-              operation: "getArealdataContext",
-              inputSummary: `polygon=${polygon ? "yes" : "no"} koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
-            },
-            () => ArealdataService.getContext(koordinater, polygon),
-            {
-              outputSummary: (r) =>
-                summarizeSourceResult(
-                  r,
-                  (d) =>
-                    `paragraph3=${d.paragraph3Nature ?? "null"} natura2000=${d.natura2000 ?? "null"} fortidsminde=${d.fortidsminde ?? "null"}`,
-                ),
-              metadata: (r) => ({
-                source: r.kilde,
-                isMock: r.isMock,
-                feature_count: r.rawFeatureCount,
-              }),
-            },
-          );
+            const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+            const result = await traceStep(
+              trace,
+              {
+                eventType: "api_call",
+                phase: "layer4",
+                service: "DAI WFS",
+                operation: "getArealdataContext",
+                inputSummary: `polygon=${polygon ? "yes" : "no"} koordinater=${koordinater.lat.toFixed(4)},${koordinater.lng.toFixed(4)}`,
+              },
+              () => ArealdataService.getContext(koordinater, polygon),
+              {
+                outputSummary: (r) =>
+                  summarizeSourceResult(
+                    r,
+                    (d) =>
+                      `paragraph3=${d.paragraph3Nature ?? "null"} natura2000=${d.natura2000 ?? "null"} fortidsminde=${d.fortidsminde ?? "null"}`,
+                  ),
+                metadata: (r) => ({
+                  source: r.kilde,
+                  isMock: r.isMock,
+                  feature_count: r.rawFeatureCount,
+                }),
+              },
+            );
 
-          await setCachedSourceResult(addressId, "arealdata_ext", result).catch(() => undefined);
-          return { result, cacheHit: false as const };
-        })
+            await setCachedSourceResult(addressId, "arealdata_ext", result).catch(() => undefined);
+            return { result, cacheHit: false as const };
+          },
+        )
         .catch((e: Error) => {
           logServerEvent({
             module: "geo-risk-step",

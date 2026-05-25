@@ -12,22 +12,24 @@
 
 ## File Map
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Modify | `src/integrations/supabase/types.ts` | Add `address_source_results` table + `jordstykke_polygon`/`jordstykke_polygon_at` to `address_analysis` |
-| Create | `src/lib/cache-policy.ts` | Named TTL constants + `sourceResultTtlDays()` helper |
-| Create | `src/integrations/cache/decoders.ts` | Zod schemas for `SourceResult` envelope + `ComplianceResult` shape guard |
-| Create | `src/integrations/cache/decoders.test.ts` | Pure unit tests — no Supabase |
-| Modify | `src/integrations/cache/client.ts` | Remove `any` casts, use typed tables + decoders |
+| Action | Path                                      | Responsibility                                                                                          |
+| ------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Modify | `src/integrations/supabase/types.ts`      | Add `address_source_results` table + `jordstykke_polygon`/`jordstykke_polygon_at` to `address_analysis` |
+| Create | `src/lib/cache-policy.ts`                 | Named TTL constants + `sourceResultTtlDays()` helper                                                    |
+| Create | `src/integrations/cache/decoders.ts`      | Zod schemas for `SourceResult` envelope + `ComplianceResult` shape guard                                |
+| Create | `src/integrations/cache/decoders.test.ts` | Pure unit tests — no Supabase                                                                           |
+| Modify | `src/integrations/cache/client.ts`        | Remove `any` casts, use typed tables + decoders                                                         |
 
 ---
 
 ## Task 1: Update Supabase types
 
 **Files:**
+
 - Modify: `src/integrations/supabase/types.ts`
 
 The following DB objects exist in migrations but are absent from `types.ts`:
+
 - `address_source_results` table — added in `20260519120000_address_source_results.sql`
 - `address_analysis.jordstykke_polygon` + `jordstykke_polygon_at` — added in `20260517000000_add_jordstykke_polygon.sql`
 
@@ -36,26 +38,27 @@ The following DB objects exist in migrations but are absent from `types.ts`:
 In `types.ts`, locate the `address_analysis` `Row` block (around line 12). Add two fields:
 
 ```typescript
-        Row: {
-          address_id: string;
-          compliance_result: Json | null;
-          compliance_result_at: string | null;
-          created_at: string;
-          id: string;
-          jordstykke_polygon: Json | null;        // ADD THIS
-          jordstykke_polygon_at: string | null;   // ADD THIS
-          lokalplan_extracted: Json | null;
-          lokalplan_extracted_at: string | null;
-          lokalplan_pdf_url: string | null;
-          report_generated_at: string | null;
-          report_text: string | null;
-          servitut_extracted: Json | null;
-          servitut_extracted_at: string | null;
-          updated_at: string;
-        };
+Row: {
+  address_id: string;
+  compliance_result: Json | null;
+  compliance_result_at: string | null;
+  created_at: string;
+  id: string;
+  jordstykke_polygon: Json | null; // ADD THIS
+  jordstykke_polygon_at: string | null; // ADD THIS
+  lokalplan_extracted: Json | null;
+  lokalplan_extracted_at: string | null;
+  lokalplan_pdf_url: string | null;
+  report_generated_at: string | null;
+  report_text: string | null;
+  servitut_extracted: Json | null;
+  servitut_extracted_at: string | null;
+  updated_at: string;
+}
 ```
 
 Add the same fields to `Insert` and `Update` blocks (both optional):
+
 ```typescript
           jordstykke_polygon?: Json | null;
           jordstykke_polygon_at?: string | null;
@@ -136,6 +139,7 @@ git commit -m "feat(arch-259): add address_source_results + jordstykke_polygon t
 ## Task 2: Create `cache-policy.ts`
 
 **Files:**
+
 - Create: `src/lib/cache-policy.ts`
 
 - [ ] **Step 1: Create the file**
@@ -185,6 +189,7 @@ git commit -m "feat(arch-259): add cache-policy.ts — named TTL constants"
 ## Task 3: Create `cache/decoders.ts`
 
 **Files:**
+
 - Create: `src/integrations/cache/decoders.ts`
 
 The decoders validate the shape of cached JSON before it is returned as trusted domain types. The `SourceResult<T>` metadata (all fields except `data`/`payload`) is fully validated with Zod. The `payload` field remains generic — callers are responsible for their own data shape.
@@ -266,6 +271,7 @@ export function isValidLokalplanExtractShape(value: unknown): boolean {
 ## Task 4: Write unit tests for decoders
 
 **Files:**
+
 - Create: `src/integrations/cache/decoders.test.ts`
 
 - [ ] **Step 1: Create the test file**
@@ -354,7 +360,9 @@ describe("decodeSourceResultRow", () => {
 
 describe("isValidComplianceResultShape", () => {
   it("returns true for object with analysedAt string", () => {
-    expect(isValidComplianceResultShape({ analysedAt: "2026-05-20T10:00:00Z", bbr: null })).toBe(true);
+    expect(isValidComplianceResultShape({ analysedAt: "2026-05-20T10:00:00Z", bbr: null })).toBe(
+      true,
+    );
   });
 
   it("returns false for empty object", () => {
@@ -377,11 +385,19 @@ describe("isValidComplianceResultShape", () => {
 
 describe("isValidLokalplanExtractShape", () => {
   it("returns true for object with bebyggelsesprocent", () => {
-    expect(isValidLokalplanExtractShape({ bebyggelsesprocent: { value: 30, source: "pdf_extracted", confidence: 0.8 } })).toBe(true);
+    expect(
+      isValidLokalplanExtractShape({
+        bebyggelsesprocent: { value: 30, source: "pdf_extracted", confidence: 0.8 },
+      }),
+    ).toBe(true);
   });
 
   it("returns true for object with maxEtager", () => {
-    expect(isValidLokalplanExtractShape({ maxEtager: { value: 2, source: "pdf_extracted", confidence: 0.9 } })).toBe(true);
+    expect(
+      isValidLokalplanExtractShape({
+        maxEtager: { value: 2, source: "pdf_extracted", confidence: 0.9 },
+      }),
+    ).toBe(true);
   });
 
   it("returns false for empty object", () => {
@@ -437,9 +453,11 @@ git commit -m "feat(arch-259): add cache decoders + cache-policy TTL module with
 ## Task 5: Update `cache/client.ts` — remove `any` casts
 
 **Files:**
+
 - Modify: `src/integrations/cache/client.ts`
 
 There are four `any` casts to remove:
+
 1. `(supabaseAdmin.from as any)("address_source_results")` (×2 — getCachedSourceResult + setCachedSourceResult)
 2. `(row as any).jordstykke_polygon_at` (getCachedJordstykkePolygon)
 3. `(row as any).jordstykke_polygon` (getCachedJordstykkePolygon)
@@ -472,6 +490,7 @@ function isFresh(timestamp: string | null, ttlMs: number): boolean {
 ```
 
 The `TTL` usages become:
+
 - `TTL.lokalplan` → `daysToMs(CACHE_TTL_DAYS.lokalplan)`
 - `TTL.servitut` → `daysToMs(CACHE_TTL_DAYS.servitut)`
 - `TTL.compliance` → `daysToMs(CACHE_TTL_DAYS.compliance)`
@@ -481,6 +500,7 @@ The `TTL` usages become:
 - [ ] **Step 3: Fix `getCachedCompliance` — add shape guard**
 
 Replace:
+
 ```typescript
 export async function getCachedCompliance(addressId: string): Promise<ComplianceResult | null> {
   const row = await getRow(addressId);
@@ -491,6 +511,7 @@ export async function getCachedCompliance(addressId: string): Promise<Compliance
 ```
 
 With:
+
 ```typescript
 export async function getCachedCompliance(addressId: string): Promise<ComplianceResult | null> {
   const row = await getRow(addressId);
@@ -529,6 +550,7 @@ export async function setCachedJordstykkePolygon(
 - [ ] **Step 5: Fix `getCachedSourceResult` — use typed table + decoder**
 
 Replace:
+
 ```typescript
 export async function getCachedSourceResult<T>(
   addressId: string,
@@ -562,6 +584,7 @@ export async function getCachedSourceResult<T>(
 ```
 
 With:
+
 ```typescript
 export async function getCachedSourceResult<T>(
   addressId: string,
@@ -588,6 +611,7 @@ export async function getCachedSourceResult<T>(
 - [ ] **Step 6: Fix `setCachedSourceResult` — use typed table**
 
 Replace:
+
 ```typescript
 export async function setCachedSourceResult<T>(
   addressId: string,
@@ -608,6 +632,7 @@ export async function setCachedSourceResult<T>(
 ```
 
 With:
+
 ```typescript
 export async function setCachedSourceResult<T>(
   addressId: string,
@@ -618,23 +643,21 @@ export async function setCachedSourceResult<T>(
   const ttlDays = ttlDaysOverride ?? sourceResultTtlDays(sourceKind);
   const expiresAt = new Date(Date.now() + daysToMs(ttlDays)).toISOString();
 
-  const { error } = await supabaseAdmin
-    .from("address_source_results")
-    .upsert(
-      {
-        address_id: addressId,
-        source_kind: sourceKind,
-        status: result.status,
-        confidence: result.confidence,
-        is_mock: result.isMock,
-        fetched_at: result.fetchedAt,
-        source_url: result.sourceUrl,
-        raw_feature_count: result.rawFeatureCount,
-        payload: result.data as unknown as Json,
-        expires_at: expiresAt,
-      },
-      { onConflict: "address_id,source_kind" },
-    );
+  const { error } = await supabaseAdmin.from("address_source_results").upsert(
+    {
+      address_id: addressId,
+      source_kind: sourceKind,
+      status: result.status,
+      confidence: result.confidence,
+      is_mock: result.isMock,
+      fetched_at: result.fetchedAt,
+      source_url: result.sourceUrl,
+      raw_feature_count: result.rawFeatureCount,
+      payload: result.data as unknown as Json,
+      expires_at: expiresAt,
+    },
+    { onConflict: "address_id,source_kind" },
+  );
 
   if (error) {
     throw new Error(
@@ -688,6 +711,7 @@ git commit -m "feat(arch-259): remove any casts from cache client — typed addr
 ## Self-Review
 
 **Spec coverage:**
+
 - ✅ Supabase `Database` types include `address_source_results` (Task 1)
 - ✅ `address_analysis` includes `jordstykke_polygon`/`jordstykke_polygon_at` (Task 1)
 - ✅ `cache/client.ts` contains no `any` or `as unknown as ComplianceResult` casts (Task 5)

@@ -38,10 +38,7 @@ export function buildDrawingModel(
       paperSize: plan.metadata.paperSize,
       date: plan.metadata.date,
       revision: plan.metadata.revision,
-      disclaimer:
-        readiness.status === "AUTO_DRAFT"
-          ? "FORELOEBIG — ikke til myndighedsbrug"
-          : null,
+      disclaimer: readiness.status === "AUTO_DRAFT" ? "FORELOEBIG — ikke til myndighedsbrug" : null,
       sourceList:
         readiness.reviewRequiredBy.length > 0
           ? [`Review kraevet: ${readiness.reviewRequiredBy.join(", ")}`]

@@ -106,7 +106,7 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
 
     const result = await BbrService.getKompliantData("test-id", GRUNDAREAL, MOCK_CONFIG);
 
-    expect(result.bebygget_areal).toBe(120);   // footprint uændret
+    expect(result.bebygget_areal).toBe(120); // footprint uændret
     expect(result.grundareal).toBe(1000);
     expect(result.bebyggelsesprocent).toBe(18.5); // byg038=185 / 1000 × 100
     expect(result.beregning_mulig).toBe(true);

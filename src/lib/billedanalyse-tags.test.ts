@@ -74,7 +74,9 @@ describe("addTag", () => {
 
 describe("removeTag", () => {
   it("removes the specified tag", () => {
-    const r = makeResultat({ kategorier: { ...makeResultat().kategorier, facade: ["tegl", "beton"] } });
+    const r = makeResultat({
+      kategorier: { ...makeResultat().kategorier, facade: ["tegl", "beton"] },
+    });
     const next = removeTag("facade", "tegl", r);
     expect(next.kategorier.facade).toEqual(["beton"]);
   });
@@ -89,9 +91,7 @@ describe("removeTag", () => {
 describe("resolveKonflikt", () => {
   it("merges chosen tags into category and removes the conflict", () => {
     const r = makeResultat({
-      konflikter: [
-        { kategori: "facade", muligheder: [["tegl"], ["beton"]], billedAntal: [2, 1] },
-      ],
+      konflikter: [{ kategori: "facade", muligheder: [["tegl"], ["beton"]], billedAntal: [2, 1] }],
     });
     const next = resolveKonflikt("facade", ["tegl"], r);
     expect(next.kategorier.facade).toContain("tegl");

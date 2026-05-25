@@ -12,12 +12,12 @@
 
 ## File Map
 
-| Action | File |
-|--------|------|
-| Create | `src/lib/rule-engine/parsers.ts` |
-| Create | `src/lib/rule-engine/parsers.test.ts` |
-| Create | `src/lib/rule-engine/mappers.ts` |
-| Create | `src/lib/rule-engine/mappers.test.ts` |
+| Action | File                                     |
+| ------ | ---------------------------------------- |
+| Create | `src/lib/rule-engine/parsers.ts`         |
+| Create | `src/lib/rule-engine/parsers.test.ts`    |
+| Create | `src/lib/rule-engine/mappers.ts`         |
+| Create | `src/lib/rule-engine/mappers.test.ts`    |
 | Modify | `src/lib/rule-engine/input-assembler.ts` |
 
 ---
@@ -25,6 +25,7 @@
 ### Task 1: Create `parsers.ts` with tests
 
 **Files:**
+
 - Create: `src/lib/rule-engine/parsers.ts`
 - Create: `src/lib/rule-engine/parsers.test.ts`
 
@@ -157,6 +158,7 @@ git commit -m "feat(arch-279): extract parseSetbackM/parseRoofTypes/parseZone in
 ### Task 2: Create `mappers.ts` with tests
 
 **Files:**
+
 - Create: `src/lib/rule-engine/mappers.ts`
 - Create: `src/lib/rule-engine/mappers.test.ts`
 
@@ -280,6 +282,7 @@ git commit -m "feat(arch-279): extract domain mappers into rule-engine/mappers.t
 ### Task 3: Update `input-assembler.ts` to import from new modules
 
 **Files:**
+
 - Modify: `src/lib/rule-engine/input-assembler.ts`
 
 - [ ] **Step 1: Replace inline helpers with imports**

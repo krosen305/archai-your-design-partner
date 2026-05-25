@@ -11,13 +11,13 @@
 Fem cockpit-komponenter bryder CLAUDE.md Rule 2 (UI Is An Adapter) og Rule 7
 (Refactor Dirty Domain Boundaries Before Extending):
 
-| Komponent | Primær violation |
-|---|---|
-| `BudgetKalkulator.tsx` | Pure beregningsfunktioner og debounced `syncPatch` lever i komponentfilen |
-| `AnalyseTab.tsx` | Fritekst-match på lokalplan-status direkte i JSX |
-| `MatrikelMap.tsx` | Importerer route server functions direkte; `syncPatch` fra render-handlers |
-| `cockpit/index.tsx` | `StepExtras` hard-koder flag-IDs og compliance-semantik; `DispensationModal` muterer store direkte |
-| `AiDesignHero.tsx` | Auth, upload, AI-kald og persistence alt i én komponent |
+| Komponent              | Primær violation                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `BudgetKalkulator.tsx` | Pure beregningsfunktioner og debounced `syncPatch` lever i komponentfilen                          |
+| `AnalyseTab.tsx`       | Fritekst-match på lokalplan-status direkte i JSX                                                   |
+| `MatrikelMap.tsx`      | Importerer route server functions direkte; `syncPatch` fra render-handlers                         |
+| `cockpit/index.tsx`    | `StepExtras` hard-koder flag-IDs og compliance-semantik; `DispensationModal` muterer store direkte |
+| `AiDesignHero.tsx`     | Auth, upload, AI-kald og persistence alt i én komponent                                            |
 
 ---
 
@@ -68,10 +68,11 @@ Ingen React-imports. Ingen side-effects.
 #### `src/hooks/useBudgetSync.ts` (ny)
 
 ```ts
-export function useBudgetSync(totalTypisk: number): void
+export function useBudgetSync(totalTypisk: number): void;
 ```
 
 Indkapsler den debounced `useEffect` (800 ms) der kalder:
+
 - `useProject.getState().setBudgetEstimate(totalTypisk)`
 - `syncPatch({ budget_estimate: totalTypisk })`
 
@@ -98,7 +99,7 @@ beregningsfunktioner inkl. edge cases: `null` areal, byggeår < 1978
 export function classifyLokalplaner(lokalplaner: RuleEngineLokalplan[]): {
   vedtagne: RuleEngineLokalplan[];
   forslag: RuleEngineLokalplan[];
-}
+};
 ```
 
 Erstatter de to inline `.filter()`-kald med fritekst-match i `AnalyseTab`.
@@ -137,7 +138,7 @@ export function useParcelData(params: {
     dataUrl: string;
     extent3857: [number, number, number, number];
   } | null;
-}
+};
 ```
 
 Indkapsler: `useServerFn`-kald for `fetchParcelGeometry`, `fetchParcelGeometryById`
@@ -155,7 +156,7 @@ export function usePlacementSync(address: AddressState | null): {
     geo: { lat: number; lng: number } | null,
     initialCenter: [number, number] | null,
   ) => void;
-}
+};
 ```
 
 Indkapsler `setAddress + syncPatch` for rotation og centroid-reset. Komponenten
@@ -197,7 +198,7 @@ export function buildStepConstraintViewModel(
   validering: BoligoenskeValidering | null,
   preCheck: AdressePreCheck | null,
   complianceFlags: ComplianceFlag[],
-): StepConstraintViewModel
+): StepConstraintViewModel;
 ```
 
 Struktureret objekt frem for union — `antalEtager` og `oensketAreal` viser
@@ -205,6 +206,7 @@ context-chip OG dispensation-state simultant. `StepExtras` renderer kun
 non-null felter.
 
 Pure function — ingen React-imports. Indkapsler:
+
 - Flag-ID-opslag: `"fjernvarme-tilslutningspligt"`, `"fjernvarme-mismatch-ingen-daekning"`
 - Status-matching: `etagerStatus === "dispensation"`, `arealStatus === "dispensation"`
 - Threshold-beregning: `maxEtager`, `restBygningsareal`, `beregnetBebyggelsespct`
@@ -220,7 +222,7 @@ export function useDispensationFlow(): {
   open: (type: "etager" | "areal") => void;
   acknowledge: (type: "etager" | "areal") => void;
   close: () => void;
-}
+};
 ```
 
 Ejer `useState` for modal-type og kalder `setBoligoenskeValidering` ved
@@ -248,23 +250,26 @@ props og muterer ikke store direkte.
 Pure helpers uden React:
 
 ```ts
-export function uniqueTags(tags: string[]): string[]
+export function uniqueTags(tags: string[]): string[];
 export function removeTag(
   kategori: keyof BilledeAnalyseKategorier,
   tag: string,
   current: BilledeAnalyseResultat,
-): BilledeAnalyseResultat
+): BilledeAnalyseResultat;
 export function addTag(
   kategori: keyof BilledeAnalyseKategorier,
   tag: string,
   current: BilledeAnalyseResultat,
-): BilledeAnalyseResultat
+): BilledeAnalyseResultat;
 export function resolveKonflikt(
   kategori: keyof BilledeAnalyseKategorier,
   valgteTags: string[],
   current: BilledeAnalyseResultat,
-): BilledeAnalyseResultat
-export function removeExtraTag(tag: string, current: BilledeAnalyseResultat): BilledeAnalyseResultat
+): BilledeAnalyseResultat;
+export function removeExtraTag(
+  tag: string,
+  current: BilledeAnalyseResultat,
+): BilledeAnalyseResultat;
 ```
 
 #### `src/lib/services/ai-design-workflow.service.ts` (ny)
@@ -277,11 +282,11 @@ export async function uploadInspirationImages(params: {
   files: Array<{ base64: string; mimeType: "image/jpeg" | "image/png" }>;
   projectId: string;
   accessToken: string;
-}): Promise<{ signedUrls: string[]; paths: string[] }>
+}): Promise<{ signedUrls: string[]; paths: string[] }>;
 
 export async function analyseInspirationImages(params: {
   signedUrls: string[];
-}): Promise<BilledeAnalyseResultat>
+}): Promise<BilledeAnalyseResultat>;
 
 export async function generateDesignProposalsService(params: {
   prompt: string;
@@ -290,7 +295,7 @@ export async function generateDesignProposalsService(params: {
   facademateriale: string | undefined;
   projectId: string | undefined;
   addressId: string | undefined;
-}): Promise<{ images: string[] }>
+}): Promise<{ images: string[] }>;
 ```
 
 Servicen kalder `uploadBillede`, `analyserBillederFn` og `generateDesignProposals`
@@ -306,8 +311,14 @@ export type AiDesignWorkflowState = {
   droem: string;
   uploadedImages: string[];
   analyseState:
-    | "idle" | "uploading" | "ready" | "analysing"
-    | "conflict" | "validated" | "saved" | "error";
+    | "idle"
+    | "uploading"
+    | "ready"
+    | "analysing"
+    | "conflict"
+    | "validated"
+    | "saved"
+    | "error";
   analyse: BilledeAnalyseResultat | null;
   forslag: string[];
   valgt: string | null;
@@ -331,7 +342,7 @@ export type AiDesignWorkflowActions = {
   removeExtraTag: (tag: string) => void;
 };
 
-export function useAiDesignWorkflow(): AiDesignWorkflowState & AiDesignWorkflowActions
+export function useAiDesignWorkflow(): AiDesignWorkflowState & AiDesignWorkflowActions;
 ```
 
 #### `AiDesignHero.tsx` (modificeret)

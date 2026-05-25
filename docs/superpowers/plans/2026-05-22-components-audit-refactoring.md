@@ -12,33 +12,34 @@
 
 ## File Map
 
-| File | Status | Responsibility |
-|---|---|---|
-| `src/lib/budget-calculator.ts` | **Create** | Pure budget domain types + calculations |
-| `src/lib/budget-calculator.test.ts` | **Create** | Unit tests for all four calculations |
-| `src/hooks/useBudgetSync.ts` | **Create** | Debounced setBudgetEstimate + syncPatch |
-| `src/components/cockpit/BudgetKalkulator.tsx` | **Modify** | Import from lib; use useBudgetSync |
-| `src/lib/lokalplan-classifier.ts` | **Create** | classifyLokalplaner pure function |
-| `src/lib/lokalplan-classifier.test.ts` | **Create** | Unit tests for classification logic |
-| `src/components/cockpit/AnalyseTab.tsx` | **Modify** | Use classifyLokalplaner instead of inline filter |
-| `src/hooks/useParcelData.ts` | **Create** | Server fn calls + parcel/preview state |
-| `src/hooks/usePlacementSync.ts` | **Create** | rotationDeg state + updateRotation/resetPlacement |
-| `src/components/cockpit/MatrikelMap.tsx` | **Modify** | Use both new hooks; remove route imports |
-| `src/lib/byggeoenske-constraint-view-model.ts` | **Create** | buildStepConstraintViewModel pure function |
-| `src/lib/byggeoenske-constraint-view-model.test.ts` | **Create** | Unit tests for all stepKey branches |
-| `src/hooks/useDispensationFlow.ts` | **Create** | dispensationFor state + acknowledge logic |
-| `src/components/cockpit/index.tsx` | **Modify** | StepExtras uses view-model; DispensationModal uses hook |
-| `src/lib/billedanalyse-tags.ts` | **Create** | Pure tag manipulation functions |
-| `src/lib/billedanalyse-tags.test.ts` | **Create** | Unit tests for tag functions |
-| `src/lib/services/ai-design-workflow.service.ts` | **Create** | Application service: upload/analyse/generate |
-| `src/hooks/useAiDesignWorkflow.ts` | **Create** | Thin React hook: session + state + syncPatch |
-| `src/components/cockpit/AiDesignHero.tsx` | **Modify** | Renderers-only; delegates to hook |
+| File                                                | Status     | Responsibility                                          |
+| --------------------------------------------------- | ---------- | ------------------------------------------------------- |
+| `src/lib/budget-calculator.ts`                      | **Create** | Pure budget domain types + calculations                 |
+| `src/lib/budget-calculator.test.ts`                 | **Create** | Unit tests for all four calculations                    |
+| `src/hooks/useBudgetSync.ts`                        | **Create** | Debounced setBudgetEstimate + syncPatch                 |
+| `src/components/cockpit/BudgetKalkulator.tsx`       | **Modify** | Import from lib; use useBudgetSync                      |
+| `src/lib/lokalplan-classifier.ts`                   | **Create** | classifyLokalplaner pure function                       |
+| `src/lib/lokalplan-classifier.test.ts`              | **Create** | Unit tests for classification logic                     |
+| `src/components/cockpit/AnalyseTab.tsx`             | **Modify** | Use classifyLokalplaner instead of inline filter        |
+| `src/hooks/useParcelData.ts`                        | **Create** | Server fn calls + parcel/preview state                  |
+| `src/hooks/usePlacementSync.ts`                     | **Create** | rotationDeg state + updateRotation/resetPlacement       |
+| `src/components/cockpit/MatrikelMap.tsx`            | **Modify** | Use both new hooks; remove route imports                |
+| `src/lib/byggeoenske-constraint-view-model.ts`      | **Create** | buildStepConstraintViewModel pure function              |
+| `src/lib/byggeoenske-constraint-view-model.test.ts` | **Create** | Unit tests for all stepKey branches                     |
+| `src/hooks/useDispensationFlow.ts`                  | **Create** | dispensationFor state + acknowledge logic               |
+| `src/components/cockpit/index.tsx`                  | **Modify** | StepExtras uses view-model; DispensationModal uses hook |
+| `src/lib/billedanalyse-tags.ts`                     | **Create** | Pure tag manipulation functions                         |
+| `src/lib/billedanalyse-tags.test.ts`                | **Create** | Unit tests for tag functions                            |
+| `src/lib/services/ai-design-workflow.service.ts`    | **Create** | Application service: upload/analyse/generate            |
+| `src/hooks/useAiDesignWorkflow.ts`                  | **Create** | Thin React hook: session + state + syncPatch            |
+| `src/components/cockpit/AiDesignHero.tsx`           | **Modify** | Renderers-only; delegates to hook                       |
 
 ---
 
 ## Task 1 — `src/lib/budget-calculator.ts` (pure lib + tests)
 
 **Files:**
+
 - Create: `src/lib/budget-calculator.ts`
 - Create: `src/lib/budget-calculator.test.ts`
 
@@ -293,6 +294,7 @@ git commit -m "feat(lib): extract budget-calculator pure domain module with test
 ## Task 2 — `useBudgetSync` + `BudgetKalkulator.tsx` update
 
 **Files:**
+
 - Create: `src/hooks/useBudgetSync.ts`
 - Modify: `src/components/cockpit/BudgetKalkulator.tsx`
 
@@ -328,11 +330,7 @@ import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useProject } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
-import {
-  beregnBudget,
-  type GeoteknikKategori,
-  type BudgetInput,
-} from "@/lib/budget-calculator";
+import { beregnBudget, type GeoteknikKategori, type BudgetInput } from "@/lib/budget-calculator";
 import { useBudgetSync } from "@/hooks/useBudgetSync";
 ```
 
@@ -376,6 +374,7 @@ git commit -m "refactor(cockpit): extract useBudgetSync hook; BudgetKalkulator i
 ## Task 3 — `lokalplan-classifier.ts` + `AnalyseTab.tsx` update
 
 **Files:**
+
 - Create: `src/lib/lokalplan-classifier.ts`
 - Create: `src/lib/lokalplan-classifier.test.ts`
 - Modify: `src/components/cockpit/AnalyseTab.tsx`
@@ -475,9 +474,7 @@ export function classifyLokalplaner(lokalplaner: RuleEngineLokalplan[]): {
   vedtagne: RuleEngineLokalplan[];
   forslag: RuleEngineLokalplan[];
 } {
-  const forslag = lokalplaner.filter(
-    (p) => p.status?.toLowerCase().includes("forslag") ?? false,
-  );
+  const forslag = lokalplaner.filter((p) => p.status?.toLowerCase().includes("forslag") ?? false);
   const vedtagne = lokalplaner.filter(
     (p) => !(p.status?.toLowerCase().includes("forslag") ?? false),
   );
@@ -539,6 +536,7 @@ git commit -m "refactor(cockpit): extract lokalplan-classifier; AnalyseTab uses 
 ## Task 4 — `useParcelData.ts`
 
 **Files:**
+
 - Create: `src/hooks/useParcelData.ts`
 
 - [ ] **Step 1: Create `src/hooks/useParcelData.ts`**
@@ -651,7 +649,14 @@ export function useParcelData(params: {
     return () => {
       cancelled = true;
     };
-  }, [geo?.lat, geo?.lng, jordstykkeLokalId, adresseid, loadParcelGeometry, loadParcelGeometryById]);
+  }, [
+    geo?.lat,
+    geo?.lng,
+    jordstykkeLokalId,
+    adresseid,
+    loadParcelGeometry,
+    loadParcelGeometryById,
+  ]);
 
   return { parcelStatus, parcelGeojson, previewImage };
 }
@@ -677,6 +682,7 @@ git commit -m "feat(hooks): add useParcelData — encapsulates parcel geometry +
 ## Task 5 — `usePlacementSync.ts` + `MatrikelMap.tsx` update
 
 **Files:**
+
 - Create: `src/hooks/usePlacementSync.ts`
 - Modify: `src/components/cockpit/MatrikelMap.tsx`
 
@@ -733,6 +739,7 @@ export function usePlacementSync(address: Address | null): {
 - [ ] **Step 2: Update `src/components/cockpit/MatrikelMap.tsx` — imports**
 
 Replace the import block. Remove:
+
 ```ts
 import {
   fetchMatriklenPreview,
@@ -743,12 +750,14 @@ import {
 ```
 
 Add:
+
 ```ts
 import { useParcelData } from "@/hooks/useParcelData";
 import { usePlacementSync } from "@/hooks/usePlacementSync";
 ```
 
 Keep `fetchSkærmkortTile` import since it is still used for the tile loader inside the OL map init effect (the tile proxy is visual infrastructure, not parcel data):
+
 ```ts
 import { fetchSkærmkortTile } from "@/routes/api.map-tiles";
 ```
@@ -758,6 +767,7 @@ Keep `useServerFn` from `@tanstack/react-start` — it is still needed for `fetc
 - [ ] **Step 3: Update `MatrikelMap.tsx` — remove hook calls and state, add new hooks**
 
 Remove these lines from the component body:
+
 ```ts
 // Remove all three:
 const loadParcelGeometry = useServerFn(fetchParcelGeometry);
@@ -767,11 +777,13 @@ const loadTile = useServerFn(fetchSkærmkortTile);
 ```
 
 Re-add just the tile loader (still needed):
+
 ```ts
 const loadTile = useServerFn(fetchSkærmkortTile);
 ```
 
 Remove the three state declarations that are now in `useParcelData`:
+
 ```ts
 // Remove:
 const [parcelStatus, setParcelStatus] = useState<"idle" | "loading" | "ready" | "missing">("idle");
@@ -780,6 +792,7 @@ const [previewImage, setPreviewImage] = useState<...>(null);
 ```
 
 Remove the `rotationDeg` state and its sync effect (now in `usePlacementSync`):
+
 ```ts
 // Remove:
 const [rotationDeg, setRotationDeg] = useState(address?.rotationDeg ?? 0);
@@ -794,6 +807,7 @@ Remove the entire `loadGeometry` `useEffect` (the one with `jordstykkeLokalId`, 
 Remove the `updateRotation` and `resetPlacement` function declarations.
 
 Add the new hooks after the existing `useProject` destructure:
+
 ```ts
 const geo = address?.centroid ?? address?.koordinater ?? null;
 // ... existing derived values ...
@@ -804,10 +818,15 @@ const { parcelStatus, parcelGeojson, previewImage } = useParcelData({
   adresseid: address?.adresseid ?? null,
 });
 
-const { rotationDeg, updateRotation, resetPlacement: resetPlacementSync } = usePlacementSync(address);
+const {
+  rotationDeg,
+  updateRotation,
+  resetPlacement: resetPlacementSync,
+} = usePlacementSync(address);
 ```
 
 Update the `resetPlacement` call inside the button handler to pass the current values:
+
 ```ts
 // In the reset button onClick:
 onClick={() => resetPlacementSync(geo, initialCenterRef.current)}
@@ -843,6 +862,7 @@ git commit -m "refactor(cockpit): MatrikelMap uses useParcelData + usePlacementS
 ## Task 6 — `byggeoenske-constraint-view-model.ts` (pure lib + tests)
 
 **Files:**
+
 - Create: `src/lib/byggeoenske-constraint-view-model.ts`
 - Create: `src/lib/byggeoenske-constraint-view-model.test.ts`
 
@@ -853,7 +873,11 @@ Create `src/lib/byggeoenske-constraint-view-model.test.ts`:
 ```ts
 import { describe, it, expect } from "bun:test";
 import { buildStepConstraintViewModel } from "./byggeoenske-constraint-view-model";
-import type { BoligoenskeValidering, ComplianceFlag, AdressePreCheckResultat } from "@/types/project-state";
+import type {
+  BoligoenskeValidering,
+  ComplianceFlag,
+  AdressePreCheckResultat,
+} from "@/types/project-state";
 
 function makeValidering(overrides: Partial<BoligoenskeValidering> = {}): BoligoenskeValidering {
   return {
@@ -866,7 +890,10 @@ function makeValidering(overrides: Partial<BoligoenskeValidering> = {}): Boligoe
   };
 }
 
-function makePreCheck(maxEtager: number | null = 2, restBygningsareal: number | null = 80): AdressePreCheckResultat {
+function makePreCheck(
+  maxEtager: number | null = 2,
+  restBygningsareal: number | null = 80,
+): AdressePreCheckResultat {
   return {
     blockers: [],
     advarsler: [],
@@ -905,12 +932,24 @@ function makeFlag(id: string, overrides: Partial<ComplianceFlag> = {}): Complian
 
 describe("buildStepConstraintViewModel — antalEtager", () => {
   it("returns contextChip when maxEtager is known", () => {
-    const vm = buildStepConstraintViewModel("antalEtager", 2, makeValidering(), makePreCheck(2), []);
+    const vm = buildStepConstraintViewModel(
+      "antalEtager",
+      2,
+      makeValidering(),
+      makePreCheck(2),
+      [],
+    );
     expect(vm.contextChip).toContain("2 etager");
   });
 
   it("returns null contextChip when maxEtager is null", () => {
-    const vm = buildStepConstraintViewModel("antalEtager", 2, makeValidering(), makePreCheck(null), []);
+    const vm = buildStepConstraintViewModel(
+      "antalEtager",
+      2,
+      makeValidering(),
+      makePreCheck(null),
+      [],
+    );
     expect(vm.contextChip).toBeNull();
   });
 
@@ -939,14 +978,26 @@ describe("buildStepConstraintViewModel — antalEtager", () => {
   });
 
   it("returns null dispensation when etagerStatus=ok", () => {
-    const vm = buildStepConstraintViewModel("antalEtager", 2, makeValidering({ etagerStatus: "ok" }), makePreCheck(2), []);
+    const vm = buildStepConstraintViewModel(
+      "antalEtager",
+      2,
+      makeValidering({ etagerStatus: "ok" }),
+      makePreCheck(2),
+      [],
+    );
     expect(vm.dispensation).toBeNull();
   });
 });
 
 describe("buildStepConstraintViewModel — oensketAreal", () => {
   it("returns contextChip with restBygningsareal", () => {
-    const vm = buildStepConstraintViewModel("oensketAreal", 100, makeValidering(), makePreCheck(2, 80), []);
+    const vm = buildStepConstraintViewModel(
+      "oensketAreal",
+      100,
+      makeValidering(),
+      makePreCheck(2, 80),
+      [],
+    );
     expect(vm.contextChip).toContain("80 m²");
   });
 
@@ -965,24 +1016,16 @@ describe("buildStepConstraintViewModel — oensketAreal", () => {
 
 describe("buildStepConstraintViewModel — varmekilde", () => {
   it("returns fjernvarme=tilgaengelig when tilslutningspligt flag present", () => {
-    const vm = buildStepConstraintViewModel(
-      "varmekilde",
-      "fjernvarme",
-      null,
-      null,
-      [makeFlag("fjernvarme-tilslutningspligt")],
-    );
+    const vm = buildStepConstraintViewModel("varmekilde", "fjernvarme", null, null, [
+      makeFlag("fjernvarme-tilslutningspligt"),
+    ]);
     expect(vm.fjernvarme).toBe("tilgaengelig");
   });
 
   it("returns fjernvarme=mismatch when mismatch flag present", () => {
-    const vm = buildStepConstraintViewModel(
-      "varmekilde",
-      "varmepumpe",
-      null,
-      null,
-      [makeFlag("fjernvarme-mismatch-ingen-daekning")],
-    );
+    const vm = buildStepConstraintViewModel("varmekilde", "varmepumpe", null, null, [
+      makeFlag("fjernvarme-mismatch-ingen-daekning"),
+    ]);
     expect(vm.fjernvarme).toBe("mismatch");
   });
 
@@ -1071,7 +1114,8 @@ export function buildStepConstraintViewModel(
     const status = validering?.etagerStatus;
     const ack = validering?.etagerDispensationAcknowledged ?? false;
     return {
-      contextChip: k?.maxEtager != null ? `Kommuneplanen tillader: maks ${k.maxEtager} etager` : null,
+      contextChip:
+        k?.maxEtager != null ? `Kommuneplanen tillader: maks ${k.maxEtager} etager` : null,
       dispensation:
         status === "dispensation"
           ? {
@@ -1111,9 +1155,7 @@ export function buildStepConstraintViewModel(
 
   if (stepKey === "varmekilde") {
     const hasTilslutning = complianceFlags.some((f) => f.id === "fjernvarme-tilslutningspligt");
-    const hasMismatch = complianceFlags.some(
-      (f) => f.id === "fjernvarme-mismatch-ingen-daekning",
-    );
+    const hasMismatch = complianceFlags.some((f) => f.id === "fjernvarme-mismatch-ingen-daekning");
     return {
       ...NONE,
       fjernvarme: hasTilslutning ? "tilgaengelig" : hasMismatch ? "mismatch" : "unknown",
@@ -1149,6 +1191,7 @@ git commit -m "feat(lib): add byggeoenske-constraint-view-model pure function wi
 ## Task 7 — `useDispensationFlow.ts` + `cockpit/index.tsx` update
 
 **Files:**
+
 - Create: `src/hooks/useDispensationFlow.ts`
 - Modify: `src/components/cockpit/index.tsx`
 
@@ -1201,17 +1244,26 @@ import { useDispensationFlow } from "@/hooks/useDispensationFlow";
 - [ ] **Step 3: Update `ByggeoenskeAccordion` to use `useDispensationFlow`**
 
 In `ByggeoenskeAccordion`, replace:
+
 ```ts
 const [dispensationFor, setDispensationFor] = useState<"etager" | "areal" | null>(null);
 ```
+
 with:
+
 ```ts
-const { dispensationFor, open: openDispensation, acknowledge, close: closeDispensation } = useDispensationFlow();
+const {
+  dispensationFor,
+  open: openDispensation,
+  acknowledge,
+  close: closeDispensation,
+} = useDispensationFlow();
 ```
 
 Remove the `useState` import from the top if it is no longer used elsewhere in the file (check first).
 
 Update `DispensationModal` props:
+
 ```ts
 <DispensationModal
   type={dispensationFor}
@@ -1221,6 +1273,7 @@ Update `DispensationModal` props:
 ```
 
 Update `FieldEditor` calls:
+
 ```ts
 onOpenDispensation={(t) => openDispensation(t)}
 ```
@@ -1228,10 +1281,19 @@ onOpenDispensation={(t) => openDispensation(t)}
 - [ ] **Step 4: Update `DispensationModal` to accept `onAcknowledge` prop**
 
 Change `DispensationModal`'s props signature from:
+
 ```ts
-function DispensationModal({ type, onClose }: { type: "etager" | "areal" | null; onClose: () => void })
+function DispensationModal({
+  type,
+  onClose,
+}: {
+  type: "etager" | "areal" | null;
+  onClose: () => void;
+});
 ```
+
 to:
+
 ```ts
 function DispensationModal({
   type,
@@ -1241,20 +1303,24 @@ function DispensationModal({
   type: "etager" | "areal" | null;
   onAcknowledge: (type: "etager" | "areal") => void;
   onClose: () => void;
-})
+});
 ```
 
 Remove these lines from the component body (they are now in the hook):
+
 ```ts
-const { boligoenskeValidering, setBoligoenskeValidering, adressePreCheck, byggeoenske } = useProject();
+const { boligoenskeValidering, setBoligoenskeValidering, adressePreCheck, byggeoenske } =
+  useProject();
 ```
 
 Keep only what the modal needs for display:
+
 ```ts
 const { adressePreCheck, byggeoenske } = useProject();
 ```
 
 Replace `handleAcknowledge`:
+
 ```ts
 // Remove:
 const handleAcknowledge = () => {
@@ -1271,8 +1337,9 @@ const handleAcknowledge = () => {
 ```
 
 Update the button to call the new handler:
+
 ```ts
-onClick={handleAcknowledge}
+onClick = { handleAcknowledge };
 ```
 
 - [ ] **Step 5: Update `StepExtras` to use `buildStepConstraintViewModel`**
@@ -1377,9 +1444,11 @@ function StepExtras({
 ```
 
 If `StepExtras` previously returned `null` for no extras, the new version returns an empty `<div>` — acceptable. Alternatively, add a guard:
+
 ```ts
 if (!vm.contextChip && !vm.dispensation && !vm.fjernvarme && !vm.lokalplanHint) return null;
 ```
+
 Add this guard before the `return (` line.
 
 - [ ] **Step 6: Run TypeScript check and tests**
@@ -1402,6 +1471,7 @@ git commit -m "refactor(cockpit): StepExtras uses view-model builder; Dispensati
 ## Task 8 — `billedanalyse-tags.ts` (pure lib + tests)
 
 **Files:**
+
 - Create: `src/lib/billedanalyse-tags.ts`
 - Create: `src/lib/billedanalyse-tags.test.ts`
 
@@ -1486,7 +1556,9 @@ describe("addTag", () => {
 
 describe("removeTag", () => {
   it("removes the specified tag", () => {
-    const r = makeResultat({ kategorier: { ...makeResultat().kategorier, facade: ["tegl", "beton"] } });
+    const r = makeResultat({
+      kategorier: { ...makeResultat().kategorier, facade: ["tegl", "beton"] },
+    });
     const next = removeTag("facade", "tegl", r);
     expect(next.kategorier.facade).toEqual(["beton"]);
   });
@@ -1501,9 +1573,7 @@ describe("removeTag", () => {
 describe("resolveKonflikt", () => {
   it("merges chosen tags into category and removes the conflict", () => {
     const r = makeResultat({
-      konflikter: [
-        { kategori: "facade", muligheder: [["tegl"], ["beton"]], billedAntal: [2, 1] },
-      ],
+      konflikter: [{ kategori: "facade", muligheder: [["tegl"], ["beton"]], billedAntal: [2, 1] }],
     });
     const next = resolveKonflikt("facade", ["tegl"], r);
     expect(next.kategorier.facade).toContain("tegl");
@@ -1628,7 +1698,10 @@ export function resolveKonflikt(
   };
 }
 
-export function removeExtraTag(tag: string, current: BilledeAnalyseResultat): BilledeAnalyseResultat {
+export function removeExtraTag(
+  tag: string,
+  current: BilledeAnalyseResultat,
+): BilledeAnalyseResultat {
   return {
     ...current,
     ekstraTags: current.ekstraTags.filter((t) => t !== tag),
@@ -1656,6 +1729,7 @@ git commit -m "feat(lib): add billedanalyse-tags pure helpers with tests"
 ## Task 9 — `ai-design-workflow.service.ts`
 
 **Files:**
+
 - Create: `src/lib/services/` (directory)
 - Create: `src/lib/services/ai-design-workflow.service.ts`
 
@@ -1729,6 +1803,7 @@ git commit -m "feat(services): add ai-design-workflow application service"
 ## Task 10 — `useAiDesignWorkflow.ts`
 
 **Files:**
+
 - Create: `src/hooks/useAiDesignWorkflow.ts`
 
 - [ ] **Step 1: Create `src/hooks/useAiDesignWorkflow.ts`**
@@ -1888,7 +1963,11 @@ export function useAiDesignWorkflow(): AiDesignWorkflowState & AiDesignWorkflowA
     const startCount = uploadedImages.length;
 
     try {
-      const filePayloads: Array<{ base64: string; mimeType: "image/jpeg" | "image/png"; preview: string }> = [];
+      const filePayloads: Array<{
+        base64: string;
+        mimeType: "image/jpeg" | "image/png";
+        preview: string;
+      }> = [];
 
       for (const file of selectedFiles) {
         const mimeType = getUploadMimeType(file);
@@ -2072,6 +2151,7 @@ git commit -m "feat(hooks): add useAiDesignWorkflow — thin React hook over ai-
 ## Task 11 — `AiDesignHero.tsx` refactor
 
 **Files:**
+
 - Modify: `src/components/cockpit/AiDesignHero.tsx`
 
 - [ ] **Step 1: Rewrite `src/components/cockpit/AiDesignHero.tsx`**
@@ -2086,7 +2166,10 @@ import { Card } from "@/components/wizard-ui";
 import { Textarea } from "@/components/ui/textarea";
 import { useAiDesignWorkflow } from "@/hooks/useAiDesignWorkflow";
 import { cn } from "@/lib/utils";
-import type { BilledeAnalyseKategorier, BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
+import type {
+  BilledeAnalyseKategorier,
+  BilledeAnalyseResultat,
+} from "@/lib/billede-analyse-vocabulary";
 
 const ANALYSE_KATEGORIER = [
   "facade",
@@ -2160,9 +2243,13 @@ export function AiDesignHero() {
               className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5 font-mono text-[11px] text-foreground hover:border-accent/50 transition-colors disabled:opacity-50"
             >
               {analyseState === "uploading" ? (
-                <><Loader2 size={12} className="animate-spin" /> Uploader...</>
+                <>
+                  <Loader2 size={12} className="animate-spin" /> Uploader...
+                </>
               ) : (
-                <><Upload size={12} /> Inspiration ({uploadedImages.length}/4)</>
+                <>
+                  <Upload size={12} /> Inspiration ({uploadedImages.length}/4)
+                </>
               )}
             </button>
             <button
@@ -2172,9 +2259,13 @@ export function AiDesignHero() {
               className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5 font-mono text-[11px] text-foreground hover:border-accent/50 transition-colors disabled:opacity-50"
             >
               {analyseState === "analysing" ? (
-                <><Loader2 size={12} className="animate-spin" /> Analyserer...</>
+                <>
+                  <Loader2 size={12} className="animate-spin" /> Analyserer...
+                </>
               ) : (
-                <><Sparkles size={12} /> Analyser billeder</>
+                <>
+                  <Sparkles size={12} /> Analyser billeder
+                </>
               )}
             </button>
             <input
@@ -2210,7 +2301,11 @@ export function AiDesignHero() {
         {hasHardStop ? (
           <div className="inline-flex h-[88px] min-w-[160px] items-center justify-center gap-2 rounded-md border border-danger/40 bg-danger/5 px-4 font-mono text-xs text-danger text-center leading-snug">
             <ShieldAlert size={14} className="shrink-0" />
-            <span>Design blokeret<br />af compliance-stop</span>
+            <span>
+              Design blokeret
+              <br />
+              af compliance-stop
+            </span>
           </div>
         ) : (
           <button
@@ -2220,16 +2315,22 @@ export function AiDesignHero() {
             className="inline-flex h-[88px] min-w-[160px] items-center justify-center gap-2 rounded-md bg-accent px-5 font-mono text-sm text-accent-foreground hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <><Loader2 size={14} className="animate-spin" /> Genererer...</>
+              <>
+                <Loader2 size={14} className="animate-spin" /> Genererer...
+              </>
             ) : (
-              <><Sparkles size={14} /> Generér 3 forslag</>
+              <>
+                <Sparkles size={14} /> Generér 3 forslag
+              </>
             )}
           </button>
         )}
       </div>
 
       {analyse &&
-        (analyseState === "conflict" || analyseState === "validated" || analyseState === "saved") && (
+        (analyseState === "conflict" ||
+          analyseState === "validated" ||
+          analyseState === "saved") && (
           <AnalysePanel
             analyse={analyse}
             analyseState={analyseState}

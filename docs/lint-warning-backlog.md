@@ -10,12 +10,12 @@ accepted as technical debt rather than fixed immediately.
 
 ## Summary
 
-| Rule | Count | Location | Priority |
-|---|---|---|---|
-| `no-console` | ~279 | `agent/`, `scripts/`, `evals/`, integration clients, tests | Low — intentional for CLI/scripts |
-| `@typescript-eslint/no-explicit-any` | ~249 | Integration clients, OpenLayers map components, tests | Medium — needs typed replacements |
-| `react-refresh/only-export-components` | ~39 | `src/components/ui/`, `src/router.tsx`, `BudgetKalkulator.tsx` | Low — shadcn/ui pattern |
-| `react-hooks/exhaustive-deps` | ~12 | `MatrikelMap.tsx`, `MatrikelMapCompact.tsx` | Medium — OL map refs excluded by design |
+| Rule                                   | Count | Location                                                       | Priority                                |
+| -------------------------------------- | ----- | -------------------------------------------------------------- | --------------------------------------- |
+| `no-console`                           | ~279  | `agent/`, `scripts/`, `evals/`, integration clients, tests     | Low — intentional for CLI/scripts       |
+| `@typescript-eslint/no-explicit-any`   | ~249  | Integration clients, OpenLayers map components, tests          | Medium — needs typed replacements       |
+| `react-refresh/only-export-components` | ~39   | `src/components/ui/`, `src/router.tsx`, `BudgetKalkulator.tsx` | Low — shadcn/ui pattern                 |
+| `react-hooks/exhaustive-deps`          | ~12   | `MatrikelMap.tsx`, `MatrikelMapCompact.tsx`                    | Medium — OL map refs excluded by design |
 
 ---
 
@@ -26,6 +26,7 @@ accepted as technical debt rather than fixed immediately.
 **Accepted in:** CLI scripts, agent infrastructure, evals runner, and integration test files where structured logging is impractical.
 
 **Files:**
+
 - `agent/ci-gate.ts` — CI gate CLI tool
 - `agent/tracer.ts` — agent tracing infrastructure
 - `evals/runner.ts` — eval suite runner (CLI tool)
@@ -46,6 +47,7 @@ accepted as technical debt rather than fixed immediately.
 **Accepted in:** Integration adapter clients where external API shapes are parsed dynamically, OpenLayers map internals (ol library types are complex), and test mocks.
 
 **Primary locations:**
+
 - `src/components/cockpit/MatrikelMap.tsx` — OpenLayers layer/source generics (OL types are complex unions)
 - `src/integrations/bbr/client.ts`, `dar/client.ts`, `mat/client.ts`, `ebr/client.ts`, `vur/client.ts`, `plandata/client.ts` — Datafordeler GraphQL response parsing at the boundary decoder layer
 - `src/integrations/mat/grundareal-resolver.ts` — resolver intermediate types
@@ -64,6 +66,7 @@ accepted as technical debt rather than fixed immediately.
 **Accepted in:** `src/components/ui/` (shadcn/ui generated components) and `src/router.tsx`. These files export both React components and non-component utilities (variant maps, context objects, constants) as part of their public API, which is the shadcn/ui pattern.
 
 **Files:**
+
 - `src/components/ui/badge.tsx` — exports `badgeVariants` constant alongside `Badge` component
 - `src/components/ui/button.tsx` — exports `buttonVariants` constant alongside `Button` component
 - `src/components/ui/form.tsx` — exports multiple context objects alongside form components
@@ -84,6 +87,7 @@ accepted as technical debt rather than fixed immediately.
 **Accepted in:** `MatrikelMap.tsx` and `MatrikelMapCompact.tsx` where OpenLayers map instances are managed via `useRef` and intentionally excluded from dependency arrays to prevent infinite re-render cycles.
 
 **Specific warnings:**
+
 - `useEffect` missing `geo` dependency — the `geo` prop is a stable coordinate pair and adding it would cause the OL map to re-initialize on every render.
 - `baseCenter` conditional in `useEffect` — intentionally stabilised outside the effect to avoid recompute on every render.
 - `onPlacementChange` missing dependency in `MatrikelMapCompact` — callback prop that may change identity; should be wrapped in `useCallback` at the call site.

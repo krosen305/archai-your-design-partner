@@ -12,12 +12,12 @@
 
 ## File Map
 
-| Action | File |
-|--------|------|
-| Create | `src/integrations/ai/gateway.ts` |
-| Create | `src/integrations/ai/gateway.test.ts` |
-| Modify | `src/integrations/ai/byggeanalyse.ts` |
-| Modify | `src/integrations/ai/pdf-extractor.ts` |
+| Action | File                                       |
+| ------ | ------------------------------------------ |
+| Create | `src/integrations/ai/gateway.ts`           |
+| Create | `src/integrations/ai/gateway.test.ts`      |
+| Modify | `src/integrations/ai/byggeanalyse.ts`      |
+| Modify | `src/integrations/ai/pdf-extractor.ts`     |
 | Modify | `src/integrations/ai/hus-dna-generator.ts` |
 
 ---
@@ -25,12 +25,13 @@
 ### Task 1: Create `gateway.ts` with tests
 
 **Files:**
+
 - Create: `src/integrations/ai/gateway.ts`
 - Create: `src/integrations/ai/gateway.test.ts`
 
 - [ ] **Step 1: Write failing tests**
 
-```typescript
+````typescript
 // src/integrations/ai/gateway.test.ts
 import { describe, it, expect } from "bun:test";
 import { extractStructuredOutput } from "./gateway";
@@ -47,7 +48,7 @@ describe("extractStructuredOutput", () => {
   it("parses JSON inside a markdown code fence", () => {
     const out = extractStructuredOutput(
       TestSchema,
-      "Here is the analysis:\n```json\n{\"result\":\"ok\",\"score\":5}\n```",
+      'Here is the analysis:\n```json\n{"result":"ok","score":5}\n```',
     );
     expect(out).toEqual({ result: "ok", score: 5 });
   });
@@ -62,7 +63,7 @@ describe("extractStructuredOutput", () => {
     ).toThrow();
   });
 });
-```
+````
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -74,7 +75,7 @@ Expected: `Cannot find module './gateway'`
 
 - [ ] **Step 3: Create `gateway.ts`**
 
-```typescript
+````typescript
 // src/integrations/ai/gateway.ts
 // SERVER-SIDE ONLY — Anthropic API key must never reach the browser.
 // Shared typed AI gateway for all Claude prompt executions.
@@ -107,7 +108,8 @@ export type GatewayResponse = {
 
 export async function callAnthropicGateway(req: GatewayRequest): Promise<GatewayResponse> {
   const apiKey = runtimeConfig.anthropicApiKey;
-  if (!apiKey) throw new Error(`AI gateway: ANTHROPIC_API_KEY er ikke sat (operation: ${req.operation})`);
+  if (!apiKey)
+    throw new Error(`AI gateway: ANTHROPIC_API_KEY er ikke sat (operation: ${req.operation})`);
 
   const body = {
     model: req.model,
@@ -141,7 +143,9 @@ export async function callAnthropicGateway(req: GatewayRequest): Promise<Gateway
       message: `Anthropic HTTP ${response.status}`,
       metadata: { status: response.status, body: bodyText.slice(0, 300) },
     });
-    throw new Error(`Anthropic API fejl ${response.status} (${req.operation}): ${bodyText.slice(0, 200)}`);
+    throw new Error(
+      `Anthropic API fejl ${response.status} (${req.operation}): ${bodyText.slice(0, 200)}`,
+    );
   }
 
   return JSON.parse(bodyText) as GatewayResponse;
@@ -161,7 +165,7 @@ export function extractStructuredOutput<T>(schema: z.ZodType<T>, text: string): 
 
   return schema.parse(parsed);
 }
-```
+````
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -183,11 +187,13 @@ git commit -m "feat(arch-276): create shared typed Anthropic AI gateway with ext
 ### Task 2: Migrate `byggeanalyse.ts` to use gateway
 
 **Files:**
+
 - Modify: `src/integrations/ai/byggeanalyse.ts`
 
 - [ ] **Step 1: Replace inline fetch with `callAnthropicGateway`**
 
 Add import:
+
 ```typescript
 import { callAnthropicGateway, extractStructuredOutput } from "./gateway";
 ```
@@ -231,6 +237,7 @@ git commit -m "refactor(arch-276): byggeanalyse uses callAnthropicGateway"
 ### Task 3: Migrate `pdf-extractor.ts` to use gateway
 
 **Files:**
+
 - Modify: `src/integrations/ai/pdf-extractor.ts`
 
 - [ ] **Step 1: Read the file to understand current structure**
@@ -246,6 +253,7 @@ git commit -m "refactor(arch-276): byggeanalyse uses callAnthropicGateway"
 - [ ] **Step 2: Add import and replace fetch**
 
 Add:
+
 ```typescript
 import { callAnthropicGateway, extractStructuredOutput } from "./gateway";
 ```
@@ -272,11 +280,13 @@ git commit -m "refactor(arch-276): pdf-extractor uses callAnthropicGateway"
 ### Task 4: Migrate `hus-dna-generator.ts` to use gateway
 
 **Files:**
+
 - Modify: `src/integrations/ai/hus-dna-generator.ts`
 
 - [ ] **Step 1: Add import and replace fetch**
 
 Add:
+
 ```typescript
 import { callAnthropicGateway, extractStructuredOutput } from "./gateway";
 ```
