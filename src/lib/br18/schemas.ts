@@ -1,38 +1,68 @@
 import { z } from "zod";
 
 export const projectScopeSchema = z.enum([
-  "enfamiliehus", "tilbygning", "nedrivning_nybyg", "renovering",
+  "enfamiliehus",
+  "tilbygning",
+  "nedrivning_nybyg",
+  "renovering",
 ]);
 
 export const requirementKindSchema = z.enum([
-  "machine_checkable", "documentation", "specialist_review", "authority_discretion",
+  "machine_checkable",
+  "documentation",
+  "specialist_review",
+  "authority_discretion",
 ]);
 
 export const requirementSeveritySchema = z.enum([
-  "hard_stop", "dispensation", "warning", "documentation",
+  "hard_stop",
+  "dispensation",
+  "warning",
+  "documentation",
 ]);
 
 export const applicabilityStatusSchema = z.enum([
-  "relevant", "not_relevant", "unknown_missing_data",
-  "requires_specialist_review", "requires_authority_decision",
+  "relevant",
+  "not_relevant",
+  "unknown_missing_data",
+  "requires_specialist_review",
+  "requires_authority_decision",
 ]);
 
 export const evidenceStatusSchema = z.enum([
-  "missing", "draft", "uploaded", "validated", "rejected",
+  "missing",
+  "draft",
+  "uploaded",
+  "validated",
+  "rejected",
 ]);
 
 export const evidenceSourceSchema = z.enum([
-  "datafordeler", "plandata", "user_upload", "advisor", "ai_extract", "manual",
+  "datafordeler",
+  "plandata",
+  "user_upload",
+  "advisor",
+  "ai_extract",
+  "manual",
 ]);
 
 export const evidenceTypeSchema = z.enum([
-  "register_data", "drawing", "calculation", "declaration",
-  "product_documentation", "photo", "manual_upload", "advisor_note", "authority_response",
+  "register_data",
+  "drawing",
+  "calculation",
+  "declaration",
+  "product_documentation",
+  "photo",
+  "manual_upload",
+  "advisor_note",
+  "authority_response",
 ]);
 
 export const authorityReadinessStatusSchema = z.enum([
-  "preliminary", "ready_for_advisor_review",
-  "ready_for_authority_review", "missing_critical_documentation",
+  "preliminary",
+  "ready_for_advisor_review",
+  "ready_for_authority_review",
+  "missing_critical_documentation",
 ]);
 
 export const applicabilityConditionSchema = z.object({
@@ -55,13 +85,20 @@ export const br18RequirementSchema = z.object({
   requirementKind: requirementKindSchema,
   severity: requirementSeveritySchema,
   applicability: z.array(applicabilityConditionSchema),
-  requiredEvidence: z.array(z.object({
-    evidenceType: evidenceTypeSchema,
-    description: z.string(),
-  })),
+  requiredEvidence: z.array(
+    z.object({
+      evidenceType: evidenceTypeSchema,
+      description: z.string(),
+    }),
+  ),
   responsibleRole: z.enum([
-    "owner", "architect", "engineer", "certified_static_engineer",
-    "certified_fire_consultant", "energy_consultant", "municipality",
+    "owner",
+    "architect",
+    "engineer",
+    "certified_static_engineer",
+    "certified_fire_consultant",
+    "energy_consultant",
+    "municipality",
   ]),
 });
 
@@ -72,11 +109,13 @@ export const br18ApplicabilityResultSchema = z.object({
   status: applicabilityStatusSchema,
   reasons: z.array(z.string()),
   missingInputs: z.array(z.string()),
-  sourceFacts: z.array(z.object({
-    source: evidenceSourceSchema,
-    field: z.string(),
-    value: z.unknown(),
-  })),
+  sourceFacts: z.array(
+    z.object({
+      source: evidenceSourceSchema,
+      field: z.string(),
+      value: z.unknown(),
+    }),
+  ),
 });
 
 export const evidenceItemSchema = z.object({

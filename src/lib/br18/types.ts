@@ -1,8 +1,4 @@
-export type ProjectScope =
-  | "enfamiliehus"
-  | "tilbygning"
-  | "nedrivning_nybyg"
-  | "renovering";
+export type ProjectScope = "enfamiliehus" | "tilbygning" | "nedrivning_nybyg" | "renovering";
 
 export type RequirementKind =
   | "machine_checkable"
@@ -31,11 +27,23 @@ export type ApplicabilityStatus =
 export type EvidenceStatus = "missing" | "draft" | "uploaded" | "validated" | "rejected";
 
 export type EvidenceSource =
-  | "datafordeler" | "plandata" | "user_upload" | "advisor" | "ai_extract" | "manual";
+  | "datafordeler"
+  | "plandata"
+  | "user_upload"
+  | "advisor"
+  | "ai_extract"
+  | "manual";
 
 export type EvidenceType =
-  | "register_data" | "drawing" | "calculation" | "declaration"
-  | "product_documentation" | "photo" | "manual_upload" | "advisor_note" | "authority_response";
+  | "register_data"
+  | "drawing"
+  | "calculation"
+  | "declaration"
+  | "product_documentation"
+  | "photo"
+  | "manual_upload"
+  | "advisor_note"
+  | "authority_response";
 
 export type AuthorityReadinessStatus =
   | "preliminary"
