@@ -1,7 +1,6 @@
 import GeoJSONReader from "jsts/org/locationtech/jts/io/GeoJSONReader.js";
 import GeoJSONWriter from "jsts/org/locationtech/jts/io/GeoJSONWriter.js";
 // Side-effect import: patches Geometry.prototype with distance, buffer, intersects, intersection, getBoundary, etc.
-// eslint-disable-next-line import/no-unassigned-import
 import "jsts/org/locationtech/jts/monkey.js";
 import type { GeoJsonPolygon25832, BoundarySegment } from "./beliggenhedsplan.types";
 import { generatedSourceMeta } from "./source-quality";
@@ -43,7 +42,10 @@ export function polygonOverlapAreaM2(a: GeoJsonPolygon25832, b: GeoJsonPolygon25
   return Math.abs(ga.intersection(gb).getArea());
 }
 
-export function generateBuffer25832(polygon: GeoJsonPolygon25832, bufferM: number): GeoJsonPolygon25832 {
+export function generateBuffer25832(
+  polygon: GeoJsonPolygon25832,
+  bufferM: number,
+): GeoJsonPolygon25832 {
   return fromJstsPolygon(toJsts(polygon).buffer(bufferM));
 }
 
