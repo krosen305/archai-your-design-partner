@@ -33,6 +33,8 @@ import {
   tagdaekningLabel,
   varmeinstallationLabel,
   ydervaegsMaterialeLabel,
+  vandforsyningLabel,
+  afloebsforholdLabel,
 } from "@/domain/bbr/code-lists";
 import {
   deriveBbrSummary as deriveBbrSummaryPure,
@@ -76,6 +78,8 @@ export type BbrBygning = {
   byg025AntalLejlighederUdenKoekken: number | null;
   byg026Opfoerelsesaar: number | null;
   byg027OmTilbygningsaar: number | null;
+  byg030Vandforsyning: string | null;
+  byg031Afloebsforhold: string | null;
   byg029DatoForMidlertidigOpfoertBygning: string | null;
   byg032YdervaeggensMateriale: string | null;
   byg033Tagdaekningsmateriale: string | null;
@@ -132,6 +136,14 @@ export type BbrKompliantData = {
   canonical_candidates_count: number;
   aggregated_bebygget_areal_all_primary: number | null;
   bygning_samlet_boligareal: number | null; // byg039BygningensSamledeBoligAreal from canonical
+  // ARCH-246: Due-diligence felter
+  ombygningsaar: number | null; // byg027 — nu eksponeret i output
+  vandforsyning_kode: string | null; // byg030 raw kode
+  vandforsyning: string | null; // byg030 label
+  afloebsforhold_kode: string | null; // byg031 raw kode
+  afloebsforhold: string | null; // byg031 label
+  ydervaegs_materiale_kode: string | null; // byg032 raw kode (bruges i saneringsrisiko)
+  tagdaekning_kode: string | null; // byg033 raw kode (bruges i saneringsrisiko)
 };
 
 // ---------------------------------------------------------------------------
@@ -157,6 +169,8 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!, $registreringstid: D
       byg025AntalLejlighederUdenKoekken
       byg026Opfoerelsesaar
       byg027OmTilbygningsaar
+      byg030Vandforsyning
+      byg031Afloebsforhold
       byg029DatoForMidlertidigOpfoertBygning
       byg032YdervaeggensMateriale
       byg033Tagdaekningsmateriale
@@ -321,6 +335,14 @@ export class BbrService {
         canonical_candidates_count: candidatesCount,
         aggregated_bebygget_areal_all_primary,
         bygning_samlet_boligareal: canonicalBuilding.byg039BygningensSamledeBoligAreal ?? null,
+        // ARCH-246: Due-diligence felter
+        ombygningsaar: canonicalBuilding.byg027OmTilbygningsaar ?? null,
+        vandforsyning_kode: canonicalBuilding.byg030Vandforsyning ?? null,
+        vandforsyning: vandforsyningLabel(canonicalBuilding.byg030Vandforsyning ?? null),
+        afloebsforhold_kode: canonicalBuilding.byg031Afloebsforhold ?? null,
+        afloebsforhold: afloebsforholdLabel(canonicalBuilding.byg031Afloebsforhold ?? null),
+        ydervaegs_materiale_kode: yv_kode,
+        tagdaekning_kode: tag_kode,
       };
     } catch (e) {
       logServerEvent({
@@ -363,6 +385,13 @@ export class BbrService {
       canonical_candidates_count: 0,
       aggregated_bebygget_areal_all_primary: null,
       bygning_samlet_boligareal: null,
+      ombygningsaar: null,
+      vandforsyning_kode: null,
+      vandforsyning: null,
+      afloebsforhold_kode: null,
+      afloebsforhold: null,
+      ydervaegs_materiale_kode: null,
+      tagdaekning_kode: null,
     };
   }
 }

@@ -26,6 +26,9 @@ const OPTIONAL_ENV_VARS = [
   "FEATURE_BILLEDANALYSE_MOCK",
   "FEATURE_GEUS_MOCK",
   "FEATURE_DHM_MOCK",
+  // ARCH-248: EMOData (Energistyrelsen) — valgfri, kræver registrering på emo-info@ens.dk
+  "EMODATA_USERNAME",
+  "EMODATA_PASSWORD",
 ] as const;
 
 type RequiredEnvKey = (typeof REQUIRED_ENV_VARS)[number];

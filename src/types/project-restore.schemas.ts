@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 import { dataStatusMapSchema } from "@/lib/datacheck";
 
 const complianceFlagSourceValues = [
@@ -110,8 +111,16 @@ export const ruleEngineBbrDataSchema = z
     canonical_candidates_count: z.number(),
     aggregated_bebygget_areal_all_primary: z.number().nullable(),
     bygning_samlet_boligareal: z.number().nullable(),
+    // ARCH-246: Due-diligence felter (.catch(null) = backwards-compat with cached data missing these fields)
+    ombygningsaar: z.number().nullable().catch(null),
+    vandforsyning_kode: z.string().nullable().catch(null),
+    vandforsyning: z.string().nullable().catch(null),
+    afloebsforhold_kode: z.string().nullable().catch(null),
+    afloebsforhold: z.string().nullable().catch(null),
+    ydervaegs_materiale_kode: z.string().nullable().catch(null),
+    tagdaekning_kode: z.string().nullable().catch(null),
   })
-  .passthrough();
+  .passthrough() as z.ZodType<RuleEngineBbrData>;
 
 export const ruleEngineLokalplanSchema = z
   .object({

@@ -46,7 +46,10 @@ import { runLayer1Analysis } from "@/lib/analysis/layer1-analysis";
 import { runLokalplanExtractionStep } from "@/lib/analysis/lokalplan-extraction-step";
 import { runServitutStep } from "@/lib/analysis/servitut-step";
 import { runGeoRiskStep } from "@/lib/analysis/geo-risk-step";
+import { runForsyningStep } from "@/lib/analysis/forsyning-step";
 import { shouldSkipExpensiveLayer4 } from "@/lib/analysis/hard-stop-gate";
+import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
+import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 
 // ---------------------------------------------------------------------------
 // Shared ComplianceResult type (ARCH-6)
@@ -70,6 +73,8 @@ export type ComplianceResult = {
   arealdataContext: RuleEngineArealdataContext | null; // ARCH-245: natur-, kultur- og miljøoverlap
   matGeometri: MatParcelGeometryPayload | null; // ARCH-240: parcelpolygon + skel-metrics
   vurderingData: VurData | null; // ARCH-119: EBR+VUR ejendomsværdi og grundværdi
+  tjekditnetCoverage: TjekditnetCoverageData | null; // ARCH-247: bredbåndsdækning
+  energimaerke: EnergyLabelData | null; // ARCH-248: energimærke
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
   analysisRunId?: string | null;
   serviceStates?: Partial<Record<DataSourceKind, PipelineServiceState>>;
@@ -202,7 +207,7 @@ async function analyseAddressWithTrace(
   // ── Step 4: Layers 2 + 3 + 4 in parallel ─────────────────────────────────
   // Layer 2 (lokalplan PDF), Layer 3 (servitutter) og Layer 4 (geodata)
   // behøver alle kun Layer 1's output. Parallel Promise.all sparer ~2s live.
-  const [lokalplanExtract, servitutter, geoRisk] = await Promise.all([
+  const [lokalplanExtract, servitutter, geoRisk, forsyning] = await Promise.all([
     deps.runLokalplanExtractionStep(addressId, primaryPdfUrl, trace),
     deps.runServitutStep(addressId, enriched.ejerlavskode, enriched.matrikelnummer, trace),
     deps.runGeoRiskStep(
@@ -213,6 +218,13 @@ async function analyseAddressWithTrace(
         bygningIds: complianceBase.bbr?.alle_bygning_lokal_ids ?? [],
         grundareal: enriched.grundareal,
         skipExpensive: shouldSkipExpensiveLayer4(complianceBase.bbr),
+      },
+      trace,
+    ),
+    runForsyningStep(
+      {
+        adgangsadresseid: enriched.adgangsadresseid,
+        bygningLokalId: complianceBase.bbr?.bygning_lokal_id ?? null,
       },
       trace,
     ),
@@ -240,6 +252,8 @@ async function analyseAddressWithTrace(
     arealdataContext: geoRisk.arealdataContext,
     matGeometri: geoRisk.matGeometri,
     vurderingData: complianceBase.vurderingData,
+    tjekditnetCoverage: forsyning.tjekditnetCoverage,
+    energimaerke: forsyning.energimaerke,
     serviceStates,
   };
 }
