@@ -40,9 +40,7 @@ export function Br18KravMatrix({ results, isLoading }: Props) {
           className={`flex items-start justify-between rounded border px-3 py-2 ${STATUS_COLOR[result.status]}`}
         >
           <span className="text-sm font-medium">{result.requirementId}</span>
-          <span className="ml-4 shrink-0 text-xs font-semibold">
-            {STATUS_LABEL[result.status]}
-          </span>
+          <span className="ml-4 shrink-0 text-xs font-semibold">{STATUS_LABEL[result.status]}</span>
         </div>
       ))}
     </div>

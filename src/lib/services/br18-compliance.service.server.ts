@@ -19,10 +19,7 @@ export type Br18ComplianceDeps = {
     hardStop: boolean,
     reason: string | null,
   ) => Promise<void>;
-  updateAuthorityReadiness?: (
-    projectId: string,
-    status: AuthorityReadinessStatus,
-  ) => Promise<void>;
+  updateAuthorityReadiness?: (projectId: string, status: AuthorityReadinessStatus) => Promise<void>;
 };
 
 export type Br18ComplianceResult = {

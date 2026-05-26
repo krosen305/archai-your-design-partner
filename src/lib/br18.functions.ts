@@ -50,15 +50,11 @@ export const getBr18Compliance = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => getBr18ComplianceInputSchema.parse(data))
   .handler(async ({ data }): Promise<Br18ComplianceResponse> => {
     return withAuth(data.token, async () => {
-      const { runBr18Compliance } = await import(
-        "@/lib/services/br18-compliance.service.server"
-      );
-      const { upsertApplicabilityResult } = await import(
-        "@/integrations/supabase/repositories/br18-applicability.repository"
-      );
-      const { getEvidenceForProject } = await import(
-        "@/integrations/supabase/repositories/br18-evidence.repository"
-      );
+      const { runBr18Compliance } = await import("@/lib/services/br18-compliance.service.server");
+      const { upsertApplicabilityResult } =
+        await import("@/integrations/supabase/repositories/br18-applicability.repository");
+      const { getEvidenceForProject } =
+        await import("@/integrations/supabase/repositories/br18-evidence.repository");
 
       const evidenceItems = await getEvidenceForProject(data.projectId);
       const result = await runBr18Compliance(
@@ -88,9 +84,8 @@ export const updateBr18Evidence = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => updateBr18EvidenceInputSchema.parse(data))
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     return withAuth(data.token, async () => {
-      const { updateEvidenceStatus } = await import(
-        "@/integrations/supabase/repositories/br18-evidence.repository"
-      );
+      const { updateEvidenceStatus } =
+        await import("@/integrations/supabase/repositories/br18-evidence.repository");
       await updateEvidenceStatus(data.evidenceId, data.status, data.validationNotes);
       return { success: true };
     });
