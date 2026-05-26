@@ -98,6 +98,9 @@ export function MatrikelMap({
     footprintCenterRef.current = [geo.lng, geo.lat];
   }, [address?.adresseid, geo?.lat, geo?.lng]);
 
+  useEffect(() => { buildingAreaRef.current = buildingArea; }, [buildingArea]);
+  useEffect(() => { rotationDegRef.current = rotationDeg; }, [rotationDeg]);
+
   useEffect(() => {
     buildingAreaRef.current = buildingArea;
   }, [buildingArea]);

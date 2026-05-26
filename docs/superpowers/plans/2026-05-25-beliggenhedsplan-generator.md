@@ -16,30 +16,30 @@
 
 ## File Map
 
-| Fil                                                              | Ansvar                                                                                        | Phase |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----- |
-| `src/domain/drawing/beliggenhedsplan.types.ts`                   | Alle domain-typer (BeliggenhedsplanInput, lag-typer, CRS-wrappere)                            | 1     |
-| `src/domain/drawing/beliggenhedsplan.schemas.ts`                 | Zod schemas til hvert boundary-kryds                                                          | 1     |
-| `src/domain/drawing/ports.ts`                                    | Port-interfaces: DrawingGeometrySourcePort, SurveyUploadDecoderPort, DrawingExportStorePort   | 1     |
-| `src/domain/drawing/source-quality.ts`                           | DrawingSourceQualityReport + confidence-helpers                                               | 1     |
-| `src/domain/drawing/decision-engine.ts`                          | DrawingReadinessDecisionEngine — klassificerer AUTO_DRAFT/AUTO_REVIEW/SURVEY_REQUIRED/BLOCKED | 1     |
-| `src/domain/drawing/decision-engine.test.ts`                     | Tier 1 tests for alle 4 readiness-statuser                                                    | 1     |
-| `src/domain/drawing/geometry-engine.ts`                          | CRS-normalisering, polygon-afstand/buffer/overlap/segmentering via jsts                       | 2     |
-| `src/domain/drawing/geometry-engine.test.ts`                     | Tests med kendte polygon-fixtures i EPSG:25832                                                | 2     |
-| `src/domain/drawing/drawing-model.ts`                            | DrawingModel, DrawingLayer, DrawingFeature, titelbloktypes                                    | 5     |
-| `src/lib/drawing/footprint-builder.ts`                           | Pure helper: byg kvadratfootprint fra centroid + areal (erstatning for MatrikelMap-logik)     | 3     |
-| `src/lib/drawing/drawing-model-builder.ts`                       | Konverterer BeliggenhedsplanInput → DrawingModel                                              | 5     |
-| `src/lib/drawing/drawing-symbols.ts`                             | SVG-symboler: nordpil, skraveringer, linjestyler                                              | 5     |
-| `src/lib/drawing/render-svg.ts`                                  | Deterministisk SVG-renderer fra DrawingModel                                                  | 5     |
-| `src/lib/drawing/render-svg.test.ts`                             | Strukturelle SVG-tests (indeholder parcel, nordpil, titelbloktekst)                           | 5     |
-| `src/services/drawing/assemble-beliggenhedsplan.service.ts`      | Application service: samler BeliggenhedsplanInput via ports                                   | 4     |
-| `src/services/drawing/assemble-beliggenhedsplan.service.test.ts` | Tier 2 tests med fake port-implementations                                                    | 4     |
-| `src/services/drawing/export-drawing.service.ts`                 | Application service: SVG-render → PDF → storage → DB-record                                   | 6     |
-| `src/integrations/geodanmark/drawing-layers.ts`                  | Implementerer DrawingGeometrySourcePort via eksisterende GeoDanmark-klient                    | 4     |
-| `src/integrations/survey/survey.schemas.ts`                      | Zod schemas til survey-upload format (CSV/JSON)                                               | 4     |
-| `src/integrations/survey/upload-decoder.ts`                      | Implementerer SurveyUploadDecoderPort                                                         | 4     |
-| `src/integrations/supabase/repositories/drawing.repository.ts`   | Supabase adapter: drawing_sources/drawing_geometries/drawing_exports                          | 6     |
-| `src/components/cockpit/MatrikelMap.tsx`                         | Refaktoreret til ren visningsadapter — ingen geometriberegninger                              | 3     |
+| Fil | Ansvar | Phase |
+| --- | --- | --- |
+| `src/domain/drawing/beliggenhedsplan.types.ts` | Alle domain-typer (BeliggenhedsplanInput, lag-typer, CRS-wrappere) | 1 |
+| `src/domain/drawing/beliggenhedsplan.schemas.ts` | Zod schemas til hvert boundary-kryds | 1 |
+| `src/domain/drawing/ports.ts` | Port-interfaces: DrawingGeometrySourcePort, SurveyUploadDecoderPort, DrawingExportStorePort | 1 |
+| `src/domain/drawing/source-quality.ts` | DrawingSourceQualityReport + confidence-helpers | 1 |
+| `src/domain/drawing/decision-engine.ts` | DrawingReadinessDecisionEngine — klassificerer AUTO_DRAFT/AUTO_REVIEW/SURVEY_REQUIRED/BLOCKED | 1 |
+| `src/domain/drawing/decision-engine.test.ts` | Tier 1 tests for alle 4 readiness-statuser | 1 |
+| `src/domain/drawing/geometry-engine.ts` | CRS-normalisering, polygon-afstand/buffer/overlap/segmentering via jsts | 2 |
+| `src/domain/drawing/geometry-engine.test.ts` | Tests med kendte polygon-fixtures i EPSG:25832 | 2 |
+| `src/domain/drawing/drawing-model.ts` | DrawingModel, DrawingLayer, DrawingFeature, titelbloktypes | 5 |
+| `src/lib/drawing/footprint-builder.ts` | Pure helper: byg kvadratfootprint fra centroid + areal (erstatning for MatrikelMap-logik) | 3 |
+| `src/lib/drawing/drawing-model-builder.ts` | Konverterer BeliggenhedsplanInput → DrawingModel | 5 |
+| `src/lib/drawing/drawing-symbols.ts` | SVG-symboler: nordpil, skraveringer, linjestyler | 5 |
+| `src/lib/drawing/render-svg.ts` | Deterministisk SVG-renderer fra DrawingModel | 5 |
+| `src/lib/drawing/render-svg.test.ts` | Strukturelle SVG-tests (indeholder parcel, nordpil, titelbloktekst) | 5 |
+| `src/services/drawing/assemble-beliggenhedsplan.service.ts` | Application service: samler BeliggenhedsplanInput via ports | 4 |
+| `src/services/drawing/assemble-beliggenhedsplan.service.test.ts` | Tier 2 tests med fake port-implementations | 4 |
+| `src/services/drawing/export-drawing.service.ts` | Application service: SVG-render → PDF → storage → DB-record | 6 |
+| `src/integrations/geodanmark/drawing-layers.ts` | Implementerer DrawingGeometrySourcePort via eksisterende GeoDanmark-klient | 4 |
+| `src/integrations/survey/survey.schemas.ts` | Zod schemas til survey-upload format (CSV/JSON) | 4 |
+| `src/integrations/survey/upload-decoder.ts` | Implementerer SurveyUploadDecoderPort | 4 |
+| `src/integrations/supabase/repositories/drawing.repository.ts` | Supabase adapter: drawing_sources/drawing_geometries/drawing_exports | 6 |
+| `src/components/cockpit/MatrikelMap.tsx` | Refaktoreret til ren visningsadapter — ingen geometriberegninger | 3 |
 
 ---
 
@@ -48,7 +48,6 @@
 ### Task 1: Domain Types
 
 **Files:**
-
 - Create: `src/domain/drawing/beliggenhedsplan.types.ts`
 
 - [x] **Step 1: Create types file**
@@ -252,7 +251,6 @@ git commit -m "feat(drawing): add BeliggenhedsplanInput domain types"
 ### Task 2: Zod Schemas
 
 **Files:**
-
 - Create: `src/domain/drawing/beliggenhedsplan.schemas.ts`
 
 - [x] **Step 1: Create schemas file**
@@ -282,14 +280,7 @@ export const GeoJsonPolygon25832Schema = z.object({
 });
 
 const DataConfidenceSchema = z.enum(["high", "medium", "low", "unknown"]);
-const DataSourceSchema = z.enum([
-  "survey",
-  "registry",
-  "cad_upload",
-  "manual",
-  "generated",
-  "estimated",
-]);
+const DataSourceSchema = z.enum(["survey", "registry", "cad_upload", "manual", "generated", "estimated"]);
 
 const LayerSourceMetaSchema = z.object({
   source: DataSourceSchema,
@@ -331,31 +322,21 @@ export const ParcelLayerSchema = z.object({
 export const SurveyLayerSchema = z.object({
   uploadedAt: z.string(),
   surveyDate: z.string().nullable(),
-  terrainPoints: z.array(
-    z.object({
-      x: z.number(),
-      y: z.number(),
-      z: z.number(),
-      label: z.string(),
-      source: DataSourceSchema,
-    }),
-  ),
+  terrainPoints: z.array(z.object({ x: z.number(), y: z.number(), z: z.number(), label: z.string(), source: DataSourceSchema })),
   boundaryPoints: z.array(GeoJsonPoint25832Schema),
   notes: z.array(z.string()),
   source: LayerSourceMetaSchema,
 });
 
 export const ExistingFeaturesLayerSchema = z.object({
-  buildings: z.array(
-    z.object({
-      bbrId: z.string().nullable(),
-      footprint25832: GeoJsonPolygon25832Schema,
-      usageCode: z.string().nullable(),
-      areaM2: z.number(),
-      sokkelKoteM: z.number().nullable(),
-      source: LayerSourceMetaSchema,
-    }),
-  ),
+  buildings: z.array(z.object({
+    bbrId: z.string().nullable(),
+    footprint25832: GeoJsonPolygon25832Schema,
+    usageCode: z.string().nullable(),
+    areaM2: z.number(),
+    sokkelKoteM: z.number().nullable(),
+    source: LayerSourceMetaSchema,
+  })),
   fences: z.array(GeoJsonLineString25832Schema),
   source: LayerSourceMetaSchema,
 });
@@ -371,13 +352,7 @@ export const ProposedBuildingLayerSchema = z.object({
 });
 
 export const ConstraintLayerSchema = z.object({
-  type: z.enum([
-    "br18_setback",
-    "localplan_building_line",
-    "road_building_line",
-    "servitut",
-    "building_field",
-  ]),
+  type: z.enum(["br18_setback", "localplan_building_line", "road_building_line", "servitut", "building_field"]),
   geometry25832: z.union([GeoJsonPolygon25832Schema, GeoJsonLineString25832Schema]),
   label: z.string(),
   ruleText: z.string().nullable(),
@@ -428,7 +403,6 @@ git commit -m "feat(drawing): add Zod schemas for all BeliggenhedsplanInput boun
 ### Task 3: Port Interfaces + Source Quality
 
 **Files:**
-
 - Create: `src/domain/drawing/ports.ts`
 - Create: `src/domain/drawing/source-quality.ts`
 
@@ -447,9 +421,7 @@ import type {
 export interface DrawingGeometrySourcePort {
   fetchParcelLayers(matrikelId: string): Promise<ParcelLayer | null>;
   fetchNeighborBuildings(bbox25832: BBox25832): Promise<ExistingFeaturesLayer>;
-  fetchRoadGeometry(
-    addressId: string,
-  ): Promise<{ centerline25832: import("./beliggenhedsplan.types").GeoJsonLineString25832 | null }>;
+  fetchRoadGeometry(addressId: string): Promise<{ centerline25832: import("./beliggenhedsplan.types").GeoJsonLineString25832 | null }>;
   fetchPlandataLayers(kommunekode: string, bbox25832: BBox25832): Promise<ConstraintLayer[]>;
 }
 
@@ -484,9 +456,7 @@ export type DrawingSourceQualityReport = {
   overallConfidence: DataConfidence;
   layerReports: LayerQualityReport[];
   missingDataPoints: string[];
-  requiresReviewBy: Array<
-    "landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed"
-  >;
+  requiresReviewBy: Array<"landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed">;
 };
 
 export type LayerQualityReport = {
@@ -529,7 +499,6 @@ git commit -m "feat(drawing): add port interfaces and source quality types"
 ### Task 4: DrawingReadinessDecisionEngine + Tests (TDD)
 
 **Files:**
-
 - Create: `src/domain/drawing/decision-engine.ts`
 - Create: `src/domain/drawing/decision-engine.test.ts`
 
@@ -557,11 +526,7 @@ const base = {
 
 describe("classifyDrawingReadiness", () => {
   it("AUTO_DRAFT naar minimal data er til stede", () => {
-    const r = classifyDrawingReadiness({
-      ...base,
-      hasExistingBuildingGeometry: false,
-      hasDhmKoter: false,
-    });
+    const r = classifyDrawingReadiness({ ...base, hasExistingBuildingGeometry: false, hasDhmKoter: false });
     expect(r.status).toBe("AUTO_DRAFT");
   });
 
@@ -571,11 +536,7 @@ describe("classifyDrawingReadiness", () => {
   });
 
   it("SURVEY_REQUIRED naar bygning er for taet paa byggelinje", () => {
-    const r = classifyDrawingReadiness({
-      ...base,
-      minDistanceToSetbackLineM: 0.2,
-      setbackRequirementM: 2.5,
-    });
+    const r = classifyDrawingReadiness({ ...base, minDistanceToSetbackLineM: 0.2, setbackRequirementM: 2.5 });
     expect(r.status).toBe("SURVEY_REQUIRED");
     expect(r.reasons.some((r) => r.code === "BUILDING_TOO_CLOSE_TO_SETBACK")).toBe(true);
   });
@@ -597,11 +558,7 @@ describe("classifyDrawingReadiness", () => {
   });
 
   it("missingDataPoints propageres til resultatet", () => {
-    const r = classifyDrawingReadiness({
-      ...base,
-      hasParcelPolygon: false,
-      missingDataPoints: ["parcel.polygon25832"],
-    });
+    const r = classifyDrawingReadiness({ ...base, hasParcelPolygon: false, missingDataPoints: ["parcel.polygon25832"] });
     expect(r.missingDataPoints).toContain("parcel.polygon25832");
   });
 });
@@ -637,9 +594,7 @@ export type DrawingReadinessDecision = {
   status: DrawingReadinessStatus;
   reasons: ReadinessReason[];
   missingDataPoints: string[];
-  reviewRequiredBy: Array<
-    "landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed"
-  >;
+  reviewRequiredBy: Array<"landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed">;
 };
 
 export type DrawingReadinessInput = {
@@ -669,14 +624,7 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   if (!input.hasParcelPolygon) {
     return {
       status: "BLOCKED_MISSING_CORE_DATA",
-      reasons: [
-        {
-          code: "NO_PARCEL_POLYGON",
-          severity: "blocking",
-          message: "Ingen parcelpolygon fundet",
-          affectedLayer: "parcel",
-        },
-      ],
+      reasons: [{ code: "NO_PARCEL_POLYGON", severity: "blocking", message: "Ingen parcelpolygon fundet", affectedLayer: "parcel" }],
       missingDataPoints: ["parcel.polygon25832", ...input.missingDataPoints],
       reviewRequiredBy: ["landinspektoer"],
     };
@@ -685,14 +633,7 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   if (!input.hasProposedFootprint) {
     return {
       status: "BLOCKED_MISSING_CORE_DATA",
-      reasons: [
-        {
-          code: "NO_PROPOSED_FOOTPRINT",
-          severity: "blocking",
-          message: "Ingen foreslaaet bygningsfodprint",
-          affectedLayer: "proposed",
-        },
-      ],
+      reasons: [{ code: "NO_PROPOSED_FOOTPRINT", severity: "blocking", message: "Ingen foreslaaet bygningsfodprint", affectedLayer: "proposed" }],
       missingDataPoints: ["proposed.primaryBuilding.footprint25832", ...input.missingDataPoints],
       reviewRequiredBy: ["arkitekt"],
     };
@@ -701,14 +642,7 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   if (!input.hasAddress || !input.hasMatrikel) {
     return {
       status: "BLOCKED_MISSING_CORE_DATA",
-      reasons: [
-        {
-          code: "NO_ADDRESS_OR_MATRIKEL",
-          severity: "blocking",
-          message: "Adresse eller matrikel mangler",
-          affectedLayer: "metadata",
-        },
-      ],
+      reasons: [{ code: "NO_ADDRESS_OR_MATRIKEL", severity: "blocking", message: "Adresse eller matrikel mangler", affectedLayer: "metadata" }],
       missingDataPoints: input.missingDataPoints,
       reviewRequiredBy: [],
     };
@@ -719,33 +653,18 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   const safeDistance = input.setbackRequirementM + THRESHOLDS.setbackSafetyMarginM;
   if (input.minDistanceToSetbackLineM < safeDistance) {
     surveyRequired = true;
-    reasons.push({
-      code: "BUILDING_TOO_CLOSE_TO_SETBACK",
-      severity: "warning",
-      message: `Bygning er ${input.minDistanceToSetbackLineM.toFixed(2)} m fra byggelinje — krav + margin er ${safeDistance.toFixed(2)} m`,
-      affectedLayer: "proposed",
-    });
+    reasons.push({ code: "BUILDING_TOO_CLOSE_TO_SETBACK", severity: "warning", message: `Bygning er ${input.minDistanceToSetbackLineM.toFixed(2)} m fra byggelinje — krav + margin er ${safeDistance.toFixed(2)} m`, affectedLayer: "proposed" });
     reviewRequiredBy.push("landinspektoer");
   }
 
   if (input.parcelAreaDiscrepancyPct > THRESHOLDS.maxParcelAreaDiscrepancyPct) {
     surveyRequired = true;
-    reasons.push({
-      code: "PARCEL_AREA_DISCREPANCY",
-      severity: "warning",
-      message: `Arealafvigelse er ${input.parcelAreaDiscrepancyPct.toFixed(1)}% — graense er ${THRESHOLDS.maxParcelAreaDiscrepancyPct}%`,
-      affectedLayer: "parcel",
-    });
+    reasons.push({ code: "PARCEL_AREA_DISCREPANCY", severity: "warning", message: `Arealafvigelse er ${input.parcelAreaDiscrepancyPct.toFixed(1)}% — graense er ${THRESHOLDS.maxParcelAreaDiscrepancyPct}%`, affectedLayer: "parcel" });
     reviewRequiredBy.push("landinspektoer");
   }
 
   if (surveyRequired) {
-    return {
-      status: "SURVEY_REQUIRED",
-      reasons,
-      missingDataPoints: input.missingDataPoints,
-      reviewRequiredBy,
-    };
+    return { status: "SURVEY_REQUIRED", reasons, missingDataPoints: input.missingDataPoints, reviewRequiredBy };
   }
 
   const isAutoReview =
@@ -759,20 +678,10 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   }
 
   if (input.missingDataPoints.length > 0) {
-    reasons.push({
-      code: "MISSING_DATA_POINTS",
-      severity: "info",
-      message: `${input.missingDataPoints.length} datapunkter mangler`,
-      affectedLayer: "multiple",
-    });
+    reasons.push({ code: "MISSING_DATA_POINTS", severity: "info", message: `${input.missingDataPoints.length} datapunkter mangler`, affectedLayer: "multiple" });
   }
 
-  return {
-    status: "AUTO_DRAFT",
-    reasons,
-    missingDataPoints: input.missingDataPoints,
-    reviewRequiredBy,
-  };
+  return { status: "AUTO_DRAFT", reasons, missingDataPoints: input.missingDataPoints, reviewRequiredBy };
 }
 ```
 
@@ -804,7 +713,6 @@ git commit -m "feat(drawing): DrawingReadinessDecisionEngine — alle 4 statuser
 ### Task 5: Installer jsts + Geometry Engine
 
 **Files:**
-
 - Create: `src/domain/drawing/geometry-engine.ts`
 - Create: `src/domain/drawing/geometry-engine.test.ts`
 
@@ -835,45 +743,21 @@ import type { GeoJsonPolygon25832 } from "./beliggenhedsplan.types";
 const parcel20x20: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [
-    [
-      [720000, 6170000],
-      [720020, 6170000],
-      [720020, 6170020],
-      [720000, 6170020],
-      [720000, 6170000],
-    ],
-  ],
+  coordinates: [[[720000, 6170000], [720020, 6170000], [720020, 6170020], [720000, 6170020], [720000, 6170000]]],
 };
 
 // 4x4m bygning placeret 3m fra vest og 3m fra nord
 const building4x4: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [
-    [
-      [720003, 6170003],
-      [720007, 6170003],
-      [720007, 6170007],
-      [720003, 6170007],
-      [720003, 6170003],
-    ],
-  ],
+  coordinates: [[[720003, 6170003], [720007, 6170003], [720007, 6170007], [720003, 6170007], [720003, 6170003]]],
 };
 
 // Polygon helt udenfor parcellen
 const outsidePolygon: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [
-    [
-      [720100, 6170100],
-      [720110, 6170100],
-      [720110, 6170110],
-      [720100, 6170110],
-      [720100, 6170100],
-    ],
-  ],
+  coordinates: [[[720100, 6170100], [720110, 6170100], [720110, 6170110], [720100, 6170110], [720100, 6170100]]],
 };
 
 describe("polygonAreaM2", () => {
@@ -957,7 +841,7 @@ export function polygonAreaM2(polygon: GeoJsonPolygon25832): number {
 
 export function distanceToNearestBoundaryM(
   building: GeoJsonPolygon25832,
-  parcel: GeoJsonPolygon25832,
+  parcel: GeoJsonPolygon25832
 ): number {
   return toJsts(building).distance(toJsts(parcel).getBoundary());
 }
@@ -969,10 +853,7 @@ export function polygonOverlapAreaM2(a: GeoJsonPolygon25832, b: GeoJsonPolygon25
   return Math.abs(ga.intersection(gb).getArea());
 }
 
-export function generateBuffer25832(
-  polygon: GeoJsonPolygon25832,
-  bufferM: number,
-): GeoJsonPolygon25832 {
+export function generateBuffer25832(polygon: GeoJsonPolygon25832, bufferM: number): GeoJsonPolygon25832 {
   return fromJstsPolygon(toJsts(polygon).buffer(bufferM));
 }
 
@@ -992,7 +873,7 @@ export function splitPolygonIntoBoundarySegments(polygon: GeoJsonPolygon25832): 
 
 export function distanceToBoundarySegments(
   building: GeoJsonPolygon25832,
-  parcel: GeoJsonPolygon25832,
+  parcel: GeoJsonPolygon25832
 ): Array<{ segmentId: string; distanceM: number }> {
   const buildingGeom = toJsts(building);
   return splitPolygonIntoBoundarySegments(parcel).map((seg) => {
@@ -1037,7 +918,6 @@ git commit -m "feat(drawing): geometry engine med jsts — areal, afstand, buffe
 `MatrikelMap.tsx` konstruerer i dag et kvadrat ud fra `buildingArea` og gemmer kun centroid. Al geometriberegning skal ud af komponenten foer nogen ny geometrifunktionalitet tilfojes.
 
 **Files:**
-
 - Create: `src/lib/drawing/footprint-builder.ts`
 - Modify: `src/components/cockpit/MatrikelMap.tsx`
 
@@ -1052,10 +932,7 @@ Kig efter: kvadrat-konstruktion fra `buildingArea`, centroid-opdatering, eventue
 import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
 import proj4 from "proj4";
 
-proj4.defs(
-  "EPSG:25832",
-  "+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs",
-);
+proj4.defs("EPSG:25832", "+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
 export type FootprintParams = {
   centroidWgs84: [number, number]; // [lng, lat]
@@ -1069,12 +946,7 @@ export function buildSquareFootprint25832(params: FootprintParams): GeoJsonPolyg
   const angle = (params.rotationDeg * Math.PI) / 180;
 
   const corners: [number, number][] = (
-    [
-      [-halfSide, -halfSide],
-      [halfSide, -halfSide],
-      [halfSide, halfSide],
-      [-halfSide, halfSide],
-    ] as [number, number][]
+    [[-halfSide, -halfSide], [halfSide, -halfSide], [halfSide, halfSide], [-halfSide, halfSide]] as [number, number][]
   ).map(([dx, dy]) => [
     cx + dx * Math.cos(angle) - dy * Math.sin(angle),
     cy + dx * Math.sin(angle) + dy * Math.cos(angle),
@@ -1091,7 +963,6 @@ export function buildSquareFootprint25832(params: FootprintParams): GeoJsonPolyg
 - [x] **Step 3: Opdater MatrikelMap.tsx**
 
 Fjern al geometriberegning fra komponenten. Komponenten maa kun:
-
 - Vise parcelpolygon
 - Modtage `footprintGeojson?: GeoJsonPolygon25832` som prop og vise den
 - Emitte `onFootprintChange?(geojson: GeoJsonPolygon25832)` naar brugeren flytter
@@ -1120,7 +991,6 @@ git commit -m "refactor(map): fjern geometrilogik fra MatrikelMap til footprint-
 ### Task 7: GeoDanmark Drawing Layers Adapter
 
 **Files:**
-
 - Create: `src/integrations/geodanmark/drawing-layers.ts`
 
 - [x] **Step 1: Find hvilken funktion der henter parcelgeometri i den eksisterende klient**
@@ -1136,16 +1006,8 @@ Noteer det eksakte funktionsnavn og retur-type.
 ```typescript
 // src/integrations/geodanmark/drawing-layers.ts
 import type { DrawingGeometrySourcePort } from "@/domain/drawing/ports";
-import type {
-  ParcelLayer,
-  ExistingFeaturesLayer,
-  ConstraintLayer,
-  BBox25832,
-} from "@/domain/drawing/beliggenhedsplan.types";
-import {
-  ParcelLayerSchema,
-  ExistingFeaturesLayerSchema,
-} from "@/domain/drawing/beliggenhedsplan.schemas";
+import type { ParcelLayer, ExistingFeaturesLayer, ConstraintLayer, BBox25832 } from "@/domain/drawing/beliggenhedsplan.types";
+import { ParcelLayerSchema, ExistingFeaturesLayerSchema } from "@/domain/drawing/beliggenhedsplan.schemas";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
 import { splitPolygonIntoBoundarySegments } from "@/domain/drawing/geometry-engine";
 // Tilpas import til det faktiske eksporterede navn fra client.ts:
@@ -1172,9 +1034,7 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
       polygon25832,
       areaRegisteredM2: raw.registreretAreal,
       areaGeometryM2: raw.beregnetAreal ?? raw.registreretAreal,
-      areaDiscrepancyM2: Math.abs(
-        (raw.beregnetAreal ?? raw.registreretAreal) - raw.registreretAreal,
-      ),
+      areaDiscrepancyM2: Math.abs((raw.beregnetAreal ?? raw.registreretAreal) - raw.registreretAreal),
       boundarySegments: splitPolygonIntoBoundarySegments(polygon25832),
       neighborParcels: [],
       labelPoint25832: { type: "Point", crs: "EPSG:25832", coordinates: raw.centroid ?? [0, 0] },
@@ -1198,10 +1058,7 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     return { centerline25832: null };
   }
 
-  async fetchPlandataLayers(
-    _kommunekode: string,
-    _bbox25832: BBox25832,
-  ): Promise<ConstraintLayer[]> {
+  async fetchPlandataLayers(_kommunekode: string, _bbox25832: BBox25832): Promise<ConstraintLayer[]> {
     return [];
   }
 }
@@ -1227,7 +1084,6 @@ git commit -m "feat(geodanmark): DrawingGeometrySourcePort adapter for drawing l
 ### Task 8: Survey Upload Decoder
 
 **Files:**
-
 - Create: `src/integrations/survey/survey.schemas.ts`
 - Create: `src/integrations/survey/upload-decoder.ts`
 
@@ -1276,11 +1132,7 @@ export class SurveyUploadDecoder implements SurveyUploadDecoderPort {
         .map((p) => ({ x: p.x, y: p.y, z: p.z, label: p.label, source: "survey" as const })),
       boundaryPoints: payload.points
         .filter((p) => p.type === "boundary")
-        .map((p) => ({
-          type: "Point" as const,
-          crs: "EPSG:25832" as const,
-          coordinates: [p.x, p.y] as [number, number],
-        })),
+        .map((p) => ({ type: "Point" as const, crs: "EPSG:25832" as const, coordinates: [p.x, p.y] as [number, number] })),
       notes: payload.notes,
       source: surveySourceMeta(now),
     };
@@ -1308,7 +1160,6 @@ git commit -m "feat(survey): SurveyUploadDecoderPort adapter med Zod-validering"
 ### Task 9: Assemble Beliggenhedsplan Service + Tier 2 Tests (TDD)
 
 **Files:**
-
 - Create: `src/services/drawing/assemble-beliggenhedsplan.service.ts`
 - Create: `src/services/drawing/assemble-beliggenhedsplan.service.test.ts`
 
@@ -1319,11 +1170,7 @@ git commit -m "feat(survey): SurveyUploadDecoderPort adapter med Zod-validering"
 import { describe, it, expect } from "bun:test";
 import { assembleBeliggenhedsplan } from "./assemble-beliggenhedsplan.service";
 import type { DrawingGeometrySourcePort } from "@/domain/drawing/ports";
-import type {
-  ParcelLayer,
-  ExistingFeaturesLayer,
-  GeoJsonPolygon25832,
-} from "@/domain/drawing/beliggenhedsplan.types";
+import type { ParcelLayer, ExistingFeaturesLayer, GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
 
 const now = new Date().toISOString();
@@ -1337,15 +1184,7 @@ const fakeParcel: ParcelLayer = {
   polygon25832: {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [
-      [
-        [720000, 6170000],
-        [720020, 6170000],
-        [720020, 6170020],
-        [720000, 6170020],
-        [720000, 6170000],
-      ],
-    ],
+    coordinates: [[[720000, 6170000], [720020, 6170000], [720020, 6170020], [720000, 6170020], [720000, 6170000]]],
   },
   areaRegisteredM2: 400,
   areaGeometryM2: 400,
@@ -1372,15 +1211,7 @@ const fakeSource: DrawingGeometrySourcePort = {
 const fakeFootprint: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [
-    [
-      [720005, 6170005],
-      [720015, 6170005],
-      [720015, 6170015],
-      [720005, 6170015],
-      [720005, 6170005],
-    ],
-  ],
+  coordinates: [[[720005, 6170005], [720015, 6170005], [720015, 6170015], [720005, 6170015], [720005, 6170005]]],
 };
 
 const baseMeta = {
@@ -1398,14 +1229,9 @@ const baseMeta = {
 describe("assembleBeliggenhedsplan", () => {
   it("returnerer plan med parcel fra port", async () => {
     const result = await assembleBeliggenhedsplan({
-      matrikelId: "test-id",
-      kommunekode: "0101",
-      addressId: "addr-1",
-      proposedFootprint25832: fakeFootprint,
-      projectId: "proj-1",
-      metadata: baseMeta,
-      geometrySource: fakeSource,
-      survey: null,
+      matrikelId: "test-id", kommunekode: "0101", addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint, projectId: "proj-1",
+      metadata: baseMeta, geometrySource: fakeSource, survey: null,
     });
     expect(result.plan?.crs).toBe("EPSG:25832");
     expect(result.plan?.parcel.matrikelnummer).toBe("1a");
@@ -1413,19 +1239,11 @@ describe("assembleBeliggenhedsplan", () => {
   });
 
   it("returnerer BLOCKED naar port ikke kan finde parcel", async () => {
-    const nullSource: DrawingGeometrySourcePort = {
-      ...fakeSource,
-      fetchParcelLayers: async () => null,
-    };
+    const nullSource: DrawingGeometrySourcePort = { ...fakeSource, fetchParcelLayers: async () => null };
     const result = await assembleBeliggenhedsplan({
-      matrikelId: "missing",
-      kommunekode: "0101",
-      addressId: "addr-1",
-      proposedFootprint25832: fakeFootprint,
-      projectId: "proj-1",
-      metadata: baseMeta,
-      geometrySource: nullSource,
-      survey: null,
+      matrikelId: "missing", kommunekode: "0101", addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint, projectId: "proj-1",
+      metadata: baseMeta, geometrySource: nullSource, survey: null,
     });
     expect(result.readiness.status).toBe("BLOCKED_MISSING_CORE_DATA");
     expect(result.plan).toBeNull();
@@ -1433,14 +1251,9 @@ describe("assembleBeliggenhedsplan", () => {
 
   it("footprintAreaM2 beregnes fra den faktiske polygon", async () => {
     const result = await assembleBeliggenhedsplan({
-      matrikelId: "test-id",
-      kommunekode: "0101",
-      addressId: "addr-1",
-      proposedFootprint25832: fakeFootprint,
-      projectId: "proj-1",
-      metadata: baseMeta,
-      geometrySource: fakeSource,
-      survey: null,
+      matrikelId: "test-id", kommunekode: "0101", addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint, projectId: "proj-1",
+      metadata: baseMeta, geometrySource: fakeSource, survey: null,
     });
     expect(result.plan?.proposed.footprintAreaM2).toBeCloseTo(100, 0);
   });
@@ -1457,22 +1270,10 @@ bun test src/services/drawing/assemble-beliggenhedsplan.service.test.ts
 
 ```typescript
 // src/services/drawing/assemble-beliggenhedsplan.service.ts
-import type {
-  BeliggenhedsplanInput,
-  DrawingMetadata,
-  GeoJsonPolygon25832,
-  SurveyLayer,
-} from "@/domain/drawing/beliggenhedsplan.types";
+import type { BeliggenhedsplanInput, DrawingMetadata, GeoJsonPolygon25832, SurveyLayer } from "@/domain/drawing/beliggenhedsplan.types";
 import type { DrawingGeometrySourcePort } from "@/domain/drawing/ports";
-import {
-  classifyDrawingReadiness,
-  type DrawingReadinessDecision,
-} from "@/domain/drawing/decision-engine";
-import {
-  polygonAreaM2,
-  distanceToNearestBoundaryM,
-  splitPolygonIntoBoundarySegments,
-} from "@/domain/drawing/geometry-engine";
+import { classifyDrawingReadiness, type DrawingReadinessDecision } from "@/domain/drawing/decision-engine";
+import { polygonAreaM2, distanceToNearestBoundaryM, splitPolygonIntoBoundarySegments } from "@/domain/drawing/geometry-engine";
 import { generatedSourceMeta } from "@/domain/drawing/source-quality";
 
 type AssembleInput = {
@@ -1492,8 +1293,7 @@ type AssembleResult = {
 };
 
 export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<AssembleResult> {
-  const { matrikelId, kommunekode, proposedFootprint25832, geometrySource, survey, metadata } =
-    input;
+  const { matrikelId, kommunekode, proposedFootprint25832, geometrySource, survey, metadata } = input;
 
   const parcel = await geometrySource.fetchParcelLayers(matrikelId);
 
@@ -1501,38 +1301,24 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     return {
       plan: null,
       readiness: classifyDrawingReadiness({
-        hasAddress: true,
-        hasMatrikel: true,
-        hasParcelPolygon: false,
-        hasProposedFootprint: true,
-        hasCrsContract: true,
-        parcelAreaDiscrepancyPct: 0,
-        minDistanceToSetbackLineM: 999,
-        setbackRequirementM: 2.5,
-        hasOpmaalteKoter: false,
-        hasDhmKoter: false,
-        hasExistingBuildingGeometry: false,
-        missingDataPoints: ["parcel.polygon25832"],
+        hasAddress: true, hasMatrikel: true, hasParcelPolygon: false, hasProposedFootprint: true,
+        hasCrsContract: true, parcelAreaDiscrepancyPct: 0, minDistanceToSetbackLineM: 999,
+        setbackRequirementM: 2.5, hasOpmaalteKoter: false, hasDhmKoter: false,
+        hasExistingBuildingGeometry: false, missingDataPoints: ["parcel.polygon25832"],
       }),
     };
   }
 
   const parcelWithSegments = {
     ...parcel,
-    boundarySegments:
-      parcel.boundarySegments.length > 0
-        ? parcel.boundarySegments
-        : splitPolygonIntoBoundarySegments(parcel.polygon25832),
+    boundarySegments: parcel.boundarySegments.length > 0
+      ? parcel.boundarySegments
+      : splitPolygonIntoBoundarySegments(parcel.polygon25832),
   };
 
   const xs = parcel.polygon25832.coordinates[0].map((c) => c[0]);
   const ys = parcel.polygon25832.coordinates[0].map((c) => c[1]);
-  const bbox: [number, number, number, number] = [
-    Math.min(...xs),
-    Math.min(...ys),
-    Math.max(...xs),
-    Math.max(...ys),
-  ];
+  const bbox: [number, number, number, number] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 
   const [existing, constraints] = await Promise.all([
     geometrySource.fetchNeighborBuildings(bbox),
@@ -1540,12 +1326,8 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
   ]);
 
   const footprintAreaM2 = polygonAreaM2(proposedFootprint25832);
-  const minDistanceToBoundaryM = distanceToNearestBoundaryM(
-    proposedFootprint25832,
-    parcelWithSegments.polygon25832,
-  );
-  const areaDiscrepancyPct =
-    (parcelWithSegments.areaDiscrepancyM2 / parcelWithSegments.areaRegisteredM2) * 100;
+  const minDistanceToBoundaryM = distanceToNearestBoundaryM(proposedFootprint25832, parcelWithSegments.polygon25832);
+  const areaDiscrepancyPct = (parcelWithSegments.areaDiscrepancyM2 / parcelWithSegments.areaRegisteredM2) * 100;
 
   const plan: BeliggenhedsplanInput = {
     crs: "EPSG:25832",
@@ -1569,11 +1351,8 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
   };
 
   const readiness = classifyDrawingReadiness({
-    hasAddress: !!metadata.address,
-    hasMatrikel: !!metadata.matrikel,
-    hasParcelPolygon: true,
-    hasProposedFootprint: true,
-    hasCrsContract: true,
+    hasAddress: !!metadata.address, hasMatrikel: !!metadata.matrikel,
+    hasParcelPolygon: true, hasProposedFootprint: true, hasCrsContract: true,
     parcelAreaDiscrepancyPct: areaDiscrepancyPct,
     minDistanceToSetbackLineM: minDistanceToBoundaryM,
     setbackRequirementM: 2.5,
@@ -1615,7 +1394,6 @@ git commit -m "feat(drawing): assembleBeliggenhedsplan service med Tier 2 tests"
 ### Task 10: Drawing Model + Symbols
 
 **Files:**
-
 - Create: `src/domain/drawing/drawing-model.ts`
 - Create: `src/lib/drawing/drawing-symbols.ts`
 
@@ -1625,19 +1403,10 @@ git commit -m "feat(drawing): assembleBeliggenhedsplan service med Tier 2 tests"
 // src/domain/drawing/drawing-model.ts
 
 export type DrawingLayerKind =
-  | "parcel_boundary"
-  | "neighbor_parcels"
-  | "existing_buildings"
-  | "proposed_buildings"
-  | "setback_lines"
-  | "building_lines"
-  | "terrain_points"
-  | "utilities"
-  | "site_use"
-  | "dimensions"
-  | "labels"
-  | "title_block"
-  | "legend";
+  | "parcel_boundary" | "neighbor_parcels" | "existing_buildings"
+  | "proposed_buildings" | "setback_lines" | "building_lines"
+  | "terrain_points" | "utilities" | "site_use" | "dimensions" | "labels"
+  | "title_block" | "legend";
 
 export type DrawingFeature = {
   id: string;
@@ -1664,13 +1433,7 @@ export type DrawingTitleBlock = {
 };
 
 export type DrawingModel = {
-  page: {
-    size: "A3" | "A2" | "A1";
-    orientation: "landscape" | "portrait";
-    scale: 250 | 500;
-    widthMm: number;
-    heightMm: number;
-  };
+  page: { size: "A3" | "A2" | "A1"; orientation: "landscape" | "portrait"; scale: 250 | 500; widthMm: number; heightMm: number };
   viewport: { bbox25832: [number, number, number, number]; metersPerMm: number };
   features: DrawingFeature[];
   titleBlock: DrawingTitleBlock;
@@ -1687,7 +1450,7 @@ export const PAGE_SIZES = {
 
 export function computeViewport(
   bbox25832: [number, number, number, number],
-  scale: 250 | 500,
+  scale: 250 | 500
 ): DrawingModel["viewport"] {
   return { bbox25832, metersPerMm: scale / 1000 };
 }
@@ -1733,7 +1496,6 @@ git commit -m "feat(drawing): DrawingModel types og SVG-symbolhelpers"
 ### Task 11: SVG Renderer + Tests
 
 **Files:**
-
 - Create: `src/lib/drawing/render-svg.ts`
 - Create: `src/lib/drawing/render-svg.test.ts`
 - Create: `src/lib/drawing/drawing-model-builder.ts`
@@ -1749,28 +1511,15 @@ import type { DrawingModel } from "@/domain/drawing/drawing-model";
 const model: DrawingModel = {
   page: { size: "A3", orientation: "landscape", scale: 250, widthMm: 420, heightMm: 297 },
   viewport: { bbox25832: [720000, 6170000, 720100, 6170070], metersPerMm: 0.25 },
-  features: [
-    {
-      id: "parcel-1",
-      kind: "parcel_boundary",
-      svgElement:
-        '<polygon points="0,0 100,0 100,70 0,70" fill="none" stroke="#000" stroke-width="1"/>',
-      label: null,
-      labelX: null,
-      labelY: null,
-      zIndex: 10,
-    },
-  ],
+  features: [{
+    id: "parcel-1", kind: "parcel_boundary",
+    svgElement: '<polygon points="0,0 100,0 100,70 0,70" fill="none" stroke="#000" stroke-width="1"/>',
+    label: null, labelX: null, labelY: null, zIndex: 10,
+  }],
   titleBlock: {
-    title: "Beliggenhedsplan",
-    address: "Testvej 1, 2000 Frederiksberg",
-    matrikel: "1a Frederiksberg",
-    bygherre: null,
-    sagNr: null,
-    scale: "1:250",
-    paperSize: "A3",
-    date: "2026-05-25",
-    revision: "A",
+    title: "Beliggenhedsplan", address: "Testvej 1, 2000 Frederiksberg",
+    matrikel: "1a Frederiksberg", bygherre: null, sagNr: null,
+    scale: "1:250", paperSize: "A3", date: "2026-05-25", revision: "A",
     disclaimer: "FORELOEBIG - ikke til myndighedsbrug",
     sourceList: ["MAT WFS 2026-05-25"],
   },
@@ -1815,11 +1564,7 @@ import type { DrawingModel } from "@/domain/drawing/drawing-model";
 import { northArrowSvg } from "./drawing-symbols";
 
 function esc(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export function renderSvg(model: DrawingModel): string {
@@ -1872,28 +1617,15 @@ import type { DrawingReadinessDecision } from "@/domain/drawing/decision-engine"
 import type { DrawingModel } from "@/domain/drawing/drawing-model";
 import { PAGE_SIZES, computeViewport } from "@/domain/drawing/drawing-model";
 
-export function buildDrawingModel(
-  plan: BeliggenhedsplanInput,
-  readiness: DrawingReadinessDecision,
-): DrawingModel {
+export function buildDrawingModel(plan: BeliggenhedsplanInput, readiness: DrawingReadinessDecision): DrawingModel {
   const coords = plan.parcel.polygon25832.coordinates[0];
   const xs = coords.map((c) => c[0]);
   const ys = coords.map((c) => c[1]);
-  const bbox: [number, number, number, number] = [
-    Math.min(...xs),
-    Math.min(...ys),
-    Math.max(...xs),
-    Math.max(...ys),
-  ];
+  const bbox: [number, number, number, number] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   const page = PAGE_SIZES[plan.metadata.paperSize];
 
   return {
-    page: {
-      size: plan.metadata.paperSize,
-      orientation: "landscape",
-      scale: plan.metadata.scale,
-      ...page,
-    },
+    page: { size: plan.metadata.paperSize, orientation: "landscape", scale: plan.metadata.scale, ...page },
     viewport: computeViewport(bbox, plan.metadata.scale),
     features: [],
     titleBlock: {
@@ -1907,10 +1639,7 @@ export function buildDrawingModel(
       date: plan.metadata.date,
       revision: plan.metadata.revision,
       disclaimer: readiness.status === "AUTO_DRAFT" ? "FORELOEBIG — ikke til myndighedsbrug" : null,
-      sourceList:
-        readiness.reviewRequiredBy.length > 0
-          ? [`Review kraevet: ${readiness.reviewRequiredBy.join(", ")}`]
-          : [],
+      sourceList: readiness.reviewRequiredBy.length > 0 ? [`Review kraevet: ${readiness.reviewRequiredBy.join(", ")}`] : [],
     },
     legend: [],
     northArrowRotationDeg: 0,
@@ -1977,7 +1706,6 @@ Kjoer migrationen **foer Task 12**:
 ### Task 12: Drawing Repository
 
 **Files:**
-
 - Create: `src/integrations/supabase/repositories/drawing.repository.ts`
 
 - [x] **Step 1: Find den eksisterende Supabase createClient-import i et andet repository**
@@ -1997,9 +1725,7 @@ import { createClient } from "@/integrations/supabase/client";
 import type { DrawingExportStorePort, DrawingExportRecord } from "@/domain/drawing/ports";
 
 export class DrawingRepository implements DrawingExportStorePort {
-  private get supabase() {
-    return createClient();
-  }
+  private get supabase() { return createClient(); }
 
   async saveSvg(projectId: string, svg: string): Promise<string> {
     const path = `drawings/${projectId}/${Date.now()}.svg`;
@@ -2082,7 +1808,6 @@ git commit -m "feat(supabase): DrawingRepository implementerer DrawingExportStor
 ### Task 13: Export Drawing Service + Server Function
 
 **Files:**
-
 - Create: `src/services/drawing/export-drawing.service.ts`
 
 - [x] **Step 1: Create export-drawing.service.ts**
@@ -2101,13 +1826,7 @@ type ExportInput = {
   readiness: DrawingReadinessDecision;
   projectId: string;
   store: DrawingExportStorePort & {
-    saveExportRecord(params: {
-      projectId: string;
-      svgPath: string | null;
-      pdfPath: string | null;
-      readinessStatus: string;
-      inputHash: string;
-    }): Promise<string>;
+    saveExportRecord(params: { projectId: string; svgPath: string | null; pdfPath: string | null; readinessStatus: string; inputHash: string }): Promise<string>;
   };
 };
 
@@ -2171,54 +1890,22 @@ const ExportBeliggenhedsplanInputSchema = z.object({
 export const exportBeliggenhedsplanFn = createServerFn("POST", async (raw: unknown) => {
   const input = ExportBeliggenhedsplanInputSchema.parse(raw);
   await withAuth();
-  const { assembleBeliggenhedsplan } =
-    await import("@/services/drawing/assemble-beliggenhedsplan.service");
+  const { assembleBeliggenhedsplan } = await import("@/services/drawing/assemble-beliggenhedsplan.service");
   const { exportDrawing } = await import("@/services/drawing/export-drawing.service");
-  const { GeoDanmarkDrawingLayersAdapter } =
-    await import("@/integrations/geodanmark/drawing-layers");
-  const { DrawingRepository } =
-    await import("@/integrations/supabase/repositories/drawing.repository");
+  const { GeoDanmarkDrawingLayersAdapter } = await import("@/integrations/geodanmark/drawing-layers");
+  const { DrawingRepository } = await import("@/integrations/supabase/repositories/drawing.repository");
 
   const assembled = await assembleBeliggenhedsplan({
-    matrikelId: input.matrikelId,
-    kommunekode: input.kommunekode,
-    addressId: input.addressId,
-    proposedFootprint25832: {
-      type: "Polygon",
-      crs: "EPSG:25832",
-      coordinates: [
-        [
-          [0, 0],
-          [10, 0],
-          [10, 10],
-          [0, 10],
-          [0, 0],
-        ],
-      ],
-    },
+    matrikelId: input.matrikelId, kommunekode: input.kommunekode, addressId: input.addressId,
+    proposedFootprint25832: { type: "Polygon", crs: "EPSG:25832", coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]] },
     projectId: input.projectId,
-    metadata: {
-      title: "Beliggenhedsplan",
-      address: input.addressId,
-      matrikel: input.matrikelId,
-      bygherre: null,
-      sagNr: input.projectId,
-      revision: "A",
-      date: new Date().toISOString().slice(0, 10),
-      scale: 250,
-      paperSize: "A3",
-    },
+    metadata: { title: "Beliggenhedsplan", address: input.addressId, matrikel: input.matrikelId, bygherre: null, sagNr: input.projectId, revision: "A", date: new Date().toISOString().slice(0, 10), scale: 250, paperSize: "A3" },
     geometrySource: new GeoDanmarkDrawingLayersAdapter(),
     survey: null,
   });
 
   if (!assembled.plan) throw new Error(assembled.readiness.status);
-  return exportDrawing({
-    plan: assembled.plan,
-    readiness: assembled.readiness,
-    projectId: input.projectId,
-    store: new DrawingRepository(),
-  });
+  return exportDrawing({ plan: assembled.plan, readiness: assembled.readiness, projectId: input.projectId, store: new DrawingRepository() });
 });
 ```
 

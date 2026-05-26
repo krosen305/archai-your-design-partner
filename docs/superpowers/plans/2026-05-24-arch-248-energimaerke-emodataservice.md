@@ -17,23 +17,21 @@
 ## File Structure
 
 ### Created
-
-| File                                                          | Purpose                                    |
-| ------------------------------------------------------------- | ------------------------------------------ |
-| `src/integrations/energimaerke/client.ts`                     | EnergyLabelService + typed result          |
-| `src/integrations/energimaerke/client.test.ts`                | Unit tests (parse, expired, no-hit, error) |
-| `supabase/migrations/20260524180000_arch248_energimaerke.sql` | New typed columns on `site_constraints`    |
+| File | Purpose |
+|------|---------|
+| `src/integrations/energimaerke/client.ts` | EnergyLabelService + typed result |
+| `src/integrations/energimaerke/client.test.ts` | Unit tests (parse, expired, no-hit, error) |
+| `supabase/migrations/20260524180000_arch248_energimaerke.sql` | New typed columns on `site_constraints` |
 
 ### Modified
-
-| File                                                                    | Change                                                       |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `src/integrations/supabase/repositories/site-constraints.derivation.ts` | Map energy label to typed columns                            |
-| `src/integrations/supabase/repositories/building-tasks.derivation.ts`   | Extend `ComplianceTriggers`; add `ENERGIMAERKE_RAPPORT` task |
-| `src/types/building-platform.ts`                                        | Add `ENERGIMAERKE_RAPPORT` to `BUILDING_TASK_KEYS`           |
-| `src/types/project-state.ts`                                            | Add `"energimaerke"` to `DataSourceKind`                     |
-| `src/lib/analysis/forsyning-step.ts`                                    | Call EnergyLabelService (extend from ARCH-247 or create)     |
-| `src/lib/analysis-orchestrator.ts` (**protected**, if new step needed)  | Wire step into pipeline                                      |
+| File | Change |
+|------|--------|
+| `src/integrations/supabase/repositories/site-constraints.derivation.ts` | Map energy label to typed columns |
+| `src/integrations/supabase/repositories/building-tasks.derivation.ts` | Extend `ComplianceTriggers`; add `ENERGIMAERKE_RAPPORT` task |
+| `src/types/building-platform.ts` | Add `ENERGIMAERKE_RAPPORT` to `BUILDING_TASK_KEYS` |
+| `src/types/project-state.ts` | Add `"energimaerke"` to `DataSourceKind` |
+| `src/lib/analysis/forsyning-step.ts` | Call EnergyLabelService (extend from ARCH-247 or create) |
+| `src/lib/analysis-orchestrator.ts` (**protected**, if new step needed) | Wire step into pipeline |
 
 ---
 
@@ -42,7 +40,6 @@
 **Files:** None (research task)
 
 References from issue:
-
 - `https://ens.dk/analyser-og-statistik/energimaerkningsdata`
 - `docs/offentlige-datakilder-gap-analyse.md`
 
@@ -56,7 +53,6 @@ Check the Energistyrelsen page and the following sources for API access:
 4. **ODataService**: Some Danish public services expose an OData endpoint — check `https://emoweb.dk/EMOData/EMOData.svc/`
 
 Document:
-
 - Base URL and HTTP method
 - Auth requirements (free key vs truly open)
 - Input: address text, DAR UUID, BBR building UUID, BFE number, or property id?
@@ -67,7 +63,6 @@ If a free API key is required, document the env var name and add it to `src/lib/
 - [ ] **Step 1.2: Document input match key**
 
 Best options (in order):
-
 1. BBR `bygning_lokal_id` (UUID) — already available from BBR call in Layer 1
 2. DAR `adgangsadresseid`
 3. Address text (less reliable)
@@ -85,7 +80,6 @@ git commit --allow-empty -m "chore(arch-248): EMOData API documented — endpoin
 ## Task 2: Create EnergyLabelService
 
 **Files:**
-
 - Create: `src/integrations/energimaerke/client.ts`
 
 Update `[DISCOVERY]` placeholders from Task 1 before implementing.
@@ -168,7 +162,9 @@ export class EnergyLabelService {
    *
    * @param bygningLokalId  BBR building UUID from BbrKompliantData.bygning_lokal_id
    */
-  static async getLabel(bygningLokalId: string): Promise<SourceResult<EnergyLabelData>> {
+  static async getLabel(
+    bygningLokalId: string,
+  ): Promise<SourceResult<EnergyLabelData>> {
     const kilde = "emodata";
     // [DISCOVERY: update URL construction and params to match real API]
     const url = `${EMODATA_BASE}/HentEnergimaerke?bygningId=${encodeURIComponent(bygningLokalId)}&$format=json`;
@@ -238,7 +234,6 @@ git commit -m "feat(energimaerke): add EnergyLabelService with tri-state label t
 ## Task 3: Write unit tests for EnergyLabelService
 
 **Files:**
-
 - Create: `src/integrations/energimaerke/client.test.ts`
 
 - [ ] **Step 3.1: Write tests**
@@ -268,12 +263,11 @@ const EXPIRED_LABEL_RESPONSE = {
 
 describe("EnergyLabelService.getLabel", () => {
   it("parses a valid energy label correctly", async () => {
-    globalThis.fetch = mock(
-      async () =>
-        new Response(JSON.stringify(VALID_LABEL_RESPONSE), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+    globalThis.fetch = mock(async () =>
+      new Response(JSON.stringify(VALID_LABEL_RESPONSE), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
     ) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("building-uuid-123");
@@ -288,12 +282,11 @@ describe("EnergyLabelService.getLabel", () => {
   });
 
   it("marks expired label as er_udloebet=true", async () => {
-    globalThis.fetch = mock(
-      async () =>
-        new Response(JSON.stringify(EXPIRED_LABEL_RESPONSE), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+    globalThis.fetch = mock(async () =>
+      new Response(JSON.stringify(EXPIRED_LABEL_RESPONSE), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
     ) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("building-uuid-456");
@@ -304,8 +297,8 @@ describe("EnergyLabelService.getLabel", () => {
   });
 
   it("returns ok with no_hit when API returns 404", async () => {
-    globalThis.fetch = mock(
-      async () => new Response("Not Found", { status: 404 }),
+    globalThis.fetch = mock(async () =>
+      new Response("Not Found", { status: 404 }),
     ) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("unknown-building");
@@ -318,8 +311,8 @@ describe("EnergyLabelService.getLabel", () => {
   });
 
   it("returns error result on HTTP 500 — does NOT map to no label", async () => {
-    globalThis.fetch = mock(
-      async () => new Response("Server Error", { status: 500 }),
+    globalThis.fetch = mock(async () =>
+      new Response("Server Error", { status: 500 }),
     ) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("test-uuid");
@@ -329,9 +322,7 @@ describe("EnergyLabelService.getLabel", () => {
   });
 
   it("returns error result on network failure", async () => {
-    globalThis.fetch = mock(async () => {
-      throw new Error("Network");
-    }) as unknown as typeof fetch;
+    globalThis.fetch = mock(async () => { throw new Error("Network"); }) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("test-uuid");
 
@@ -358,7 +349,6 @@ git commit -m "test(energimaerke): add unit tests for getLabel (parse, expired, 
 ## Task 4: Database migration for energy label columns
 
 **Files:**
-
 - Create: `supabase/migrations/20260524180000_arch248_energimaerke.sql`
 
 - [ ] **Step 4.1: Create migration**
@@ -413,7 +403,6 @@ git commit -m "feat(db): add energimaerke typed columns to site_constraints (ARC
 ## Task 5: Map energy label to site_constraints and building task
 
 **Files:**
-
 - Modify: `src/integrations/supabase/repositories/site-constraints.derivation.ts`
 - Modify: `src/integrations/supabase/repositories/building-tasks.derivation.ts`
 - Modify: `src/types/building-platform.ts`
@@ -434,13 +423,11 @@ In `src/types/project-state.ts`:
 In `DataSourceKind` union, add: `"energimaerke"`
 
 In `DATA_SOURCE_LABELS`, add:
-
 ```typescript
   energimaerke: "Energimærke (EMOData)",
 ```
 
 In `STALE_DAYS`, add:
-
 ```typescript
   energimaerke: 30,
 ```
@@ -456,16 +443,16 @@ import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 Add a new block in `deriveSiteConstraintsPatch` (alongside existing data source blocks):
 
 ```typescript
-if (patch.energimaerke !== undefined) {
-  hasConstraintField = true;
-  const em = patch.energimaerke;
-  sitePatch.energimaerke_klasse = em?.energimaerke_klasse ?? null;
-  sitePatch.energimaerke_gyldig_til = em?.gyldig_til ?? null;
-  sitePatch.energimaerke_er_udloebet = em?.er_udloebet ?? null;
-  sitePatch.energimaerke_rapport_url = em?.rapport_url ?? null;
-  sitePatch.energimaerke_rapport_id = em?.rapport_id ?? null;
-  sitePatch.energimaerke_rapportdato = em?.rapportdato ?? null;
-}
+  if (patch.energimaerke !== undefined) {
+    hasConstraintField = true;
+    const em = patch.energimaerke;
+    sitePatch.energimaerke_klasse = em?.energimaerke_klasse ?? null;
+    sitePatch.energimaerke_gyldig_til = em?.gyldig_til ?? null;
+    sitePatch.energimaerke_er_udloebet = em?.er_udloebet ?? null;
+    sitePatch.energimaerke_rapport_url = em?.rapport_url ?? null;
+    sitePatch.energimaerke_rapport_id = em?.rapport_id ?? null;
+    sitePatch.energimaerke_rapportdato = em?.rapportdato ?? null;
+  }
 ```
 
 - [ ] **Step 5.4: Add `energimaerke` to `ProjectPatch`**
@@ -483,7 +470,7 @@ Add import of `EnergyLabelData` where needed.
 In `building-tasks.derivation.ts`, add to `ComplianceTriggers`:
 
 ```typescript
-energimaerkeMangler: boolean | null;
+  energimaerkeMangler: boolean | null;
 ```
 
 (`true` = no label or expired; `false` = valid label present; `null` = API error/unknown)
@@ -491,24 +478,24 @@ energimaerkeMangler: boolean | null;
 Add task generator in `deriveAutoTasks` before `return tasks;`:
 
 ```typescript
-// ARCH-248: Energimærke mangler eller udløbet
-if (t.energimaerkeMangler === true) {
-  tasks.push({
-    project_id: t.projectId,
-    task_key: BUILDING_TASK_KEYS.ENERGIMAERKE_RAPPORT,
-    title: "Energimærke mangler eller udløbet — indhent rapport",
-    description:
-      "Der er ikke fundet et gyldigt energimærke for ejendommen. Et energimærke er " +
-      "krævet ved salg og kan være afgørende for beslutningen om at renovere frem for at " +
-      "rive ned. Kontakt en certificeret energikonsulent. Gyldighed: 7-10 år (afhænger af mærke).",
-    phase: "matriklen",
-    status: "pending",
-    priority: 3,
-    is_auto_generated: true,
-    blocked_by_constraint: "energimaerke_er_udloebet",
-    metadata: { myndighed: "Certificeret energikonsulent", lovgrundlag: "Energimærkningsloven" },
-  });
-}
+  // ARCH-248: Energimærke mangler eller udløbet
+  if (t.energimaerkeMangler === true) {
+    tasks.push({
+      project_id: t.projectId,
+      task_key: BUILDING_TASK_KEYS.ENERGIMAERKE_RAPPORT,
+      title: "Energimærke mangler eller udløbet — indhent rapport",
+      description:
+        "Der er ikke fundet et gyldigt energimærke for ejendommen. Et energimærke er " +
+        "krævet ved salg og kan være afgørende for beslutningen om at renovere frem for at " +
+        "rive ned. Kontakt en certificeret energikonsulent. Gyldighed: 7-10 år (afhænger af mærke).",
+      phase: "matriklen",
+      status: "pending",
+      priority: 3,
+      is_auto_generated: true,
+      blocked_by_constraint: "energimaerke_er_udloebet",
+      metadata: { myndighed: "Certificeret energikonsulent", lovgrundlag: "Energimærkningsloven" },
+    });
+  }
 ```
 
 Compute `energimaerkeMangler` in the orchestration layer:
@@ -517,11 +504,9 @@ Compute `energimaerkeMangler` in the orchestration layer:
 // true = ingen rapport ELLER udløbet; false = gyldigt; null = API-fejl
 const energimaerkeMangler =
   constraints.energimaerke_klasse === null
-    ? constraints.energimaerke_er_udloebet === null
-      ? null
-      : true // no_hit
+    ? (constraints.energimaerke_er_udloebet === null ? null : true) // no_hit
     : constraints.energimaerke_er_udloebet === true
-      ? true // expired
+      ? true   // expired
       : false; // valid
 ```
 
@@ -546,7 +531,6 @@ git commit -m "feat(energimaerke): wire label into site_constraints, ComplianceT
 ## Task 6: Wire EnergyLabelService into analysis pipeline
 
 **Files:**
-
 - Modify: `src/lib/analysis/forsyning-step.ts` (from ARCH-247, or create it here)
 - Modify (**protected** if needed): `src/lib/analysis-orchestrator.ts`
 
@@ -568,7 +552,7 @@ export type ForsyningStepInput = {
 
 export type ForsyningStepResult = {
   tjekditnetCoverage: TjekditnetCoverageData | null; // from ARCH-247
-  energimaerke: EnergyLabelData | null; // ARCH-248 addition
+  energimaerke: EnergyLabelData | null;              // ARCH-248 addition
 };
 
 export async function runForsyningStep(
@@ -598,7 +582,7 @@ If `forsyning-step.ts` does not exist yet (ARCH-247 not done), create it with bo
 Add to the `ComplianceResult` type:
 
 ```typescript
-energimaerke: EnergyLabelData | null; // ARCH-248
+  energimaerke: EnergyLabelData | null; // ARCH-248
 ```
 
 - [ ] **Step 6.3: Pass `bygningLokalId` to `runForsyningStep`**
@@ -606,13 +590,10 @@ energimaerke: EnergyLabelData | null; // ARCH-248
 When calling `runForsyningStep` in the orchestrator, pass the BBR result:
 
 ```typescript
-const forsyningResult = await runForsyningStep(
-  {
-    adgangsadresseid: input.adgangsadresseid,
-    bygningLokalId: bbrResult?.bygning_lokal_id ?? null,
-  },
-  trace,
-);
+const forsyningResult = await runForsyningStep({
+  adgangsadresseid: input.adgangsadresseid,
+  bygningLokalId: bbrResult?.bygning_lokal_id ?? null,
+}, trace);
 ```
 
 This requires that Layer 1 (BBR) runs before the forsyning step — which is correct since the forsyning step runs in parallel with Layer 2/3/4 (after Layer 1).
@@ -620,13 +601,11 @@ This requires that Layer 1 (BBR) runs before the forsyning step — which is cor
 - [ ] **Step 6.4: Wire into project patch and result**
 
 In the result assembly, add:
-
 ```typescript
 energimaerke: forsyningResult.energimaerke,
 ```
 
 In patch assembly, add:
-
 ```typescript
 patch.energimaerke = result.energimaerke;
 ```
@@ -663,7 +642,6 @@ Expected: All pass
 - [ ] **Step 7.3: Manual verification with 3 addresses**
 
 Test addresses with known expected outcomes:
-
 1. A building with a valid energimærke — expect class C/D, er_udloebet=false
 2. An older property likely without an energimærke — expect no_hit or missing
 3. A newly built property (< 2010) — often A or B label

@@ -129,9 +129,7 @@ async function main() {
     total += batch.length;
   }
 
-  console.log(
-    `\nFærdig! ${total.toLocaleString("da-DK")} adresser importeret, ${skipped} linjer sprunget over.`,
-  );
+  console.log(`\nFærdig! ${total.toLocaleString("da-DK")} adresser importeret, ${skipped} linjer sprunget over.`);
 }
 
 main().catch((e) => {

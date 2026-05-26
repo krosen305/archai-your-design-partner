@@ -13,45 +13,21 @@ import type { GeoJsonPolygon25832 } from "./beliggenhedsplan.types";
 const parcel20x20: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [
-    [
-      [720000, 6170000],
-      [720020, 6170000],
-      [720020, 6170020],
-      [720000, 6170020],
-      [720000, 6170000],
-    ],
-  ],
+  coordinates: [[[720000, 6170000], [720020, 6170000], [720020, 6170020], [720000, 6170020], [720000, 6170000]]],
 };
 
 // 4x4m bygning placeret 3m fra vest og 3m fra syd
 const building4x4: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [
-    [
-      [720003, 6170003],
-      [720007, 6170003],
-      [720007, 6170007],
-      [720003, 6170007],
-      [720003, 6170003],
-    ],
-  ],
+  coordinates: [[[720003, 6170003], [720007, 6170003], [720007, 6170007], [720003, 6170007], [720003, 6170003]]],
 };
 
 // Polygon helt udenfor parcellen
 const outsidePolygon: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [
-    [
-      [720100, 6170100],
-      [720110, 6170100],
-      [720110, 6170110],
-      [720100, 6170110],
-      [720100, 6170100],
-    ],
-  ],
+  coordinates: [[[720100, 6170100], [720110, 6170100], [720110, 6170110], [720100, 6170110], [720100, 6170100]]],
 };
 
 describe("polygonAreaM2", () => {

@@ -11,7 +11,10 @@ import {
   ExistingFeaturesLayerSchema,
 } from "@/domain/drawing/beliggenhedsplan.schemas";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
-import { splitPolygonIntoBoundarySegments, polygonAreaM2 } from "@/domain/drawing/geometry-engine";
+import {
+  splitPolygonIntoBoundarySegments,
+  polygonAreaM2,
+} from "@/domain/drawing/geometry-engine";
 import { fetchParcelGeometryByJordstykkeId } from "@/lib/map-proxy";
 import type * as GeoJSON from "geojson";
 
@@ -78,11 +81,9 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     });
   }
 
-  async fetchRoadGeometry(_addressId: string): Promise<{
-    centerline25832:
-      | import("@/domain/drawing/beliggenhedsplan.types").GeoJsonLineString25832
-      | null;
-  }> {
+  async fetchRoadGeometry(
+    _addressId: string,
+  ): Promise<{ centerline25832: import("@/domain/drawing/beliggenhedsplan.types").GeoJsonLineString25832 | null }> {
     return { centerline25832: null };
   }
 

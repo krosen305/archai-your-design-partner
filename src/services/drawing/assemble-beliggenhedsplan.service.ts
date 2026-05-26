@@ -33,9 +33,17 @@ type AssembleResult = {
   readiness: DrawingReadinessDecision;
 };
 
-export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<AssembleResult> {
-  const { matrikelId, kommunekode, proposedFootprint25832, geometrySource, survey, metadata } =
-    input;
+export async function assembleBeliggenhedsplan(
+  input: AssembleInput,
+): Promise<AssembleResult> {
+  const {
+    matrikelId,
+    kommunekode,
+    proposedFootprint25832,
+    geometrySource,
+    survey,
+    metadata,
+  } = input;
 
   const parcel = await geometrySource.fetchParcelLayers(matrikelId);
 

@@ -14,7 +14,10 @@ export type FootprintParams = {
 };
 
 export function buildSquareFootprint25832(params: FootprintParams): GeoJsonPolygon25832 {
-  const [cx, cy] = proj4("WGS84", "EPSG:25832", [params.centroidWgs84[0], params.centroidWgs84[1]]);
+  const [cx, cy] = proj4("WGS84", "EPSG:25832", [
+    params.centroidWgs84[0],
+    params.centroidWgs84[1],
+  ]);
   const halfSide = Math.sqrt(Math.max(1, params.areaM2)) / 2;
   const angle = (params.rotationDeg * Math.PI) / 180;
 
