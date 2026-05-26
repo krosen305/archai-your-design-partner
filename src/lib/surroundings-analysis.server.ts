@@ -112,7 +112,9 @@ export async function handleSurroundingsAnalysis(
     neighbor_context_confidence: neighbor?.coverage ?? null,
     planning_noise_area: surroundings?.noiseDesignatedArea ?? null,
     planning_production_noise_consequence_area: surroundings?.productionNoiseConsequenceArea ?? null,
-    planning_odor_area: surroundings?.odorConsequenceArea ?? surroundings?.odorDesignatedArea ?? null,
+    planning_odor_area: surroundings
+      ? (surroundings.odorConsequenceArea === true || surroundings.odorDesignatedArea === true)
+      : null,
     planning_technical_facility_consequence_area: surroundings?.technicalFacilityConsequenceArea ?? null,
     planning_large_livestock_area: surroundings?.largeLivestockFarmArea ?? null,
     planning_surroundings_review_required:
@@ -121,7 +123,10 @@ export async function handleSurroundingsAnalysis(
             surroundings.noiseDesignatedArea,
             surroundings.productionNoiseConsequenceArea,
             surroundings.odorConsequenceArea,
+            surroundings.odorDesignatedArea,
             surroundings.technicalFacilityConsequenceArea,
+            surroundings.largeLivestockFarmArea,
+            surroundings.proposedPlanConflict,
           ].some(Boolean)
         : null,
     noise_road_lden_db: noiseMetric("road"),
