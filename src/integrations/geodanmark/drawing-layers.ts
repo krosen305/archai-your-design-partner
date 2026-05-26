@@ -71,13 +71,57 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     return ParcelLayerSchema.parse(layer);
   }
 
-  async fetchNeighborBuildings(_bbox25832: BBox25832): Promise<ExistingFeaturesLayer> {
-    // GeoDanmark WFS IS_MOCK=true — return empty layer until live endpoint is verified
+  async fetchNeighborBuildings(bbox25832: BBox25832): Promise<ExistingFeaturesLayer> {
+    const { GeoDanmarkNeighborService } = await import("./neighbor-geometry");
+    const result = await GeoDanmarkNeighborService.getNeighborContext(null, bbox25832, null);
+
     const now = new Date().toISOString();
+    const confidence =
+      result.data?.coverage === "covered" && !result.isMock ? "medium" : "low";
+
+    const perBuildingSource = {
+      source: "registry" as const,
+      confidence: confidence as "medium" | "low",
+      fetchedAt: now,
+      requiresReview: result.isMock || result.data?.coverage !== "covered",
+    };
+
+    const buildings = (result.data?.buildings ?? [])
+      .filter((b) => b.geometry !== null)
+      .map((b) => {
+        const geom = b.geometry!;
+        const polygon25832: GeoJsonPolygon25832 =
+          geom.type === "Polygon"
+            ? {
+                type: "Polygon",
+                coordinates: geom.coordinates as [number, number][][],
+                crs: "EPSG:25832",
+              }
+            : {
+                type: "Polygon",
+                coordinates: (geom.coordinates as [number, number][][][])[0] ?? [],
+                crs: "EPSG:25832",
+              };
+
+        return {
+          bbrId: b.sourceId,
+          footprint25832: polygon25832,
+          usageCode: null,
+          areaM2: b.footprintAreaM2 ?? 0,
+          sokkelKoteM: null,
+          source: perBuildingSource,
+        };
+      });
+
     return ExistingFeaturesLayerSchema.parse({
-      buildings: [],
+      buildings,
       fences: [],
-      source: { source: "registry", confidence: "low", fetchedAt: now, requiresReview: true },
+      source: {
+        source: "registry",
+        confidence,
+        fetchedAt: now,
+        requiresReview: result.isMock || result.data?.coverage !== "covered",
+      },
     });
   }
 
