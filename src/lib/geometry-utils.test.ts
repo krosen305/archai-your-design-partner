@@ -6,6 +6,7 @@ import {
   minDistanceToBoundaryM,
   utm32ToWgs84,
   wgs84ToUtm32,
+  polygonToPolygonDistanceM,
 } from "./geometry-utils";
 import type * as GeoJSON from "geojson";
 
@@ -111,5 +112,40 @@ describe("wgs84ToUtm32", () => {
     expect(x).toBeLessThan(900000);
     expect(y).toBeGreaterThan(6000000);
     expect(y).toBeLessThan(6400000);
+  });
+});
+
+describe("polygonToPolygonDistanceM", () => {
+  const squareAt = (x: number, y: number, size: number): GeoJSON.Polygon => ({
+    type: "Polygon",
+    coordinates: [
+      [
+        [x, y],
+        [x + size, y],
+        [x + size, y + size],
+        [x, y + size],
+        [x, y],
+      ],
+    ],
+  });
+
+  it("returnerer 0 for overlappende polygoner", () => {
+    const a = squareAt(0, 0, 10);
+    const b = squareAt(5, 5, 10);
+    expect(polygonToPolygonDistanceM(a, b)).toBe(0);
+  });
+
+  it("returnerer korrekt afstand for polygoner med 10m mellemrum", () => {
+    const a = squareAt(0, 0, 10);
+    const b = squareAt(20, 0, 10);
+    const dist = polygonToPolygonDistanceM(a, b);
+    expect(dist).not.toBeNull();
+    expect(Math.abs(dist! - 10)).toBeLessThan(0.01);
+  });
+
+  it("returnerer null for tomme polygoner", () => {
+    const empty: GeoJSON.Polygon = { type: "Polygon", coordinates: [[]] };
+    const b = squareAt(0, 0, 10);
+    expect(polygonToPolygonDistanceM(empty, b)).toBeNull();
   });
 });

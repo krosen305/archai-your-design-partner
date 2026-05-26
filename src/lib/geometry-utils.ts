@@ -127,3 +127,69 @@ export function minDistanceToBoundaryM(
   }
   return minDist === Infinity ? null : minDist;
 }
+
+type Segment = [[number, number], [number, number]];
+
+function segmentToSegmentDistanceSq(s1: Segment, s2: Segment): number {
+  const [a, b] = s1;
+  const [c, d] = s2;
+  const ab = [b[0] - a[0], b[1] - a[1]] as [number, number];
+  const cd = [d[0] - c[0], d[1] - c[1]] as [number, number];
+  const ac = [c[0] - a[0], c[1] - a[1]] as [number, number];
+
+  const denom = ab[0] * cd[1] - ab[1] * cd[0];
+  let s: number, t: number;
+
+  if (Math.abs(denom) < 1e-10) {
+    s = 0;
+    t = cd[0] !== 0 ? ac[0] / cd[0] : ac[1] / cd[1];
+  } else {
+    s = (ac[0] * cd[1] - ac[1] * cd[0]) / denom;
+    t = (ac[0] * ab[1] - ac[1] * ab[0]) / denom;
+  }
+
+  s = Math.max(0, Math.min(1, s));
+  t = Math.max(0, Math.min(1, t));
+
+  const p1x = a[0] + s * ab[0];
+  const p1y = a[1] + s * ab[1];
+  const p2x = c[0] + t * cd[0];
+  const p2y = c[1] + t * cd[1];
+
+  return (p1x - p2x) ** 2 + (p1y - p2y) ** 2;
+}
+
+function extractRings(
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+): [number, number][][] {
+  if (geometry.type === "Polygon") {
+    return geometry.coordinates as [number, number][][];
+  }
+  return (geometry.coordinates as [number, number][][][]).flat();
+}
+
+export function polygonToPolygonDistanceM(
+  a: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+  b: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+): number | null {
+  const ringsA = extractRings(a);
+  const ringsB = extractRings(b);
+  if (!ringsA[0]?.length || !ringsB[0]?.length) return null;
+
+  let minDistSq = Infinity;
+
+  for (const ringA of ringsA) {
+    for (const ringB of ringsB) {
+      for (let i = 0; i < ringA.length - 1; i++) {
+        for (let j = 0; j < ringB.length - 1; j++) {
+          const s1: Segment = [ringA[i]!, ringA[i + 1]!];
+          const s2: Segment = [ringB[j]!, ringB[j + 1]!];
+          const dSq = segmentToSegmentDistanceSq(s1, s2);
+          if (dSq < minDistSq) minDistSq = dSq;
+        }
+      }
+    }
+  }
+
+  return minDistSq === Infinity ? null : Math.sqrt(minDistSq);
+}
