@@ -14,7 +14,6 @@ export type Br18ComplianceDeps = {
     result: Br18ApplicabilityResult,
     br18Version: string,
   ) => Promise<void>;
-  getApplicabilityForProject: (projectId: string) => Promise<Br18ApplicabilityResult[]>;
   updateProjectHardStop?: (
     projectId: string,
     hardStop: boolean,
@@ -48,11 +47,10 @@ export async function runBr18Compliance(
     ),
   );
 
-  const missingCritical = applicabilityResults.some(
+  const hardStopTriggered = applicabilityResults.some(
     (r) => r.status === "unknown_missing_data" && r.missingInputs.length > 0,
   );
-  const hardStopTriggered = missingCritical;
-  const hardStopReason = missingCritical
+  const hardStopReason = hardStopTriggered
     ? "Manglende data til BR18-vurdering: " +
       applicabilityResults
         .filter((r) => r.status === "unknown_missing_data")

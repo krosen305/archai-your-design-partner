@@ -1,10 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { runBr18Compliance } from "./br18-compliance.service.server";
-import type { Br18ApplicabilityResult } from "@/lib/br18/types";
 
 const fakeDeps = {
   upsertApplicabilityResult: async () => {},
-  getApplicabilityForProject: async (): Promise<Br18ApplicabilityResult[]> => [],
   updateProjectHardStop: async () => {},
   updateAuthorityReadiness: async () => {},
 };
@@ -30,7 +28,7 @@ describe("runBr18Compliance", () => {
     expect(result.hardStopTriggered).toBe(false);
   });
 
-  it("sætter hardStopTriggered når tilbygning har wrong scope krav", async () => {
+  it("sætter unknown_missing_data når tilbygning mangler måldata", async () => {
     const result = await runBr18Compliance(
       "proj-1",
       {
