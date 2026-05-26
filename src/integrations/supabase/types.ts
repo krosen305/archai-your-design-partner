@@ -569,6 +569,53 @@ export type Database = {
         };
         Relationships: [];
       };
+      project_br18_applicability: {
+        Row: {
+          id: string;
+          project_id: string;
+          requirement_id: string;
+          br18_version: string;
+          status: string;
+          reasons: Json;
+          missing_inputs: Json;
+          evaluated_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          requirement_id: string;
+          br18_version: string;
+          status: string;
+          reasons: Json;
+          missing_inputs: Json;
+          evaluated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          requirement_id?: string;
+          br18_version?: string;
+          status?: string;
+          reasons?: Json;
+          missing_inputs?: Json;
+          evaluated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_br18_applicability_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       site_constraints: {
         Row: {
           address_id: string;
