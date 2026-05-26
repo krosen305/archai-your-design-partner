@@ -12,13 +12,14 @@ export function checkNoiseRules(input: RuleEngineInput): RuleViolation[] {
 
   if (
     noise.coverageStatus === "outside_mapped_area" ||
-    noise.coverageStatus === "unknown"
+    noise.coverageStatus === "unknown" ||
+    noise.coverageStatus === "source_unavailable"
   ) {
     violations.push({
       rule: "noise_coverage_unknown",
       severity: "warning",
       reason:
-        "Støjkortlægningen dækker ikke sikkert grunden. Støjforholdene er ukendte — dette må ikke tolkes som fravær af støjrisiko. Indhent kommunal oplysning eller bestil akustisk vurdering.",
+        "Støjkortlægningen dækker ikke sikkert grunden, eller datakilden er utilgængelig. Støjforholdene er ukendte — dette må ikke tolkes som fravær af støjrisiko. Indhent kommunal oplysning eller bestil akustisk vurdering.",
       authority: "Kommunen/Akustiker",
     });
     return violations;

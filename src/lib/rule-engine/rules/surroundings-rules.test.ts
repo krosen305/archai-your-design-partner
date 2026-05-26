@@ -68,6 +68,26 @@ describe("checkSurroundingsRules", () => {
     expect(v!.severity).toBe("warning");
   });
 
+  it("warning ved teknisk anlæg konsekvensområde", () => {
+    const violations = checkSurroundingsRules(makeInput({
+      noiseDesignatedArea: null, productionNoiseConsequenceArea: null,
+      odorConsequenceArea: null, odorDesignatedArea: null,
+      technicalFacilityConsequenceArea: true, largeLivestockFarmArea: null,
+      proposedPlanConflict: null,
+    }));
+    expect(violations.find((x) => x.rule === "planning_technical_facility_consequence")).toBeDefined();
+  });
+
+  it("warning ved store husdyrbrug", () => {
+    const violations = checkSurroundingsRules(makeInput({
+      noiseDesignatedArea: null, productionNoiseConsequenceArea: null,
+      odorConsequenceArea: null, odorDesignatedArea: null,
+      technicalFacilityConsequenceArea: null, largeLivestockFarmArea: true,
+      proposedPlanConflict: null,
+    }));
+    expect(violations.find((x) => x.rule === "planning_large_livestock_area")).toBeDefined();
+  });
+
   it("warning ved nabodækning=source_unavailable", () => {
     const violations = checkSurroundingsRules(
       makeInput(null, {
