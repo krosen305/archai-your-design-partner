@@ -167,6 +167,8 @@ const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
   byggeanalyse: "missing",
   billedanalyse: "missing",
   husDna: "missing",
+  tjekditnet: "missing",
+  energimaerke: "missing",
 };
 
 export const useProject = create<State>((set) => ({

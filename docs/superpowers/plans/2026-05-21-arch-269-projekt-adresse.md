@@ -12,20 +12,21 @@
 
 ## File Map
 
-| Action | File |
-|--------|------|
-| Create | `src/lib/adresse.functions.ts` |
-| Create | `src/lib/use-address-search.ts` |
-| Create | `src/lib/use-address-precheck.ts` |
-| Create | `src/lib/compliance-flag-icons.ts` |
+| Action | File                                    |
+| ------ | --------------------------------------- |
+| Create | `src/lib/adresse.functions.ts`          |
+| Create | `src/lib/use-address-search.ts`         |
+| Create | `src/lib/use-address-precheck.ts`       |
+| Create | `src/lib/compliance-flag-icons.ts`      |
 | Create | `src/lib/compliance-flag-icons.test.ts` |
-| Modify | `src/routes/projekt.adresse.tsx` |
+| Modify | `src/routes/projekt.adresse.tsx`        |
 
 ---
 
 ### Task 1: Extract server functions to `adresse.functions.ts`
 
 **Files:**
+
 - Create: `src/lib/adresse.functions.ts`
 
 - [ ] **Step 1: Create the file with both server functions**
@@ -41,9 +42,7 @@ import { z } from "zod";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const searchAddresses = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
-    z.object({ q: z.string().min(2).max(200).trim() }).parse(data),
-  )
+  .inputValidator((data: unknown) => z.object({ q: z.string().min(2).max(200).trim() }).parse(data))
   .handler(async ({ data }) => {
     const { GsearchService } = await import("@/integrations/gsearch/client");
     return GsearchService.getSuggestions(data.q);
@@ -79,6 +78,7 @@ git commit -m "feat(arch-269): extract searchAddresses + fetchAddressDetails to 
 ### Task 2: Extract `flagIcon` to `compliance-flag-icons.ts` with tests
 
 **Files:**
+
 - Create: `src/lib/compliance-flag-icons.ts`
 - Create: `src/lib/compliance-flag-icons.test.ts`
 
@@ -153,6 +153,7 @@ git commit -m "feat(arch-269): extract flagIcon helper with tests"
 ### Task 3: Extract `useAddressSearch` hook
 
 **Files:**
+
 - Create: `src/lib/use-address-search.ts`
 
 - [ ] **Step 1: Create the hook**
@@ -261,6 +262,7 @@ git commit -m "feat(arch-269): extract useAddressSearch hook with debounced GSea
 ### Task 4: Extract `useAddressSelectionPrecheck` hook
 
 **Files:**
+
 - Create: `src/lib/use-address-precheck.ts`
 
 - [ ] **Step 1: Create the hook**
@@ -392,6 +394,7 @@ git commit -m "feat(arch-269): extract useAddressSelectionPrecheck controller ho
 ### Task 5: Refactor `projekt.adresse.tsx` to use extracted modules
 
 **Files:**
+
 - Modify: `src/routes/projekt.adresse.tsx`
 
 - [ ] **Step 1: Replace inline server functions and helpers with imports**
@@ -399,6 +402,7 @@ git commit -m "feat(arch-269): extract useAddressSelectionPrecheck controller ho
 Remove the `searchAddresses` and `fetchAddressDetails` `createServerFn` definitions (lines 40–54) and the `flagIcon` function (lines 25–32).
 
 Replace with:
+
 ```typescript
 import { searchAddresses, fetchAddressDetails } from "@/lib/adresse.functions";
 import { flagIcon } from "@/lib/compliance-flag-icons";
@@ -409,13 +413,25 @@ import { flagIcon } from "@/lib/compliance-flag-icons";
 Remove the local state for `query`, `open`, `suggestions`, `loading`, `error`, `highlightIdx`, `lastQueryRef`, and `isCheckingCompliance`. Remove the debounce `useEffect` and `handleSelectSuggestion` function.
 
 Replace with:
+
 ```typescript
-const { query, setQuery, suggestions, loading, error, open, setOpen, highlightIdx, setHighlightIdx, showDropdown } =
-  useAddressSearch(address?.adresse ?? "");
+const {
+  query,
+  setQuery,
+  suggestions,
+  loading,
+  error,
+  open,
+  setOpen,
+  highlightIdx,
+  setHighlightIdx,
+  showDropdown,
+} = useAddressSearch(address?.adresse ?? "");
 const { handleSelectSuggestion, isCheckingCompliance } = useAddressSelectionPrecheck();
 ```
 
 Add imports:
+
 ```typescript
 import { useAddressSearch } from "@/lib/use-address-search";
 import { useAddressSelectionPrecheck } from "@/lib/use-address-precheck";
@@ -424,19 +440,25 @@ import { useAddressSelectionPrecheck } from "@/lib/use-address-precheck";
 - [ ] **Step 3: Fix `any` event handler casts**
 
 Replace:
+
 ```typescript
 onChange={(e: any) => {
 ```
+
 with:
+
 ```typescript
 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
 ```
 
 Replace:
+
 ```typescript
 onMouseDown={(e: any) => {
 ```
+
 with:
+
 ```typescript
 onMouseDown={(e: React.MouseEvent<HTMLButtonElement>) => {
 ```

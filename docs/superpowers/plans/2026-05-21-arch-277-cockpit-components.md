@@ -12,22 +12,24 @@
 
 ## File Map
 
-| Action | File |
-|--------|------|
+| Action | File                                  |
+| ------ | ------------------------------------- |
 | Create | `src/lib/use-cockpit-byggeoensker.ts` |
-| Create | `src/lib/use-cockpit-upload.ts` |
-| Modify | `src/components/cockpit/index.tsx` |
+| Create | `src/lib/use-cockpit-upload.ts`       |
+| Modify | `src/components/cockpit/index.tsx`    |
 
 ---
 
 ### Task 1: Create `useCockpitByggeoensker` hook
 
 **Files:**
+
 - Create: `src/lib/use-cockpit-byggeoensker.ts`
 
 - [ ] **Step 1: Read the full `patch` function in `index.tsx`**
 
 Open `src/components/cockpit/index.tsx` and read lines 155–230 (the `ByggeoenskeAccordion` component and its `patch` function). Make note of:
+
 - All `useProject.getState()` calls
 - All `computePartialUpdate` inputs
 - The `boligoenskeValidering` calculation logic
@@ -97,7 +99,8 @@ export function useCockpitByggeoensker(reactiveContext: ReactiveContext) {
     const samletAreal =
       merged.byggetype === "tilbyg" ? eksAreal + (valgtAreal ?? 0) : (valgtAreal ?? eksAreal);
     const beregnetPct = grundareal && grundareal > 0 ? (samletAreal / grundareal) * 100 : null;
-    const maxPct = k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
+    const maxPct =
+      k?.maxBebyggelsesprocent ?? state.complianceMetrics?.maxBebyggelsesprocent ?? null;
     const maxEtager = k?.maxEtager ?? state.complianceMetrics?.maxEtager ?? null;
 
     const etagerStatus: "ok" | "dispensation" | "ingen_data" =
@@ -154,6 +157,7 @@ git commit -m "feat(arch-277): extract useCockpitByggeoensker hook"
 ### Task 2: Create `useCockpitUpload` hook
 
 **Files:**
+
 - Create: `src/lib/use-cockpit-upload.ts`
 
 - [ ] **Step 1: Read the upload logic in `index.tsx`**
@@ -234,11 +238,13 @@ git commit -m "feat(arch-277): extract useCockpitUpload hook"
 ### Task 3: Refactor `ByggeoenskeAccordion` to use extracted hooks
 
 **Files:**
+
 - Modify: `src/components/cockpit/index.tsx`
 
 - [ ] **Step 1: Import and wire up `useCockpitByggeoensker`**
 
 In `ByggeoenskeAccordion`, add:
+
 ```typescript
 import { useCockpitByggeoensker } from "@/lib/use-cockpit-byggeoensker";
 ```
@@ -263,6 +269,7 @@ const { isUploading, uploadError, handleUpload, handleRemoveImage, inspirationsb
 ```
 
 Replace the file input `onChange` handler cast:
+
 ```typescript
 // Before:
 onChange={(e: any) => { ... }}
@@ -277,6 +284,7 @@ onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
 - [ ] **Step 3: Fix remaining `any` event handler casts**
 
 Search for `(e: any)` in `index.tsx` and replace with proper React event types:
+
 - Input change: `React.ChangeEvent<HTMLInputElement>`
 - Button click: `React.MouseEvent<HTMLButtonElement>`
 - Select change: `React.ChangeEvent<HTMLSelectElement>`

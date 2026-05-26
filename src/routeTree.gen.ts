@@ -17,6 +17,7 @@ import { Route as ProjektDatacheckRouteImport } from './routes/projekt.datacheck
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
 import { Route as DebugAnalyseRouteImport } from './routes/debug.analyse'
 import { Route as ApiMapTilesRouteImport } from './routes/api.map-tiles'
+import { Route as ApiDrawingRouteImport } from './routes/api.drawing'
 import { Route as ProjektIdCockpitRouteImport } from './routes/projekt.$id.cockpit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const ApiMapTilesRoute = ApiMapTilesRouteImport.update({
   path: '/api/map-tiles',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDrawingRoute = ApiDrawingRouteImport.update({
+  id: '/api/drawing',
+  path: '/api/drawing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
   id: '/projekt/$id/cockpit',
   path: '/projekt/$id/cockpit',
@@ -67,6 +73,7 @@ const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/drawing': typeof ApiDrawingRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
   '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/drawing': typeof ApiDrawingRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
   '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/drawing': typeof ApiDrawingRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
   '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/drawing'
     | '/api/map-tiles'
     | '/debug/analyse'
     | '/projekt/adresse'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/drawing'
     | '/api/map-tiles'
     | '/debug/analyse'
     | '/projekt/adresse'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api/drawing'
     | '/api/map-tiles'
     | '/debug/analyse'
     | '/projekt/adresse'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiDrawingRoute: typeof ApiDrawingRoute
   ApiMapTilesRoute: typeof ApiMapTilesRoute
   DebugAnalyseRoute: typeof DebugAnalyseRoute
   ProjektAdresseRoute: typeof ProjektAdresseRoute
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMapTilesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/drawing': {
+      id: '/api/drawing'
+      path: '/api/drawing'
+      fullPath: '/api/drawing'
+      preLoaderRoute: typeof ApiDrawingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projekt/$id/cockpit': {
       id: '/projekt/$id/cockpit'
       path: '/projekt/$id/cockpit'
@@ -217,6 +237,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiDrawingRoute: ApiDrawingRoute,
   ApiMapTilesRoute: ApiMapTilesRoute,
   DebugAnalyseRoute: DebugAnalyseRoute,
   ProjektAdresseRoute: ProjektAdresseRoute,

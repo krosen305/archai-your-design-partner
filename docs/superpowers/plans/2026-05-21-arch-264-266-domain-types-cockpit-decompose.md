@@ -15,6 +15,7 @@
 ### Task 1: Create `src/types/project-state.ts`
 
 **Files:**
+
 - Create: `src/types/project-state.ts`
 
 - [ ] **Step 1: Create the file with all domain types**
@@ -352,6 +353,7 @@ Expected: No errors related to `project-state.ts` (other files will error until 
 ### Task 2: Create `src/lib/compliance-flags.ts`
 
 **Files:**
+
 - Create: `src/lib/compliance-flags.ts`
 
 - [ ] **Step 1: Create the file**
@@ -397,6 +399,7 @@ Expected: Only import errors in files that still point to `project-store` — no
 ### Task 3: Write tests for `compliance-flags.ts`
 
 **Files:**
+
 - Create: `src/lib/compliance-flags.test.ts`
 
 - [ ] **Step 1: Write the test file**
@@ -506,6 +509,7 @@ git commit -m "feat(arch-264): add project-state.ts type module and compliance-f
 ### Task 4: Strip `project-store.ts` to Zustand-only
 
 **Files:**
+
 - Modify: `src/lib/project-store.ts`
 
 - [ ] **Step 1: Replace the file header — add imports from project-state.ts**
@@ -569,8 +573,9 @@ export { deriveComplianceFlags } from "@/lib/compliance-flags";
 - [ ] **Step 2: Remove all type definitions from the file body**
 
 Delete these sections from `project-store.ts` (they are now in `project-state.ts`):
+
 - Lines 20–39: `Address` type
-- Lines 45–52: `ProjectData` type  
+- Lines 45–52: `ProjectData` type
 - Lines 58–60: `PhaseName`, `PhaseStatus`
 - Lines 66–75: `HusDna` type
 - Lines 81–114: `Byggeoenske` type
@@ -584,6 +589,7 @@ Delete these sections from `project-store.ts` (they are now in `project-state.ts
 - [ ] **Step 3: Remove all functions from the file body**
 
 Delete these from `project-store.ts` (they are now in `project-state.ts` / `compliance-flags.ts`):
+
 - `isHusDna` function (around line 488)
 - `STALE_DAYS` constant (around line 499)
 - `ParsedComplianceData` type + `parseComplianceData` function (around line 536)
@@ -604,6 +610,7 @@ Expected: Errors only in files that haven't updated their imports yet (Tasks 5�
 ### Task 5: Update server and domain file imports
 
 **Files:**
+
 - Modify: `src/lib/pre-check-adresse.ts`
 - Modify: `src/lib/reactive-compliance.ts`
 - Modify: `src/lib/rule-engine/input-assembler.ts`
@@ -614,28 +621,36 @@ Expected: Errors only in files that haven't updated their imports yet (Tasks 5�
 - [ ] **Step 1: Update `src/lib/pre-check-adresse.ts`**
 
 Change:
+
 ```typescript
 import type { ComplianceFlag } from "@/lib/project-store";
 ```
+
 To:
+
 ```typescript
 import type { ComplianceFlag, AdressePreCheckResultat } from "@/types/project-state";
 ```
 
 Remove the local `AdressePreCheckResultat` type definition from the file (lines 70–96 of pre-check-adresse.ts). Add at the top:
+
 ```typescript
 export type { AdressePreCheckResultat } from "@/types/project-state";
 ```
+
 This keeps external consumers of `pre-check-adresse.ts` working without changes.
 
 - [ ] **Step 2: Update `src/lib/reactive-compliance.ts`**
 
 Change:
+
 ```typescript
 import { deriveComplianceFlags } from "@/lib/project-store";
 import type { Byggeoenske, ComplianceFlag } from "@/lib/project-store";
 ```
+
 To:
+
 ```typescript
 import { deriveComplianceFlags } from "@/lib/compliance-flags";
 import type { Byggeoenske, ComplianceFlag } from "@/types/project-state";
@@ -644,10 +659,13 @@ import type { Byggeoenske, ComplianceFlag } from "@/types/project-state";
 - [ ] **Step 3: Update `src/lib/rule-engine/input-assembler.ts`**
 
 Change:
+
 ```typescript
 import type { Byggeoenske, DesignPlacement } from "@/lib/project-store";
 ```
+
 To:
+
 ```typescript
 import type { Byggeoenske, DesignPlacement } from "@/types/project-state";
 ```
@@ -655,10 +673,13 @@ import type { Byggeoenske, DesignPlacement } from "@/types/project-state";
 - [ ] **Step 4: Update `src/integrations/supabase/project-persistence.ts`**
 
 Change:
+
 ```typescript
 import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/lib/project-store";
 ```
+
 To:
+
 ```typescript
 import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/types/project-state";
 ```
@@ -666,10 +687,13 @@ import type { Address, HusDna, ComplianceFlag, Byggeoenske } from "@/types/proje
 - [ ] **Step 5: Update `src/integrations/ai/byggeanalyse.ts`**
 
 Change:
+
 ```typescript
 import type { Byggeoenske } from "@/lib/project-store";
 ```
+
 To:
+
 ```typescript
 import type { Byggeoenske } from "@/types/project-state";
 ```
@@ -677,10 +701,13 @@ import type { Byggeoenske } from "@/types/project-state";
 - [ ] **Step 6: Update `src/integrations/ai/hus-dna-generator.ts`**
 
 Change:
+
 ```typescript
 import type { HusDna } from "@/lib/project-store";
 ```
+
 To:
+
 ```typescript
 import type { HusDna } from "@/types/project-state";
 ```
@@ -695,6 +722,7 @@ Expected: No errors in any of the 6 files above. Remaining errors are in route/c
 ### Task 6: Update component and route file imports
 
 **Files:**
+
 - Modify: `src/routes/__root.tsx`
 - Modify: `src/routes/projekt.$id.cockpit.tsx`
 - Modify: `src/routes/projekt.adresse.tsx`
@@ -719,6 +747,7 @@ For each file listed, change every import from `@/lib/project-store` that import
 Pattern: if the import is `import type { Foo, Bar } from "@/lib/project-store"` → change to `import type { Foo, Bar } from "@/types/project-state"`.
 
 If the import mixes `useProject` with types:
+
 ```typescript
 // Before
 import { useProject, type Byggeoenske } from "@/lib/project-store";
@@ -729,8 +758,10 @@ import type { Byggeoenske } from "@/types/project-state";
 ```
 
 Special cases:
+
 - `src/routes/__root.tsx`: change `isHusDna, parseComplianceData` imports to `@/types/project-state`
 - `src/routes/projekt.$id.cockpit.tsx`: change `deriveComplianceFlags, parseComplianceData, deriveSourceStatus` to their new modules (they come from project-store re-exports today, but import them directly after this change):
+
   ```typescript
   import { deriveComplianceFlags } from "@/lib/compliance-flags";
   import { parseComplianceData, deriveSourceStatus } from "@/types/project-state";
@@ -758,6 +789,7 @@ git commit -m "feat(arch-264): migrate domain types to project-state.ts — serv
 ### Task 7: Create `src/lib/cockpit.functions.ts`
 
 **Files:**
+
 - Create: `src/lib/cockpit.functions.ts`
 
 - [ ] **Step 1: Write the file**
@@ -778,9 +810,7 @@ const analysisInputSchema = z.object({
   adgangsadresseid: z.string().nullable(),
   ejerlavskode: z.number().nullable(),
   matrikelnummer: z.string().nullable(),
-  koordinater: z
-    .object({ lat: z.number(), lng: z.number() })
-    .nullable(),
+  koordinater: z.object({ lat: z.number(), lng: z.number() }).nullable(),
   grundareal: z.number().nullable(),
   projectId: z.string().nullable(),
   token: z.string().min(1),
@@ -848,6 +878,7 @@ Expected: No errors in `cockpit.functions.ts`.
 ### Task 8: Create `src/hooks/useCockpitRestore.ts`
 
 **Files:**
+
 - Create: `src/hooks/useCockpitRestore.ts`
 
 - [ ] **Step 1: Write the hook**
@@ -988,14 +1019,46 @@ export function useCockpitRestore(params: {
           store.setDataStatusBulk({
             bbr: deriveSourceStatus("bbr", s.bbrData, lastFetched),
             lokalplaner: deriveSourceStatus("lokalplaner", s.lokalplaner, lastFetched),
-            kommuneplanramme: deriveSourceStatus("kommuneplanramme", s.kommuneplanramme, lastFetched),
-            fbb: deriveSourceStatus("fbb", objectField(project.compliance_data, "fbbData"), lastFetched),
-            naturbeskyttelse: deriveSourceStatus("naturbeskyttelse", objectField(project.compliance_data, "naturbeskyttelse"), lastFetched),
-            geusRisk: deriveSourceStatus("geusRisk", objectField(project.compliance_data, "geusRisk"), lastFetched),
-            servitutter: deriveSourceStatus("servitutter", objectField(project.compliance_data, "servitutter"), lastFetched),
-            terrain: deriveSourceStatus("terrain", objectField(project.compliance_data, "terrain"), lastFetched),
-            fjernvarme: deriveSourceStatus("fjernvarme", objectField(project.compliance_data, "fjernvarme"), lastFetched),
-            naboer: deriveSourceStatus("naboer", objectField(project.compliance_data, "naboer"), lastFetched),
+            kommuneplanramme: deriveSourceStatus(
+              "kommuneplanramme",
+              s.kommuneplanramme,
+              lastFetched,
+            ),
+            fbb: deriveSourceStatus(
+              "fbb",
+              objectField(project.compliance_data, "fbbData"),
+              lastFetched,
+            ),
+            naturbeskyttelse: deriveSourceStatus(
+              "naturbeskyttelse",
+              objectField(project.compliance_data, "naturbeskyttelse"),
+              lastFetched,
+            ),
+            geusRisk: deriveSourceStatus(
+              "geusRisk",
+              objectField(project.compliance_data, "geusRisk"),
+              lastFetched,
+            ),
+            servitutter: deriveSourceStatus(
+              "servitutter",
+              objectField(project.compliance_data, "servitutter"),
+              lastFetched,
+            ),
+            terrain: deriveSourceStatus(
+              "terrain",
+              objectField(project.compliance_data, "terrain"),
+              lastFetched,
+            ),
+            fjernvarme: deriveSourceStatus(
+              "fjernvarme",
+              objectField(project.compliance_data, "fjernvarme"),
+              lastFetched,
+            ),
+            naboer: deriveSourceStatus(
+              "naboer",
+              objectField(project.compliance_data, "naboer"),
+              lastFetched,
+            ),
             vurdering: deriveSourceStatus("vurdering", s.vurderingData, lastFetched),
             byggeanalyse: deriveSourceStatus("byggeanalyse", s.byggeanalyseResultat, lastFetched),
             billedanalyse: deriveSourceStatus("billedanalyse", project.billedanalyse, lastFetched),
@@ -1027,6 +1090,7 @@ Expected: No errors in `useCockpitRestore.ts`.
 ### Task 9: Create `src/hooks/useCockpitAnalysis.ts`
 
 **Files:**
+
 - Create: `src/hooks/useCockpitAnalysis.ts`
 
 - [ ] **Step 1: Write the hook and AnalysisSnapshot type**
@@ -1324,7 +1388,15 @@ export function useCockpitAnalysis(params: {
     setSnapshotPatch,
   ]);
 
-  return { status, fetchError, analysisSnapshot, isRecomputing, setSnapshotPatch, triggerRefresh, runManualAnalyse };
+  return {
+    status,
+    fetchError,
+    analysisSnapshot,
+    isRecomputing,
+    setSnapshotPatch,
+    triggerRefresh,
+    runManualAnalyse,
+  };
 }
 ```
 
@@ -1338,6 +1410,7 @@ Expected: No errors in `useCockpitAnalysis.ts`.
 ### Task 10: Write tests for `useCockpitRestore`
 
 **Files:**
+
 - Create: `src/hooks/useCockpitRestore.test.ts`
 
 - [ ] **Step 1: Write the test file**
@@ -1397,21 +1470,21 @@ describe("routeMatchesAddress", () => {
   });
 
   it("returns true when adresseid matches", () => {
-    expect(
-      routeMatchesAddress({ adresseid: "addr-1", adgangsadresseid: "adg-1" }, "addr-1"),
-    ).toBe(true);
+    expect(routeMatchesAddress({ adresseid: "addr-1", adgangsadresseid: "adg-1" }, "addr-1")).toBe(
+      true,
+    );
   });
 
   it("returns true when adgangsadresseid matches", () => {
-    expect(
-      routeMatchesAddress({ adresseid: "addr-1", adgangsadresseid: "adg-1" }, "adg-1"),
-    ).toBe(true);
+    expect(routeMatchesAddress({ adresseid: "addr-1", adgangsadresseid: "adg-1" }, "adg-1")).toBe(
+      true,
+    );
   });
 
   it("returns false when neither matches", () => {
-    expect(
-      routeMatchesAddress({ adresseid: "addr-1", adgangsadresseid: "adg-1" }, "other"),
-    ).toBe(false);
+    expect(routeMatchesAddress({ adresseid: "addr-1", adgangsadresseid: "adg-1" }, "other")).toBe(
+      false,
+    );
   });
 });
 
@@ -1448,6 +1521,7 @@ git commit -m "feat(arch-266): extract cockpit server functions and analysis hoo
 ### Task 11: Create `src/components/cockpit/FreeDesignCockpit.tsx`
 
 **Files:**
+
 - Create: `src/components/cockpit/FreeDesignCockpit.tsx`
 
 - [ ] **Step 1: Write the file**
@@ -1460,7 +1534,12 @@ import { useProject } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { AiDesignHero } from "@/components/cockpit/AiDesignHero";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { estimerTotalpris, STEPS, STEP_GROUPS } from "@/lib/byggeoenske-steps";
 ```
@@ -1468,6 +1547,7 @@ import { estimerTotalpris, STEPS, STEP_GROUPS } from "@/lib/byggeoenske-steps";
 Then paste `FreeDesignCockpit`, `FreeByggeoenskeAccordion`, and `FreeBudgetEstimat` function bodies unchanged.
 
 Export all three:
+
 ```typescript
 export { FreeDesignCockpit, FreeByggeoenskeAccordion, FreeBudgetEstimat };
 ```
@@ -1482,6 +1562,7 @@ Expected: No errors in `FreeDesignCockpit.tsx`.
 ### Task 12: Create `src/components/cockpit/AnalyseTab.tsx`
 
 **Files:**
+
 - Create: `src/components/cockpit/AnalyseTab.tsx`
 
 - [ ] **Step 1: Write the file**
@@ -1531,6 +1612,7 @@ import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 Then paste the full bodies of `LoadingView`, `ProgressRow`, `ErrorView`, `AnalyseTab`, `FjernvarmeSektion`, `NaboerSektion`, `ByggeanalyseKort`, `TerrainSektion`, `ServitutterSektion`, `GeusRisikoSektion`, `MetricCard`, and `genererVurdering` unchanged.
 
 Add to the top of the file the `LOADING_ROWS` constant (currently at line 195–200 of the route file):
+
 ```typescript
 const LOADING_ROWS = [
   { icon: FileText, label: "Henter BBR-data", durationMs: 800 },
@@ -1541,6 +1623,7 @@ const LOADING_ROWS = [
 ```
 
 Export the publicly used components:
+
 ```typescript
 export { LoadingView, ErrorView, AnalyseTab };
 ```
@@ -1555,11 +1638,13 @@ Expected: No errors in `AnalyseTab.tsx`.
 ### Task 13: Slim the cockpit route file
 
 **Files:**
+
 - Modify: `src/routes/projekt.$id.cockpit.tsx`
 
 - [ ] **Step 1: Remove moved code and update imports**
 
 The final cockpit route file should contain only:
+
 1. Imports (updated — no more `createServerFn`, `z`, `withAuth` — those are in `cockpit.functions.ts`)
 2. `HardStopBanner` (keep inline — 25 lines)
 3. `CockpitTab` type + `VALID_TABS` — keep. Delete `routeMatchesAddress` and `objectField` inline (now in `useCockpitRestore`).
@@ -1848,6 +1933,7 @@ Expected: Under 400. If over, check which sections are still duplicated and remo
 Now that the cockpit route no longer imports `deriveComplianceFlags`, `parseComplianceData`, `deriveSourceStatus`, or `isHusDna` from `project-store`, remove those re-exports from `src/lib/project-store.ts`:
 
 Delete these lines:
+
 ```typescript
 export {
   DATA_SOURCE_LABELS,
@@ -1896,6 +1982,7 @@ The Linear issue is ARCH-266. Mark it Done.
 Run: `bun dev`
 
 Navigate to the cockpit route in a browser. Verify:
+
 - Loading spinner appears on first visit
 - Compliance data loads and renders
 - Tab navigation (ANALYSE / EJENDOM / ØKONOMI) works

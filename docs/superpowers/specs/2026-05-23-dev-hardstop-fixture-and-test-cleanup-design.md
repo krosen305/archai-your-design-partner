@@ -22,18 +22,23 @@ Follows the existing `⚡ DEV: Brug mock-adresse (Hasselvej 48, Virum)` button e
 A second DEV button is added immediately below the existing one:
 
 ```tsx
-{import.meta.env.DEV && (
-  <button
-    type="button"
-    onClick={() => {
-      setAddress(MOCK_ADRESSE);
-      setHardStop(true, "Strandbeskyttelseslinje — matriklen ligger inden for 300 m fra kystlinjen.");
-      navigate({ to: `/projekt/${MOCK_ADRESSE.adresseid}/cockpit` as never });
-    }}
-  >
-    ⚡ DEV: Hard-stop mock (Strandbeskyttelse)
-  </button>
-)}
+{
+  import.meta.env.DEV && (
+    <button
+      type="button"
+      onClick={() => {
+        setAddress(MOCK_ADRESSE);
+        setHardStop(
+          true,
+          "Strandbeskyttelseslinje — matriklen ligger inden for 300 m fra kystlinjen.",
+        );
+        navigate({ to: `/projekt/${MOCK_ADRESSE.adresseid}/cockpit` as never });
+      }}
+    >
+      ⚡ DEV: Hard-stop mock (Strandbeskyttelse)
+    </button>
+  );
+}
 ```
 
 - Uses the same `MOCK_ADRESSE` (Hasselvej 48, Virum) as the existing fixture
@@ -91,18 +96,18 @@ test("hard-stop project shows HARD STOP banner before AI design", async ({ page 
 
 ### Unit tests to delete
 
-| File | Reason |
-|------|--------|
-| `src/integrations/cache/client.test.ts` | Empty — only a comment; live tests already moved to `tests/live/` |
-| `src/lib/pipeline-service-state.test.ts` | Tests that TypeScript string type is a string. TypeScript already proves this. |
-| `src/lib/orchestrator-service-states.test.ts` | Literal type assignment test. No runtime logic exercised. |
+| File                                          | Reason                                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/integrations/cache/client.test.ts`       | Empty — only a comment; live tests already moved to `tests/live/`              |
+| `src/lib/pipeline-service-state.test.ts`      | Tests that TypeScript string type is a string. TypeScript already proves this. |
+| `src/lib/orchestrator-service-states.test.ts` | Literal type assignment test. No runtime logic exercised.                      |
 
 ### Playwright specs to delete
 
-| File | Reason |
-|------|--------|
-| `tests/wizard-flow.spec.ts` | Two tests: login gate visible + DEV bypass button exists. No real user journey. |
-| `tests/address-flow.spec.ts` | Navigation URL check + DEV button presence. Routing is framework-proven. |
+| File                         | Reason                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| `tests/wizard-flow.spec.ts`  | Two tests: login gate visible + DEV bypass button exists. No real user journey. |
+| `tests/address-flow.spec.ts` | Navigation URL check + DEV button presence. Routing is framework-proven.        |
 
 ### Playwright spec to fix: `tests/cockpit-data.spec.ts`
 
@@ -112,6 +117,7 @@ Remove tests 5 and 6 (debug route tests):
 - **Test 6** (`debug route søgning på ukendt adresse`): Uses `.or()` no-op assertion — `expect(noResults.or(errorMsg))` passes whether the correct or incorrect outcome is shown. Also tests a dev route.
 
 Keep tests 1–4:
+
 1. Mock address navigates to cockpit and shows compliance sections
 2. Cockpit ejendom-tab: Datakilder-sektion viser datarækker
 3. Cockpit DataRow badge viser PipelineServiceState tekst
@@ -121,11 +127,11 @@ Keep tests 1–4:
 
 ## Post-cleanup Playwright state
 
-| Spec | Tests | Purpose |
-|------|-------|---------|
-| `production-smoke.spec.ts` | 1 | App builds and serves start page |
-| `cockpit-data.spec.ts` | 4 | Compliance data display in cockpit |
-| `hard-stop-gate.spec.ts` | 1 | Hard stop blocks AI design |
+| Spec                       | Tests | Purpose                            |
+| -------------------------- | ----- | ---------------------------------- |
+| `production-smoke.spec.ts` | 1     | App builds and serves start page   |
+| `cockpit-data.spec.ts`     | 4     | Compliance data display in cockpit |
+| `hard-stop-gate.spec.ts`   | 1     | Hard stop blocks AI design         |
 
 Total: 3 specs, 6 tests — exactly within the 3-6 cap from the strategy.
 
@@ -139,14 +145,14 @@ No CI changes needed. The new DEV button uses `import.meta.env.DEV` (same as exi
 
 ## Files touched
 
-| File | Change |
-|------|--------|
-| `src/routes/projekt.adresse.tsx` | Add DEV hard-stop button; import `setHardStop` if missing |
-| `tests/helpers/session.ts` | Add `enterCockpitWithHardStop` helper |
-| `tests/hard-stop-gate.spec.ts` | Replace placeholder with real test |
-| `tests/cockpit-data.spec.ts` | Remove tests 5 and 6 |
-| `src/integrations/cache/client.test.ts` | Delete |
-| `src/lib/pipeline-service-state.test.ts` | Delete |
-| `src/lib/orchestrator-service-states.test.ts` | Delete |
-| `tests/wizard-flow.spec.ts` | Delete |
-| `tests/address-flow.spec.ts` | Delete |
+| File                                          | Change                                                    |
+| --------------------------------------------- | --------------------------------------------------------- |
+| `src/routes/projekt.adresse.tsx`              | Add DEV hard-stop button; import `setHardStop` if missing |
+| `tests/helpers/session.ts`                    | Add `enterCockpitWithHardStop` helper                     |
+| `tests/hard-stop-gate.spec.ts`                | Replace placeholder with real test                        |
+| `tests/cockpit-data.spec.ts`                  | Remove tests 5 and 6                                      |
+| `src/integrations/cache/client.test.ts`       | Delete                                                    |
+| `src/lib/pipeline-service-state.test.ts`      | Delete                                                    |
+| `src/lib/orchestrator-service-states.test.ts` | Delete                                                    |
+| `tests/wizard-flow.spec.ts`                   | Delete                                                    |
+| `tests/address-flow.spec.ts`                  | Delete                                                    |

@@ -480,9 +480,13 @@ export class PlandataService {
 
       let lokalplanByggefeltPresent: boolean | null = null;
       const localplanIdForByggefelt =
-        selectedDelomraade?.lokplanId ?? primaryLokalplanId ?? preferredByggefelt?.lokplanId ?? null;
+        selectedDelomraade?.lokplanId ??
+        primaryLokalplanId ??
+        preferredByggefelt?.lokplanId ??
+        null;
       if (localplanIdForByggefelt) {
-        lokalplanByggefeltPresent = (await countByPlanId(BYGGEFELT_TYPE, localplanIdForByggefelt)) > 0;
+        lokalplanByggefeltPresent =
+          (await countByPlanId(BYGGEFELT_TYPE, localplanIdForByggefelt)) > 0;
       }
 
       const wastewaterEntries = wastewaterFeatures.map(mapWastewaterPlan);

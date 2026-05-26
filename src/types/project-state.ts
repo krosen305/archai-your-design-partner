@@ -210,7 +210,9 @@ export type DataSourceKind =
   | "vurdering"
   | "byggeanalyse"
   | "billedanalyse"
-  | "husDna";
+  | "husDna"
+  | "tjekditnet"
+  | "energimaerke";
 
 export const DATA_SOURCE_LABELS: Record<DataSourceKind, string> = {
   bbr: "BBR & matrikel",
@@ -230,6 +232,8 @@ export const DATA_SOURCE_LABELS: Record<DataSourceKind, string> = {
   byggeanalyse: "AI byggeanalyse",
   billedanalyse: "AI billedanalyse",
   husDna: "Hus-DNA",
+  tjekditnet: "Bredbåndsdækning (Tjekditnet)",
+  energimaerke: "Energimærke (EMOData)",
 };
 
 // ---------------------------------------------------------------------------
@@ -282,6 +286,8 @@ const STALE_DAYS: Record<DataSourceKind, number> = {
   byggeanalyse: 60,
   billedanalyse: 60,
   husDna: 60,
+  tjekditnet: 365,
+  energimaerke: 30,
 };
 
 export function deriveSourceStatus(

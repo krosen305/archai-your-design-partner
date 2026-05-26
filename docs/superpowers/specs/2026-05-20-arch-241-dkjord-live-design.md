@@ -41,9 +41,11 @@ DkJordResultat → project-persistence.deriveAutoTasks()
 ## 1. DkJordService (`src/integrations/miljoe/dkjord.ts`)
 
 ### IS_MOCK flip
+
 `IS_MOCK = false` — endpointet er offentligt og kræver ingen auth.
 
 ### Signatur
+
 ```typescript
 static async getTilstand(
   koordinat: Koordinat,
@@ -52,10 +54,11 @@ static async getTilstand(
 ```
 
 ### Polygon-support
+
 Ny ren hjælpefunktion i samme fil:
 
 ```typescript
-function wfsPolygonFilter(geojson: GeoJSON.Feature | GeoJSON.FeatureCollection): string | null
+function wfsPolygonFilter(geojson: GeoJSON.Feature | GeoJSON.FeatureCollection): string | null;
 ```
 
 - Udtræk første LinearRing fra første Polygon-feature i FeatureCollection
@@ -66,6 +69,7 @@ function wfsPolygonFilter(geojson: GeoJSON.Feature | GeoJSON.FeatureCollection):
 CQL_FILTER: `INTERSECTS(geometry, <WKT>)` med `SRSNAME=EPSG:4326`.
 
 ### DkJordResultat — nye felter
+
 ```typescript
 export type DkJordResultat = {
   v1Kortlagt: boolean | null;
@@ -75,8 +79,8 @@ export type DkJordResultat = {
     driftsstatus: string | null;
   };
   omraadeklassificering: string | null;
-  nuancering: string | null;          // ny: fra WFS feature properties
-  lokalitetsId: string | null;        // ny: DK-Jord lokalitets-id
+  nuancering: string | null; // ny: fra WFS feature properties
+  lokalitetsId: string | null; // ny: DK-Jord lokalitets-id
   kilde: "dkjord" | "mock";
 };
 ```
@@ -84,6 +88,7 @@ export type DkJordResultat = {
 `nuancering` og `lokalitetsId` læses fra feature properties på V2/V1-features. Hvis WFS ikke udstiller dem, returner `null` (ingen fejl).
 
 ### Timeout og fejlhåndtering
+
 Eksisterende 8s timeout og `makeErrorResult()` bibeholdes. API-fejl → `null` data, aldrig `false`.
 
 ---
@@ -115,19 +120,20 @@ ALTER TABLE public.site_constraints
 ```typescript
 if (patch.dkjord !== undefined) {
   hasConstraintField = true;
-  sitePatch.soil_contamination_status    = deriveSoilContaminationStatus(patch.dkjord);
-  sitePatch.jordforurening_v1            = patch.dkjord?.v1Kortlagt ?? null;
-  sitePatch.jordforurening_v2            = patch.dkjord?.v2Kortlagt ?? null;
-  sitePatch.jordforurening_olietank      = patch.dkjord?.olietank.eksisterer ?? null;
-  sitePatch.omraadeklassificering        = patch.dkjord?.omraadeklassificering ?? null;
-  sitePatch.jordforurening_nuancering    = patch.dkjord?.nuancering ?? null;
-  sitePatch.jordforurening_lokalitet_id  = patch.dkjord?.lokalitetsId ?? null;
+  sitePatch.soil_contamination_status = deriveSoilContaminationStatus(patch.dkjord);
+  sitePatch.jordforurening_v1 = patch.dkjord?.v1Kortlagt ?? null;
+  sitePatch.jordforurening_v2 = patch.dkjord?.v2Kortlagt ?? null;
+  sitePatch.jordforurening_olietank = patch.dkjord?.olietank.eksisterer ?? null;
+  sitePatch.omraadeklassificering = patch.dkjord?.omraadeklassificering ?? null;
+  sitePatch.jordforurening_nuancering = patch.dkjord?.nuancering ?? null;
+  sitePatch.jordforurening_lokalitet_id = patch.dkjord?.lokalitetsId ?? null;
 }
 ```
 
 `deriveSoilContaminationStatus()` er uændret.
 
 `deriveAutoTasks()` opdateres til at bruge typed felter direkte (ikke string-matching):
+
 - `jordforurening_v2 === true` → task `jordforurening_v2_undersoegelse` (matriklen, priority 1)
 - `jordforurening_v1 === true` → task `jordforurening_v1_screening` (matriklen, priority 2)
 - `omraadeklassificering !== null` → task `jordflytning_attest` (maskinrummet, priority 3)
@@ -145,10 +151,10 @@ geotechnical: {
   radonRisk: "low" | "medium" | "high" | "unknown";
   groundwaterDepthM: number | null;
   slopePercent: number | null;
-  jordforureningV1: boolean | null;        // null = ukendt/API-fejl
-  jordforureningV2: boolean | null;        // null = ukendt/API-fejl
+  jordforureningV1: boolean | null; // null = ukendt/API-fejl
+  jordforureningV2: boolean | null; // null = ukendt/API-fejl
   omraadeklassificering: string | null;
-};
+}
 ```
 
 ### Ny regelfil (`src/lib/rule-engine/rules/jordforurening-rules.ts`)
@@ -226,7 +232,7 @@ type ComplianceTriggers = {
 
 ```typescript
 const polygon = await getCachedParcelPolygon(addressId);
-DkJordService.getTilstand(koordinater, polygon ?? null)
+DkJordService.getTilstand(koordinater, polygon ?? null);
 ```
 
 `getCachedParcelPolygon()` er allerede implementeret i `src/integrations/cache/client.ts` (returnerer `GeoJSON.FeatureCollection | null`). Ingen ny cache-logik nødvendig.
@@ -237,11 +243,11 @@ DkJordService.getTilstand(koordinater, polygon ?? null)
 
 ### `dkjord.test.ts` — 3 fixture-scenarier (mock via `fetch`)
 
-| Scenarie | V1 features | V2 features | Forventet resultat |
-|----------|-------------|-------------|-------------------|
-| `no_hit` | 0 | 0 | `v1=false, v2=false, status=clean` |
-| `v1_only` | 1 | 0 | `v1=true, v2=false, status=registered` |
-| `v2_hit` | 0 | 1 | `v1=false, v2=true, status=contaminated` |
+| Scenarie  | V1 features | V2 features | Forventet resultat                       |
+| --------- | ----------- | ----------- | ---------------------------------------- |
+| `no_hit`  | 0           | 0           | `v1=false, v2=false, status=clean`       |
+| `v1_only` | 1           | 0           | `v1=true, v2=false, status=registered`   |
+| `v2_hit`  | 0           | 1           | `v1=false, v2=true, status=contaminated` |
 
 Dækker også: tri-state (`null` ved fetch-fejl), polygon-WKT-hjælperfunktion.
 

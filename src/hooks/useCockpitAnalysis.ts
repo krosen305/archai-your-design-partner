@@ -265,6 +265,8 @@ export function useCockpitAnalysis(params: {
             fbbData: result.fbbData,
             byggeanalyseResultat: byggeanalyseResultat,
             vurderingData: result.vurderingData,
+            tjekditnetCoverage: result.tjekditnetCoverage,
+            energimaerke: result.energimaerke,
             complianceDone: true,
             currentStep: "byggeanalyse",
             analysisRunId: result.analysisRunId,
@@ -295,7 +297,9 @@ export function useCockpitAnalysis(params: {
           const msg = e instanceof Error ? e.message : String(e);
           logger.error("[Compliance] pipeline fejlede:", e);
           setFetchError(
-            msg.startsWith("ArchAI: manglende") ? msg : "Analyse kunne ikke gennemføres. Prøv igen.",
+            msg.startsWith("ArchAI: manglende")
+              ? msg
+              : "Analyse kunne ikke gennemføres. Prøv igen.",
           );
           setStatus("error");
         });

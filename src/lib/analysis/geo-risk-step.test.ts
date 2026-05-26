@@ -170,11 +170,7 @@ describe("runGeoRiskStep", () => {
 
     expect(getCachedSourceResult).toHaveBeenCalledWith("addr-1", "geus", expect.anything());
     expect(getCachedSourceResult).toHaveBeenCalledWith("addr-1", "dhm", expect.anything());
-    expect(getCachedSourceResult).toHaveBeenCalledWith(
-      "addr-1",
-      "plandata_ext",
-      expect.anything(),
-    );
+    expect(getCachedSourceResult).toHaveBeenCalledWith("addr-1", "plandata_ext", expect.anything());
     expect(getCachedSourceResult).toHaveBeenCalledWith(
       "addr-1",
       "arealdata_ext",

@@ -1,5 +1,7 @@
 # Refactoring Roadmap
+
 Prioriteret rækkefølge for teknisk gæld og arkitektur-opretning:
+
 1. [x] **Domain Contract Extraction:** Bryd afhængigheden fra `src/lib/rule-engine` og `src/lib/compliance-engine` til `src/integrations`.
 2. [ ] **Boundary Cleanup:** Flyt inline Supabase/storage/AI-kald ud af `createServerFn` til repositories.
 3. [ ] **Validation:** Erstat `as any`/`as unknown` casts med Zod-schemas.
@@ -235,22 +237,25 @@ Prioriteret rækkefølge for teknisk gæld og arkitektur-opretning:
 ### Prioriterede findings
 
 1. [ ] **`pre-check-adresse.ts` blander inbound adapter og analyse-workflow i samme modul**
-  - Fil: `src/lib/pre-check-adresse.ts`
-  - Problem: `createServerFn`-handleren validerer input, men kalder derefter `runPreCheckAdresse()` i samme fil uden `withAuth()` og uden at delegere til et separat application service-lag. Selve modulet ejer samtidig orchestration over Layer1, naturbeskyttelse, FBB, metrics og flagbygning.
-  - AGENTS-brud: Rule 3 (Server Functions Are Inbound Adapters), Rule 7 (dirty boundary).
-  - Refaktorering: Behold Zod-contracten, men flyt `runPreCheckAdresse()` til en dedikeret service, og lad server functionen være en tynd wrapper med eksplicit auth-strategi.
+
+- Fil: `src/lib/pre-check-adresse.ts`
+- Problem: `createServerFn`-handleren validerer input, men kalder derefter `runPreCheckAdresse()` i samme fil uden `withAuth()` og uden at delegere til et separat application service-lag. Selve modulet ejer samtidig orchestration over Layer1, naturbeskyttelse, FBB, metrics og flagbygning.
+- AGENTS-brud: Rule 3 (Server Functions Are Inbound Adapters), Rule 7 (dirty boundary).
+- Refaktorering: Behold Zod-contracten, men flyt `runPreCheckAdresse()` til en dedikeret service, og lad server functionen være en tynd wrapper med eksplicit auth-strategi.
 
 2. [ ] **`billede-analyse.functions.ts` har inline auth-, projekt- og storage-workflow i server functionen**
-  - Fil: `src/lib/billede-analyse.functions.ts`
-  - Problem: `uploadBillede` bruger `supabaseAdmin.auth.getUser()`, slår projekt-ejerskab op i `projects` og uploader direkte til storage i samme handler.
-  - AGENTS-brud: Rule 3, samt persistence/storage-bekymringen i Boundary Cleanup-roadmapsporet.
-  - Refaktorering: Flyt auth/ownership/upload til en fokuseret service eller repository-kombination, så server functionen kun validerer input og delegerer.
+
+- Fil: `src/lib/billede-analyse.functions.ts`
+- Problem: `uploadBillede` bruger `supabaseAdmin.auth.getUser()`, slår projekt-ejerskab op i `projects` og uploader direkte til storage i samme handler.
+- AGENTS-brud: Rule 3, samt persistence/storage-bekymringen i Boundary Cleanup-roadmapsporet.
+- Refaktorering: Flyt auth/ownership/upload til en fokuseret service eller repository-kombination, så server functionen kun validerer input og delegerer.
 
 3. [ ] **`ai-design.functions.ts` har god server-side gate, men `resolveHardStop()` går direkte til Supabase-tabeller**
-  - Fil: `src/lib/ai-design.functions.ts`
-  - Problem: Hard Stop-authority ligger rigtigt på serveren, men hjælpefunktionen læser `projects` og `site_constraints` direkte via `supabaseAdmin` i samme modul, i stedet for at gå gennem repositories eller et lille compliance-gate service-lag.
-  - AGENTS-brud: Ikke et Rule 4-brud, men stadig en boundary-læk ift. Rule 3/Rule 7 og persistence-patternet.
-  - Refaktorering: Bevar server-side gate-semantikken, men flyt opslagene til repository-/service-lag, fx `loadProjectComplianceSnapshot()` og `loadSiteConstraintGate()`.
+
+- Fil: `src/lib/ai-design.functions.ts`
+- Problem: Hard Stop-authority ligger rigtigt på serveren, men hjælpefunktionen læser `projects` og `site_constraints` direkte via `supabaseAdmin` i samme modul, i stedet for at gå gennem repositories eller et lille compliance-gate service-lag.
+- AGENTS-brud: Ikke et Rule 4-brud, men stadig en boundary-læk ift. Rule 3/Rule 7 og persistence-patternet.
+- Refaktorering: Bevar server-side gate-semantikken, men flyt opslagene til repository-/service-lag, fx `loadProjectComplianceSnapshot()` og `loadSiteConstraintGate()`.
 
 ### Sekundære observationer
 

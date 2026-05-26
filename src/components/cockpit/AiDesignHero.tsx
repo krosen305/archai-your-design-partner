@@ -5,7 +5,10 @@ import { Card } from "@/components/wizard-ui";
 import { Textarea } from "@/components/ui/textarea";
 import { useAiDesignWorkflow } from "@/hooks/useAiDesignWorkflow";
 import { cn } from "@/lib/utils";
-import type { BilledeAnalyseKategorier, BilledeAnalyseResultat } from "@/lib/billede-analyse-vocabulary";
+import type {
+  BilledeAnalyseKategorier,
+  BilledeAnalyseResultat,
+} from "@/lib/billede-analyse-vocabulary";
 
 const ANALYSE_KATEGORIER = [
   "facade",
@@ -79,9 +82,13 @@ export function AiDesignHero() {
               className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5 font-mono text-[11px] text-foreground hover:border-accent/50 transition-colors disabled:opacity-50"
             >
               {analyseState === "uploading" ? (
-                <><Loader2 size={12} className="animate-spin" /> Uploader...</>
+                <>
+                  <Loader2 size={12} className="animate-spin" /> Uploader...
+                </>
               ) : (
-                <><Upload size={12} /> Inspiration ({uploadedImages.length}/4)</>
+                <>
+                  <Upload size={12} /> Inspiration ({uploadedImages.length}/4)
+                </>
               )}
             </button>
             <button
@@ -91,9 +98,13 @@ export function AiDesignHero() {
               className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5 font-mono text-[11px] text-foreground hover:border-accent/50 transition-colors disabled:opacity-50"
             >
               {analyseState === "analysing" ? (
-                <><Loader2 size={12} className="animate-spin" /> Analyserer...</>
+                <>
+                  <Loader2 size={12} className="animate-spin" /> Analyserer...
+                </>
               ) : (
-                <><Sparkles size={12} /> Analyser billeder</>
+                <>
+                  <Sparkles size={12} /> Analyser billeder
+                </>
               )}
             </button>
             <input
@@ -129,7 +140,11 @@ export function AiDesignHero() {
         {hasHardStop ? (
           <div className="inline-flex h-[88px] min-w-[160px] items-center justify-center gap-2 rounded-md border border-danger/40 bg-danger/5 px-4 font-mono text-xs text-danger text-center leading-snug">
             <ShieldAlert size={14} className="shrink-0" />
-            <span>Design blokeret<br />af compliance-stop</span>
+            <span>
+              Design blokeret
+              <br />
+              af compliance-stop
+            </span>
           </div>
         ) : (
           <button
@@ -139,16 +154,22 @@ export function AiDesignHero() {
             className="inline-flex h-[88px] min-w-[160px] items-center justify-center gap-2 rounded-md bg-accent px-5 font-mono text-sm text-accent-foreground hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <><Loader2 size={14} className="animate-spin" /> Genererer...</>
+              <>
+                <Loader2 size={14} className="animate-spin" /> Genererer...
+              </>
             ) : (
-              <><Sparkles size={14} /> Generér 3 forslag</>
+              <>
+                <Sparkles size={14} /> Generér 3 forslag
+              </>
             )}
           </button>
         )}
       </div>
 
       {analyse &&
-        (analyseState === "conflict" || analyseState === "validated" || analyseState === "saved") && (
+        (analyseState === "conflict" ||
+          analyseState === "validated" ||
+          analyseState === "saved") && (
           <AnalysePanel
             analyse={analyse}
             analyseState={analyseState}

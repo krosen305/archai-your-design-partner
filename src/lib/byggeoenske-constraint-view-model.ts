@@ -39,7 +39,8 @@ export function buildStepConstraintViewModel(
     const status = validering?.etagerStatus;
     const ack = validering?.etagerDispensationAcknowledged ?? false;
     return {
-      contextChip: k?.maxEtager != null ? `Kommuneplanen tillader: maks ${k.maxEtager} etager` : null,
+      contextChip:
+        k?.maxEtager != null ? `Kommuneplanen tillader: maks ${k.maxEtager} etager` : null,
       dispensation:
         status === "dispensation"
           ? {
@@ -79,9 +80,7 @@ export function buildStepConstraintViewModel(
 
   if (stepKey === "varmekilde") {
     const hasTilslutning = complianceFlags.some((f) => f.id === "fjernvarme-tilslutningspligt");
-    const hasMismatch = complianceFlags.some(
-      (f) => f.id === "fjernvarme-mismatch-ingen-daekning",
-    );
+    const hasMismatch = complianceFlags.some((f) => f.id === "fjernvarme-mismatch-ingen-daekning");
     return {
       ...NONE,
       fjernvarme: hasTilslutning ? "tilgaengelig" : hasMismatch ? "mismatch" : "unknown",

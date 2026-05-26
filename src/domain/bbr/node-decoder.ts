@@ -8,6 +8,8 @@ export type BbrBuildingNode = {
   byg025AntalLejlighederUdenKoekken: number | null;
   byg026Opfoerelsesaar: number | null;
   byg027OmTilbygningsaar: number | null;
+  byg030Vandforsyning: string | null;
+  byg031Afloebsforhold: string | null;
   byg029DatoForMidlertidigOpfoertBygning: string | null;
   byg032YdervaeggensMateriale: string | null;
   byg033Tagdaekningsmateriale: string | null;
@@ -37,6 +39,8 @@ const bbrBuildingNodeSchema = z.object({
   byg025AntalLejlighederUdenKoekken: z.number().nullable(),
   byg026Opfoerelsesaar: z.number().nullable(),
   byg027OmTilbygningsaar: z.number().nullable(),
+  byg030Vandforsyning: z.string().nullable(),
+  byg031Afloebsforhold: z.string().nullable(),
   byg029DatoForMidlertidigOpfoertBygning: z.string().nullable(),
   byg032YdervaeggensMateriale: z.string().nullable(),
   byg033Tagdaekningsmateriale: z.string().nullable(),

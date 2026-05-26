@@ -454,7 +454,6 @@ Regler:
 ### 4. TRIN-FOR-TRIN INSTRUKSER
 
 1. Proev foerst at oprette:
-
    - `src/integrations/supabase/repositories/site-constraints.repository.test.ts`
    - `src/integrations/supabase/repositories/building-tasks.repository.test.ts`
 
@@ -491,7 +490,6 @@ Regler:
    ```
 
 3. Test `deriveSoilContaminationStatus` med disse cases:
-
    - `undefined` -> `null`
    - `null` -> `null`
    - `{ v1Kortlagt: false, v2Kortlagt: false }` -> `"clean"`
@@ -501,7 +499,6 @@ Regler:
    - `{ v1Kortlagt: false, v2Kortlagt: null }` -> `"unknown"`
 
 4. Test `deriveSiteConstraintsPatch` med:
-
    - `addressId=null` returnerer `null`.
    - `kommuneplanramme` mapper `max_bebyggelsesprocent`, `max_etager`, `max_height_m`, `source_kommuneplan_id`.
    - `lokalplaner` mapper `source_lokalplan_id` via `selectPrimaryLokalplanForPdf`.
@@ -510,7 +507,6 @@ Regler:
    - `dkjord` mapper jordforurening fields.
 
 5. Test `deriveAutoTasks` med:
-
    - SAVE 3 -> task key `SAVE_DISPENSATION`, status `blocked`.
    - SAVE 4 -> task key `SAVE_4_PARAGRAPH14`, status `pending`.
    - `isFredet=true` -> task key `FREDNING_JURIDISK`, status `blocked`.
@@ -751,7 +747,6 @@ Regler:
    ```
 
 7. Tilfoej tests for branch, der tidligere blev undgaaet:
-
    - Manglende `adgangsadresseid` udloeser `getDarAddressDetails`.
    - Cache hit undgaar `fetchBbrWithMat`.
    - Stale cache med `grundareal=null` bypasser cache.
@@ -996,11 +991,9 @@ Eksempel paa hard-stop UI i `src/components/cockpit/StatusStripe.tsx`:
 ```tsx
 const { complianceFlags, hard_stop, hard_stop_reason } = useProject();
 
-{hard_stop && hard_stop_reason && (
-  <div>
-    {hard_stop_reason}
-  </div>
-)}
+{
+  hard_stop && hard_stop_reason && <div>{hard_stop_reason}</div>;
+}
 ```
 
 Regler:
@@ -1252,8 +1245,12 @@ Regler:
    ```ts
    export type CockpitServerDeps = {
      withAuth: typeof withAuth;
-     analyseAddress: (input: Omit<AnalysisInputWithToken, "token"> & { userId: string }) => Promise<ComplianceResult>;
-     byggeanalyse: (input: ByggeanalyseInput & { ruleEngineResult?: RuleEngineResult }) => Promise<ByggeanalyseResultat>;
+     analyseAddress: (
+       input: Omit<AnalysisInputWithToken, "token"> & { userId: string },
+     ) => Promise<ComplianceResult>;
+     byggeanalyse: (
+       input: ByggeanalyseInput & { ruleEngineResult?: RuleEngineResult },
+     ) => Promise<ByggeanalyseResultat>;
      assembleRuleEngineInput: typeof assembleRuleEngineInput;
      runRuleEngine: typeof runRuleEngine;
      loggerWarn: (message: string, detail?: string) => void;
@@ -1278,7 +1275,6 @@ Regler:
 4. Implementér tilsvarende `handleRunByggeanalyse(rawData, deps)`.
 
    Den skal:
-
    - validere token.
    - assemble `RuleEngineInput`.
    - koere `runRuleEngine`.
@@ -1314,7 +1310,6 @@ Regler:
 7. Opret `src/lib/cockpit.functions.test.ts`.
 
    Test cases:
-
    - `handleFetchCompliance` parser valid input og kalder `analyseAddress` med `userId`.
    - Invalid coordinates eller tom token afvises.
    - `handleRunByggeanalyse` koerer `runRuleEngine` foer AI service.
@@ -1419,17 +1414,17 @@ Regler:
    Foer:
 
    ```md
-   bun test                    # Unit tests
-   bun run evals               # AI eval-suite (mock mode)
+   bun test # Unit tests
+   bun run evals # AI eval-suite (mock mode)
    ```
 
    Efter:
 
    ```md
-   bun test                    # Unit tests
-   bun run test:live           # Explicit live integration tests (requires env)
-   bunx playwright test        # E2E tests
-   bun run evals               # AI eval-suite (mock mode)
+   bun test # Unit tests
+   bun run test:live # Explicit live integration tests (requires env)
+   bunx playwright test # E2E tests
+   bun run evals # AI eval-suite (mock mode)
    ```
 
 3. Opdater `package.json` scripts, koordineret med Ticket 2 hvis det er implementeret.
@@ -1471,7 +1466,6 @@ Regler:
    ```
 
 6. Hvis lint stadig har warnings, opret `docs/lint-warning-backlog.md` med grupper:
-
    - `no-console` i `agent/`, `scripts/`, `evals/`
    - `@typescript-eslint/no-explicit-any` i integrationsklienter/tests
    - `react-refresh/only-export-components` i UI primitives
@@ -1686,11 +1680,7 @@ export async function fetchWithRetry(
 Aktuel test bruger real delay, dog lavt:
 
 ```ts
-const result = await fetchWithRetry(
-  "https://example.com",
-  {},
-  { retries: 1, retryDelayBaseMs: 1 },
-);
+const result = await fetchWithRetry("https://example.com", {}, { retries: 1, retryDelayBaseMs: 1 });
 ```
 
 Regler:

@@ -1,0 +1,252 @@
+import type { Br18Requirement } from "../types";
+
+export const br18_2024_catalog: Br18Requirement[] = [
+  // ── Kap 8: Bebyggelsesregulerende ──────────────────────────────────────────
+  {
+    id: "BR18-8.3.1-bebyggelsesprocent",
+    br18Version: "2024",
+    chapter: "8",
+    paragraph: "8.3.1",
+    title: "Bebyggelsesprocent — enfamiliehuse",
+    description:
+      "Bebyggelsesprocenten for enfamiliehuse og dobbelthuse må ikke overstige 30 (BR18 default). Lokalplan kan fastsætte anden grænse.",
+    sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/08/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+    requirementKind: "machine_checkable",
+    severity: "hard_stop",
+    applicability: [
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
+      { field: "grundarealM2", operator: "present", value: null },
+    ],
+    requiredEvidence: [
+      {
+        evidenceType: "drawing",
+        description: "Situationsplan med arealopmåling og beregning af bebyggelsesprocent",
+      },
+    ],
+    responsibleRole: "architect",
+  },
+  {
+    id: "BR18-8.4.1-bygningshoejde",
+    br18Version: "2024",
+    chapter: "8",
+    paragraph: "8.4.1",
+    title: "Bygningshøjde — enfamiliehuse",
+    description:
+      "Bygningshøjden for enfamiliehuse og dobbelthuse må ikke overstige 8,5 m (BR18 default).",
+    sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/08/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+    requirementKind: "machine_checkable",
+    severity: "hard_stop",
+    applicability: [
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
+    ],
+    requiredEvidence: [{ evidenceType: "drawing", description: "Facadetegning med koter" }],
+    responsibleRole: "architect",
+  },
+  {
+    id: "BR18-8.4.2-etager",
+    br18Version: "2024",
+    chapter: "8",
+    paragraph: "8.4.2",
+    title: "Antal etager — enfamiliehuse",
+    description: "Enfamiliehuse og dobbelthuse må ikke opføres med mere end 2 etager.",
+    sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/08/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+    requirementKind: "machine_checkable",
+    severity: "hard_stop",
+    applicability: [
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
+    ],
+    requiredEvidence: [],
+    responsibleRole: "architect",
+  },
+  {
+    id: "BR18-8.4.3-skelafstand",
+    br18Version: "2024",
+    chapter: "8",
+    paragraph: "8.4.3",
+    title: "Skelafstand — enfamiliehuse",
+    description:
+      "Bebyggelse skal holdes i mindst 2,5 m fra skel mod nabo og vej (BR18 default). Lokalplan kan fastsætte anden grænse.",
+    sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/08/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+    requirementKind: "machine_checkable",
+    severity: "hard_stop",
+    applicability: [
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
+      { field: "skelafstandM", operator: "present", value: null },
+    ],
+    requiredEvidence: [
+      { evidenceType: "drawing", description: "Situationsplan med skelafstandsmål" },
+    ],
+    responsibleRole: "architect",
+  },
+  // ── Kap 5: Brand ──────────────────────────────────────────────────────────
+  {
+    id: "BR18-5-brandreview",
+    br18Version: "2024",
+    chapter: "5",
+    paragraph: null,
+    title: "Branddokumentation",
+    description:
+      "Bygninger skal opfylde brandsikringskrav. Brandklasse og dokumentationskrav afhænger af anvendelseskategori, størrelse og kompleksitet. Kræver typisk certificeret brandrådgiver.",
+    sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/05/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg", "renovering"],
+    requirementKind: "specialist_review",
+    severity: "dispensation",
+    applicability: [],
+    requiredEvidence: [
+      {
+        evidenceType: "declaration",
+        description: "Brandteknisk dokumentation eller erklæring fra certificeret brandrådgiver",
+      },
+    ],
+    responsibleRole: "certified_fire_consultant",
+  },
+  // ── Kap 15: Konstruktioner ────────────────────────────────────────────────
+  {
+    id: "BR18-15-statik-review",
+    br18Version: "2024",
+    chapter: "15",
+    paragraph: null,
+    title: "Konstruktionsdokumentation",
+    description:
+      "Bærende konstruktioner skal dokumenteres. Konstruktionsklasse afhænger af byggeriets art og kompleksitet. Typisk kræves certificeret statiker.",
+    sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/15/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg", "renovering"],
+    requirementKind: "specialist_review",
+    severity: "dispensation",
+    applicability: [],
+    requiredEvidence: [
+      {
+        evidenceType: "calculation",
+        description: "Statisk beregning og konstruktionsdokumentation",
+      },
+      {
+        evidenceType: "declaration",
+        description: "Erklæring fra certificeret statiker (konstruktionsklasse 2+)",
+      },
+    ],
+    responsibleRole: "certified_static_engineer",
+  },
+  // ── Kap 11: Energi ────────────────────────────────────────────────────────
+  {
+    id: "BR18-11-energiramme",
+    br18Version: "2024",
+    chapter: "11",
+    paragraph: null,
+    title: "Energiramme",
+    description:
+      "Nyt byggeri og tilbygninger over 50 m² skal overholde energirammen (BE18). Kræver energiberegning.",
+    sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/11/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "nedrivning_nybyg"],
+    requirementKind: "documentation",
+    severity: "documentation",
+    applicability: [
+      { field: "projectScope", operator: "in", value: ["enfamiliehus", "nedrivning_nybyg"] },
+    ],
+    requiredEvidence: [
+      { evidenceType: "calculation", description: "Energiberegning (BE18 eller tilsvarende)" },
+    ],
+    responsibleRole: "energy_consultant",
+  },
+  // ── LCA/klima ─────────────────────────────────────────────────────────────
+  {
+    id: "BR18-11-lca-klimakrav",
+    br18Version: "2024",
+    chapter: "11",
+    paragraph: null,
+    title: "LCA-klimakrav (CO₂-dokumentation)",
+    description:
+      "LCA-krav for bygninger fra 2023. Tærskel og omfang afhænger af bruttoetageareal og bygningstype. Ukendt/relevant for enfamiliehuse.",
+    sourceUrl:
+      "https://www.sbst.dk/byggeri/baeredygtigt-byggeri/national-strategi-for-baeredygtigt-byggeri/klimakrav-lca-i-bygningsreglementet",
+    validFrom: "2023-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "nedrivning_nybyg"],
+    requirementKind: "documentation",
+    severity: "warning",
+    applicability: [{ field: "bebyggetArealM2", operator: "present", value: null }],
+    requiredEvidence: [
+      { evidenceType: "calculation", description: "LCA-beregning (livscyklusvurdering)" },
+    ],
+    responsibleRole: "energy_consultant",
+  },
+  // ── D&V / Færdigmelding ───────────────────────────────────────────────────
+  {
+    id: "BR18-faerdigmelding-dv",
+    br18Version: "2024",
+    chapter: "1",
+    paragraph: null,
+    title: "D&V-dokumentation til færdigmelding",
+    description:
+      "Inden færdigmelding skal bygherren sikre drifts- og vedligeholdelsesdokumentation.",
+    sourceUrl:
+      "https://www.bygningsreglementet.dk/media/0o1nbejw/dokumentation-af-bygningsreglementets-tekniske-bestemmelser-i-forbindelse-med-faerdigmelding-af-byggeriet-2025.pdf",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg", "renovering"],
+    requirementKind: "documentation",
+    severity: "documentation",
+    applicability: [],
+    requiredEvidence: [
+      {
+        evidenceType: "declaration",
+        description: "D&V-manual til ejendommens drift og vedligehold",
+      },
+    ],
+    responsibleRole: "owner",
+  },
+  // ── Myndighed / Dispensation ──────────────────────────────────────────────
+  {
+    id: "BR18-dispensation-lokalplan",
+    br18Version: "2024",
+    chapter: "1",
+    paragraph: null,
+    title: "Dispensation fra lokalplan eller BR18",
+    description:
+      "Overskrides lokalplan- eller BR18-grænser kræves dispensation fra kommunen. Afhænger af konkret projekt og kommunal praksis.",
+    sourceUrl: "https://www.bygningsreglementet.dk/administrative-bestemmelser/krav/",
+    validFrom: "2018-01-01",
+    validTo: null,
+    projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg", "renovering"],
+    requirementKind: "authority_discretion",
+    severity: "dispensation",
+    applicability: [],
+    requiredEvidence: [
+      { evidenceType: "authority_response", description: "Kommunal dispensationsafgørelse" },
+    ],
+    responsibleRole: "municipality",
+  },
+];

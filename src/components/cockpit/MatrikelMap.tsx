@@ -11,13 +11,17 @@ import { usePlacementSync } from "@/hooks/usePlacementSync";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { NeighborBuildingData } from "@/domain/contracts/analysis.types";
 import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
+import { buildSquareFootprint25832 } from "@/lib/drawing/footprint-builder";
+import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
 
 export type MatrikelMapProps = {
   bbr: RuleEngineBbrData | null;
   metrics: ComplianceMetrics | null;
   naboer: NeighborBuildingData | null;
   jordstykkeLokalId?: string | null;
+  footprintGeojson?: GeoJsonPolygon25832 | null;
   onPlacementChange?: (patch: { centroid: { lat: number; lng: number } }) => void;
+  onFootprintChange?: (geojson: GeoJsonPolygon25832) => void;
 };
 
 export function MatrikelMap({
@@ -25,7 +29,9 @@ export function MatrikelMap({
   metrics,
   naboer,
   jordstykkeLokalId,
+  footprintGeojson,
   onPlacementChange,
+  onFootprintChange,
 }: MatrikelMapProps) {
   const { address, complianceFlags, designPlacement } = useProject();
   const geo = designPlacement?.centroid ?? address?.koordinater ?? null;
@@ -83,11 +89,21 @@ export function MatrikelMap({
     resetPlacement: resetPlacementSync,
   } = usePlacementSync(designPlacement, address?.koordinater ?? null);
 
+  const buildingAreaRef = useRef(buildingArea);
+  const rotationDegRef = useRef(rotationDeg);
+
   useEffect(() => {
     if (!geo) return;
     initialCenterRef.current = [geo.lng, geo.lat];
     footprintCenterRef.current = [geo.lng, geo.lat];
   }, [address?.adresseid, geo?.lat, geo?.lng]);
+
+  useEffect(() => {
+    buildingAreaRef.current = buildingArea;
+  }, [buildingArea]);
+  useEffect(() => {
+    rotationDegRef.current = rotationDeg;
+  }, [rotationDeg]);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,6 +250,13 @@ export function MatrikelMap({
 
         updateCentroid({ lat, lng });
         onPlacementChange?.({ centroid: { lat, lng } });
+
+        const newFootprint = buildSquareFootprint25832({
+          centroidWgs84: [lng, lat],
+          areaM2: Math.max(28, buildingAreaRef.current ?? 60),
+          rotationDeg: rotationDegRef.current,
+        });
+        onFootprintChange?.(newFootprint);
       });
 
       const marker = new Feature({
@@ -327,42 +350,37 @@ export function MatrikelMap({
 
     let cancelled = false;
 
-    const updateFootprint = async () => {
-      const [{ default: Feature }, { default: Polygon }, { fromLonLat }] = await Promise.all([
-        import("ol/Feature"),
-        import("ol/geom/Polygon"),
-        import("ol/proj"),
-      ]);
+    const updateFootprintDisplay = async () => {
+      const { default: GeoJSON } = await import("ol/format/GeoJSON");
       if (cancelled || !footprintSourceRef.current) return;
 
       footprintSourceRef.current.clear();
 
       const center = footprintCenterRef.current ?? (geo ? [geo.lng, geo.lat] : [10, 56]);
-      const center3857 = fromLonLat(center as [number, number]);
-      const area = Math.max(28, buildingArea ?? 60);
-      const side = Math.sqrt(area);
-      const half = side / 2;
-      const ring: [number, number][] = [
-        [center3857[0] - half, center3857[1] - half],
-        [center3857[0] + half, center3857[1] - half],
-        [center3857[0] + half, center3857[1] + half],
-        [center3857[0] - half, center3857[1] + half],
-        [center3857[0] - half, center3857[1] - half],
-      ];
+      const geojson25832 =
+        footprintGeojson ??
+        buildSquareFootprint25832({
+          centroidWgs84: center as [number, number],
+          areaM2: Math.max(28, buildingArea ?? 60),
+          rotationDeg,
+        });
 
-      const polygon = new Polygon([ring]);
-      polygon.rotate((rotationDeg * Math.PI) / 180, center3857);
-      const feature = new Feature({ geometry: polygon });
+      const features = new GeoJSON().readFeatures(geojson25832, {
+        dataProjection: "EPSG:25832",
+        featureProjection: "EPSG:3857",
+      });
+      const feature = features[0];
+      if (!feature) return;
       footprintSourceRef.current.addFeature(feature);
       footprintFeatureRef.current = feature;
     };
 
-    void updateFootprint();
+    void updateFootprintDisplay();
 
     return () => {
       cancelled = true;
     };
-  }, [geo?.lat, geo?.lng, buildingArea, rotationDeg]);
+  }, [geo?.lat, geo?.lng, buildingArea, rotationDeg, footprintGeojson]);
 
   const hardStopLabel =
     activeBlockers[0]?.label ??

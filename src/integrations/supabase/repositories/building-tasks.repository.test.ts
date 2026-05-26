@@ -111,9 +111,7 @@ describe("deriveAutoTasks", () => {
       wastewaterPlanStatus: "Vedtaget",
       sewerAreaType: "Separatkloakeret",
     });
-    const task = tasks.find(
-      (t) => t.task_key === BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING,
-    );
+    const task = tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.KLOAK_NEDSIVNING_AFKLARING);
     expect(task).toBeDefined();
     expect(task!.status).toBe("pending");
   });
@@ -146,9 +144,7 @@ describe("deriveAutoTasks", () => {
       bnbo: true,
       rawMaterialArea: true,
     });
-    expect(
-      tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.NATURA2000_AFKLARING),
-    ).toBeDefined();
+    expect(tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.NATURA2000_AFKLARING)).toBeDefined();
     expect(tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.BNBO_OSD_AFKLARING)).toBeDefined();
     expect(tasks.find((t) => t.task_key === BUILDING_TASK_KEYS.RAASTOF_AFKLARING)).toBeDefined();
   });

@@ -12,11 +12,11 @@
 
 ## File Map
 
-| Action | File |
-|--------|------|
-| Create | `src/lib/parcel-geometry.ts` |
-| Create | `src/lib/parcel-geometry.test.ts` |
-| Modify | `src/components/cockpit/MatrikelMap.tsx` |
+| Action | File                                                                   |
+| ------ | ---------------------------------------------------------------------- |
+| Create | `src/lib/parcel-geometry.ts`                                           |
+| Create | `src/lib/parcel-geometry.test.ts`                                      |
+| Modify | `src/components/cockpit/MatrikelMap.tsx`                               |
 | Modify | `src/routes/projekt.$id.cockpit.tsx` (call site for onPlacementChange) |
 
 ---
@@ -24,6 +24,7 @@
 ### Task 1: Extract pure geometry helpers
 
 **Files:**
+
 - Create: `src/lib/parcel-geometry.ts`
 - Create: `src/lib/parcel-geometry.test.ts`
 
@@ -41,11 +42,19 @@ import {
 // A 10m × 10m square at the origin in WGS84 degrees
 // (approximate — tests validate logic, not geodetic precision)
 const SQUARE_10x10 = [
-  [0, 0], [0.0001, 0], [0.0001, 0.0001], [0, 0.0001], [0, 0],
+  [0, 0],
+  [0.0001, 0],
+  [0.0001, 0.0001],
+  [0, 0.0001],
+  [0, 0],
 ] as [number, number][];
 
 const SQUARE_5x5 = [
-  [0, 0], [0.00005, 0], [0.00005, 0.00005], [0, 0.00005], [0, 0],
+  [0, 0],
+  [0.00005, 0],
+  [0.00005, 0.00005],
+  [0, 0.00005],
+  [0, 0],
 ] as [number, number][];
 
 describe("computeFootprintAreaM2", () => {
@@ -121,10 +130,7 @@ export function computeFootprintAreaM2(ring: Ring): number | null {
 }
 
 // Minimum distance from point [lng, lat] to any segment in a polygon ring, in metres
-export function computeMinDistanceToBoundaryM(
-  point: [number, number],
-  ring: Ring,
-): number | null {
+export function computeMinDistanceToBoundaryM(point: [number, number], ring: Ring): number | null {
   if (ring.length < 2) return null;
   // Approximate metres per degree at 56°N
   const mPerLng = 111_320 * Math.cos((56 * Math.PI) / 180);
@@ -154,10 +160,7 @@ export function computeMinDistanceToBoundaryM(
 // Area of footprint ring that lies outside the parcel ring, in m²
 // Simple approximation: if bounding boxes don't overlap, return footprint area.
 // For overlapping cases returns 0 (conservative — avoids false positives).
-export function computeOutsideParcelAreaM2(
-  footprintRing: Ring,
-  parcelRing: Ring,
-): number | null {
+export function computeOutsideParcelAreaM2(footprintRing: Ring, parcelRing: Ring): number | null {
   if (footprintRing.length < 3 || parcelRing.length < 3) return null;
 
   const fMinX = Math.min(...footprintRing.map((p) => p[0]));
@@ -202,6 +205,7 @@ git commit -m "feat(arch-278): pure parcel geometry helpers with tests"
 ### Task 2: Add `onPlacementChange` prop and remove `syncPatch` from map
 
 **Files:**
+
 - Modify: `src/components/cockpit/MatrikelMap.tsx`
 
 - [ ] **Step 1: Add callback prop to `MatrikelMapProps`**
@@ -242,10 +246,7 @@ translate.on("translateend", (event: any) => {
   if (!feature || !geometry) return;
 
   const extent = geometry.getExtent();
-  const center3857: [number, number] = [
-    (extent[0] + extent[2]) / 2,
-    (extent[1] + extent[3]) / 2,
-  ];
+  const center3857: [number, number] = [(extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2];
   const [lng, lat] = transform(center3857, "EPSG:3857", "EPSG:4326") as [number, number];
   footprintCenterRef.current = [lng, lat];
   setDragHint("Placering opdateret");
@@ -290,6 +291,7 @@ const Translate: new (...args: any[]) => OlTranslate = (imports[10] as any).defa
 ```
 
 Also type the refs:
+
 ```typescript
 const mapRef = useRef<OlMap | null>(null);
 const parcelSourceRef = useRef<OlVectorSource | null>(null);
@@ -320,6 +322,7 @@ git commit -m "refactor(arch-278): MatrikelMap removes syncPatch, adds onPlaceme
 ### Task 3: Wire `onPlacementChange` in the call site
 
 **Files:**
+
 - Modify: `src/routes/projekt.$id.cockpit.tsx` (or wherever `<MatrikelMap>` is rendered in `<MatrikelCanvas>`)
 
 Note: Check if `MatrikelMap` is rendered inside `MatrikelCanvas` in `cockpit/index.tsx` or in the route directly.

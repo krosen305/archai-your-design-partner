@@ -2,11 +2,7 @@ import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useProject } from "@/lib/project-store";
 import { Card } from "@/components/wizard-ui";
-import {
-  beregnBudget,
-  type GeoteknikKategori,
-  type BudgetInput,
-} from "@/lib/budget-calculator";
+import { beregnBudget, type GeoteknikKategori, type BudgetInput } from "@/lib/budget-calculator";
 import { useBudgetSync } from "@/hooks/useBudgetSync";
 
 // ---------------------------------------------------------------------------

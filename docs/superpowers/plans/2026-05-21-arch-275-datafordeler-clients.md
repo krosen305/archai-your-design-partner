@@ -12,21 +12,22 @@
 
 ## File Map
 
-| Action | File |
-|--------|------|
-| Create | `src/integrations/datafordeler/graphql-client.ts` |
+| Action | File                                                   |
+| ------ | ------------------------------------------------------ |
+| Create | `src/integrations/datafordeler/graphql-client.ts`      |
 | Create | `src/integrations/datafordeler/graphql-client.test.ts` |
-| Modify | `src/integrations/dar/client.ts` |
-| Modify | `src/integrations/bbr/client.ts` |
-| Modify | `src/integrations/mat/client.ts` |
-| Modify | `src/integrations/ebr/client.ts` |
-| Modify | `src/integrations/plandata/client.ts` |
+| Modify | `src/integrations/dar/client.ts`                       |
+| Modify | `src/integrations/bbr/client.ts`                       |
+| Modify | `src/integrations/mat/client.ts`                       |
+| Modify | `src/integrations/ebr/client.ts`                       |
+| Modify | `src/integrations/plandata/client.ts`                  |
 
 ---
 
 ### Task 1: Create the shared `datafordelerGraphqlFetch` transport
 
 **Files:**
+
 - Create: `src/integrations/datafordeler/graphql-client.ts`
 - Create: `src/integrations/datafordeler/graphql-client.test.ts`
 
@@ -47,15 +48,10 @@ const TEST_VARS = { id: "abc", virkningstid: "2026-01-01", registreringstid: "20
 
 describe("datafordelerGraphqlFetch", () => {
   it("returns typed data on success", async () => {
-    installSequentialJsonFetch([
-      { data: { DAR_Adresse: { nodes: [{ id_lokalId: "abc" }] } } },
-    ]);
-    const result = await datafordelerGraphqlFetch<{ DAR_Adresse: { nodes: { id_lokalId: string }[] } }>(
-      TEST_URL,
-      TEST_QUERY,
-      TEST_VARS,
-      "DAR_Adresse",
-    );
+    installSequentialJsonFetch([{ data: { DAR_Adresse: { nodes: [{ id_lokalId: "abc" }] } } }]);
+    const result = await datafordelerGraphqlFetch<{
+      DAR_Adresse: { nodes: { id_lokalId: string }[] };
+    }>(TEST_URL, TEST_QUERY, TEST_VARS, "DAR_Adresse");
     expect(result.DAR_Adresse.nodes[0].id_lokalId).toBe("abc");
   });
 
@@ -67,9 +63,7 @@ describe("datafordelerGraphqlFetch", () => {
   });
 
   it("throws on GraphQL errors array", async () => {
-    installSequentialJsonFetch([
-      { errors: [{ message: "Field not found" }] },
-    ]);
+    installSequentialJsonFetch([{ errors: [{ message: "Field not found" }] }]);
     await expect(
       datafordelerGraphqlFetch(TEST_URL, TEST_QUERY, TEST_VARS, "DAR_Adresse"),
     ).rejects.toThrow("Field not found");
@@ -167,6 +161,7 @@ git commit -m "feat(arch-275): create shared datafordelerGraphqlFetch<T> transpo
 ### Task 2: Update `dar/client.ts`
 
 **Files:**
+
 - Modify: `src/integrations/dar/client.ts`
 
 - [ ] **Step 1: Define node types and replace `gqlFetch`**
@@ -203,7 +198,11 @@ type DarHusnummerNode = {
 
 type DarPostnummerNode = { postnr: string | null; navn: string | null };
 type DarAdressepunktNode = { position: { wkt: string | null } | null };
-type MatJordstykkeNode = { matrikelnummer: string | null; ejerlavLokalId: string | null; registreretAreal: number | null };
+type MatJordstykkeNode = {
+  matrikelnummer: string | null;
+  ejerlavLokalId: string | null;
+  registreretAreal: number | null;
+};
 type MatEjerlavNode = { ejerlavskode: number | null; ejerlavsnavn: string | null };
 ```
 
@@ -216,34 +215,46 @@ In `getAddressDetails`, replace each `gqlFetch(url, QUERY, vars, operation, trac
 ```typescript
 // Kald 1:
 const adresseData = await datafordelerGraphqlFetch<{ DAR_Adresse: { nodes: DarAdresseNode[] } }>(
-  url, ADRESSE_QUERY, { id, ...bitemporalArgs }, "DAR_Adresse", { trace },
+  url,
+  ADRESSE_QUERY,
+  { id, ...bitemporalArgs },
+  "DAR_Adresse",
+  { trace },
 );
 const adresseNodes = adresseData.DAR_Adresse.nodes;
 
 // Kald 2:
-const husnummerData = await datafordelerGraphqlFetch<{ DAR_Husnummer: { nodes: DarHusnummerNode[] } }>(
-  url, HUSNUMMER_QUERY, { id: husnummerFK, ...bitemporalArgs }, "DAR_Husnummer", { trace },
-);
+const husnummerData = await datafordelerGraphqlFetch<{
+  DAR_Husnummer: { nodes: DarHusnummerNode[] };
+}>(url, HUSNUMMER_QUERY, { id: husnummerFK, ...bitemporalArgs }, "DAR_Husnummer", { trace });
 const husnummer = husnummerData.DAR_Husnummer.nodes[0] ?? null;
 
 // Kald 3a:
-const postnummerData = await datafordelerGraphqlFetch<{ DAR_Postnummer: { nodes: DarPostnummerNode[] } }>(
-  url, POSTNUMMER_QUERY, { id: postnummerFK, ...bitemporalArgs }, "DAR_Postnummer", { trace },
-);
+const postnummerData = await datafordelerGraphqlFetch<{
+  DAR_Postnummer: { nodes: DarPostnummerNode[] };
+}>(url, POSTNUMMER_QUERY, { id: postnummerFK, ...bitemporalArgs }, "DAR_Postnummer", { trace });
 
 // Kald 3b:
-const adressepunktData = await datafordelerGraphqlFetch<{ DAR_Adressepunkt: { nodes: DarAdressepunktNode[] } }>(
-  url, ADRESSEPUNKT_QUERY, { id: adgangspunktFK, ...bitemporalArgs }, "DAR_Adressepunkt", { trace },
-);
+const adressepunktData = await datafordelerGraphqlFetch<{
+  DAR_Adressepunkt: { nodes: DarAdressepunktNode[] };
+}>(url, ADRESSEPUNKT_QUERY, { id: adgangspunktFK, ...bitemporalArgs }, "DAR_Adressepunkt", {
+  trace,
+});
 
 // Kald 3c:
-const jordstykkeData = await datafordelerGraphqlFetch<{ MAT_Jordstykke: { nodes: MatJordstykkeNode[] } }>(
-  matUrl, MAT_JORDSTYKKE_QUERY, { id: jordstykkeFK, ...bitemporalArgs }, "MAT_Jordstykke_by_id", { trace },
-);
+const jordstykkeData = await datafordelerGraphqlFetch<{
+  MAT_Jordstykke: { nodes: MatJordstykkeNode[] };
+}>(matUrl, MAT_JORDSTYKKE_QUERY, { id: jordstykkeFK, ...bitemporalArgs }, "MAT_Jordstykke_by_id", {
+  trace,
+});
 
 // Kald 4:
 const ejerlavData = await datafordelerGraphqlFetch<{ MAT_Ejerlav: { nodes: MatEjerlavNode[] } }>(
-  matUrl, MAT_EJERLAV_QUERY, { id: matEjerlavLokalId, ...bitemporalArgs }, "MAT_Ejerlav_by_id", { trace },
+  matUrl,
+  MAT_EJERLAV_QUERY,
+  { id: matEjerlavLokalId, ...bitemporalArgs },
+  "MAT_Ejerlav_by_id",
+  { trace },
 );
 ```
 
@@ -269,24 +280,32 @@ git commit -m "refactor(arch-275): dar/client uses typed datafordelerGraphqlFetc
 ### Task 3: Update `bbr/client.ts`
 
 **Files:**
+
 - Modify: `src/integrations/bbr/client.ts`
 
 - [ ] **Step 1: Add node type and replace gqlFetch**
 
 Import the shared transport:
+
 ```typescript
 import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 ```
 
 Define BBR response type (the `BbrBygning` type already exists — wrap it):
+
 ```typescript
 type BbrQueryResponse = { BBR_Bygning: { nodes: BbrBygning[] } };
 ```
 
 Find the inline `gqlFetch` / `fetchBbr` helper in `bbr/client.ts` and replace the call site with:
+
 ```typescript
 const data = await datafordelerGraphqlFetch<BbrQueryResponse>(
-  url, BBR_BYGNING_QUERY, variables, "BBR_Bygning", { trace },
+  url,
+  BBR_BYGNING_QUERY,
+  variables,
+  "BBR_Bygning",
+  { trace },
 );
 const bygninger: BbrBygning[] = data.BBR_Bygning.nodes;
 ```
@@ -313,16 +332,19 @@ git commit -m "refactor(arch-275): bbr/client uses typed datafordelerGraphqlFetc
 ### Task 4: Update `mat/client.ts`
 
 **Files:**
+
 - Modify: `src/integrations/mat/client.ts`
 
 - [ ] **Step 1: Add node types and replace gqlFetch**
 
 Import:
+
 ```typescript
 import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 ```
 
 Define node types:
+
 ```typescript
 type MatEjerlavNode = { id_lokalId: string | null };
 type MatJordstykkeNode = {
@@ -335,13 +357,17 @@ type MatJordstykkeNode = {
 ```
 
 Replace inline `gqlFetch` calls with:
+
 ```typescript
 const ejerlavData = await datafordelerGraphqlFetch<{ MAT_Ejerlav: { nodes: MatEjerlavNode[] } }>(
-  url, EJERLAV_QUERY, variables, "MAT_Ejerlav",
+  url,
+  EJERLAV_QUERY,
+  variables,
+  "MAT_Ejerlav",
 );
-const jordstykkeData = await datafordelerGraphqlFetch<{ MAT_Jordstykke: { nodes: MatJordstykkeNode[] } }>(
-  url, JORDSTYKKE_QUERY, variables, "MAT_Jordstykke",
-);
+const jordstykkeData = await datafordelerGraphqlFetch<{
+  MAT_Jordstykke: { nodes: MatJordstykkeNode[] };
+}>(url, JORDSTYKKE_QUERY, variables, "MAT_Jordstykke");
 ```
 
 Remove `any[]` casts on ejerlav/jordstykke nodes.
@@ -366,25 +392,29 @@ git commit -m "refactor(arch-275): mat/client uses typed datafordelerGraphqlFetc
 ### Task 5: Update `ebr/client.ts`
 
 **Files:**
+
 - Modify: `src/integrations/ebr/client.ts`
 
 - [ ] **Step 1: Add node type and replace gqlFetch**
 
 Import:
+
 ```typescript
 import { datafordelerGraphqlFetch } from "@/integrations/datafordeler/graphql-client";
 ```
 
 Define:
+
 ```typescript
 type EbrEjendomsbeliggenhedNode = { bfeNr: number | null };
 ```
 
 Replace inline fetch with:
+
 ```typescript
-const data = await datafordelerGraphqlFetch<{ EBR_Ejendomsbeliggenhed: { nodes: EbrEjendomsbeliggenhedNode[] } }>(
-  url, EBR_QUERY, variables, "EBR_Ejendomsbeliggenhed",
-);
+const data = await datafordelerGraphqlFetch<{
+  EBR_Ejendomsbeliggenhed: { nodes: EbrEjendomsbeliggenhedNode[] };
+}>(url, EBR_QUERY, variables, "EBR_Ejendomsbeliggenhed");
 const bfeNr = data.EBR_Ejendomsbeliggenhed.nodes[0]?.bfeNr ?? null;
 ```
 
@@ -408,6 +438,7 @@ git commit -m "refactor(arch-275): ebr/client uses typed datafordelerGraphqlFetc
 ### Task 6: Update `plandata/client.ts` (WFS transport only)
 
 **Files:**
+
 - Modify: `src/integrations/plandata/client.ts`
 
 Note: Plandata uses WFS (HTTP GET), not GraphQL. The `any` casts here are on GeoJSON feature mapping, not on GraphQL transport. Fix them without introducing the GraphQL client.
@@ -438,8 +469,9 @@ function mapLokalplan(feature: PlandataWfsFeature): Lokalplan { ... }
 ```
 
 And in the fetch response:
+
 ```typescript
-const json = await res.json() as PlandataWfsResponse;
+const json = (await res.json()) as PlandataWfsResponse;
 const features: PlandataWfsFeature[] = json.features ?? [];
 ```
 

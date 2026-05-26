@@ -12,21 +12,21 @@
 
 ## What is being deleted
 
-| File | Reason |
-|------|--------|
-| `src/lib/use-address-precheck.ts` | Only consumer of both dead server fns — deleted entirely |
-| `src/lib/pre-check-adresse.ts` | ⚠️ PROTECTED FILE. Only called from `use-address-precheck`. Becomes dead code. |
-| `fetchAddressDetails` export in `src/lib/adresse.functions.ts` | Only called from `use-address-precheck` |
+| File                                                           | Reason                                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/lib/use-address-precheck.ts`                              | Only consumer of both dead server fns — deleted entirely                       |
+| `src/lib/pre-check-adresse.ts`                                 | ⚠️ PROTECTED FILE. Only called from `use-address-precheck`. Becomes dead code. |
+| `fetchAddressDetails` export in `src/lib/adresse.functions.ts` | Only called from `use-address-precheck`                                        |
 
 ## What is being simplified
 
-| File | Change |
-|------|--------|
-| `src/routes/projekt.adresse.tsx` | Remove all compliance display + hook. Keep autocomplete + chip + Videre button. |
-| `src/components/cockpit/EjendomPanel.tsx` | Remove `adressePreCheck` fallback reads (dead after store change) |
-| `src/components/cockpit/index.tsx` | Remove `adressePreCheck?.kontekst` reads (dead after store change) |
-| `src/lib/use-cockpit-byggeoensker.ts` | Remove `adressePreCheck?.kontekst` read |
-| `src/lib/project-store.ts` | ⚠️ PROTECTED FILE. Remove `adressePreCheck` state field and setter. |
+| File                                      | Change                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------- |
+| `src/routes/projekt.adresse.tsx`          | Remove all compliance display + hook. Keep autocomplete + chip + Videre button. |
+| `src/components/cockpit/EjendomPanel.tsx` | Remove `adressePreCheck` fallback reads (dead after store change)               |
+| `src/components/cockpit/index.tsx`        | Remove `adressePreCheck?.kontekst` reads (dead after store change)              |
+| `src/lib/use-cockpit-byggeoensker.ts`     | Remove `adressePreCheck?.kontekst` read                                         |
+| `src/lib/project-store.ts`                | ⚠️ PROTECTED FILE. Remove `adressePreCheck` state field and setter.             |
 
 ## What is NOT touched
 
@@ -41,9 +41,11 @@
 ## Task 1: Simplify `projekt.adresse.tsx`
 
 **Files:**
+
 - Modify: `src/routes/projekt.adresse.tsx`
 
 The new screen has three responsibilities:
+
 1. GSearch autocomplete → sets `selected` state
 2. Show selected address chips (adresse, postnr)
 3. "Videre →" button: persists address to store + syncPatch + navigates to cockpit
@@ -248,6 +250,7 @@ git commit -m "refactor(adresse): simplify to pure address input — remove inli
 ## Task 2: Delete `use-address-precheck.ts`
 
 **Files:**
+
 - Delete: `src/lib/use-address-precheck.ts`
 
 - [ ] **Step 1: Verify no other importer exists**
@@ -284,6 +287,7 @@ git commit -m "refactor: delete use-address-precheck hook — dead code after ad
 ## Task 3: Remove `fetchAddressDetails` from `adresse.functions.ts`
 
 **Files:**
+
 - Modify: `src/lib/adresse.functions.ts`
 
 - [ ] **Step 1: Verify no importer remains**
@@ -334,6 +338,7 @@ git commit -m "refactor: remove fetchAddressDetails server fn — dead code, DAR
 ## Task 4: Delete `pre-check-adresse.ts` ⚠️ PROTECTED FILE
 
 **Files:**
+
 - Delete: `src/lib/pre-check-adresse.ts`
 
 > **Note:** This is a protected file per `CLAUDE.md`. The deletion must be called out explicitly in the PR: `Rører beskyttet fil - kræver review`
@@ -380,6 +385,7 @@ Rører beskyttet fil - kræver review"
 ## Task 5: Remove `adressePreCheck` from store and cockpit consumers ⚠️ PROTECTED FILE
 
 **Files:**
+
 - Modify: `src/lib/project-store.ts` ⚠️ PROTECTED
 - Modify: `src/components/cockpit/EjendomPanel.tsx`
 - Modify: `src/components/cockpit/index.tsx`
@@ -405,30 +411,35 @@ Expected output: three lines — state field definition, setter definition, rese
 Three edits in `project-store.ts`:
 
 1. Remove the state field:
+
 ```typescript
 // DELETE this line:
 adressePreCheck: AdressePreCheckResultat | null;
 ```
 
 2. Remove the action type:
+
 ```typescript
 // DELETE this line:
 setAdressePreCheck: (v: AdressePreCheckResultat | null) => void;
 ```
 
 3. Remove from initial state object:
+
 ```typescript
 // DELETE this line:
 adressePreCheck: null,
 ```
 
 4. Remove from the `set` implementation:
+
 ```typescript
 // DELETE this line:
 setAdressePreCheck: (adressePreCheck) => set({ adressePreCheck }),
 ```
 
 5. Remove from the reset block (where `adressePreCheck: null` appears in the reset):
+
 ```typescript
 // DELETE this line in reset:
 adressePreCheck: null,
@@ -453,20 +464,24 @@ grep -n "adressePreCheck\|setAdressePreCheck" src/components/cockpit/EjendomPane
 - [ ] **Step 5: Remove `adressePreCheck` from the `useProject()` destructure**
 
 Find and remove:
+
 ```typescript
 adressePreCheck,
 ```
+
 from the `useProject()` call in `EjendomPanel`.
 
 - [ ] **Step 6: Remove the `adressePreCheck?.kontekst` fallback lines**
 
 Find:
+
 ```typescript
 const k = adressePreCheck?.kontekst;
 const bbr = bbrData ?? adressePreCheck?.bbr ?? null;
 ```
 
 Replace with:
+
 ```typescript
 const bbr = bbrData;
 ```
@@ -490,10 +505,12 @@ grep -n "adressePreCheck" src/components/cockpit/index.tsx
 - [ ] **Step 9: Remove from `useProject()` destructure and remove the `const k = adressePreCheck?.kontekst` block**
 
 The `k` variable is used to build `kontekstTekst` for a warning message comparing against `maxBebyggelsesprocent`, `maxEtager`, `maxBygningshoejde`. After removal of `k`:
+
 - If the warning block depends entirely on `k`, remove the block.
 - If the warning block has an alternative source (e.g. `complianceMetrics`), rewire it.
 
 Read the surrounding code (roughly lines 316–350) before deciding:
+
 ```bash
 sed -n '310,360p' src/components/cockpit/index.tsx
 ```
@@ -515,6 +532,7 @@ grep -n "adressePreCheck" src/lib/use-cockpit-byggeoensker.ts
 - [ ] **Step 12: Remove `adressePreCheck?.kontekst` read**
 
 Read lines around line 79:
+
 ```bash
 sed -n '74,90p' src/lib/use-cockpit-byggeoensker.ts
 ```
@@ -586,11 +604,11 @@ Expected: zero results.
 
 ## Deleted code summary
 
-| What | Lines removed (approx) |
-|------|------------------------|
-| `use-address-precheck.ts` | ~104 lines |
-| `pre-check-adresse.ts` | ~200 lines |
-| `fetchAddressDetails` from `adresse.functions.ts` | ~8 lines |
-| Compliance UI from `projekt.adresse.tsx` | ~180 lines |
-| `adressePreCheck` state + consumers | ~30 lines across 4 files |
-| **Total** | **~520 lines deleted** |
+| What                                              | Lines removed (approx)   |
+| ------------------------------------------------- | ------------------------ |
+| `use-address-precheck.ts`                         | ~104 lines               |
+| `pre-check-adresse.ts`                            | ~200 lines               |
+| `fetchAddressDetails` from `adresse.functions.ts` | ~8 lines                 |
+| Compliance UI from `projekt.adresse.tsx`          | ~180 lines               |
+| `adressePreCheck` state + consumers               | ~30 lines across 4 files |
+| **Total**                                         | **~520 lines deleted**   |

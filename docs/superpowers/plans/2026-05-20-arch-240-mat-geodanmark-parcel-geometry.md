@@ -12,22 +12,22 @@
 
 ## File Map
 
-| Action | File | Responsibility |
-|--------|------|---------------|
-| Modify | `src/integrations/mat/client.ts` | Add `id_lokalId` to JORDSTYKKE_QUERY + `jordstykkeLokalId` to result type |
-| Modify | `src/lib/compliance-layer1.ts` | Capture `jordstykkeLokalId` from primary MAT path |
-| Modify | `src/integrations/mat/mat.test.ts` | Update mock + add `jordstykkeLokalId` assertion |
-| Create | `src/lib/geometry-utils.ts` | Shoelace area, centroid, bbox, dist-to-boundary for EPSG:25832 polygons |
-| Create | `src/lib/geometry-utils.test.ts` | Tests with known UTM32 coordinate inputs |
-| Create | `src/integrations/mat/geometry.ts` | `MatGeometryService` → `SourceResult<MatParcelGeometryPayload>` |
-| Create | `src/integrations/mat/mat-geometry.test.ts` | Tests: normal parcel, no geometry, WFS error |
-| Modify | `src/integrations/bbr/neighbor-client.ts` | Add `kilde`, `accessRoadNearby`, `roadDistanceM` to `NeighborBuildingData` |
-| Create | `src/integrations/geodanmark/client.ts` | `GeoDanmarkNaboService` (IS_MOCK=true), live skeleton for buildings + road |
-| Create | `src/integrations/geodanmark/geodanmark.test.ts` | Tests: mock returns, kilde field, own building excluded |
-| Modify | `src/lib/analysis-orchestrator.ts` 🔒 | Add `matGeometri` step; replace `NaboService` with `GeoDanmarkNaboService`; update `ComplianceResult` |
-| Modify | `src/lib/project-store.ts` 🔒 | Add `"matGeometri"` to `DataSourceKind` union + all three `Record` objects |
-| Modify | `docs/INTEGRATIONS.md` | Add GeoDanmark service row |
-| Modify | `docs/data-ingestion-contract.md` | Update pre-check table for MAT geometry / GeoDanmark |
+| Action | File                                             | Responsibility                                                                                        |
+| ------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Modify | `src/integrations/mat/client.ts`                 | Add `id_lokalId` to JORDSTYKKE_QUERY + `jordstykkeLokalId` to result type                             |
+| Modify | `src/lib/compliance-layer1.ts`                   | Capture `jordstykkeLokalId` from primary MAT path                                                     |
+| Modify | `src/integrations/mat/mat.test.ts`               | Update mock + add `jordstykkeLokalId` assertion                                                       |
+| Create | `src/lib/geometry-utils.ts`                      | Shoelace area, centroid, bbox, dist-to-boundary for EPSG:25832 polygons                               |
+| Create | `src/lib/geometry-utils.test.ts`                 | Tests with known UTM32 coordinate inputs                                                              |
+| Create | `src/integrations/mat/geometry.ts`               | `MatGeometryService` → `SourceResult<MatParcelGeometryPayload>`                                       |
+| Create | `src/integrations/mat/mat-geometry.test.ts`      | Tests: normal parcel, no geometry, WFS error                                                          |
+| Modify | `src/integrations/bbr/neighbor-client.ts`        | Add `kilde`, `accessRoadNearby`, `roadDistanceM` to `NeighborBuildingData`                            |
+| Create | `src/integrations/geodanmark/client.ts`          | `GeoDanmarkNaboService` (IS_MOCK=true), live skeleton for buildings + road                            |
+| Create | `src/integrations/geodanmark/geodanmark.test.ts` | Tests: mock returns, kilde field, own building excluded                                               |
+| Modify | `src/lib/analysis-orchestrator.ts` 🔒            | Add `matGeometri` step; replace `NaboService` with `GeoDanmarkNaboService`; update `ComplianceResult` |
+| Modify | `src/lib/project-store.ts` 🔒                    | Add `"matGeometri"` to `DataSourceKind` union + all three `Record` objects                            |
+| Modify | `docs/INTEGRATIONS.md`                           | Add GeoDanmark service row                                                                            |
+| Modify | `docs/data-ingestion-contract.md`                | Update pre-check table for MAT geometry / GeoDanmark                                                  |
 
 ---
 
@@ -36,6 +36,7 @@
 The JORDSTYKKE_QUERY currently returns `registreretAreal` + protection flags but not `id_lokalId`. Without it, `jordstykke_lokal_id` in `BbrKompliantData` is always null from the primary path (only the `GrundarealResolver` fallback populates it). This fix is the prerequisite for everything else.
 
 **Files:**
+
 - Modify: `src/integrations/mat/client.ts`
 - Modify: `src/lib/compliance-layer1.ts`
 - Modify: `src/integrations/mat/mat.test.ts`
@@ -141,6 +142,7 @@ export type MatGrundarealResult = {
 There are three return sites. Add `jordstykkeLokalId: null` to the two early-return error cases (missing params + ejerlav not found + jordstykke not found), and `jordstykkeLokalId: js.id_lokalId ?? null` to the success return:
 
 Early returns (missing params, ejerlav not found, jordstykke not found) — add `jordstykkeLokalId: null` to each:
+
 ```typescript
 return {
   registreretAreal: null,
@@ -155,6 +157,7 @@ return {
 ```
 
 Success return (after `const js = jordstykker[0];`):
+
 ```typescript
 return {
   registreretAreal: js.registreretAreal ?? null,
@@ -210,6 +213,7 @@ git commit -m "feat(arch-240): expose jordstykkeLokalId from MAT_Jordstykke Grap
 Pure functions that operate on UTM32 coordinates returned by the Datafordeler MAT WFS. No turf — only proj4 (already installed) and the shoelace formula.
 
 **Files:**
+
 - Create: `src/lib/geometry-utils.ts`
 - Create: `src/lib/geometry-utils.test.ts`
 
@@ -512,6 +516,7 @@ git commit -m "feat(arch-240): add geometry-utils — shoelace area, centroid, b
 Wraps the existing `fetchParcelGeometryByJordstykkeId` WFS function and computes metrics. Returns `SourceResult<MatParcelGeometryPayload>`. No new DB migration needed — polygon is cached in `address_analysis.jordstykke_polygon` (already exists), metrics are cached in `address_source_results` with source_kind `"mat_geometry"`.
 
 **Files:**
+
 - Create: `src/integrations/mat/geometry.ts`
 - Create: `src/integrations/mat/mat-geometry.test.ts`
 
@@ -665,8 +670,7 @@ export type MatParcelGeometryPayload = {
   hasCanonicalPolygon: boolean;
 };
 
-const SOURCE_URL =
-  "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
+const SOURCE_URL = "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 
 export class MatGeometryService {
   /**
@@ -699,14 +703,14 @@ export class MatGeometryService {
         );
       }
 
-      const geometry = featureCollection.features[0]
-        ?.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
+      const geometry = featureCollection.features[0]?.geometry as
+        | GeoJSON.Polygon
+        | GeoJSON.MultiPolygon
+        | null;
 
       const polygonAreaM2 = geometry ? computePolygonAreaM2(geometry) : null;
       const centroidUtm32 = geometry ? computeCentroidUtm32(geometry) : null;
-      const centroidWgs84 = centroidUtm32
-        ? utm32ToWgs84(centroidUtm32[0], centroidUtm32[1])
-        : null;
+      const centroidWgs84 = centroidUtm32 ? utm32ToWgs84(centroidUtm32[0], centroidUtm32[1]) : null;
       const bbox25832 = geometry ? computeBbox25832(geometry) : null;
       const areaDiscrepancyM2 =
         polygonAreaM2 !== null && registreretArealM2 !== null
@@ -767,6 +771,7 @@ git commit -m "feat(arch-240): add MatGeometryService — canonical parcel polyg
 The existing type needs three new fields to satisfy the acceptance criteria and to accommodate the GeoDanmark service in the next task. The `NaboService` (still disabled) returns null for all three new fields.
 
 **Files:**
+
 - Modify: `src/integrations/bbr/neighbor-client.ts`
 
 - [ ] **Step 4.1: Update `NeighborBuildingData` type**
@@ -785,9 +790,9 @@ export type NeighborBuildingData = {
   nearestDistanceM: number | null;
   buildings: NeighborBuilding[];
   fejl: string | null;
-  kilde: string | null;             // "geodanmark" | null — tri-state source tag
+  kilde: string | null; // "geodanmark" | null — tri-state source tag
   accessRoadNearby: boolean | null; // true/false/null — null = ukendt
-  roadDistanceM: number | null;     // meter til nærmeste vej, null = ukendt
+  roadDistanceM: number | null; // meter til nærmeste vej, null = ukendt
 };
 ```
 
@@ -844,6 +849,7 @@ git commit -m "feat(arch-240): add kilde + accessRoadNearby + roadDistanceM to N
 New service file. IS_MOCK=true until the GeoDanmark Vektor WFS endpoint and layer names are verified. The live implementation skeleton is present but gated. Uses the same `SourceResult<NeighborBuildingData>` contract from ARCH-239 and the updated `NeighborBuildingData` from Task 4.
 
 **Files:**
+
 - Create: `src/integrations/geodanmark/client.ts`
 - Create: `src/integrations/geodanmark/geodanmark.test.ts`
 
@@ -881,11 +887,7 @@ describe("GeoDanmarkNaboService.getNabobygninger", () => {
   });
 
   it("returnerer tri-state felter (null = ukendt, ikke false)", async () => {
-    const result = await GeoDanmarkNaboService.getNabobygninger(
-      PARCEL_BBOX,
-      ADDRESS_BBOX,
-      null,
-    );
+    const result = await GeoDanmarkNaboService.getNabobygninger(PARCEL_BBOX, ADDRESS_BBOX, null);
 
     // IS_MOCK returnerer null for ukendte felter — aldrig false
     expect(result.data!.accessRoadNearby).toBeNull();
@@ -924,15 +926,11 @@ Expected: FAIL — module not found.
 import { getEnvRequired } from "@/lib/env";
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
-import type {
-  NeighborBuilding,
-  NeighborBuildingData,
-} from "@/integrations/bbr/neighbor-client";
+import type { NeighborBuilding, NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 
 const IS_MOCK = true;
 
-const GEODANMARK_WFS_URL =
-  "https://wfs.datafordeler.dk/GeoDanmark/GeoDanmark_WFS/2.0.0/WFS";
+const GEODANMARK_WFS_URL = "https://wfs.datafordeler.dk/GeoDanmark/GeoDanmark_WFS/2.0.0/WFS";
 const BYGNING_TYPENAME = "gdk:Bygning";
 const VEJ_TYPENAME = "gdk:Vejmidte";
 
@@ -1068,12 +1066,14 @@ git commit -m "feat(arch-240): add GeoDanmarkNaboService (IS_MOCK=true) — repl
 **Protected file.** Flags in PR: `🔒 Rører beskyttet fil — kræver review`.
 
 Changes:
+
 1. Add `matGeometri: MatParcelGeometryPayload | null` to `ComplianceResult`
 2. Run `MatGeometryService` in Layer 4 before the parallel block
 3. Replace `NaboService.getNaboer` with `GeoDanmarkNaboService.getNabobygninger`
 4. Update `ComplianceBase` Omit, `setCachedCompliance` call, `states` assignments
 
 **Files:**
+
 - Modify: `src/lib/analysis-orchestrator.ts`
 
 - [ ] **Step 6.1: Add imports to orchestrator**
@@ -1187,17 +1187,13 @@ if (jordstykkeId) {
     },
     () =>
       import("@/integrations/mat/geometry").then(({ MatGeometryService }) =>
-        MatGeometryService.getParcelGeometry(
-          jordstykkeId,
-          complianceBase.bbr?.grundareal ?? null,
-        ),
+        MatGeometryService.getParcelGeometry(jordstykkeId, complianceBase.bbr?.grundareal ?? null),
       ),
     {
       outputSummary: (r) =>
         summarizeSourceResult(
           r,
-          (d) =>
-            `area=${d.polygonAreaM2?.toFixed(0) ?? "null"} canonical=${d.hasCanonicalPolygon}`,
+          (d) => `area=${d.polygonAreaM2?.toFixed(0) ?? "null"} canonical=${d.hasCanonicalPolygon}`,
         ),
       metadata: (r) => ({
         source: r.kilde,
@@ -1320,7 +1316,7 @@ return {
   naboer,
   fjernvarme,
   fbbData,
-  matGeometri,  // ← ADD
+  matGeometri, // ← ADD
   vurderingData: complianceBase.vurderingData,
   serviceStates: states,
 };
@@ -1370,6 +1366,7 @@ git commit -m "feat(arch-240): 🔒 wire MatGeometryService + GeoDanmarkNaboServ
 **Protected file.** There are three `Record<DataSourceKind, ...>` objects that all require a new entry.
 
 **Files:**
+
 - Modify: `src/lib/project-store.ts`
 
 - [ ] **Step 7.1: Add `"matGeometri"` to the union type (line ~182)**
@@ -1387,7 +1384,7 @@ export type DataSourceKind =
   | "terrain"
   | "fjernvarme"
   | "naboer"
-  | "matGeometri"  // ← ADD: ARCH-240 parcelpolygon + skel-metrics
+  | "matGeometri" // ← ADD: ARCH-240 parcelpolygon + skel-metrics
   | "vurdering"
   | "byggeanalyse"
   | "billedanalyse"
@@ -1452,6 +1449,7 @@ git commit -m "feat(arch-240): 🔒 add matGeometri to DataSourceKind — parcel
 ## Task 8: Documentation
 
 **Files:**
+
 - Modify: `docs/INTEGRATIONS.md`
 - Modify: `docs/data-ingestion-contract.md`
 
@@ -1460,13 +1458,13 @@ git commit -m "feat(arch-240): 🔒 add matGeometri to DataSourceKind — parcel
 Locate the `NaboService` row in the table. Add a new row above it:
 
 ```markdown
-| `GeoDanmarkNaboService` | `geodanmark/client.ts`  | 🟡 IS_MOCK=true | Nabobygninger og vejadgang via GeoDanmark Vektor WFS. Erstatter NaboService (ARCH-240). Aktivér ved at verificere typenames via GetCapabilities. |
+| `GeoDanmarkNaboService` | `geodanmark/client.ts` | 🟡 IS_MOCK=true | Nabobygninger og vejadgang via GeoDanmark Vektor WFS. Erstatter NaboService (ARCH-240). Aktivér ved at verificere typenames via GetCapabilities. |
 ```
 
 Update the `NaboService` row to note it's superseded:
 
 ```markdown
-| `NaboService`           | `bbr/neighbor-client.ts` | ⚠️ Superseded    | Returnerer tom liste. Superseded by GeoDanmarkNaboService (ARCH-240). Keep until GeoDanmarkNaboService goes live. |
+| `NaboService` | `bbr/neighbor-client.ts` | ⚠️ Superseded | Returnerer tom liste. Superseded by GeoDanmarkNaboService (ARCH-240). Keep until GeoDanmarkNaboService goes live. |
 ```
 
 - [ ] **Step 8.2: Add `MatGeometryService` row to INTEGRATIONS.md**
@@ -1474,7 +1472,7 @@ Update the `NaboService` row to note it's superseded:
 Add after `MatService`:
 
 ```markdown
-| `MatGeometryService`    | `mat/geometry.ts`        | ✅ Live         | Parcel polygon + metrics (area, centroid, bbox) via MAT WFS CQL_FILTER on jordstykke id_lokalId. |
+| `MatGeometryService` | `mat/geometry.ts` | ✅ Live | Parcel polygon + metrics (area, centroid, bbox) via MAT WFS CQL_FILTER on jordstykke id_lokalId. |
 ```
 
 - [ ] **Step 8.3: Update pre-check table in `docs/data-ingestion-contract.md`**
@@ -1536,14 +1534,14 @@ Expected: No new errors.
 
 ## Self-Review Against Spec
 
-| Acceptance Criterion | Task |
-|---|---|
-| Én kanonisk parcelpolygon, ikke bbox-samling | Task 1 (fixes `jordstykke_lokal_id` population) + Task 3 (`MatGeometryService` uses CQL_FILTER WFS) |
-| Naboanalyse virker uden DAWA | Task 5 (`GeoDanmarkNaboService`) + Task 6 (replaces `NaboService` in orchestrator) |
-| `NeighborBuildingData` har `kilde: "geodanmark"` og tri-state status | Task 4 (type update) + Task 5 (service returns `kilde: "geodanmark"`) |
-| Design footprint kan valideres mod skel | Task 2 (`minDistanceToBoundaryM` utility — used by rule engine client-side) |
-| `analysis_events` viser separate MAT/GeoDanmark summaries | Task 6 (traceStep calls with outputSummary) |
-| Tests: normal parcel, flere features, ingen geometri, nabobygninger, egen bygning ekskluderes | Tasks 2, 3, 5 |
-| `bunx tsc --noEmit`, `bun test`, `bunx eslint .`, `bun run build` | Final Verification |
+| Acceptance Criterion                                                                          | Task                                                                                                |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Én kanonisk parcelpolygon, ikke bbox-samling                                                  | Task 1 (fixes `jordstykke_lokal_id` population) + Task 3 (`MatGeometryService` uses CQL_FILTER WFS) |
+| Naboanalyse virker uden DAWA                                                                  | Task 5 (`GeoDanmarkNaboService`) + Task 6 (replaces `NaboService` in orchestrator)                  |
+| `NeighborBuildingData` har `kilde: "geodanmark"` og tri-state status                          | Task 4 (type update) + Task 5 (service returns `kilde: "geodanmark"`)                               |
+| Design footprint kan valideres mod skel                                                       | Task 2 (`minDistanceToBoundaryM` utility — used by rule engine client-side)                         |
+| `analysis_events` viser separate MAT/GeoDanmark summaries                                     | Task 6 (traceStep calls with outputSummary)                                                         |
+| Tests: normal parcel, flere features, ingen geometri, nabobygninger, egen bygning ekskluderes | Tasks 2, 3, 5                                                                                       |
+| `bunx tsc --noEmit`, `bun test`, `bunx eslint .`, `bun run build`                             | Final Verification                                                                                  |
 
 **Note on pre-check integration:** `data-ingestion-contract.md` marks MAT geometry as pre-check scope. Wiring `MatGeometryService` into `pre-check-adresse.ts` is a follow-up task — `pre-check-adresse.ts` is a protected file and the pre-check path is deliberately kept fast. The polygon call adds ~300ms when uncached, which may be acceptable. That decision belongs in a separate ARCH issue.

@@ -136,9 +136,7 @@ export function selectPreferredByggefelt<T extends ByggefeltLike>(
   })[0];
 }
 
-export function selectPreferredWastewaterPlan<T extends WastewaterLike>(
-  entries: T[],
-): T | null {
+export function selectPreferredWastewaterPlan<T extends WastewaterLike>(entries: T[]): T | null {
   if (!entries.length) return null;
 
   return [...entries].sort((a, b) => {

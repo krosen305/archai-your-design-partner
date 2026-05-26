@@ -105,7 +105,14 @@ export function useParcelData(params: {
     return () => {
       cancelled = true;
     };
-  }, [geo?.lat, geo?.lng, jordstykkeLokalId, adresseid, loadParcelGeometry, loadParcelGeometryById]);
+  }, [
+    geo?.lat,
+    geo?.lng,
+    jordstykkeLokalId,
+    adresseid,
+    loadParcelGeometry,
+    loadParcelGeometryById,
+  ]);
 
   return { parcelStatus, parcelGeojson, previewImage };
 }

@@ -60,6 +60,13 @@ export const MOCK_BBR: RuleEngineBbrData = {
   canonical_candidates_count: 0,
   aggregated_bebygget_areal_all_primary: null,
   bygning_samlet_boligareal: null,
+  ombygningsaar: null,
+  vandforsyning_kode: null,
+  vandforsyning: null,
+  afloebsforhold_kode: null,
+  afloebsforhold: null,
+  ydervaegs_materiale_kode: "1",
+  tagdaekning_kode: "2",
 };
 
 // ---------------------------------------------------------------------------

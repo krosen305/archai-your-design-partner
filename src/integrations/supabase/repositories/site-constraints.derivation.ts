@@ -7,6 +7,7 @@ import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { ProjectPatch } from "@/integrations/supabase/project-persistence";
 import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
 import type { DkJordResultat } from "@/integrations/miljoe/dkjord";
+import { deriveSaneringsRisiko } from "@/domain/bbr/sanerings-risiko";
 
 type SiteConstraintsUpsert = Database["public"]["Tables"]["site_constraints"]["Insert"];
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
@@ -67,7 +68,8 @@ export function deriveSiteConstraintsPatch(
     sitePatch.zone_type = patch.plandataContext?.zoneType ?? null;
     sitePatch.future_zone_type = patch.plandataContext?.futureZoneType ?? null;
     sitePatch.landzone_permit_required = patch.plandataContext?.landzonePermitRequired ?? null;
-    sitePatch.lokalplan_byggefelt_present = patch.plandataContext?.lokalplanByggefeltPresent ?? null;
+    sitePatch.lokalplan_byggefelt_present =
+      patch.plandataContext?.lokalplanByggefeltPresent ?? null;
     sitePatch.within_building_field = patch.plandataContext?.withinBuildingField ?? null;
     sitePatch.building_field_source_id = patch.plandataContext?.buildingFieldSourceId ?? null;
     sitePatch.wastewater_plan_status = patch.plandataContext?.wastewaterPlanStatus ?? null;
@@ -106,6 +108,16 @@ export function deriveSiteConstraintsPatch(
     sitePatch.strandbeskyttelse = patch.bbrData.mat_strandbeskyttelse ?? false;
     sitePatch.fredskov = patch.bbrData.mat_fredskov ?? false;
     sitePatch.klitfredning = patch.bbrData.mat_klitfredning ?? false;
+    // ARCH-246: BBR due-diligence
+    sitePatch.bbr_vandforsyning_kode = patch.bbrData.vandforsyning_kode ?? null;
+    sitePatch.bbr_afloebsforhold_kode = patch.bbrData.afloebsforhold_kode ?? null;
+    sitePatch.bbr_ombygningsaar = patch.bbrData.ombygningsaar ?? null;
+    sitePatch.bbr_sanerings_risiko =
+      deriveSaneringsRisiko(
+        patch.bbrData.byggeaar != null ? parseInt(patch.bbrData.byggeaar, 10) : null,
+        patch.bbrData.ydervaegs_materiale_kode ?? null,
+        patch.bbrData.tagdaekning_kode ?? null,
+      ) ?? null;
   }
 
   if (patch.dkjord !== undefined) {
@@ -132,6 +144,31 @@ export function deriveSiteConstraintsPatch(
     sitePatch.terrain_slope_pct = patch.terrain?.slopePercent ?? null;
     sitePatch.terrain_low_point_m = deriveTerrainLowPoint(patch.terrain);
     sitePatch.bluespot_risk = patch.terrain?.bluespotRisk ?? null;
+  }
+
+  // ARCH-248: Energimærke
+  if (patch.energimaerke !== undefined) {
+    hasConstraintField = true;
+    const em = patch.energimaerke;
+    sitePatch.energimaerke_klasse = em?.energimaerke_klasse ?? null;
+    sitePatch.energimaerke_gyldig_til = em?.gyldig_til ?? null;
+    sitePatch.energimaerke_er_udloebet = em?.er_udloebet ?? null;
+    sitePatch.energimaerke_rapport_url = em?.rapport_url ?? null;
+    sitePatch.energimaerke_rapport_id = em?.rapport_id ?? null;
+    sitePatch.energimaerke_rapportdato = em?.rapportdato ?? null;
+  }
+
+  // ARCH-247: Tjekditnet bredbåndscoverage
+  if (patch.tjekditnetCoverage !== undefined) {
+    hasConstraintField = true;
+    const cov = patch.tjekditnetCoverage;
+    sitePatch.broadband_fiber_mbit = cov?.fiber_download_mbit ?? null;
+    sitePatch.broadband_kabel_mbit = cov?.kabel_tv_download_mbit ?? null;
+    sitePatch.broadband_xdsl_mbit = cov?.xdsl_download_mbit ?? null;
+    sitePatch.broadband_fast_traadloes_mbit = cov?.fast_traadloes_download_mbit ?? null;
+    sitePatch.broadband_mobil_mbit = cov?.mobil_download_mbit ?? null;
+    sitePatch.broadband_max_fast_mbit = cov?.max_fast_download_mbit ?? null;
+    sitePatch.broadband_match_type = cov?.match_type ?? null;
   }
 
   return hasConstraintField ? sitePatch : null;

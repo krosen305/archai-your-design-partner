@@ -1,6 +1,10 @@
 import { describe, it, expect } from "bun:test";
 import { buildStepConstraintViewModel } from "./byggeoenske-constraint-view-model";
-import type { BoligoenskeValidering, ComplianceFlag, AdressePreCheckResultat } from "@/types/project-state";
+import type {
+  BoligoenskeValidering,
+  ComplianceFlag,
+  AdressePreCheckResultat,
+} from "@/types/project-state";
 
 function makeValidering(overrides: Partial<BoligoenskeValidering> = {}): BoligoenskeValidering {
   return {
@@ -13,7 +17,10 @@ function makeValidering(overrides: Partial<BoligoenskeValidering> = {}): Boligoe
   };
 }
 
-function makePreCheck(maxEtager: number | null = 2, restBygningsareal: number | null = 80): AdressePreCheckResultat {
+function makePreCheck(
+  maxEtager: number | null = 2,
+  restBygningsareal: number | null = 80,
+): AdressePreCheckResultat {
   return {
     blockers: [],
     advarsler: [],
@@ -52,12 +59,24 @@ function makeFlag(id: string, overrides: Partial<ComplianceFlag> = {}): Complian
 
 describe("buildStepConstraintViewModel — antalEtager", () => {
   it("returns contextChip when maxEtager is known", () => {
-    const vm = buildStepConstraintViewModel("antalEtager", 2, makeValidering(), makePreCheck(2), []);
+    const vm = buildStepConstraintViewModel(
+      "antalEtager",
+      2,
+      makeValidering(),
+      makePreCheck(2),
+      [],
+    );
     expect(vm.contextChip).toContain("2 etager");
   });
 
   it("returns null contextChip when maxEtager is null", () => {
-    const vm = buildStepConstraintViewModel("antalEtager", 2, makeValidering(), makePreCheck(null), []);
+    const vm = buildStepConstraintViewModel(
+      "antalEtager",
+      2,
+      makeValidering(),
+      makePreCheck(null),
+      [],
+    );
     expect(vm.contextChip).toBeNull();
   });
 
@@ -86,14 +105,26 @@ describe("buildStepConstraintViewModel — antalEtager", () => {
   });
 
   it("returns null dispensation when etagerStatus=ok", () => {
-    const vm = buildStepConstraintViewModel("antalEtager", 2, makeValidering({ etagerStatus: "ok" }), makePreCheck(2), []);
+    const vm = buildStepConstraintViewModel(
+      "antalEtager",
+      2,
+      makeValidering({ etagerStatus: "ok" }),
+      makePreCheck(2),
+      [],
+    );
     expect(vm.dispensation).toBeNull();
   });
 });
 
 describe("buildStepConstraintViewModel — oensketAreal", () => {
   it("returns contextChip with restBygningsareal", () => {
-    const vm = buildStepConstraintViewModel("oensketAreal", 100, makeValidering(), makePreCheck(2, 80), []);
+    const vm = buildStepConstraintViewModel(
+      "oensketAreal",
+      100,
+      makeValidering(),
+      makePreCheck(2, 80),
+      [],
+    );
     expect(vm.contextChip).toContain("80 m²");
   });
 
@@ -112,24 +143,16 @@ describe("buildStepConstraintViewModel — oensketAreal", () => {
 
 describe("buildStepConstraintViewModel — varmekilde", () => {
   it("returns fjernvarme=tilgaengelig when tilslutningspligt flag present", () => {
-    const vm = buildStepConstraintViewModel(
-      "varmekilde",
-      "fjernvarme",
-      null,
-      null,
-      [makeFlag("fjernvarme-tilslutningspligt")],
-    );
+    const vm = buildStepConstraintViewModel("varmekilde", "fjernvarme", null, null, [
+      makeFlag("fjernvarme-tilslutningspligt"),
+    ]);
     expect(vm.fjernvarme).toBe("tilgaengelig");
   });
 
   it("returns fjernvarme=mismatch when mismatch flag present", () => {
-    const vm = buildStepConstraintViewModel(
-      "varmekilde",
-      "varmepumpe",
-      null,
-      null,
-      [makeFlag("fjernvarme-mismatch-ingen-daekning")],
-    );
+    const vm = buildStepConstraintViewModel("varmekilde", "varmepumpe", null, null, [
+      makeFlag("fjernvarme-mismatch-ingen-daekning"),
+    ]);
     expect(vm.fjernvarme).toBe("mismatch");
   });
 

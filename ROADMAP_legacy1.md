@@ -1,4 +1,4 @@
-  # ArchAI Refactoring Roadmap
+# ArchAI Refactoring Roadmap
 
 Status: proposed architecture backlog. Do not treat these items as Linear tickets
 until they have been reviewed and approved by the project owner.
