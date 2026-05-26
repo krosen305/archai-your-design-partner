@@ -51,6 +51,40 @@ architecture.
 ArchAI uses pragmatic Ports & Adapters around the risky parts of the product:
 compliance, public register data, persistence, AI and project state.
 
+### SaaS And API Direction
+
+ArchAI must support both the consumer cockpit and future B2B/SaaS APIs from the
+same domain and application-service core.
+
+Consumer UI, TanStack `createServerFn` handlers, external REST/JSON APIs,
+background jobs and partner integrations are peer inbound adapters. None of
+them may own compliance truth, design truth or persistence policy.
+
+Design new use cases so they can later be exposed through a versioned API
+without being rewritten:
+
+- Application services must not depend on React, Zustand, TanStack runtime,
+  browser session state or Supabase user-session shape.
+- Inbound adapters must translate their auth mechanism into a typed principal.
+  For the consumer product this may be a Supabase user. For B2B this may later
+  be an organization, API key, service account or partner integration.
+- Prefer service inputs and outputs as explicit DTOs validated with Zod. These
+  DTOs should be stable enough to become `/v1/*` API contracts.
+- `project-store` is a consumer read model and interaction cache. It must not be
+  required by domain core or application services that should be callable from a
+  B2B API.
+- SaaS tables such as organizations, organization members, API keys, usage
+  events, quotas and request logs are allowed when introduced through the normal
+  architecture-review and migration process.
+- Consumer convenience must not introduce hidden assumptions that every project
+  belongs to exactly one interactive human user.
+
+For the design domain, AI may interpret a brief, suggest options and explain
+tradeoffs. A målfast sketch, footprint, beliggenhedsplan or compliance-relevant
+geometry must be represented as deterministic structured data and checked by the
+rule/geometry engines. An AI-generated image is never the source of truth for a
+measurable drawing.
+
 ### Domain Core
 
 The domain core is pure TypeScript.

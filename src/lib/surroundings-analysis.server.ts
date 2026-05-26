@@ -9,7 +9,10 @@
 // Wiring kræver human review af beskyttet fil.
 
 import type { SourceResult } from "@/lib/source-result";
-import type { NeighborContext, PlanningSurroundingsContext } from "@/domain/contracts/surroundings.types";
+import type {
+  NeighborContext,
+  PlanningSurroundingsContext,
+} from "@/domain/contracts/surroundings.types";
 import type { NoiseScreeningResult } from "@/domain/contracts/noise.types";
 import type { RuleViolation } from "@/lib/rule-engine/types";
 import type * as GeoJSON from "geojson";
@@ -68,19 +71,23 @@ function deriveNoiseInput(noise: NoiseScreeningResult | null) {
     noise.metrics.length === 0
       ? "unknown"
       : noise.metrics.every((m) => m.coverage === "source_unavailable")
-      ? "source_unavailable"
-      : noise.metrics.every((m) => m.coverage === "outside_mapped_area")
-      ? "outside_mapped_area"
-      : noise.metrics.some((m) => m.coverage === "covered")
-      ? "covered"
-      : "unknown";
+        ? "source_unavailable"
+        : noise.metrics.every((m) => m.coverage === "outside_mapped_area")
+          ? "outside_mapped_area"
+          : noise.metrics.some((m) => m.coverage === "covered")
+            ? "covered"
+            : "unknown";
 
   return {
     roadLdenDb: road?.ldenDb ?? null,
     railLdenDb: rail?.ldenDb ?? null,
     airLdenDb: air?.ldenDb ?? null,
     industryLdenDb: industry?.ldenDb ?? null,
-    coverageStatus: coverageStatus as "covered" | "outside_mapped_area" | "source_unavailable" | "unknown",
+    coverageStatus: coverageStatus as
+      | "covered"
+      | "outside_mapped_area"
+      | "source_unavailable"
+      | "unknown",
     highestRisk: noise.highestRisk,
     requiresAcousticReview: noise.requiresAcousticReview,
   };
@@ -111,24 +118,25 @@ export async function handleSurroundingsAnalysis(
     access_road_nearby: neighbor?.accessRoadNearby ?? null,
     neighbor_context_confidence: neighbor?.coverage ?? null,
     planning_noise_area: surroundings?.noiseDesignatedArea ?? null,
-    planning_production_noise_consequence_area: surroundings?.productionNoiseConsequenceArea ?? null,
+    planning_production_noise_consequence_area:
+      surroundings?.productionNoiseConsequenceArea ?? null,
     planning_odor_area: surroundings
-      ? (surroundings.odorConsequenceArea === true || surroundings.odorDesignatedArea === true)
+      ? surroundings.odorConsequenceArea === true || surroundings.odorDesignatedArea === true
       : null,
-    planning_technical_facility_consequence_area: surroundings?.technicalFacilityConsequenceArea ?? null,
+    planning_technical_facility_consequence_area:
+      surroundings?.technicalFacilityConsequenceArea ?? null,
     planning_large_livestock_area: surroundings?.largeLivestockFarmArea ?? null,
-    planning_surroundings_review_required:
-      surroundings
-        ? [
-            surroundings.noiseDesignatedArea,
-            surroundings.productionNoiseConsequenceArea,
-            surroundings.odorConsequenceArea,
-            surroundings.odorDesignatedArea,
-            surroundings.technicalFacilityConsequenceArea,
-            surroundings.largeLivestockFarmArea,
-            surroundings.proposedPlanConflict,
-          ].some(Boolean)
-        : null,
+    planning_surroundings_review_required: surroundings
+      ? [
+          surroundings.noiseDesignatedArea,
+          surroundings.productionNoiseConsequenceArea,
+          surroundings.odorConsequenceArea,
+          surroundings.odorDesignatedArea,
+          surroundings.technicalFacilityConsequenceArea,
+          surroundings.largeLivestockFarmArea,
+          surroundings.proposedPlanConflict,
+        ].some(Boolean)
+      : null,
     noise_road_lden_db: noiseMetric("road"),
     noise_rail_lden_db: noiseMetric("rail"),
     noise_air_lden_db: noiseMetric("air"),
@@ -138,40 +146,88 @@ export async function handleSurroundingsAnalysis(
   };
 
   // Construct minimal RuleEngineInput for rule checks — only noise/neighbor/surroundings fields matter here
-  const minimalPlot = { areaM2: 0, zone: "unknown" as const, hasLocalplan: false, hasServitudes: false, localplanIds: [] };
-  const minimalHeritage = { listedBuilding: null, saveValue: null, preservationLocalplan: false, protectionLines: { coastal: false, forest: false, lakeRiver: false, lake: false, clitFredning: false, churchSurroundings: false } };
-  const minimalGeo = { radonRisk: "unknown" as const, groundwaterDepthM: null, slopePercent: null, jordforureningV1: null, jordforureningV2: null, omraadeklassificering: null };
+  const minimalPlot = {
+    areaM2: 0,
+    zone: "unknown" as const,
+    hasLocalplan: false,
+    hasServitudes: false,
+    localplanIds: [],
+  };
+  const minimalHeritage = {
+    listedBuilding: null,
+    saveValue: null,
+    preservationLocalplan: false,
+    protectionLines: {
+      coastal: false,
+      forest: false,
+      lakeRiver: false,
+      lake: false,
+      clitFredning: false,
+      churchSurroundings: false,
+    },
+  };
+  const minimalGeo = {
+    radonRisk: "unknown" as const,
+    groundwaterDepthM: null,
+    slopePercent: null,
+    jordforureningV1: null,
+    jordforureningV2: null,
+    omraadeklassificering: null,
+  };
   const minimalServituts = { hasCritical: false, criticalTexts: [] };
   const minimalProject = { type: "new_build" as const, municipality: "", kommunekode: "" };
 
   const violations: RuleViolation[] = [
     ...checkNoiseRules({
-      project: minimalProject, plot: minimalPlot, heritage: minimalHeritage,
-      localplan: null, municipalPlan: null, existingBuilding: null, newBuilding: null,
-      geotechnical: minimalGeo, servituts: minimalServituts, noise: noiseInput,
+      project: minimalProject,
+      plot: minimalPlot,
+      heritage: minimalHeritage,
+      localplan: null,
+      municipalPlan: null,
+      existingBuilding: null,
+      newBuilding: null,
+      geotechnical: minimalGeo,
+      servituts: minimalServituts,
+      noise: noiseInput,
     }),
     ...checkSurroundingsRules({
-      project: minimalProject, plot: minimalPlot, heritage: minimalHeritage,
-      localplan: null, municipalPlan: null, existingBuilding: null, newBuilding: null,
-      geotechnical: minimalGeo, servituts: minimalServituts,
-      surroundings: surroundings ? {
-        noiseDesignatedArea: surroundings.noiseDesignatedArea,
-        productionNoiseConsequenceArea: surroundings.productionNoiseConsequenceArea,
-        odorConsequenceArea: surroundings.odorConsequenceArea,
-        odorDesignatedArea: surroundings.odorDesignatedArea,
-        technicalFacilityConsequenceArea: surroundings.technicalFacilityConsequenceArea,
-        largeLivestockFarmArea: surroundings.largeLivestockFarmArea,
-        proposedPlanConflict: surroundings.proposedPlanConflict,
-      } : null,
-      neighborContext: neighbor ? {
-        nearestBuildingDistanceM: neighbor.nearestDistanceM,
-        nearestRoadCenterlineDistanceM: neighbor.nearestRoadCenterlineDistanceM,
-        buildingCount40m: neighbor.count40m,
-        accessRoadNearby: neighbor.accessRoadNearby,
-        coverage: neighbor.coverage,
-      } : null,
+      project: minimalProject,
+      plot: minimalPlot,
+      heritage: minimalHeritage,
+      localplan: null,
+      municipalPlan: null,
+      existingBuilding: null,
+      newBuilding: null,
+      geotechnical: minimalGeo,
+      servituts: minimalServituts,
+      surroundings: surroundings
+        ? {
+            noiseDesignatedArea: surroundings.noiseDesignatedArea,
+            productionNoiseConsequenceArea: surroundings.productionNoiseConsequenceArea,
+            odorConsequenceArea: surroundings.odorConsequenceArea,
+            odorDesignatedArea: surroundings.odorDesignatedArea,
+            technicalFacilityConsequenceArea: surroundings.technicalFacilityConsequenceArea,
+            largeLivestockFarmArea: surroundings.largeLivestockFarmArea,
+            proposedPlanConflict: surroundings.proposedPlanConflict,
+          }
+        : null,
+      neighborContext: neighbor
+        ? {
+            nearestBuildingDistanceM: neighbor.nearestDistanceM,
+            nearestRoadCenterlineDistanceM: neighbor.nearestRoadCenterlineDistanceM,
+            buildingCount40m: neighbor.count40m,
+            accessRoadNearby: neighbor.accessRoadNearby,
+            coverage: neighbor.coverage,
+          }
+        : null,
     }),
   ];
 
-  return { neighborContextResult, surroundingsResult, noiseResult, siteConstraintsPatch: patch, violations };
+  return {
+    neighborContextResult,
+    surroundingsResult,
+    noiseResult,
+    siteConstraintsPatch: patch,
+    violations,
+  };
 }

@@ -9,9 +9,18 @@
 
 DROP INDEX IF EXISTS public.building_tasks_project_task_key_idx;
 
-ALTER TABLE public.building_tasks
-  ADD CONSTRAINT building_tasks_project_task_key_unique
-  UNIQUE (project_id, task_key);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'building_tasks_project_task_key_unique'
+      AND conrelid = 'public.building_tasks'::regclass
+  ) THEN
+    ALTER TABLE public.building_tasks
+      ADD CONSTRAINT building_tasks_project_task_key_unique
+      UNIQUE (project_id, task_key);
+  END IF;
+END $$;
 
 -- ROLLBACK:
 -- ALTER TABLE public.building_tasks DROP CONSTRAINT IF EXISTS building_tasks_project_task_key_unique;

@@ -3,7 +3,10 @@ import { describe, it, expect } from "bun:test";
 describe("MstNoiseService (mock)", () => {
   it("returnerer SourceResult med mock data", async () => {
     const { MstNoiseService } = await import("./mst-noise");
-    const result = await MstNoiseService.getNoiseForParcel("adr-123", [720000, 6175000, 720200, 6175200]);
+    const result = await MstNoiseService.getNoiseForParcel(
+      "adr-123",
+      [720000, 6175000, 720200, 6175200],
+    );
     expect(result.status).toBe("mock");
     expect(result.isMock).toBe(true);
     expect(result.data).not.toBeNull();

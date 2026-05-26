@@ -44,7 +44,11 @@ const wfsResponseSchema = z.object({
 
 type WfsFeature = z.infer<typeof wfsFeatureSchema>;
 
-async function fetchWfsFeatures(typename: string, bboxStr: string, apiKey: string): Promise<WfsFeature[]> {
+async function fetchWfsFeatures(
+  typename: string,
+  bboxStr: string,
+  apiKey: string,
+): Promise<WfsFeature[]> {
   const url = new URL(WFS_BASE);
   url.searchParams.set("apikey", apiKey);
   url.searchParams.set("service", "WFS");
@@ -147,7 +151,7 @@ export class GeoDanmarkNeighborService {
       const nearestDistanceM = buildings[0]?.distanceM ?? null;
       const roadDistanceM =
         roadFeatures.length > 0
-          ? (roadFeatures[0]?.properties?.["afstand"] as number | undefined) ?? null
+          ? ((roadFeatures[0]?.properties?.["afstand"] as number | undefined) ?? null)
           : null;
 
       const within100m = buildings.filter((b) => b.distanceM <= 100).length;

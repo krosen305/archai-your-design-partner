@@ -79,6 +79,11 @@ All must pass unless the user explicitly accepts a known failing baseline.
 ArchAI uses pragmatic Ports & Adapters around compliance, persistence, public
 register data, AI and project state.
 
+Consumer UI and future B2B/SaaS APIs must be built as peer inbound adapters
+over the same application services and domain core. Do not put behavior in
+React components, hooks, `createServerFn` handlers or Supabase session glue that
+would have to be rewritten to expose the same capability as a versioned API.
+
 Dependency direction:
 
 ```txt
@@ -97,6 +102,30 @@ storage clients.
 
 Adapters translate the outside world into validated domain data. Adapters must
 not own compliance truth.
+
+SaaS/API implementation rules:
+
+- Treat consumer UI, TanStack server functions, REST/JSON endpoints, background
+  jobs and partner integrations as equivalent inbound adapters.
+- New non-trivial workflows should have application-service inputs and outputs
+  that can become stable `/v1/*` DTOs. Validate them with Zod or explicit
+  decoders.
+- Do not make application services depend on `useProject()`, Zustand,
+  TanStack runtime objects, browser-only state or Supabase auth response shape.
+- Resolve auth in the adapter to a typed principal. The principal may represent
+  a Supabase user today and an organization, API key, service account or partner
+  integration later.
+- `src/lib/project-store.ts` is a consumer read model and interaction cache. It
+  is not the canonical domain state for API-callable services.
+- SaaS persistence such as organizations, organization members, API keys, API
+  usage events, quotas, plans and request logs is permitted when introduced via
+  additive migrations and architecture review.
+- Do not assume every project or request belongs only to one interactive human
+  user. Keep ownership and authorization checks explicit at the adapter/service
+  boundary.
+- For design/sketch features, AI may interpret a brief and suggest options, but
+  målfast drawings, footprints, placement and compliance-relevant geometry must
+  be deterministic structured data checked by the rule and geometry engines.
 
 ---
 

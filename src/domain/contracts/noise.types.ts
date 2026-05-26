@@ -4,11 +4,7 @@
 
 export type NoiseSourceKind = "road" | "rail" | "air" | "industry";
 
-export type NoiseCoverage =
-  | "covered"
-  | "outside_mapped_area"
-  | "source_unavailable"
-  | "unknown";
+export type NoiseCoverage = "covered" | "outside_mapped_area" | "source_unavailable" | "unknown";
 
 export type NoiseRisk = "ok" | "warning" | "review_required" | "unknown";
 

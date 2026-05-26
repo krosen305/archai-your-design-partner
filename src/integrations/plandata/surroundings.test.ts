@@ -3,9 +3,9 @@ import { describe, it, expect } from "bun:test";
 describe("PlandataSurroundingsService (mock)", () => {
   it("returnerer SourceResult med mock data", async () => {
     const { PlandataSurroundingsService } = await import("./surroundings");
-    const result = await PlandataSurroundingsService.getSurroundings(
-      [720000, 6175000, 720500, 6175500],
-    );
+    const result = await PlandataSurroundingsService.getSurroundings([
+      720000, 6175000, 720500, 6175500,
+    ]);
     expect(result.status).toBe("mock");
     expect(result.isMock).toBe(true);
     expect(result.data).not.toBeNull();

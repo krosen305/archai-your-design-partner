@@ -1,6 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import type { SourceResult } from "@/lib/source-result";
-import type { NeighborContext, PlanningSurroundingsContext } from "@/domain/contracts/surroundings.types";
+import type {
+  NeighborContext,
+  PlanningSurroundingsContext,
+} from "@/domain/contracts/surroundings.types";
 import type { NoiseScreeningResult } from "@/domain/contracts/noise.types";
 import { makeMockResult } from "@/lib/source-result";
 import {

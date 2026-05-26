@@ -19,8 +19,7 @@ import { z } from "zod";
 
 const IS_MOCK = true;
 
-const MAT_WFS_BASE =
-  "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
+const MAT_WFS_BASE = "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 const JORDSTYKKE_TYPENAME = "mat:Jordstykke";
 const SOURCE_URL = MAT_WFS_BASE;
 
