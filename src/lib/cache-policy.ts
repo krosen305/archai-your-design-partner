@@ -20,6 +20,10 @@ const SOURCE_RESULT_TTL_OVERRIDES: Partial<Record<string, number>> = {
   dai_extended: 30,
   arealdata_ext: 30,
   plandata_ext: 14,
+  geodanmark_nabo: 90,
+  mat_neighbor_parcels: 90,
+  plandata_surroundings: 30,
+  mst_noise: 180,
 };
 
 export function sourceResultTtlDays(sourceKind: string): number {
