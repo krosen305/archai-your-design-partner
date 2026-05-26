@@ -181,3 +181,31 @@ export type RuleEngineArealdataContext = {
   osd: boolean | null;
   rawMaterialArea: boolean | null;
 };
+
+export type RuleEngineNoiseData = {
+  roadLdenDb: number | null;
+  railLdenDb: number | null;
+  airLdenDb: number | null;
+  industryLdenDb: number | null;
+  coverageStatus: "covered" | "outside_mapped_area" | "source_unavailable" | "unknown";
+  highestRisk: "ok" | "warning" | "review_required" | "unknown";
+  requiresAcousticReview: boolean | null;
+};
+
+export type RuleEngineNeighborData = {
+  nearestBuildingDistanceM: number | null;
+  nearestRoadCenterlineDistanceM: number | null;
+  buildingCount40m: number;
+  accessRoadNearby: boolean | null;
+  coverage: "covered" | "source_unavailable" | "unknown";
+};
+
+export type RuleEngineSurroundingsData = {
+  noiseDesignatedArea: boolean | null;
+  productionNoiseConsequenceArea: boolean | null;
+  odorConsequenceArea: boolean | null;
+  odorDesignatedArea: boolean | null;
+  technicalFacilityConsequenceArea: boolean | null;
+  largeLivestockFarmArea: boolean | null;
+  proposedPlanConflict: boolean | null;
+};

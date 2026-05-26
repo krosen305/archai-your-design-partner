@@ -4,6 +4,12 @@
 // RuleEngineInput er bindeleddet mellem datalag og regelkerne.
 // Alle felter er samlet fra eksisterende datakilder — ingen nye API-kald.
 
+import type {
+  RuleEngineNoiseData,
+  RuleEngineNeighborData,
+  RuleEngineSurroundingsData,
+} from "@/domain/contracts/rule-engine.types";
+
 // ---------------------------------------------------------------------------
 // Hjælpetyper
 // ---------------------------------------------------------------------------
@@ -156,6 +162,12 @@ export type RuleEngineInput = {
     osd: boolean | null;
     rawMaterialArea: boolean | null;
   } | null;
+
+  noise?: RuleEngineNoiseData | null;
+
+  neighborContext?: RuleEngineNeighborData | null;
+
+  surroundings?: RuleEngineSurroundingsData | null;
 
   /**
    * Præcis bygningsplacering fra korteditor (ARCH-179/180).
