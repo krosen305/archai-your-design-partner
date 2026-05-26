@@ -159,9 +159,7 @@ function segmentToSegmentDistanceSq(s1: Segment, s2: Segment): number {
   return (p1x - p2x) ** 2 + (p1y - p2y) ** 2;
 }
 
-function extractRings(
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
-): [number, number][][] {
+function extractRings(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): [number, number][][] {
   if (geometry.type === "Polygon") {
     return geometry.coordinates as [number, number][][];
   }
