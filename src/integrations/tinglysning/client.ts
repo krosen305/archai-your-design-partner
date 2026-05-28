@@ -15,12 +15,10 @@
 //
 // Option B (fallback): Erhvervsstyrelsen B2B-adgang — kræver særskilt registrering.
 
-import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { getEnvOptional, getEnvRequired } from "@/lib/env";
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { logServerEvent } from "@/lib/server-logger";
-
-const IS_MOCK = FEATURE_FLAGS.tinglysningMock;
 
 const TINGBOGEN_BASE = "https://services.datafordeler.dk/TingbogenV2/tingbogen/1.0.0";
 
@@ -220,7 +218,7 @@ export class TinglysningService {
       return { servitutter: [], pant: 0, kilde: "mock" };
     }
 
-    if (IS_MOCK) {
+    if (FEATURE_FLAGS.tinglysningMock) {
       return MOCK_RESULT;
     }
 

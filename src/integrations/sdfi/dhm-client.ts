@@ -8,6 +8,9 @@ import { fromArrayBuffer } from "geotiff";
 
 const DHM_WCS = "https://wcs.datafordeler.dk/DHMNedboer/dhm_wcs/1.0.0/WCS";
 const DHM_COVERAGE = "dhm_terraen";
+const TARGET_PIXEL_SIZE_M = 1;
+const MAX_GRID_SIDE = 48;
+const MAX_RETURNED_KOTEPUNKTER = 225;
 
 export type BoundingBox = {
   minX: number;
@@ -80,6 +83,27 @@ async function parseGeoTiff(
   return points;
 }
 
+function downsampleKotepunkter(
+  kotepunkter: TerrainData["kotepunkter"],
+  maxPoints = MAX_RETURNED_KOTEPUNKTER,
+): TerrainData["kotepunkter"] {
+  if (kotepunkter.length <= maxPoints) return kotepunkter;
+
+  const step = Math.ceil(kotepunkter.length / maxPoints);
+  const sampled: TerrainData["kotepunkter"] = [];
+
+  for (let index = 0; index < kotepunkter.length; index += step) {
+    sampled.push(kotepunkter[index]!);
+  }
+
+  const last = kotepunkter.at(-1);
+  if (last && sampled.at(-1) !== last) {
+    sampled.push(last);
+  }
+
+  return sampled.slice(0, maxPoints);
+}
+
 function summarizeTerrain(
   kotepunkter: TerrainData["kotepunkter"],
   bbox: BoundingBox,
@@ -102,7 +126,7 @@ function summarizeTerrain(
     lowPointM: Math.round(minElevationM * 10) / 10,
     bluespotRisk: slopePercent < 1.5 ? true : false,
     northOrientation: getNorthOrientation(lat, lng),
-    kotepunkter,
+    kotepunkter: downsampleKotepunkter(kotepunkter),
     kilde: "dhm",
   });
 }
@@ -115,9 +139,8 @@ async function fetchLiveTerrain(
   const apiKey = getEnvRequired("DATAFORDELER_API_KEY");
   const width = bbox.maxX - bbox.minX;
   const height = bbox.maxY - bbox.minY;
-  const pixelSizeM = 0.4;
-  const cols = Math.ceil(width / pixelSizeM);
-  const rows = Math.ceil(height / pixelSizeM);
+  const cols = Math.min(MAX_GRID_SIDE, Math.max(4, Math.ceil(width / TARGET_PIXEL_SIZE_M)));
+  const rows = Math.min(MAX_GRID_SIDE, Math.max(4, Math.ceil(height / TARGET_PIXEL_SIZE_M)));
 
   const url =
     `${DHM_WCS}?apikey=${apiKey}&SERVICE=WCS&REQUEST=GetCoverage&VERSION=1.0.0` +
