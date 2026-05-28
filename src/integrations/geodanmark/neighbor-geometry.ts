@@ -12,14 +12,13 @@
 // Auth: DATAFORDELER_API_KEY som query-param "apikey="
 
 import { getEnvRequired } from "@/lib/env";
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import type { NeighborBuilding, NeighborContext } from "@/domain/contracts/surroundings.types";
 import { computePolygonAreaM2, polygonToPolygonDistanceM } from "@/lib/geometry-utils";
 import type * as GeoJSON from "geojson";
 import { z } from "zod";
-
-const IS_MOCK = true;
 
 const WFS_BASE = "https://wfs.datafordeler.dk/GeoDanmark/GeoDanmark_WFS/2.0.0/WFS";
 const BYGNING_TYPENAME = "gdk:Bygning";
@@ -90,7 +89,7 @@ export class GeoDanmarkNeighborService {
     adresseBbox25832: [number, number, number, number],
     ownJordstykkeId: string | null,
   ): Promise<SourceResult<NeighborContext>> {
-    if (IS_MOCK) {
+    if (FEATURE_FLAGS.geodanmarkMock) {
       return makeMockResult<NeighborContext>(
         {
           count40m: 0,

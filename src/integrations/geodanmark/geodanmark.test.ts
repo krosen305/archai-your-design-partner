@@ -1,4 +1,20 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, mock } from "bun:test";
+
+mock.module("@/lib/feature-flags", () => ({
+  FEATURE_FLAGS: {
+    tinglysningMock: true,
+    pdfExtractorMock: false,
+    husDnaMock: false,
+    byggeanalyseMock: false,
+    fjernvarmeMock: false,
+    billedanalyseMock: false,
+    geodanmarkMock: true,
+    plandataSurroundingsMock: false,
+    matNeighborParcelsMock: false,
+    geusMock: false,
+    dhmMock: false,
+  },
+}));
 import { GeoDanmarkNaboService } from "./client";
 
 const PARCEL_BBOX: [number, number, number, number] = [724000, 6172000, 724100, 6172100];

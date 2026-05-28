@@ -12,11 +12,10 @@
 // Auth: samme DATAFORDELER_API_KEY som MAT/BBR — sendes som query-param "apikey=".
 
 import { getEnvRequired } from "@/lib/env";
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import type { NeighborBuilding, NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
-
-const IS_MOCK = true;
 
 const GEODANMARK_WFS_URL = "https://wfs.datafordeler.dk/GeoDanmark/GeoDanmark_WFS/2.0.0/WFS";
 const BYGNING_TYPENAME = "gdk:Bygning";
@@ -67,7 +66,7 @@ export class GeoDanmarkNaboService {
     adresseBbox25832: [number, number, number, number],
     ownJordstykkeLokalId: string | null,
   ): Promise<SourceResult<NeighborBuildingData>> {
-    if (IS_MOCK) {
+    if (FEATURE_FLAGS.geodanmarkMock) {
       return makeMockResult<NeighborBuildingData>(
         {
           count: 0,
