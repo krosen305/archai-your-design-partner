@@ -31,6 +31,9 @@ export type DrawingReadinessInput = {
   hasDhmKoter: boolean;
   hasExistingBuildingGeometry: boolean;
   missingDataPoints: string[];
+  hasRoadCenterlineGeometry: boolean;
+  hasCenterlineDeklaration: boolean;
+  hasSurveyorAttestation: boolean;
 };
 
 const THRESHOLDS = {
@@ -81,6 +84,17 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   if (input.parcelAreaDiscrepancyPct > THRESHOLDS.maxParcelAreaDiscrepancyPct) {
     surveyRequired = true;
     reasons.push({ code: "PARCEL_AREA_DISCREPANCY", severity: "warning", message: `Arealafvigelse er ${input.parcelAreaDiscrepancyPct.toFixed(1)}% — graense er ${THRESHOLDS.maxParcelAreaDiscrepancyPct}%`, affectedLayer: "parcel" });
+    reviewRequiredBy.push("landinspektoer");
+  }
+
+  if (input.hasCenterlineDeklaration && !input.hasRoadCenterlineGeometry) {
+    surveyRequired = true;
+    reasons.push({
+      code: "CENTERLINE_DEKLARATION_WITHOUT_GEOMETRY",
+      severity: "warning",
+      message: "Byggelinje fra vejmidte (deklaration) kræver opmålt vejmidte-geometri",
+      affectedLayer: "constraints",
+    });
     reviewRequiredBy.push("landinspektoer");
   }
 

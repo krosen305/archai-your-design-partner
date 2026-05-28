@@ -13,7 +13,15 @@ export type DrawingLayerKind =
   | "dimensions"
   | "labels"
   | "title_block"
-  | "legend";
+  | "legend"
+  | "dimension_lines"
+  | "terrain_labels"
+  | "utility_lines"
+  | "utility_wells"
+  | "hatch_areas"
+  | "road_label"
+  | "scale_bar"
+  | "mandatory_annotations";
 
 export type DrawingFeature = {
   id: string;

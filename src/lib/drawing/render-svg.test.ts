@@ -55,4 +55,34 @@ describe("renderSvg", () => {
   it("indeholder kildeangivelse", () => {
     expect(renderSvg(model)).toContain("MAT WFS");
   });
+
+  it("indeholder BR18-byggelinje hvis constraints har br18_setback", () => {
+    const modelWithConstraint: DrawingModel = {
+      ...model,
+      features: [
+        ...model.features,
+        {
+          id: "br18-1", kind: "setback_lines",
+          svgElement: '<polygon points="10,10 90,10 90,60 10,60" fill="none" stroke="red" stroke-width="0.5"/>',
+          label: "Byggelinje 2,5 m fra skel", labelX: 50, labelY: 10, zIndex: 20,
+        },
+      ],
+    };
+    expect(renderSvg(modelWithConstraint)).toContain("br18-1");
+  });
+
+  it("indeholder bebyggelsesprocent i kildelist", () => {
+    const modelWithArea: DrawingModel = {
+      ...model,
+      titleBlock: {
+        ...model.titleBlock,
+        sourceList: ["Grundareal: 1086 m²", "Bebyg.%: 24.98% (BR18 §452)"],
+      },
+    };
+    expect(renderSvg(modelWithArea)).toContain("Bebyg.%");
+  });
+
+  it("indeholder skalastav-tekst", () => {
+    expect(renderSvg(model)).toContain("1:250");
+  });
 });

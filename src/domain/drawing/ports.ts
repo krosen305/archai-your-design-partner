@@ -5,6 +5,7 @@ import type {
   SurveyLayer,
   BBox25832,
   GeoJsonLineString25832,
+  NeighborParcel,
 } from "./beliggenhedsplan.types";
 
 export interface DrawingGeometrySourcePort {
@@ -12,6 +13,11 @@ export interface DrawingGeometrySourcePort {
   fetchNeighborBuildings(bbox25832: BBox25832): Promise<ExistingFeaturesLayer>;
   fetchRoadGeometry(addressId: string): Promise<{ centerline25832: GeoJsonLineString25832 | null }>;
   fetchPlandataLayers(kommunekode: string, bbox25832: BBox25832): Promise<ConstraintLayer[]>;
+  fetchNeighborParcels(
+    ownJordstykkeId: string,
+    bbox25832: BBox25832,
+  ): Promise<NeighborParcel[]>;
+  fetchRoadName(addressId: string): Promise<{ name: string | null }>;
 }
 
 export interface SurveyUploadDecoderPort {

@@ -1,3 +1,4 @@
+// src/domain/drawing/beliggenhedsplan.types.ts
 export type Crs25832 = "EPSG:25832";
 export type BBox25832 = [number, number, number, number];
 
@@ -62,6 +63,7 @@ export type ParcelLayer = {
   boundarySegments: BoundarySegment[];
   neighborParcels: NeighborParcel[];
   labelPoint25832: GeoJsonPoint25832;
+  roadName: string | null;
   source: LayerSourceMeta;
 };
 
@@ -84,6 +86,8 @@ export type TerrainLayer = {
 export type SurveyLayer = {
   uploadedAt: string;
   surveyDate: string | null;
+  surveyorName: string | null;
+  surveyorLicenseNr: string | null;
   terrainPoints: TerrainPoint[];
   boundaryPoints: GeoJsonPoint25832[];
   notes: string[];
@@ -105,6 +109,13 @@ export type ExistingFeaturesLayer = {
   source: LayerSourceMeta;
 };
 
+export type DimensionLine = {
+  fromPoint: GeoJsonPoint25832;
+  toPoint: GeoJsonPoint25832;
+  labelM: number;
+  side: "north" | "south" | "east" | "west" | "auto";
+};
+
 export type ProposedBuildingLayer = {
   footprint25832: GeoJsonPolygon25832;
   rotationDeg: number;
@@ -112,6 +123,9 @@ export type ProposedBuildingLayer = {
   storeys: number;
   heightM: number | null;
   sokkelKoteM: number | null;
+  finishedFloorKoteM: number | null;
+  terrainOffsetM: number | null;
+  dimensions: DimensionLine[];
   source: LayerSourceMeta;
 };
 
@@ -119,19 +133,25 @@ export type ConstraintLayer = {
   type:
     | "br18_setback"
     | "localplan_building_line"
-    | "road_building_line"
+    | "road_boundary_setback"
+    | "road_centerline_deklaration"
     | "servitut"
     | "building_field";
   geometry25832: GeoJsonPolygon25832 | GeoJsonLineString25832;
   label: string;
   ruleText: string | null;
+  ruleReference: string | null;
   source: LayerSourceMeta;
 };
 
 export type UtilityLayer = {
-  type: "water" | "sewer" | "electric" | "gas" | "rainwater" | "wastewater";
+  type: "water" | "sewer" | "electric" | "gas" | "rainwater" | "wastewater"
+    | "inspection_well" | "sand_trap" | "rat_barrier";
   geometry25832: GeoJsonPoint25832 | GeoJsonLineString25832;
   label: string;
+  dkKoteM: number | null;
+  diameterMm: number | null;
+  lineStyle: "solid" | "dashed" | "dotted" | null;
   source: LayerSourceMeta;
 };
 
@@ -145,16 +165,51 @@ export type SiteUseLayer = {
     | "future_structure";
   geometry25832: GeoJsonPolygon25832;
   label: string;
+  widthM: number | null;
+  isExisting: boolean;
+  permitRequired: boolean | null;
+  legalBasis: "br18_notification" | "br18_permit_required" | null;
+  note: string | null;
+  hatchPattern: "diagonal" | "cross" | "dots" | null;
   source: LayerSourceMeta;
+};
+
+export type RevisionEntry = {
+  nr: string;
+  description: string;
+  date: string;
+  by: string;
+};
+
+export type AreaTable = {
+  grundarealM2: number;
+  groundFloorM2: number;
+  firstFloorM2: number | null;
+  doubleHeightDeductionM2: number;
+  totalResidentialM2: number;
+  coveragePercent: number;
+  calculationBasis: string;
+};
+
+export type MandatoryAnnotations = {
+  koteDatum: string | null;
+  terrainSurveyedBy: string | null;
+  sewerResponsibility: string | null;
+  ratBarrierNote: string | null;
 };
 
 export type DrawingMetadata = {
   title: string;
   address: string;
   matrikel: string;
+  bfeNr: string | null;
   bygherre: string | null;
   sagNr: string | null;
-  revision: string;
+  buildingCode: "BR18" | "BR20" | null;
+  draughtsman: string | null;
+  responsibleFirm: string | null;
+  revisions: RevisionEntry[];
+  areaTable: AreaTable | null;
   date: string;
   scale: 250 | 500;
   paperSize: "A3" | "A2" | "A1";
@@ -171,4 +226,5 @@ export type BeliggenhedsplanInput = {
   siteUse: SiteUseLayer[];
   terrain: TerrainLayer | null;
   metadata: DrawingMetadata;
+  mandatoryAnnotations: MandatoryAnnotations;
 };

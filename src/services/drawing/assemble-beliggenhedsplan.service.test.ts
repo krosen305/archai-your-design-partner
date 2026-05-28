@@ -35,6 +35,7 @@ const fakeParcel: ParcelLayer = {
   areaDiscrepancyM2: 0,
   boundarySegments: [],
   neighborParcels: [],
+  roadName: null,
   labelPoint25832: { type: "Point", crs: "EPSG:25832", coordinates: [720010, 6170010] },
   source: registrySourceMeta(now),
 };
@@ -50,6 +51,8 @@ const fakeSource: DrawingGeometrySourcePort = {
   fetchNeighborBuildings: async () => fakeExisting,
   fetchRoadGeometry: async () => ({ centerline25832: null }),
   fetchPlandataLayers: async () => [],
+  fetchNeighborParcels: async () => [],
+  fetchRoadName: async () => ({ name: "Testvej" }),
 };
 
 const fakeFootprint: GeoJsonPolygon25832 = {
@@ -70,10 +73,15 @@ const baseMeta = {
   title: "Beliggenhedsplan test",
   address: "Testvej 1",
   matrikel: "1a",
+  bfeNr: null,
   bygherre: null,
   sagNr: null,
-  revision: "A",
-  date: "2026-05-25",
+  buildingCode: null as "BR18" | "BR20" | null,
+  draughtsman: null,
+  responsibleFirm: null,
+  revisions: [{ nr: "A", description: "Udgivelse", date: "2026-05-28", by: "" }],
+  areaTable: null,
+  date: "2026-05-28",
   scale: 250 as const,
   paperSize: "A3" as const,
 };
@@ -126,5 +134,47 @@ describe("assembleBeliggenhedsplan", () => {
       survey: null,
     });
     expect(result.plan?.proposed.footprintAreaM2).toBeCloseTo(100, 0);
+  });
+
+  it("plan indeholder mandatoryAnnotations med koteDatum", async () => {
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      metadata: baseMeta,
+      geometrySource: fakeSource,
+      survey: null,
+    });
+    expect(result.plan?.mandatoryAnnotations.koteDatum).toContain("DVR90");
+  });
+
+  it("plan indeholder BR18-byggelinje i constraints", async () => {
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      metadata: baseMeta,
+      geometrySource: fakeSource,
+      survey: null,
+    });
+    expect(result.plan?.constraints.some((c) => c.type === "br18_setback")).toBe(true);
+  });
+
+  it("plan.parcel.roadName sættes fra fetchRoadName", async () => {
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      metadata: baseMeta,
+      geometrySource: fakeSource,
+      survey: null,
+    });
+    expect(result.plan?.parcel.roadName).toBe("Testvej");
   });
 });

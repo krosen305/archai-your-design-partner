@@ -5,6 +5,7 @@ import type {
   ConstraintLayer,
   BBox25832,
   GeoJsonPolygon25832,
+  NeighborParcel,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import {
   ParcelLayerSchema,
@@ -64,6 +65,7 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
       areaDiscrepancyM2: Math.abs(geomAreaM2 - regAreaM2),
       boundarySegments: splitPolygonIntoBoundarySegments(polygon25832),
       neighborParcels: [],
+      roadName: null,
       labelPoint25832: { type: "Point", crs: "EPSG:25832", coordinates: [cx, cy] },
       source: registrySourceMeta(now),
     };
@@ -136,5 +138,41 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     _bbox25832: BBox25832,
   ): Promise<ConstraintLayer[]> {
     return [];
+  }
+
+  async fetchNeighborParcels(
+    ownJordstykkeId: string,
+    bbox25832: BBox25832,
+  ): Promise<NeighborParcel[]> {
+    const { MatNeighborParcelService } = await import("@/integrations/mat/neighbor-parcels");
+    const result = await MatNeighborParcelService.getNeighborParcels(ownJordstykkeId, bbox25832);
+
+    if (!result.data) return [];
+
+    return result.data
+      .filter((p) => p.matrikelnummer !== null)
+      .map((p) => {
+        const geom = p.geometry;
+        const polygon25832: GeoJsonPolygon25832 | null =
+          geom?.type === "Polygon"
+            ? { type: "Polygon", coordinates: geom.coordinates as [number, number][][], crs: "EPSG:25832" }
+            : geom?.type === "MultiPolygon"
+            ? { type: "Polygon", coordinates: (geom.coordinates as [number, number][][][])[0] ?? [], crs: "EPSG:25832" }
+            : null;
+
+        const coords = polygon25832?.coordinates[0] ?? [];
+        const cx = coords.length > 0 ? coords.reduce((s, c) => s + c[0], 0) / coords.length : 0;
+        const cy = coords.length > 0 ? coords.reduce((s, c) => s + c[1], 0) / coords.length : 0;
+
+        return {
+          matrikelnummer: p.matrikelnummer!,
+          polygon25832,
+          labelPoint25832: { type: "Point" as const, crs: "EPSG:25832" as const, coordinates: [cx, cy] as [number, number] },
+        };
+      });
+  }
+
+  async fetchRoadName(_addressId: string): Promise<{ name: string | null }> {
+    return { name: null };
   }
 }
