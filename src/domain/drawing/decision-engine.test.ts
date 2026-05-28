@@ -14,6 +14,9 @@ const base = {
   hasDhmKoter: true,
   hasExistingBuildingGeometry: true,
   missingDataPoints: [] as string[],
+  hasRoadCenterlineGeometry: true,
+  hasCenterlineDeklaration: false,
+  hasSurveyorAttestation: false,
 };
 
 describe("classifyDrawingReadiness", () => {
@@ -52,5 +55,26 @@ describe("classifyDrawingReadiness", () => {
   it("missingDataPoints propageres til resultatet", () => {
     const r = classifyDrawingReadiness({ ...base, hasParcelPolygon: false, missingDataPoints: ["parcel.polygon25832"] });
     expect(r.missingDataPoints).toContain("parcel.polygon25832");
+  });
+
+  it("SURVEY_REQUIRED naar road_centerline_deklaration eksisterer men vejmidte mangler", () => {
+    const r = classifyDrawingReadiness({
+      ...base,
+      hasRoadCenterlineGeometry: false,
+      hasCenterlineDeklaration: true,
+      hasSurveyorAttestation: false,
+    });
+    expect(r.status).toBe("SURVEY_REQUIRED");
+    expect(r.reasons.some((r) => r.code === "CENTERLINE_DEKLARATION_WITHOUT_GEOMETRY")).toBe(true);
+  });
+
+  it("AUTO_REVIEW naar surveyor-attestation er til stede", () => {
+    const r = classifyDrawingReadiness({
+      ...base,
+      hasRoadCenterlineGeometry: true,
+      hasCenterlineDeklaration: true,
+      hasSurveyorAttestation: true,
+    });
+    expect(r.status).toBe("AUTO_REVIEW");
   });
 });

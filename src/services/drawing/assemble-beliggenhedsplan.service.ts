@@ -63,6 +63,9 @@ export async function assembleBeliggenhedsplan(
         hasDhmKoter: false,
         hasExistingBuildingGeometry: false,
         missingDataPoints: ["parcel.polygon25832"],
+        hasRoadCenterlineGeometry: false,
+        hasCenterlineDeklaration: false,
+        hasSurveyorAttestation: false,
       }),
     };
   }
@@ -131,6 +134,9 @@ export async function assembleBeliggenhedsplan(
     hasDhmKoter: false,
     hasExistingBuildingGeometry: existing.buildings.length > 0,
     missingDataPoints: [],
+    hasRoadCenterlineGeometry: false,
+    hasCenterlineDeklaration: false,
+    hasSurveyorAttestation: false,
   });
 
   return { plan, readiness };
