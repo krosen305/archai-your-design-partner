@@ -70,4 +70,19 @@ describe("renderSvg", () => {
     };
     expect(renderSvg(modelWithConstraint)).toContain("br18-1");
   });
+
+  it("indeholder bebyggelsesprocent i kildelist", () => {
+    const modelWithArea: DrawingModel = {
+      ...model,
+      titleBlock: {
+        ...model.titleBlock,
+        sourceList: ["Grundareal: 1086 m²", "Bebyg.%: 24.98% (BR18 §452)"],
+      },
+    };
+    expect(renderSvg(modelWithArea)).toContain("Bebyg.%");
+  });
+
+  it("indeholder skalastav-tekst", () => {
+    expect(renderSvg(model)).toContain("1:250");
+  });
 });
