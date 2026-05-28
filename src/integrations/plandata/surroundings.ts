@@ -1,23 +1,22 @@
 // src/integrations/plandata/surroundings.ts
 // SERVER-SIDE ONLY.
 //
-// Plandata WFS — kommuneplanretningslinjer for støj, lugt og konsekvensområder.
+// Plandata WFS — verified kommuneplan guideline layers for surroundings context.
 //
-// IS_MOCK=true — aktiveres efter Task 0 step 4-5 verificerer typenavn og property-navne.
+// Verified against live GetCapabilities/DescribeFeatureType on 2026-05-26.
+// The earlier generic `kommuneplanretningslinje_*` layer names do not exist.
 //
-// Forventede typenames (verificer fra Task 0):
-//   vedtaget: pdk:theme_pdk_kommuneplanretningslinje_vedtaget
-//   forslag:  pdk:theme_pdk_kommuneplanretningslinje_forslag
+// Live-verified layers used here:
+//   pdk:theme_pdk_stoejbelastetareal_{vedtaget|forslag}
+//   pdk:theme_pdk_konsekvensomraade_{vedtaget|forslag}
+//   pdk:theme_pdk_tekniskanlaegkonsekvensomraade_{vedtaget|forslag}
+//   pdk:theme_pdk_storehusdyrbrug_{vedtaget|forslag}
 //
-// Relevante temakoder (verificer mod kodelisten):
-//   1109    — støjbelastede arealer
-//   115201  — støj fra eksisterende produktionsvirksomheder
-//   115202  — lugt fra eksisterende produktionsvirksomheder
-//   110129  — lugtbelastede arealer
-//   110130  — konsekvensområder for tekniske anlæg og støj i landzone
-//   114200  — store husdyrbrug
+// Note: odor-specific live layers are not currently verified in GetCapabilities.
+// Those fields stay null rather than inventing compliance truth from free text.
 
 import { fetchWithRetry } from "@/integrations/http/fetch-with-retry";
+import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { makeErrorResult, makeMockResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import type {
@@ -26,18 +25,37 @@ import type {
 } from "@/domain/contracts/surroundings.types";
 import { z } from "zod";
 
-const IS_MOCK = true;
-
 const WFS_BASE = "https://geoserver.plandata.dk/geoserver/wfs";
-const VEDTAGET_TYPENAME = "pdk:theme_pdk_kommuneplanretningslinje_vedtaget";
-const FORSLAG_TYPENAME = "pdk:theme_pdk_kommuneplanretningslinje_forslag";
+const VERIFIED_LAYER_GROUPS = [
+  {
+    hitKind: "noise_designated" as const,
+    title: "Støjbelastede arealer",
+    vedtaget: "pdk:theme_pdk_stoejbelastetareal_vedtaget",
+    forslag: "pdk:theme_pdk_stoejbelastetareal_forslag",
+  },
+  {
+    hitKind: "production_noise_consequence" as const,
+    title: "Konsekvensområder",
+    vedtaget: "pdk:theme_pdk_konsekvensomraade_vedtaget",
+    forslag: "pdk:theme_pdk_konsekvensomraade_forslag",
+  },
+  {
+    hitKind: "technical_facility_consequence" as const,
+    title: "Konsekvensområder omkring tekniske anlæg",
+    vedtaget: "pdk:theme_pdk_tekniskanlaegkonsekvensomraade_vedtaget",
+    forslag: "pdk:theme_pdk_tekniskanlaegkonsekvensomraade_forslag",
+  },
+  {
+    hitKind: "large_livestock" as const,
+    title: "Store husdyrbrug",
+    vedtaget: "pdk:theme_pdk_storehusdyrbrug_vedtaget",
+    forslag: "pdk:theme_pdk_storehusdyrbrug_forslag",
+  },
+];
 
-const NOISE_THEME_CODES = new Set(["1109", "115201"]);
-const ODOR_THEME_CODES = new Set(["115202", "110129"]);
-const TECHNICAL_THEME_CODES = new Set(["110130"]);
-const LIVESTOCK_THEME_CODES = new Set(["114200"]);
-
-const SOURCE_URL = `${WFS_BASE}?service=WFS&request=GetFeature&typeName=${VEDTAGET_TYPENAME}`;
+const SOURCE_URL = `${WFS_BASE}?service=WFS&request=GetFeature&typeName=${encodeURIComponent(
+  VERIFIED_LAYER_GROUPS.map((group) => group.vedtaget).join(","),
+)}`;
 
 const plandataFeatureSchema = z.object({
   id: z.string().optional(),
@@ -53,7 +71,12 @@ function str(v: unknown): string | null {
 }
 
 type SurroundingsFeature = {
-  themeCode: string;
+  hitKind:
+    | "noise_designated"
+    | "production_noise_consequence"
+    | "technical_facility_consequence"
+    | "large_livestock";
+  themeCode: string | null;
   planId: string;
   planTitle: string | null;
   municipalityName: string | null;
@@ -62,6 +85,8 @@ type SurroundingsFeature = {
 
 async function fetchSurroundingsFeatures(
   typename: string,
+  hitKind: SurroundingsFeature["hitKind"],
+  title: string,
   bbox25832: [number, number, number, number],
 ): Promise<SurroundingsFeature[]> {
   const bboxStr = `${bbox25832[0]},${bbox25832[1]},${bbox25832[2]},${bbox25832[3]},EPSG:25832`;
@@ -80,10 +105,11 @@ async function fetchSurroundingsFeatures(
   const status = typename.includes("forslag") ? "forslag" : "vedtaget";
 
   return features.map((f) => ({
-    themeCode: str(f.properties?.["themeCode"] ?? f.properties?.["temaKode"] ?? "") ?? "",
-    planId: str(f.properties?.["planId"] ?? f.id) ?? "",
-    planTitle: str(f.properties?.["navn"] ?? f.properties?.["planNavn"]),
-    municipalityName: str(f.properties?.["kommuneNavn"] ?? f.properties?.["kommunenavn"]),
+    hitKind,
+    themeCode: str(f.properties?.["temakode"] ?? f.properties?.["omraadekode"]),
+    planId: str(f.properties?.["komplan_id"] ?? f.properties?.["komtil_id"] ?? f.id) ?? "",
+    planTitle: str(f.properties?.["plangrund"] ?? f.properties?.["omraadenavn"] ?? title),
+    municipalityName: str(f.properties?.["komnavn"] ?? f.properties?.["kommunenavn"]),
     status,
   }));
 }
@@ -92,7 +118,7 @@ export class PlandataSurroundingsService {
   static async getSurroundings(
     bbox25832: [number, number, number, number],
   ): Promise<SourceResult<PlanningSurroundingsContext>> {
-    if (IS_MOCK) {
+    if (FEATURE_FLAGS.plandataSurroundingsMock) {
       return makeMockResult<PlanningSurroundingsContext>(
         {
           noiseDesignatedArea: null,
@@ -109,38 +135,48 @@ export class PlandataSurroundingsService {
     }
 
     try {
-      const [vedtaget, forslag] = await Promise.all([
-        fetchSurroundingsFeatures(VEDTAGET_TYPENAME, bbox25832),
-        fetchSurroundingsFeatures(FORSLAG_TYPENAME, bbox25832).catch(
-          () => [] as SurroundingsFeature[],
-        ),
-      ]);
+      const groupedFeatures = await Promise.all(
+        VERIFIED_LAYER_GROUPS.map(async (group) => {
+          const [vedtaget, forslag] = await Promise.all([
+            fetchSurroundingsFeatures(group.vedtaget, group.hitKind, group.title, bbox25832),
+            fetchSurroundingsFeatures(group.forslag, group.hitKind, group.title, bbox25832).catch(
+              () => [] as SurroundingsFeature[],
+            ),
+          ]);
 
-      const all = [...vedtaget, ...forslag];
+          return [...vedtaget, ...forslag];
+        }),
+      );
+
+      const all = groupedFeatures.flat();
 
       const hits: PlanningSurroundingsHit[] = all.map((f) => ({
         planId: f.planId,
         planTitle: f.planTitle,
-        themeCode: f.themeCode,
+        themeCode: f.themeCode ?? f.hitKind,
         status: f.status,
         municipalityName: f.municipalityName,
         geometryOverlap: true,
       }));
 
-      const hasCode = (codes: Set<string>): boolean | null => {
-        const hit = all.find((f) => codes.has(f.themeCode));
+      const hasHitKind = (hitKind: SurroundingsFeature["hitKind"]): boolean | null => {
+        const hit = all.find((f) => f.hitKind === hitKind);
         return hit ? true : all.length > 0 ? false : null;
       };
 
-      const proposedConflict = forslag.length > 0 ? true : all.length > 0 ? false : null;
+      const proposedConflict = all.some((feature) => feature.status === "forslag")
+        ? true
+        : all.length > 0
+          ? false
+          : null;
 
       const result: PlanningSurroundingsContext = {
-        noiseDesignatedArea: hasCode(NOISE_THEME_CODES),
-        productionNoiseConsequenceArea: hasCode(new Set(["115201"])),
-        odorConsequenceArea: hasCode(new Set(["115202"])),
-        odorDesignatedArea: hasCode(new Set(["110129"])),
-        technicalFacilityConsequenceArea: hasCode(TECHNICAL_THEME_CODES),
-        largeLivestockFarmArea: hasCode(LIVESTOCK_THEME_CODES),
+        noiseDesignatedArea: hasHitKind("noise_designated"),
+        productionNoiseConsequenceArea: hasHitKind("production_noise_consequence"),
+        odorConsequenceArea: null,
+        odorDesignatedArea: null,
+        technicalFacilityConsequenceArea: hasHitKind("technical_facility_consequence"),
+        largeLivestockFarmArea: hasHitKind("large_livestock"),
         proposedPlanConflict: proposedConflict,
         hits,
       };
