@@ -1,3 +1,4 @@
+// src/domain/drawing/beliggenhedsplan.schemas.ts
 import { z } from "zod";
 
 const Crs25832Schema = z.literal("EPSG:25832");
@@ -21,7 +22,9 @@ export const GeoJsonPolygon25832Schema = z.object({
 });
 
 const DataConfidenceSchema = z.enum(["high", "medium", "low", "unknown"]);
-const DataSourceSchema = z.enum(["survey", "registry", "cad_upload", "manual", "generated", "estimated"]);
+const DataSourceSchema = z.enum([
+  "survey", "registry", "cad_upload", "manual", "generated", "estimated",
+]);
 
 const LayerSourceMetaSchema = z.object({
   source: DataSourceSchema,
@@ -57,18 +60,18 @@ export const ParcelLayerSchema = z.object({
   boundarySegments: z.array(BoundarySegmentSchema),
   neighborParcels: z.array(NeighborParcelSchema),
   labelPoint25832: GeoJsonPoint25832Schema,
+  roadName: z.string().nullable(),
   source: LayerSourceMetaSchema,
 });
 
 export const SurveyLayerSchema = z.object({
   uploadedAt: z.string(),
   surveyDate: z.string().nullable(),
+  surveyorName: z.string().nullable(),
+  surveyorLicenseNr: z.string().nullable(),
   terrainPoints: z.array(z.object({
-    x: z.number(),
-    y: z.number(),
-    z: z.number(),
-    label: z.string(),
-    source: DataSourceSchema,
+    x: z.number(), y: z.number(), z: z.number(),
+    label: z.string(), source: DataSourceSchema,
   })),
   boundaryPoints: z.array(GeoJsonPoint25832Schema),
   notes: z.array(z.string()),
@@ -88,6 +91,13 @@ export const ExistingFeaturesLayerSchema = z.object({
   source: LayerSourceMetaSchema,
 });
 
+const DimensionLineSchema = z.object({
+  fromPoint: GeoJsonPoint25832Schema,
+  toPoint: GeoJsonPoint25832Schema,
+  labelM: z.number(),
+  side: z.enum(["north", "south", "east", "west", "auto"]),
+});
+
 export const ProposedBuildingLayerSchema = z.object({
   footprint25832: GeoJsonPolygon25832Schema,
   rotationDeg: z.number(),
@@ -95,27 +105,67 @@ export const ProposedBuildingLayerSchema = z.object({
   storeys: z.number().int().positive(),
   heightM: z.number().nullable(),
   sokkelKoteM: z.number().nullable(),
+  finishedFloorKoteM: z.number().nullable(),
+  terrainOffsetM: z.number().nullable(),
+  dimensions: z.array(DimensionLineSchema),
   source: LayerSourceMetaSchema,
 });
 
 export const ConstraintLayerSchema = z.object({
-  type: z.enum(["br18_setback", "localplan_building_line", "road_building_line", "servitut", "building_field"]),
+  type: z.enum([
+    "br18_setback",
+    "localplan_building_line",
+    "road_boundary_setback",
+    "road_centerline_deklaration",
+    "servitut",
+    "building_field",
+  ]),
   geometry25832: z.union([GeoJsonPolygon25832Schema, GeoJsonLineString25832Schema]),
   label: z.string(),
   ruleText: z.string().nullable(),
+  ruleReference: z.string().nullable(),
   source: LayerSourceMetaSchema,
+});
+
+const RevisionEntrySchema = z.object({
+  nr: z.string(),
+  description: z.string(),
+  date: z.string(),
+  by: z.string(),
+});
+
+const AreaTableSchema = z.object({
+  grundarealM2: z.number(),
+  groundFloorM2: z.number(),
+  firstFloorM2: z.number().nullable(),
+  doubleHeightDeductionM2: z.number(),
+  totalResidentialM2: z.number(),
+  coveragePercent: z.number(),
+  calculationBasis: z.string(),
 });
 
 export const DrawingMetadataSchema = z.object({
   title: z.string().min(1),
   address: z.string().min(1),
   matrikel: z.string().min(1),
+  bfeNr: z.string().nullable(),
   bygherre: z.string().nullable(),
   sagNr: z.string().nullable(),
-  revision: z.string(),
+  buildingCode: z.enum(["BR18", "BR20"]).nullable(),
+  draughtsman: z.string().nullable(),
+  responsibleFirm: z.string().nullable(),
+  revisions: z.array(RevisionEntrySchema),
+  areaTable: AreaTableSchema.nullable(),
   date: z.string(),
   scale: z.union([z.literal(250), z.literal(500)]),
   paperSize: z.enum(["A3", "A2", "A1"]),
+});
+
+const MandatoryAnnotationsSchema = z.object({
+  koteDatum: z.string().nullable(),
+  terrainSurveyedBy: z.string().nullable(),
+  sewerResponsibility: z.string().nullable(),
+  ratBarrierNote: z.string().nullable(),
 });
 
 export const BeliggenhedsplanInputSchema = z.object({
@@ -129,4 +179,5 @@ export const BeliggenhedsplanInputSchema = z.object({
   siteUse: z.array(z.unknown()),
   terrain: z.unknown().nullable(),
   metadata: DrawingMetadataSchema,
+  mandatoryAnnotations: MandatoryAnnotationsSchema,
 });
