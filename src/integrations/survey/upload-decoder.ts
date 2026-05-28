@@ -13,6 +13,8 @@ export class SurveyUploadDecoder implements SurveyUploadDecoderPort {
     const layer: SurveyLayer = {
       uploadedAt: now,
       surveyDate: payload.surveyDate ?? null,
+      surveyorName: payload.surveyorName ?? null,
+      surveyorLicenseNr: payload.surveyorLicenseNr ?? null,
       terrainPoints: payload.points
         .filter((p) => p.type === "terrain")
         .map((p) => ({ x: p.x, y: p.y, z: p.z, label: p.label, source: "survey" as const })),
