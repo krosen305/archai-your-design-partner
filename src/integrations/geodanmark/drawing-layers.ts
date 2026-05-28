@@ -172,7 +172,18 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
       });
   }
 
-  async fetchRoadName(_addressId: string): Promise<{ name: string | null }> {
-    return { name: null };
+  async fetchRoadName(addressId: string): Promise<{ name: string | null }> {
+    try {
+      const url = `https://api.dataforsyningen.dk/adresser/${encodeURIComponent(addressId)}?format=json&noformat=1`;
+      const res = await fetch(url);
+      if (!res.ok) return { name: null };
+      const data = (await res.json()) as Record<string, unknown>;
+      const vejstykke = (data["adgangsadresse"] as Record<string, unknown> | undefined)
+        ?.["vejstykke"] as Record<string, unknown> | undefined;
+      const name = (vejstykke?.["adresseringsnavn"] as string | undefined) ?? null;
+      return { name };
+    } catch {
+      return { name: null };
+    }
   }
 }
