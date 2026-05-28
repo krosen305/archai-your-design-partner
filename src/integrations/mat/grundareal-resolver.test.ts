@@ -7,7 +7,7 @@ const MOCK_CONFIG = {
   matEndpoint: "https://mat.test",
 };
 
-function mockFetchSequence(jsonResponses: any[]) {
+function mockFetchSequence(jsonResponses: unknown[]) {
   let i = 0;
   globalThis.fetch = mock(async () => {
     const json = jsonResponses[i++] ?? { data: {} };
@@ -17,7 +17,21 @@ function mockFetchSequence(jsonResponses: any[]) {
       headers: { get: () => null },
       text: async () => JSON.stringify(json),
     } as unknown as Response;
-  }) as any;
+  }) as typeof fetch;
+}
+
+function mockFetchSequenceWithCapture(jsonResponses: unknown[], requests: string[]) {
+  let i = 0;
+  globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    requests.push(String(init?.body ?? ""));
+    const json = jsonResponses[i++] ?? { data: {} };
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      text: async () => JSON.stringify(json),
+    } as unknown as Response;
+  }) as typeof fetch;
 }
 
 beforeEach(() => {
@@ -228,5 +242,44 @@ describe("GrundarealResolver (ARCH-223)", () => {
 
     expect(result.grundareal).toBe(200);
     expect(result.jordstykker).toHaveLength(1);
+  });
+
+  it("sender BFE som Long-variabel til MAT-queries", async () => {
+    const requests: string[] = [];
+    mockFetchSequenceWithCapture(
+      [
+        { data: { EBR_Ejendomsbeliggenhed: { nodes: [{ bestemtFastEjendomBFENr: "2073922" }] } } },
+        { data: { MAT_SamletFastEjendom: { nodes: [{ id_lokalId: "sfe-123" }] } } },
+        {
+          data: {
+            MAT_Jordstykke: {
+              nodes: [
+                {
+                  id_lokalId: "js-1",
+                  matrikelnummer: "48a",
+                  ejerlavLokalId: "ejl-1",
+                  registreretAreal: 441,
+                  strandbeskyttelse_omfang: null,
+                  fredskov_omfang: null,
+                  klitfredning_omfang: null,
+                },
+              ],
+            },
+          },
+        },
+      ],
+      requests,
+    );
+
+    await GrundarealResolver.resolve(
+      {
+        adgangsadresseid: "0a3f507d-4cf9-32b8-e044-0003ba298018",
+        adresseid: "0a3f50a6-34da-32b8-e044-0003ba298018",
+      },
+      MOCK_CONFIG,
+    );
+
+    expect(requests[1]).toContain("$bfe: Long!");
+    expect(requests[1]).toContain('"bfe":2073922');
   });
 });

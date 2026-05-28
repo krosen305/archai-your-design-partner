@@ -74,12 +74,14 @@ const ebrBfeSchema = z.object({
   }),
 });
 
+const bfeValueSchema = z.union([z.string(), z.number()]).transform((value) => String(value));
+
 const matSfeSchema = z.object({
   MAT_SamletFastEjendom: z.object({
     nodes: z.array(
       z.object({
         id_lokalId: z.string().nullable().optional().default(null),
-        BFEnummer: z.string().nullable().optional().default(null),
+        BFEnummer: bfeValueSchema.nullable().optional().default(null),
       }),
     ),
   }),
@@ -89,7 +91,7 @@ const matEjerlejlighedSchema = z.object({
   MAT_Ejerlejlighed: z.object({
     nodes: z.array(
       z.object({
-        BFEnummer: z.string().nullable().optional().default(null),
+        BFEnummer: bfeValueSchema.nullable().optional().default(null),
         samletFastEjendomLokalId: z.string().nullable().optional().default(null),
       }),
     ),
@@ -159,7 +161,7 @@ query GrundarealEbrAdresse($adresseLokalId: String!, $virkningstid: DafDateTime!
 }`;
 
 const MAT_SFE_BY_BFE = `
-query GrundarealSfe($bfe: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+query GrundarealSfe($bfe: Long!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   MAT_SamletFastEjendom(
     where: { BFEnummer: { eq: $bfe } }
     virkningstid: $virkningstid
@@ -171,7 +173,7 @@ query GrundarealSfe($bfe: String!, $virkningstid: DafDateTime!, $registreringsti
 }`;
 
 const MAT_EJERLEJLIGHED_BY_BFE = `
-query GrundarealEjerlejlighed($bfe: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+query GrundarealEjerlejlighed($bfe: Long!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   MAT_Ejerlejlighed(
     where: { BFEnummer: { eq: $bfe } }
     virkningstid: $virkningstid
@@ -210,6 +212,12 @@ function parseOmfang(omfang: string | null | undefined): boolean | null {
   if (omfang == null) return null;
   const s = omfang.trim();
   return s !== "" && s !== "Ingen" ? true : false;
+}
+
+function parseBfeLong(bfeNr: string | null): number | null {
+  if (!bfeNr) return null;
+  const parsed = Number(bfeNr);
+  return Number.isInteger(parsed) ? parsed : null;
 }
 
 type MatJordstykkeNode = {
@@ -278,12 +286,14 @@ export class GrundarealResolver {
       const bfeNr: string | null =
         ebrData?.EBR_Ejendomsbeliggenhed?.nodes?.[0]?.bestemtFastEjendomBFENr ?? null;
 
-      if (bfeNr) {
+      const bfe = parseBfeLong(bfeNr);
+
+      if (bfe !== null) {
         const sfeData = await gqlFetch(
           matEndpoint,
           apiKey,
           MAT_SFE_BY_BFE,
-          { bfe: bfeNr, ...bitemporalArgs },
+          { bfe, ...bitemporalArgs },
           "MAT_SFE",
           matSfeSchema,
           trace,
@@ -339,12 +349,14 @@ export class GrundarealResolver {
       const bfeNr: string | null =
         ebrData?.EBR_Ejendomsbeliggenhed?.nodes?.[0]?.bestemtFastEjendomBFENr ?? null;
 
-      if (bfeNr) {
+      const bfe = parseBfeLong(bfeNr);
+
+      if (bfe !== null) {
         const ejData = await gqlFetch(
           matEndpoint,
           apiKey,
           MAT_EJERLEJLIGHED_BY_BFE,
-          { bfe: bfeNr, ...bitemporalArgs },
+          { bfe, ...bitemporalArgs },
           "MAT_Ejerlejlighed",
           matEjerlejlighedSchema,
           trace,
