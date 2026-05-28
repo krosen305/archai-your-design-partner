@@ -5,6 +5,7 @@ import {
   getCachedJordstykkePolygon,
   setCachedJordstykkePolygon,
 } from "@/integrations/cache/client";
+import { parseMatJordstykkeFeatureCollection } from "@/lib/mat-wfs-geojson";
 
 export const EPSG25832 = "+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs +type=crs";
 
@@ -43,14 +44,14 @@ export type TileRequest = {
   y: string;
 };
 
-const SKÆRMKORT_WMTS =
+const SKAERMKORT_WMTS =
   "https://api.dataforsyningen.dk/topo_skaermkort_daempet_wmts_topo_skaermkort_daempet/1.0.0/wmts";
 
-export async function fetchSkærmkortTileProxy(req: TileRequest): Promise<string | null> {
+export async function fetchSkaermkortTileProxy(req: TileRequest): Promise<string | null> {
   const token = getEnvOptional("DATAFORSYNINGEN_TOKEN");
   if (!token) return null;
 
-  const url = new URL(SKÆRMKORT_WMTS);
+  const url = new URL(SKAERMKORT_WMTS);
   url.searchParams.set("SERVICE", "WMTS");
   url.searchParams.set("REQUEST", "GetTile");
   url.searchParams.set("VERSION", "1.0.0");
@@ -123,6 +124,17 @@ function ensureApiKey(): string {
   return getEnvRequired("DATAFORDELER_API_KEY");
 }
 
+function matJordstykkeFilterByLokalId(jordstykkeLokalId: string): string {
+  return [
+    '<fes:Filter xmlns:fes="http://www.opengis.net/fes/2.0">',
+    "<fes:PropertyIsEqualTo>",
+    "<fes:ValueReference>id.lokalId</fes:ValueReference>",
+    `<fes:Literal>${jordstykkeLokalId}</fes:Literal>`,
+    "</fes:PropertyIsEqualTo>",
+    "</fes:Filter>",
+  ].join("");
+}
+
 export async function fetchParcelGeometryProxy(
   request: ParcelGeometryRequest,
 ): Promise<ParcelGeometryResult> {
@@ -135,7 +147,7 @@ export async function fetchParcelGeometryProxy(
         return { bbox25832: bboxToArray(bbox), featureCollection: cached, source: "wfs" };
       }
     } catch {
-      // Cache-fejl er ikke blokerende — fortsæt til WFS
+      // Cache errors are non-blocking.
     }
   }
 
@@ -190,11 +202,6 @@ export async function fetchParcelGeometryProxy(
   }
 }
 
-/**
- * Henter parcel-geometri for ét specifikt jordstykke via id_lokalId.
- * Returnerer `source: "wfs"` ved fund, `source: "notfound"` ellers.
- * Brugt af MatrikelMap (ARCH-229) for at vise korrekt matrikel uden naboer.
- */
 export async function fetchParcelGeometryByJordstykkeId(
   jordstykkeLokalId: string,
 ): Promise<{ featureCollection: GeoJSON.FeatureCollection | null; source: "wfs" | "notfound" }> {
@@ -202,28 +209,33 @@ export async function fetchParcelGeometryByJordstykkeId(
 
   try {
     const apiKey = ensureApiKey();
-    // CQL_FILTER på id_lokalId returnerer præcis ét jordstykke
-    const filter = encodeURIComponent(`id_lokalId='${jordstykkeLokalId}'`);
-    const url =
-      `${MAT_WFS_URL}?apikey=${apiKey}&service=WFS&version=2.0.0&request=GetFeature` +
-      `&typenames=mat:Jordstykke_Gaeldende&srsname=urn:ogc:def:crs:EPSG::25832` +
-      `&outputFormat=application/json` +
-      `&CQL_FILTER=${filter}`;
+    const url = new URL(MAT_WFS_URL);
+    url.searchParams.set("apikey", apiKey);
+    url.searchParams.set("service", "WFS");
+    url.searchParams.set("version", "2.0.0");
+    url.searchParams.set("request", "GetFeature");
+    url.searchParams.set("typenames", "mat:Jordstykke_Gaeldende");
+    url.searchParams.set("srsname", "urn:ogc:def:crs:EPSG::25832");
+    url.searchParams.set("FILTER", matJordstykkeFilterByLokalId(jordstykkeLokalId));
 
     const res = await fetch(url, {
-      headers: { Accept: "application/json, application/geo+json;q=0.9, */*;q=0.8" },
+      headers: { Accept: "application/json, application/xml, text/xml, */*;q=0.8" },
+      signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) return { featureCollection: null, source: "notfound" };
 
+    const contentType = res.headers.get("content-type") ?? "";
     const text = await res.text();
     if (!text.trim()) return { featureCollection: null, source: "notfound" };
 
-    const fc = JSON.parse(text) as GeoJSON.FeatureCollection;
-    if (!fc?.features?.length) return { featureCollection: null, source: "notfound" };
+    const parsedFeatureCollection = parseMatJordstykkeFeatureCollection(text, contentType);
+    const features = parsedFeatureCollection.features.filter(
+      (feature): feature is GeoJSON.Feature<GeoJSON.Geometry> => feature.geometry !== null,
+    );
+    if (!features.length) return { featureCollection: null, source: "notfound" };
 
-    return { featureCollection: fc, source: "wfs" };
-  } catch (e) {
-    console.warn("[MapProxy] fetchParcelGeometryByJordstykkeId fejlede:", (e as Error).message);
+    return { featureCollection: { type: "FeatureCollection", features }, source: "wfs" };
+  } catch {
     return { featureCollection: null, source: "notfound" };
   }
 }

@@ -4,7 +4,7 @@ import {
   fetchMatriklenPreviewProxy,
   fetchParcelGeometryByJordstykkeId,
   fetchParcelGeometryProxy,
-  fetchSkærmkortTileProxy,
+  fetchSkaermkortTileProxy,
   type ParcelGeometryRequest,
   type ParcelPreviewRequest,
   type TileRequest,
@@ -22,9 +22,11 @@ export const fetchParcelGeometryById = createServerFn({ method: "POST" })
   .inputValidator((data: { jordstykkeLokalId: string }) => data)
   .handler(async ({ data }) => fetchParcelGeometryByJordstykkeId(data.jordstykkeLokalId));
 
-export const fetchSkærmkortTile = createServerFn({ method: "GET" })
+export const fetchSkaermkortTile = createServerFn({ method: "GET" })
   .inputValidator((data: TileRequest) => data)
-  .handler(async ({ data }) => fetchSkærmkortTileProxy(data));
+  .handler(async ({ data }) => fetchSkaermkortTileProxy(data));
+
+export const fetchSkærmkortTile = fetchSkaermkortTile;
 
 function ApiMapTilesRoute() {
   return null;

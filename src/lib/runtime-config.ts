@@ -26,6 +26,9 @@ export type RuntimeConfig = {
     byggeanalyseMock: boolean;
     fjernvarmeMock: boolean;
     billedanalyseMock: boolean;
+    geodanmarkMock: boolean;
+    plandataSurroundingsMock: boolean;
+    matNeighborParcelsMock: boolean;
     geusMock: boolean;
     dhmMock: boolean;
   };
@@ -81,8 +84,14 @@ export function buildRuntimeConfig(
       byggeanalyseMock: parseBooleanEnv(readEnv("FEATURE_BYGGEANALYSE_MOCK"), false),
       fjernvarmeMock: parseBooleanEnv(readEnv("FEATURE_FJERNVARME_MOCK"), false),
       billedanalyseMock: parseBooleanEnv(readEnv("FEATURE_BILLEDANALYSE_MOCK"), false),
-      geusMock: parseBooleanEnv(readEnv("FEATURE_GEUS_MOCK"), true),
-      dhmMock: parseBooleanEnv(readEnv("FEATURE_DHM_MOCK"), true),
+      geodanmarkMock: parseBooleanEnv(readEnv("FEATURE_GEODANMARK_MOCK"), false),
+      plandataSurroundingsMock: parseBooleanEnv(
+        readEnv("FEATURE_PLANDATA_SURROUNDINGS_MOCK"),
+        false,
+      ),
+      matNeighborParcelsMock: parseBooleanEnv(readEnv("FEATURE_MAT_NEIGHBOR_PARCELS_MOCK"), false),
+      geusMock: parseBooleanEnv(readEnv("FEATURE_GEUS_MOCK"), false),
+      dhmMock: parseBooleanEnv(readEnv("FEATURE_DHM_MOCK"), false),
     },
   };
 }
