@@ -38,4 +38,5 @@ export interface DrawingExportStorePort {
   saveSvg(projectId: string, svg: string): Promise<string>;
   savePdf(projectId: string, pdf: Uint8Array): Promise<string>;
   getExport(exportId: string): Promise<DrawingExportRecord | null>;
+  createSignedUrl(path: string, expiresInSeconds: number): Promise<string | null>;
 }

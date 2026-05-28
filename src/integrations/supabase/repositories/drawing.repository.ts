@@ -26,6 +26,14 @@ export class DrawingRepository implements DrawingExportStorePort {
     return path;
   }
 
+  async createSignedUrl(path: string, expiresInSeconds: number): Promise<string | null> {
+    const { data, error } = await supabaseAdmin.storage
+      .from("project-files")
+      .createSignedUrl(path, expiresInSeconds);
+    if (error || !data) return null;
+    return data.signedUrl;
+  }
+
   async getExport(exportId: string): Promise<DrawingExportRecord | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabaseAdmin as any)

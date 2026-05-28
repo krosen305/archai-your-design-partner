@@ -3,6 +3,7 @@ import type { BeliggenhedsplanInput } from "@/domain/drawing/beliggenhedsplan.ty
 import type { DrawingExportStorePort } from "@/domain/drawing/ports";
 import type { DrawingReadinessDecision, DrawingReadinessStatus } from "@/domain/drawing/decision-engine";
 import { renderSvg } from "@/lib/drawing/render-svg";
+import { renderPdf } from "@/lib/drawing/render-pdf";
 import { buildDrawingModel } from "@/lib/drawing/drawing-model-builder";
 import { createHash } from "crypto";
 
@@ -24,6 +25,9 @@ type ExportInput = {
 export type ExportResult = {
   exportId: string;
   svgPath: string;
+  svgContent: string;
+  pdfPath: string | null;
+  pdfUrl: string | null;
   readinessStatus: DrawingReadinessStatus;
   blockedFromPdf: boolean;
 };
@@ -39,15 +43,29 @@ export async function exportDrawing(input: ExportInput): Promise<ExportResult> {
   const svg = renderSvg(model);
   const svgPath = await store.saveSvg(projectId, svg);
   const inputHash = createHash("sha256").update(JSON.stringify(plan)).digest("hex").slice(0, 16);
-  const blockedFromPdf = readiness.status !== "AUTO_REVIEW";
+  // Status is never BLOCKED_MISSING_CORE_DATA here — that case throws above.
+  const blockedFromPdf = false;
+
+  let pdfPath: string | null = null;
+  let pdfUrl: string | null = null;
+
+  if (!blockedFromPdf) {
+    try {
+      const pdfBytes = await renderPdf(model);
+      pdfPath = await store.savePdf(projectId, pdfBytes);
+      pdfUrl = await store.createSignedUrl(pdfPath, 3600);
+    } catch (err) {
+      console.error("[exportDrawing] PDF-generering fejlede:", err);
+    }
+  }
 
   const exportId = await store.saveExportRecord({
     projectId,
     svgPath,
-    pdfPath: null,
+    pdfPath,
     readinessStatus: readiness.status,
     inputHash,
   });
 
-  return { exportId, svgPath, readinessStatus: readiness.status, blockedFromPdf };
+  return { exportId, svgPath, svgContent: svg, pdfPath, pdfUrl, readinessStatus: readiness.status, blockedFromPdf };
 }
