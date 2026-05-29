@@ -86,6 +86,7 @@ export class NaturbeskyttelseService {
         return makeErrorResult<NaturbeskyttelsesResultat>(
           new Error("DAI Naturbeskyttelse: alle lag fejlede"),
           { kilde: "naturbeskyttelse", sourceUrl: SOURCE_URL },
+          { kind: "all_layers_failed" },
         );
       }
 

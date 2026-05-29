@@ -8,7 +8,7 @@
 //   3. All others   — run in parallel (skipped if skipExpensive=true).
 
 import { logServerEvent } from "@/lib/server-logger";
-import { traceStep, recordAnalysisEvent } from "@/lib/analysis-tracing";
+import { traceStep, recordAnalysisEvent, traceCacheRead } from "@/lib/analysis-tracing";
 import type { AnalysisTraceContext } from "@/lib/analysis-tracing";
 import { summarizeSourceResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
@@ -290,7 +290,11 @@ export async function runGeoRiskStep(
       import("@/integrations/miljoe/dkjord")
         .then(async ({ DkJordService }) => {
           const { getCachedJordstykkePolygon } = await import("@/integrations/cache/client");
-          const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+          const polygon = await traceCacheRead(
+            trace,
+            { service: "Cache", operation: "getCachedJordstykkePolygon", phase: "layer4" },
+            () => getCachedJordstykkePolygon(addressId),
+          );
 
           return traceStep(
             trace,
@@ -328,11 +332,11 @@ export async function runGeoRiskStep(
       // geus
       Promise.all([import("@/integrations/geus/client"), import("@/integrations/cache/client")])
         .then(async ([{ GeusService }, { getCachedSourceResult, setCachedSourceResult }]) => {
-          const cached = await getCachedSourceResult(
-            addressId,
-            "geus",
-            ruleEngineGeusRiskDataSchema,
-          ).catch(() => null);
+          const cached = await traceCacheRead(
+            trace,
+            { service: "Cache", operation: "getCachedSourceResult(geus)", phase: "layer4" },
+            () => getCachedSourceResult(addressId, "geus", ruleEngineGeusRiskDataSchema),
+          );
 
           if (cached) {
             return { result: cached, cacheHit: true as const };
@@ -384,11 +388,11 @@ export async function runGeoRiskStep(
             { DhmService, bboxFromPoint },
             { getCachedSourceResult, setCachedSourceResult },
           ]) => {
-            const cached = await getCachedSourceResult(
-              addressId,
-              "dhm",
-              ruleEngineTerrainDataSchema,
-            ).catch(() => null);
+            const cached = await traceCacheRead(
+              trace,
+              { service: "Cache", operation: "getCachedSourceResult(dhm)", phase: "layer4" },
+              () => getCachedSourceResult(addressId, "dhm", ruleEngineTerrainDataSchema),
+            );
 
             if (cached) {
               return { result: cached, cacheHit: true as const };
@@ -520,17 +524,30 @@ export async function runGeoRiskStep(
             { PlandataService },
             { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult },
           ]) => {
-            const cached = await getCachedSourceResult(
-              addressId,
-              "plandata_ext",
-              ruleEnginePlandataContextSchema,
-            ).catch(() => null);
+            const cached = await traceCacheRead(
+              trace,
+              {
+                service: "Cache",
+                operation: "getCachedSourceResult(plandata_ext)",
+                phase: "layer4",
+              },
+              () =>
+                getCachedSourceResult(addressId, "plandata_ext", ruleEnginePlandataContextSchema),
+            );
 
             if (cached) {
               return { result: cached, cacheHit: true as const };
             }
 
-            const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+            const polygon = await traceCacheRead(
+              trace,
+              {
+                service: "Cache",
+                operation: "getCachedJordstykkePolygon(plandata_ext)",
+                phase: "layer4",
+              },
+              () => getCachedJordstykkePolygon(addressId),
+            );
             const result = await traceStep(
               trace,
               {
@@ -586,17 +603,30 @@ export async function runGeoRiskStep(
             { ArealdataService },
             { getCachedJordstykkePolygon, getCachedSourceResult, setCachedSourceResult },
           ]) => {
-            const cached = await getCachedSourceResult(
-              addressId,
-              "arealdata_ext",
-              ruleEngineArealdataContextSchema,
-            ).catch(() => null);
+            const cached = await traceCacheRead(
+              trace,
+              {
+                service: "Cache",
+                operation: "getCachedSourceResult(arealdata_ext)",
+                phase: "layer4",
+              },
+              () =>
+                getCachedSourceResult(addressId, "arealdata_ext", ruleEngineArealdataContextSchema),
+            );
 
             if (cached) {
               return { result: cached, cacheHit: true as const };
             }
 
-            const polygon = await getCachedJordstykkePolygon(addressId).catch(() => null);
+            const polygon = await traceCacheRead(
+              trace,
+              {
+                service: "Cache",
+                operation: "getCachedJordstykkePolygon(arealdata_ext)",
+                phase: "layer4",
+              },
+              () => getCachedJordstykkePolygon(addressId),
+            );
             const result = await traceStep(
               trace,
               {

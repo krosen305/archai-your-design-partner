@@ -9,6 +9,24 @@ export type SourceConfidence =
   | "missing" // source returned null/empty; constraint falls back to BR18 default
   | "unknown"; // API error or timeout; do not interpret as "clean" or "absent"
 
+/**
+ * Struktureret fejl-information når status="error". P0/P1 #7 fra Hasselvej 48
+ * dataflow-audit: gem kind/httpStatus/contentType så trace-summary kan skelne
+ * "endpoint nede" fra "forkert schema" fra "forkert input".
+ */
+export type SourceErrorDetails = {
+  /** Bred kategori — fx "http", "timeout", "schema", "input", "network". */
+  kind?: string;
+  /** HTTP-statuskode hvis fejlen kom fra et HTTP-svar. */
+  httpStatus?: number;
+  /** Content-Type fra svaret når relevant (fx "text/html" ved HTML-fejlside). */
+  contentType?: string;
+  /** Schema-validation-kode hvis Zod fejlede (fx zod-issue path). */
+  schemaCode?: string;
+  /** Kort fejlbesked til operatør-debug. */
+  message?: string;
+};
+
 export type SourceResult<T> = {
   /** Normalized, typed payload. null on error/skipped. */
   data: T | null;
@@ -26,6 +44,9 @@ export type SourceResult<T> = {
   rawFeatureCount: number | null;
   /** True when IS_MOCK=true was active. Suppresses "live data" UI indicators. */
   isMock: boolean;
+  /** Struktureret fejl-info når status="error". Bevares så trace/UI ikke
+   *  behøver at fortolke fri-tekst-fejl. */
+  errorDetails?: SourceErrorDetails;
 };
 
 type OkMeta = {
@@ -53,7 +74,12 @@ export function makeOkResult<T>(data: T, meta: OkMeta): SourceResult<T> {
   };
 }
 
-export function makeErrorResult<T>(error: unknown, meta: ErrorMeta): SourceResult<T> {
+export function makeErrorResult<T>(
+  error: unknown,
+  meta: ErrorMeta,
+  errorDetails?: SourceErrorDetails,
+): SourceResult<T> {
+  const fallbackMessage = error instanceof Error ? error.message : String(error);
   return {
     data: null,
     status: "error",
@@ -63,6 +89,7 @@ export function makeErrorResult<T>(error: unknown, meta: ErrorMeta): SourceResul
     sourceUrl: meta.sourceUrl,
     rawFeatureCount: null,
     isMock: false,
+    errorDetails: { message: fallbackMessage, ...errorDetails },
   };
 }
 
@@ -107,6 +134,12 @@ export function summarizeSourceResult<T>(
     `features=${result.rawFeatureCount ?? "null"}`,
   ];
   if (result.isMock) parts.push("mock=true");
+  if (result.errorDetails) {
+    const { kind, httpStatus, contentType } = result.errorDetails;
+    if (kind) parts.push(`error_kind=${kind}`);
+    if (httpStatus !== undefined) parts.push(`http=${httpStatus}`);
+    if (contentType) parts.push(`content_type=${contentType}`);
+  }
   if (dataFields && result.data !== null) parts.push(dataFields(result.data));
   return parts.join(" ");
 }

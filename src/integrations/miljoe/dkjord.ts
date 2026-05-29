@@ -148,10 +148,11 @@ export class DkJordService {
       const successCount = outcomes.filter((o) => !o.errored).length;
 
       if (successCount === 0) {
-        return makeErrorResult<DkJordResultat>(new Error("DK-Jord WFS: alle lag fejlede"), {
-          kilde: "dkjord",
-          sourceUrl: DKJORD_WFS,
-        });
+        return makeErrorResult<DkJordResultat>(
+          new Error("DK-Jord WFS: alle lag fejlede"),
+          { kilde: "dkjord", sourceUrl: DKJORD_WFS },
+          { kind: "all_layers_failed" },
+        );
       }
 
       const v1Count = countFeatures(v1);

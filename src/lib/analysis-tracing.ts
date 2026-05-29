@@ -235,3 +235,41 @@ export function createChildTrace(
   if (!trace?.runId) return null;
   return { ...trace };
 }
+
+/**
+ * Wrap en cache-læsning så hver kald giver et analysis_events row med
+ * eventType="cache_read" og cacheHit afspejlet via cacheHit-flag.
+ * Audit Rec #8: cache-reads var tidligere usynlige i tracing.
+ */
+export async function traceCacheRead<T>(
+  trace: AnalysisTraceContext | null | undefined,
+  meta: { service: string; operation: string; phase?: string },
+  fn: () => Promise<T | null>,
+): Promise<T | null> {
+  const startedAt = nowMs();
+  try {
+    const result = await fn();
+    await recordAnalysisEvent(trace, {
+      eventType: "cache_read",
+      phase: meta.phase ?? "layer4",
+      service: meta.service,
+      operation: meta.operation,
+      status: "ok",
+      cacheHit: result !== null,
+      durationMs: Math.max(0, nowMs() - startedAt),
+    });
+    return result;
+  } catch (e) {
+    await recordAnalysisEvent(trace, {
+      eventType: "cache_read",
+      phase: meta.phase ?? "layer4",
+      service: meta.service,
+      operation: meta.operation,
+      status: "error",
+      cacheHit: false,
+      durationMs: Math.max(0, nowMs() - startedAt),
+      errorMessage: errorMessage(e),
+    });
+    return null;
+  }
+}
