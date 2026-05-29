@@ -35,6 +35,14 @@ export type Layer1Input = {
   matrikelnummer: string | null;
   grundareal: number | null;
   koordinater: { lat: number; lng: number } | null;
+  // P2 #2: hvis address-enrichment allerede har hentet jordstykke-felterne,
+  // springer fetchBbrWithMat det ekstra MatService-kald over.
+  prefetchedMat?: {
+    jordstykkeLokalId: string | null;
+    matStrandbeskyttelse: boolean | null;
+    matFredskov: boolean | null;
+    matKlitfredning: boolean | null;
+  };
 };
 
 export async function runLayer1Analysis(
@@ -52,6 +60,7 @@ export async function runLayer1Analysis(
       ejerlavskode,
       matrikelnummer,
       grundareal,
+      prefetchedMat: input.prefetchedMat,
       trace,
     }),
     fetchPlandata(koordinater, trace),

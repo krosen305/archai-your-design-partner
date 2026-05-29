@@ -12,13 +12,33 @@ export type AddressFields = {
   grundareal: number | null;
 };
 
+/**
+ * Resultatet af adresse-enrichment indeholder address-felterne plus de
+ * MAT-felter som Layer 1 ellers ville hente i et separat MatService-kald
+ * (P2 #2). Når disse felter er udfyldt kan fetchBbrWithMat springe det
+ * ekstra MAT-opslag over.
+ */
+export type AddressEnrichmentResult = AddressFields & {
+  jordstykkeLokalId: string | null;
+  matStrandbeskyttelse: boolean | null;
+  matFredskov: boolean | null;
+  matKlitfredning: boolean | null;
+};
+
 export async function enrichAddressDetails(
   addressId: string,
   initial: AddressFields,
   trace: AnalysisTraceContext,
-): Promise<AddressFields> {
+): Promise<AddressEnrichmentResult> {
+  const baseEmpty: AddressEnrichmentResult = {
+    ...initial,
+    jordstykkeLokalId: null,
+    matStrandbeskyttelse: null,
+    matFredskov: null,
+    matKlitfredning: null,
+  };
   const needsEnrichment = !initial.adgangsadresseid || initial.grundareal === null;
-  if (!needsEnrichment) return initial;
+  if (!needsEnrichment) return baseEmpty;
 
   try {
     const { DarService } = await import("@/integrations/dar/client");
@@ -34,7 +54,7 @@ export async function enrichAddressDetails(
       () => DarService.getAddressDetails(addressId, { skipKoordinaterOgPostnummer: true }, trace),
       {
         outputSummary: (r) =>
-          `grundareal=${r.grundareal ?? "null"} matrikel=${r.matrikelnummer ?? "null"} ejerlavskode=${r.ejerlavskode ?? "null"}`,
+          `grundareal=${r.grundareal ?? "null"} matrikel=${r.matrikelnummer ?? "null"} ejerlavskode=${r.ejerlavskode ?? "null"} jordstykke=${r.jordstykkeLokalId ?? "null"}`,
       },
     );
     return {
@@ -42,6 +62,10 @@ export async function enrichAddressDetails(
       ejerlavskode: initial.ejerlavskode ?? dar.ejerlavskode,
       matrikelnummer: initial.matrikelnummer ?? dar.matrikelnummer,
       grundareal: initial.grundareal ?? dar.grundareal,
+      jordstykkeLokalId: dar.jordstykkeLokalId,
+      matStrandbeskyttelse: dar.matStrandbeskyttelse,
+      matFredskov: dar.matFredskov,
+      matKlitfredning: dar.matKlitfredning,
     };
   } catch (e) {
     logServerEvent({
@@ -52,6 +76,6 @@ export async function enrichAddressDetails(
       error: e,
       trace,
     });
-    return initial;
+    return baseEmpty;
   }
 }

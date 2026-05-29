@@ -76,6 +76,11 @@ export type DarAddressDetails = {
   ejerlavskode: number | null;
   matrikelnummer: string | null;
   grundareal: number | null; // registreretAreal fra MAT_Jordstykke (hentes i samme kald som matrikelnummer)
+  // P2 #2 — udvidet enrichment så Layer 1 kan springe ekstra MAT-opslag over
+  jordstykkeLokalId: string | null; // MAT_Jordstykke.id_lokalId — bruges af MAT WFS + GeoDanmark
+  matStrandbeskyttelse: boolean | null;
+  matFredskov: boolean | null;
+  matKlitfredning: boolean | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -158,6 +163,8 @@ query GetDarAdressepunkt($id: String!, $virkningstid: DafDateTime!, $registrerin
 
 // Kald 3c: MAT_Jordstykke – henter matrikelnummer + ejerlavLokalId via jordstykke-FK fra DAR_Husnummer.
 // OBS: Kald går til MAT endpoint (v2), ikke DAR.
+// P2 #2: id_lokalId og beskyttelses-omfang inkluderes her så Layer 1 kan springe
+// det ekstra MatService.getGrundareal-opslag over.
 const MAT_JORDSTYKKE_QUERY = `
 query GetMatJordstykke($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
   MAT_Jordstykke(
@@ -167,9 +174,13 @@ query GetMatJordstykke($id: String!, $virkningstid: DafDateTime!, $registrerings
     first: 1
   ) {
     nodes {
+      id_lokalId
       matrikelnummer
       ejerlavLokalId
       registreretAreal
+      strandbeskyttelse_omfang
+      fredskov_omfang
+      klitfredning_omfang
     }
   }
 }`;
@@ -230,9 +241,13 @@ type DarHusnummerNode = {
 type DarPostnummerNode = { postnr: string | null; navn: string | null };
 type DarAdressepunktNode = { position: { wkt: string | null } | null };
 type MatJordstykkeByIdNode = {
+  id_lokalId: string | null;
   matrikelnummer: string | null;
   ejerlavLokalId: string | null;
   registreretAreal: number | null;
+  strandbeskyttelse_omfang: string | null;
+  fredskov_omfang: string | null;
+  klitfredning_omfang: string | null;
 };
 type MatEjerlavByIdNode = { ejerlavskode: number | null; ejerlavsnavn: string | null };
 
@@ -372,6 +387,13 @@ export class DarService {
     const matEjerlavLokalId: string = jordstykkeNode?.ejerlavLokalId ?? "";
     const matrikelnummer: string | null = jordstykkeNode?.matrikelnummer ?? null;
     const grundareal: number | null = jordstykkeNode?.registreretAreal ?? null;
+    // P2 #2: udled beskyttelses-bools fra _omfang-strings (ikke-tom og ikke "Ingen")
+    const omfangToBool = (v: string | null | undefined): boolean | null =>
+      v == null ? null : v !== "" && v !== "Ingen";
+    const jordstykkeLokalId: string | null = jordstykkeNode?.id_lokalId ?? null;
+    const matStrandbeskyttelse = omfangToBool(jordstykkeNode?.strandbeskyttelse_omfang);
+    const matFredskov = omfangToBool(jordstykkeNode?.fredskov_omfang);
+    const matKlitfredning = omfangToBool(jordstykkeNode?.klitfredning_omfang);
 
     // ── Kald 4: MAT_Ejerlav (afhænger af ejerlavLokalId fra kald 3c) ────────
     let ejerlavskode: number | null = null;
@@ -423,6 +445,10 @@ export class DarService {
       ejerlavskode,
       matrikelnummer,
       grundareal,
+      jordstykkeLokalId,
+      matStrandbeskyttelse,
+      matFredskov,
+      matKlitfredning,
     };
   }
 }

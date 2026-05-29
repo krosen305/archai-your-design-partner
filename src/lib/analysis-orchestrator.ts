@@ -200,6 +200,13 @@ async function analyseAddressWithTrace(
       matrikelnummer: enriched.matrikelnummer,
       grundareal: enriched.grundareal,
       koordinater,
+      // P2 #2: send beriget MAT-data videre så Layer 1 kan springe MatService-kaldet over
+      prefetchedMat: {
+        jordstykkeLokalId: enriched.jordstykkeLokalId,
+        matStrandbeskyttelse: enriched.matStrandbeskyttelse,
+        matFredskov: enriched.matFredskov,
+        matKlitfredning: enriched.matKlitfredning,
+      },
     },
     trace,
   );

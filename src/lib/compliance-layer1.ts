@@ -48,6 +48,15 @@ export async function fetchBbrWithMat(input: {
   ejerlavskode: number | null;
   matrikelnummer: string | null;
   grundareal?: number | null;
+  // P2 #2: hvis address-enrichment allerede har hentet MAT_Jordstykke (id_lokalId
+  // og beskyttelses-omfang), kan vi genbruge resultatet i stedet for at kalde
+  // MatService.getGrundareal igen.
+  prefetchedMat?: {
+    jordstykkeLokalId: string | null;
+    matStrandbeskyttelse: boolean | null;
+    matFredskov: boolean | null;
+    matKlitfredning: boolean | null;
+  };
   trace?: AnalysisTraceContext | null;
 }): Promise<RuleEngineBbrData | null> {
   const { adgangsadresseid, ejerlavskode, matrikelnummer } = input;
@@ -59,7 +68,14 @@ export async function fetchBbrWithMat(input: {
     let mat_klitfredning: boolean | null = null;
     let jordstykkeLokalId: string | null = null;
 
-    if (ejerlavskode && matrikelnummer) {
+    const prefetchedComplete = input.prefetchedMat?.jordstykkeLokalId != null && grundareal != null;
+
+    if (prefetchedComplete && input.prefetchedMat) {
+      mat_strandbeskyttelse = input.prefetchedMat.matStrandbeskyttelse;
+      mat_fredskov = input.prefetchedMat.matFredskov;
+      mat_klitfredning = input.prefetchedMat.matKlitfredning;
+      jordstykkeLokalId = input.prefetchedMat.jordstykkeLokalId;
+    } else if (ejerlavskode && matrikelnummer) {
       const { MatService } = await import("@/integrations/mat/client");
       const mat = await MatService.getGrundareal(
         ejerlavskode,
