@@ -26,7 +26,7 @@ import { z } from "zod";
 
 const GEOSERVER_WFS = "https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs";
 const MILJOEGIS_GRUKOS_WFS = "https://wfs2-miljoegis.mim.dk/grukos/ows";
-const SOURCE_URL = `${GEOSERVER_WFS} + ${MILJOEGIS_GRUKOS_WFS}`;
+const SOURCE_URL = `${GEOSERVER_WFS}, ${MILJOEGIS_GRUKOS_WFS}`;
 
 export type ArealdataContextResult = {
   paragraph3Nature: boolean | null;
@@ -155,14 +155,19 @@ async function fetchLayer(
       }
 
       case "natura2000": {
-        // OR på tværs af tre lag: habitat, fugle og ramsar
+        // OR på tværs af tre lag: habitat, fugle og ramsar.
+        // Hvert sub-lag håndterer fejl individuelt: et hit på ét lag er nok til true.
+        // Hvis alle tre fejler, returneres null (ukendt).
         const filter = buildCqlFilter("Shape", koordinat, polygon, "intersects");
-        const [habitat, fugle, ramsar] = await Promise.all([
-          fetchGeoServer("dai:habitat_omr", filter),
-          fetchGeoServer("dai:fugle_bes_omr", filter),
-          fetchGeoServer("dai:ramsar_omr", filter),
+        const subResults = await Promise.all([
+          fetchGeoServer("dai:habitat_omr", filter).catch(() => -1),
+          fetchGeoServer("dai:fugle_bes_omr", filter).catch(() => -1),
+          fetchGeoServer("dai:ramsar_omr", filter).catch(() => -1),
         ]);
-        return { key, value: habitat > 0 || fugle > 0 || ramsar > 0, errored: false };
+        const anyHit = subResults.some((n) => n > 0);
+        const allFailed = subResults.every((n) => n === -1);
+        if (allFailed) return { key, value: null, errored: true };
+        return { key, value: anyHit, errored: false };
       }
 
       case "protectedDige": {
