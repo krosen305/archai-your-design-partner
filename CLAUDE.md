@@ -277,6 +277,11 @@ Typed project columns include:
 JSONB may archive raw or secondary payloads. It is not the source of truth for
 critical compliance.
 
+Rule 6 applies to scalar/enum compliance values (areal m2, SAVE value,
+`is_fredet`, `hard_stop`, budget). Structured geo payloads (GeoJSON polygons,
+BBox arrays, composite register payloads) may remain in JSONB provided they
+are Zod-validated at the boundary per Rule 1.
+
 ### Rule 7 - Refactor Dirty Domain Boundaries Before Extending
 
 If a module already violates the Domain Core rules, do not build new behavior on
@@ -331,7 +336,12 @@ DAWA/Dataforsyningen REST must not be used as compliance or register source.
 
 Allowed exceptions:
 
-- GSearch v2 for address autocomplete only.
+- GSearch v2 for address autocomplete. Both `/adresse` and `/husnummer`
+  endpoints are permitted. Metadata fields that GSearch returns in the
+  autocomplete response (e.g. `adresseid`, `adgangsadresseid`, `kommunekode`,
+  `koordinater`) may be persisted on the project as address metadata.
+  GSearch must never be used as a primary source for BBR, MAT, Plandata, FBB,
+  EBR/VUR, EMOData or other Datafordeler-backed register/compliance fields.
 - SDFI/Dataforsyningen map tiles as visual background only.
 
 All register/compliance data must come from approved Datafordeler or other
