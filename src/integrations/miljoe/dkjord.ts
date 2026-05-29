@@ -3,22 +3,36 @@
 // DK-Jord integration — forurening, olietanke, områdeklassificering — ARCH-66.
 // V2-kortlagt grund kan koste 500.000 kr.+ i oprensning inden byggeri.
 //
-// API: Miljøstyrelsen DK-Jord WFS
-//   Endpoint:  https://dkjord.mst.dk/wfs
+// API: Miljøportalen DK-Jord WFS (P0/P1 #4 — endpoint flyttet maj 2026 fra
+// dkjord.mst.dk/wfs til jord.miljoeportal.dk/geo/wfs, nye typenames i View_*-
+// mønstret og nyt geometri-felt Fladegeometri).
+//   Endpoint:  https://jord.miljoeportal.dk/geo/wfs
 //   Auth:      Ingen (offentlig tjeneste)
 //   Format:    WFS 2.0, CQL_FILTER med INTERSECTS, SRSNAME=EPSG:4326
+//   Geometri:  Fladegeometri (tidligere `geometry`)
 //   Layers:
-//     dkjord:V1         — mulig forurening (undersøgelse kræves)
-//     dkjord:V2         — dokumenteret forurening (oprensning kræves)
-//     dkjord:olietank   — gammel olietank (prøvetagning kræves)
-//     dkjord:omraadet   — områdeklassificering (krav om jordsundhedsattest)
+//     DKJord:View_V1Flader      — mulig forurening (undersøgelse kræves)
+//     DKJord:View_V2Flader      — dokumenteret forurening (oprensning kræves)
+//     DKJord:View_Olietanke     — gammel olietank (prøvetagning kræves)
+//     DKJord:View_Omraadeklassificering — områdeklassificering
+//
+// Per-lag error-handling: hvis ét typename er forkert eller endpointet
+// midlertidigt afviser ét lag, returneres tri-state null for det lag i stedet
+// for at vælte hele kaldet. Hvis ALLE lag fejler returneres SourceResult error.
 
 import { makeOkResult, makeErrorResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
 import type * as GeoJSON from "geojson";
 
-const DKJORD_WFS = "https://dkjord.mst.dk/wfs";
-const SOURCE_URL = `${DKJORD_WFS}?SERVICE=WFS&VERSION=2.0.0&TYPENAMES=dkjord:V1,dkjord:V2,dkjord:olietank,dkjord:omraadet`;
+const DKJORD_WFS = "https://jord.miljoeportal.dk/geo/wfs";
+const TYPENAMES = {
+  v1: "DKJord:View_V1Flader",
+  v2: "DKJord:View_V2Flader",
+  olietank: "DKJord:View_Olietanke",
+  omraadeklassificering: "DKJord:View_Omraadeklassificering",
+} as const;
+const GEOMETRY_FIELD = "Fladegeometri";
+const SOURCE_URL = `${DKJORD_WFS}?SERVICE=WFS&VERSION=2.0.0&TYPENAMES=${Object.values(TYPENAMES).join(",")}`;
 
 export type DkJordResultat = {
   // Tri-state: true = kortlagt, false = ikke kortlagt, null = ukendt/API-fejl
@@ -36,9 +50,10 @@ export type DkJordResultat = {
 
 type Koordinat = { lat: number; lng: number };
 
+type WfsFeature = { properties?: Record<string, unknown> };
 type WfsJsonResponse = {
   totalFeatures?: number;
-  features?: { properties?: Record<string, unknown> }[];
+  features?: WfsFeature[];
 };
 
 // Bygger WKT POLYGON fra første Polygon-feature i en GeoJSON FeatureCollection.
@@ -64,9 +79,9 @@ function buildCqlFilter(
 ): string {
   if (polygon) {
     const wkt = wfsPolygonFilter(polygon);
-    if (wkt) return `INTERSECTS(geometry,${wkt})`;
+    if (wkt) return `INTERSECTS(${GEOMETRY_FIELD},${wkt})`;
   }
-  return `INTERSECTS(geometry,POINT(${koordinat.lng} ${koordinat.lat}))`;
+  return `INTERSECTS(${GEOMETRY_FIELD},POINT(${koordinat.lng} ${koordinat.lat}))`;
 }
 
 async function getFeatures(
@@ -93,39 +108,74 @@ async function getFeatures(
   return res.json() as Promise<WfsJsonResponse>;
 }
 
+type LayerOutcome = {
+  data: WfsJsonResponse | null;
+  errored: boolean;
+};
+
+async function tryGetFeatures(
+  typename: string,
+  koordinat: Koordinat,
+  polygon: GeoJSON.Feature | GeoJSON.FeatureCollection | null | undefined,
+): Promise<LayerOutcome> {
+  try {
+    const data = await getFeatures(typename, koordinat, polygon);
+    return { data, errored: false };
+  } catch {
+    return { data: null, errored: true };
+  }
+}
+
+function countFeatures(outcome: LayerOutcome): number {
+  if (!outcome.data) return 0;
+  return outcome.data.totalFeatures ?? outcome.data.features?.length ?? 0;
+}
+
 export class DkJordService {
   static async getTilstand(
     koordinat: Koordinat,
     parcelPolygon?: GeoJSON.Feature | GeoJSON.FeatureCollection | null,
   ): Promise<SourceResult<DkJordResultat>> {
     try {
-      const [v1Data, v2Data, olietankData, omraadeData] = await Promise.all([
-        getFeatures("dkjord:V1", koordinat, parcelPolygon),
-        getFeatures("dkjord:V2", koordinat, parcelPolygon),
-        getFeatures("dkjord:olietank", koordinat, parcelPolygon),
-        getFeatures("dkjord:omraadet", koordinat, parcelPolygon),
+      const [v1, v2, olietank, omraade] = await Promise.all([
+        tryGetFeatures(TYPENAMES.v1, koordinat, parcelPolygon),
+        tryGetFeatures(TYPENAMES.v2, koordinat, parcelPolygon),
+        tryGetFeatures(TYPENAMES.olietank, koordinat, parcelPolygon),
+        tryGetFeatures(TYPENAMES.omraadeklassificering, koordinat, parcelPolygon),
       ]);
 
-      const v1Count = v1Data.totalFeatures ?? v1Data.features?.length ?? 0;
-      const v2Count = v2Data.totalFeatures ?? v2Data.features?.length ?? 0;
-      const olietankCount = olietankData.totalFeatures ?? olietankData.features?.length ?? 0;
-      const omraadeCount = omraadeData.totalFeatures ?? omraadeData.features?.length ?? 0;
+      const outcomes = [v1, v2, olietank, omraade];
+      const successCount = outcomes.filter((o) => !o.errored).length;
+
+      if (successCount === 0) {
+        return makeErrorResult<DkJordResultat>(new Error("DK-Jord WFS: alle lag fejlede"), {
+          kilde: "dkjord",
+          sourceUrl: DKJORD_WFS,
+        });
+      }
+
+      const v1Count = countFeatures(v1);
+      const v2Count = countFeatures(v2);
+      const olietankCount = countFeatures(olietank);
+      const omraadeCount = countFeatures(omraade);
       const totalFeatures = v1Count + v2Count + olietankCount + omraadeCount;
 
       // Udtræk nuancering og lokalitetsId fra første V2- eller V1-feature
-      const hitFeature = v2Data.features?.[0] ?? v1Data.features?.[0] ?? null;
+      const hitFeature = v2.data?.features?.[0] ?? v1.data?.features?.[0] ?? null;
       const nuancering = (hitFeature?.properties?.["nuancering"] as string | undefined) ?? null;
       const lokalitetsId = (hitFeature?.properties?.["lokalitet_id"] as string | undefined) ?? null;
 
-      const olietankFeature = olietankData.features?.[0];
-      const omraadeFeature = omraadeData.features?.[0];
+      const olietankFeature = olietank.data?.features?.[0];
+      const omraadeFeature = omraade.data?.features?.[0];
+
+      const someErrored = outcomes.some((o) => o.errored);
 
       return makeOkResult<DkJordResultat>(
         {
-          v1Kortlagt: v1Count > 0,
-          v2Kortlagt: v2Count > 0,
+          v1Kortlagt: v1.errored ? null : v1Count > 0,
+          v2Kortlagt: v2.errored ? null : v2Count > 0,
           olietank: {
-            eksisterer: olietankCount > 0,
+            eksisterer: olietank.errored ? null : olietankCount > 0,
             driftsstatus:
               (olietankFeature?.properties?.["driftsstatus"] as string | undefined) ?? null,
           },
@@ -135,7 +185,12 @@ export class DkJordService {
           lokalitetsId,
           kilde: "dkjord",
         },
-        { kilde: "dkjord", sourceUrl: SOURCE_URL, rawFeatureCount: totalFeatures },
+        {
+          kilde: "dkjord",
+          sourceUrl: SOURCE_URL,
+          rawFeatureCount: totalFeatures,
+          confidence: someErrored ? "unknown" : "confirmed",
+        },
       );
     } catch (e) {
       return makeErrorResult<DkJordResultat>(e, { kilde: "dkjord", sourceUrl: DKJORD_WFS });

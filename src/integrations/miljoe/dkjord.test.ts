@@ -13,15 +13,17 @@ function wfsResponse(totalFeatures: number, features: object[] = []) {
   };
 }
 
-// Lav en mock fetch der returnerer différente svar baseret på TYPENAMES i URL
+// Lav en mock fetch der returnerer différente svar baseret på TYPENAMES i URL.
+// Nye Miljøportal-typenames (P0/P1 #4): DKJord:View_V1Flader, View_V2Flader,
+// View_Olietanke, View_Omraadeklassificering.
 function mockFetchForScenario(scenario: "no_hit" | "v1_only" | "v2_hit") {
   return spyOn(globalThis, "fetch").mockImplementation(
     async (input: RequestInfo | URL): Promise<Response> => {
       const url = input.toString();
-      const isV1 = url.includes("dkjord:V1");
-      const isV2 = url.includes("dkjord:V2");
-      const isOlietank = url.includes("dkjord:olietank");
-      const isOmraadet = url.includes("dkjord:omraadet");
+      const isV1 = url.includes("View_V1Flader");
+      const isV2 = url.includes("View_V2Flader");
+      const isOlietank = url.includes("View_Olietanke");
+      const isOmraadet = url.includes("View_Omraadeklassificering");
 
       let data: object;
       if (scenario === "no_hit") {
@@ -37,7 +39,7 @@ function mockFetchForScenario(scenario: "no_hit" | "v1_only" | "v2_hit") {
           : wfsResponse(0);
       }
 
-      // olietank og omraadet returnerer altid 0 i disse scenarier
+      // olietank og omraadeklassificering returnerer altid 0 i disse scenarier
       if (isOlietank || isOmraadet) data = wfsResponse(0);
 
       return new Response(JSON.stringify(data), {
@@ -194,11 +196,57 @@ describe("DkJordService.getTilstand — v2_hit scenarie", () => {
 });
 
 describe("DkJordService.getTilstand — fetch-fejl giver null data (tri-state)", () => {
-  it("returnerer status=error og data=null ved netværksfejl", async () => {
+  it("returnerer status=error og data=null når alle lag fejler", async () => {
     const fetchSpy = spyOn(globalThis, "fetch").mockRejectedValue(new Error("network error"));
     const result = await DkJordService.getTilstand({ lat: 55.7, lng: 12.5 });
     expect(result.status).toBe("error");
     expect(result.data).toBeNull();
+    fetchSpy.mockRestore();
+  });
+});
+
+describe("DkJordService.getTilstand — Miljøportal endpoint og Fladegeometri (P0/P1 #4)", () => {
+  it("rammer det nye endpoint jord.miljoeportal.dk/geo/wfs", async () => {
+    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
+      async (): Promise<Response> => new Response(JSON.stringify(wfsResponse(0)), { status: 200 }),
+    );
+
+    await DkJordService.getTilstand({ lat: 55.7, lng: 12.5 });
+
+    const calledUrl = fetchSpy.mock.calls[0]?.[0]?.toString() ?? "";
+    expect(calledUrl).toContain("jord.miljoeportal.dk/geo/wfs");
+    expect(calledUrl).not.toContain("dkjord.mst.dk");
+    fetchSpy.mockRestore();
+  });
+
+  it("bruger Fladegeometri som geometri-felt i CQL_FILTER", async () => {
+    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
+      async (): Promise<Response> => new Response(JSON.stringify(wfsResponse(0)), { status: 200 }),
+    );
+
+    await DkJordService.getTilstand({ lat: 55.7, lng: 12.5 });
+
+    const calledUrl = fetchSpy.mock.calls[0]?.[0]?.toString() ?? "";
+    expect(decodeURIComponent(calledUrl)).toContain("INTERSECTS(Fladegeometri,");
+    fetchSpy.mockRestore();
+  });
+
+  it("isolerer fejl per lag — ét forkert typename vælter ikke hele kaldet", async () => {
+    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
+      async (input: RequestInfo | URL): Promise<Response> => {
+        const url = input.toString();
+        if (url.includes("View_Olietanke")) {
+          return new Response("Not Found", { status: 404 });
+        }
+        return new Response(JSON.stringify(wfsResponse(0)), { status: 200 });
+      },
+    );
+
+    const result = await DkJordService.getTilstand({ lat: 55.7, lng: 12.5 });
+    expect(result.status).toBe("ok");
+    expect(result.confidence).toBe("unknown");
+    expect(result.data?.v1Kortlagt).toBe(false);
+    expect(result.data?.olietank.eksisterer).toBeNull();
     fetchSpy.mockRestore();
   });
 });
