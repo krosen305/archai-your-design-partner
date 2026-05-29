@@ -247,6 +247,7 @@ export type PipelineServiceState =
   | "skipped"
   | "mock"
   | "cache_hit"
+  | "mock_cache_hit"
   | "not_run";
 
 export const PIPELINE_SERVICE_STATE_LABELS: Record<PipelineServiceState, string> = {
@@ -256,6 +257,7 @@ export const PIPELINE_SERVICE_STATE_LABELS: Record<PipelineServiceState, string>
   skipped: "Sprunget over",
   mock: "Mock",
   cache_hit: "Cache",
+  mock_cache_hit: "Cache (mock)",
   not_run: "Ikke kørt",
 };
 

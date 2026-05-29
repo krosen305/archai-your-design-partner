@@ -164,7 +164,7 @@ mock.module("@/integrations/plandata/fjernvarme", () => ({
 }));
 
 describe("runGeoRiskStep", () => {
-  it("uses cached GEUS and DHM source results and marks states as cache_hit", async () => {
+  it("skelner mock_cache_hit fra cache_hit for cached source results (P0/P1 #5)", async () => {
     const { runGeoRiskStep } = await import("./geo-risk-step");
 
     const result = await runGeoRiskStep(
@@ -191,7 +191,9 @@ describe("runGeoRiskStep", () => {
     expect(result.terrain?.lowPointM).toBe(18.4);
     expect(result.plandataContext?.zoneType).toBe("byzone");
     expect(result.arealdataContext?.paragraph3Nature).toBe(false);
-    expect(result.states.geusRisk).toBe("cache_hit");
+    // GEUS-cache er makeMockResult (isMock=true) → mock_cache_hit, ikke cache_hit
+    expect(result.states.geusRisk).toBe("mock_cache_hit");
+    // DHM-cache er makeOkResult (isMock=false) → cache_hit
     expect(result.states.terrain).toBe("cache_hit");
     expect(setCachedSourceResult).not.toHaveBeenCalled();
   });

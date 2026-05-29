@@ -457,6 +457,7 @@ function DataRow({
   const badgeStyle: Record<PipelineServiceState, string> = {
     success: "text-emerald-400 border-emerald-500/40",
     cache_hit: "text-sky-400 border-sky-500/40",
+    mock_cache_hit: "text-yellow-400 border-yellow-500/40",
     no_hit: "text-yellow-400 border-yellow-500/40",
     mock: "text-yellow-400 border-yellow-500/40",
     error: "text-danger border-danger/40",

@@ -66,7 +66,10 @@ function deriveSourceState<T>(
   cacheHit = false,
 ): PipelineServiceState {
   if (result === null) return "error";
-  if (cacheHit) return "cache_hit";
+  // P0/P1 #5: skeln cache-hits mellem mock og live så UI ikke fejlagtigt
+  // viser mock-data som myndighedsdata. address_source_results.is_mock=true
+  // → "mock_cache_hit"; live cache → "cache_hit".
+  if (cacheHit) return result.isMock ? "mock_cache_hit" : "cache_hit";
   if (result.status === "mock") return "mock";
   if (result.status === "error") return "error";
   if (result.status === "skipped") return "skipped";
