@@ -1,24 +1,31 @@
 // SERVER-SIDE ONLY — never import from browser code.
 //
-// SDFI naturbeskyttelseslinjer — ARCH-65.
-// Hårde bygge-stop fra naturbeskyttelsesloven der gælder OVENI lokalplanen.
+// SDFI naturbeskyttelseslinjer — opdateret med nyt endpoint efter DAI WFS lukning.
 //
-// Endpoint verificeret 2026-05-08 (ARCH-65): alle 5 typenames returnerer HTTP 200.
+// Det gamle endpoint (arealinformation.miljoeportal.dk) er permanent lukket (HTTP 308 → SPA).
+// Data er nu splittet på to autoritative kilder:
 //
-// API: Danmarks Arealinformation (DAI) WFS via Miljøportalen.
-//   Endpoint:   https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer
-//   Auth:       Ingen (offentlig tjeneste)
-//   Format:     WFS 2.0, CQL_FILTER med INTERSECTS(Shape,...), outputformat=application/json
-//   Typenames:  dmp:STRANDBESKYTTELSESLINJE, dmp:SKOVBYGGELINJE,
-//               dmp:SOEBESKYTTELSESLINJE, dmp:AABESKYTTELSESLINJE, dmp:KLITFREDNING
+// Kilde A — Miljøportalens GeoServer (offentlig, ingen auth):
+//   URL:      https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs
+//   Lag:      dai:soe_bes_linjer, dai:aa_bes_linjer, dai:skovbyggelinjer, dai:kirkebyggelinjer
+//   Output:   application/json
+//   Geometri: Shape
 //
-// OBS: strandbeskyttelse + klitfredning dækkes OGSÅ af MAT_Jordstykke (live).
-// DAI WFS er den spatiale kilde; MAT er den registrerede kilde — komplementære checks.
+// Kilde B — Datafordeler MAT WFS (DATAFORDELER_API_KEY, allerede i brug til parcelgeometri):
+//   URL:      https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS
+//   Lag:      mat:StrandbeskyttelseFlade_Gaeldende, mat:KlitfredningFlade_Gaeldende
+//   Output:   GML XML (JSON ikke understøttet)
+//   Geometri: geometri
 
+import { getEnvRequired } from "@/lib/env";
 import { makeErrorResult, makeOkResult, type SourceResult } from "@/lib/source-result";
 
-const DAI_WFS = "https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer";
-const SOURCE_URL = `${DAI_WFS}?service=WFS&typenames=dmp:STRANDBESKYTTELSESLINJE,SKOVBYGGELINJE,SOEBESKYTTELSESLINJE,AABESKYTTELSESLINJE,KLITFREDNING`;
+const GEOSERVER_WFS =
+  "https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs";
+const MAT_WFS =
+  "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
+
+const SOURCE_URL = GEOSERVER_WFS;
 
 export type NaturbeskyttelsesResultat = {
   strandbeskyttelse: boolean;
@@ -26,56 +33,108 @@ export type NaturbeskyttelsesResultat = {
   soebeskyttelse: boolean;
   aabeskyttelse: boolean;
   klitfredning: boolean;
-  kirkebyggelinje: boolean; // ikke i DAI — kræver separat kilde
+  kirkebyggelinje: boolean; // aktiveret: dai:kirkebyggelinjer på GeoServer
 };
 
 type Koordinat = { lat: number; lng: number };
 
-type LayerKey = Exclude<keyof NaturbeskyttelsesResultat, "kirkebyggelinje">;
+type LayerKey = keyof NaturbeskyttelsesResultat;
 
-const LAYERS: ReadonlyArray<{ typename: string; key: LayerKey }> = [
-  { typename: "dmp:STRANDBESKYTTELSESLINJE", key: "strandbeskyttelse" },
-  { typename: "dmp:SKOVBYGGELINJE", key: "skovbyggelinje" },
-  { typename: "dmp:SOEBESKYTTELSESLINJE", key: "soebeskyttelse" },
-  { typename: "dmp:AABESKYTTELSESLINJE", key: "aabeskyttelse" },
-  { typename: "dmp:KLITFREDNING", key: "klitfredning" },
+type GeoServerLayer = { source: "geoserver"; key: LayerKey; typename: string };
+type MatWfsLayer = { source: "mat"; key: LayerKey; typename: string };
+type LayerConfig = GeoServerLayer | MatWfsLayer;
+
+const LAYERS: ReadonlyArray<LayerConfig> = [
+  // Kilde A — GeoServer
+  { source: "geoserver", key: "soebeskyttelse",  typename: "dai:soe_bes_linjer" },
+  { source: "geoserver", key: "aabeskyttelse",   typename: "dai:aa_bes_linjer" },
+  { source: "geoserver", key: "skovbyggelinje",  typename: "dai:skovbyggelinjer" },
+  { source: "geoserver", key: "kirkebyggelinje", typename: "dai:kirkebyggelinjer" },
+  // Kilde B — Datafordeler MAT WFS
+  { source: "mat", key: "strandbeskyttelse", typename: "mat:StrandbeskyttelseFlade_Gaeldende" },
+  { source: "mat", key: "klitfredning",      typename: "mat:KlitfredningFlade_Gaeldende" },
 ];
 
-async function erIndenforLag(typename: string, koordinat: Koordinat): Promise<number> {
+type LayerOutcome = {
+  key: LayerKey;
+  value: boolean;
+  featureCount: number;
+  errored: boolean;
+};
+
+// --- GeoServer fetcher (JSON output) ---
+
+type GeoServerJsonResponse = {
+  totalFeatures?: number;
+  features?: unknown[];
+};
+
+async function fetchGeoServerLayer(
+  typename: string,
+  koordinat: Koordinat,
+): Promise<number> {
   const { lat, lng } = koordinat;
-  const filter = encodeURIComponent(`INTERSECTS(Shape,SRID=4326;POINT(${lng} ${lat}))`);
+  const filter = `INTERSECTS(Shape,SRID=4326;POINT(${lng} ${lat}))`;
   const url =
-    `${DAI_WFS}?service=WFS&version=2.0.0&request=GetFeature` +
-    `&typename=${typename}&count=1&outputformat=application%2Fjson` +
-    `&CQL_FILTER=${filter}`;
+    `${GEOSERVER_WFS}?service=WFS&version=2.0.0&request=GetFeature` +
+    `&typeName=${typename}&count=1&outputFormat=application/json` +
+    `&CQL_FILTER=${encodeURIComponent(filter)}`;
 
   const res = await fetch(url, {
-    method: "GET",
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(8_000),
   });
 
-  if (!res.ok) {
-    throw new Error(`DAI WFS HTTP ${res.status} for ${typename}`);
-  }
+  if (!res.ok) throw new Error(`GeoServer WFS HTTP ${res.status} for ${typename}`);
 
-  const data = (await res.json()) as { totalFeatures?: number; features?: unknown[] };
+  const data = (await res.json()) as GeoServerJsonResponse;
   return data.totalFeatures ?? data.features?.length ?? 0;
 }
 
-type LayerOutcome = { key: LayerKey; value: boolean; featureCount: number; errored: boolean };
+// --- MAT WFS fetcher (GML XML output) ---
+
+async function fetchMatWfsLayer(
+  typename: string,
+  koordinat: Koordinat,
+  apiKey: string,
+): Promise<number> {
+  const { lat, lng } = koordinat;
+  const filter = `INTERSECTS(geometri,SRID=4326;POINT(${lng} ${lat}))`;
+  const url =
+    `${MAT_WFS}?service=WFS&version=2.0.0&request=GetFeature` +
+    `&typenames=${typename}&count=1&apikey=${apiKey}` +
+    `&CQL_FILTER=${encodeURIComponent(filter)}`;
+
+  const res = await fetch(url, {
+    headers: { Accept: "application/xml, text/xml, */*;q=0.8" },
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!res.ok) throw new Error(`MAT WFS HTTP ${res.status} for ${typename}`);
+
+  const text = await res.text();
+  // GML root element indeholder numberMatched="N" som attribut.
+  // Eks: <wfs:FeatureCollection ... numberMatched="0" ...>
+  const match = /numberMatched="(\d+)"/.exec(text);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+// --- Service ---
 
 export class NaturbeskyttelseService {
   static async getTilstand(koordinat: Koordinat): Promise<SourceResult<NaturbeskyttelsesResultat>> {
     try {
+      const apiKey = getEnvRequired("DATAFORDELER_API_KEY");
+
       const outcomes = await Promise.all(
         LAYERS.map(async (layer): Promise<LayerOutcome> => {
           try {
-            const count = await erIndenforLag(layer.typename, koordinat);
+            const count =
+              layer.source === "geoserver"
+                ? await fetchGeoServerLayer(layer.typename, koordinat)
+                : await fetchMatWfsLayer(layer.typename, koordinat, apiKey);
             return { key: layer.key, value: count > 0, featureCount: count, errored: false };
           } catch {
-            // Per-lag fejl mappes til false for at bevare downstream-kontrakten,
-            // men confidence sættes til "unknown" hvis nogen lag fejlede.
             return { key: layer.key, value: false, featureCount: 0, errored: true };
           }
         }),
@@ -84,7 +143,7 @@ export class NaturbeskyttelseService {
       const successCount = outcomes.filter((o) => !o.errored).length;
       if (successCount === 0) {
         return makeErrorResult<NaturbeskyttelsesResultat>(
-          new Error("DAI Naturbeskyttelse: alle lag fejlede"),
+          new Error("Naturbeskyttelse: alle lag fejlede"),
           { kilde: "naturbeskyttelse", sourceUrl: SOURCE_URL },
           { kind: "all_layers_failed" },
         );
