@@ -102,7 +102,20 @@ export async function setCachedServitut(addressId: string, result: Json): Promis
 // ---------------------------------------------------------------------------
 // Compliance result
 // ---------------------------------------------------------------------------
+//
+// P2 #6 (Hasselvej 48 audit): compliance_result-kolonnen er ikke i brug som
+// autoritet — orchestratoren kører altid registerdata live, og Rule 4
+// (Server-Side Compliance Authority) gør at en cache aldrig må være kilde
+// til hard-stop/SAVE/MAT-beslutninger. Funktionerne nedenfor bevares som
+// rene helpers til UI-read-model-formål (debug/replay), men må ikke kaldes
+// fra orchestrator eller compliance-flows.
 
+/**
+ * @deprecated Brug ikke som compliance-autoritet (Rule 4). Kun til UI-replay
+ *   af tidligere analyse-output. Returnerer null i alle nuværende kald-sites
+ *   og kan fjernes når compliance_result-kolonnen migreres ud af
+ *   address_analysis.
+ */
 export async function getCachedCompliance(addressId: string): Promise<ComplianceResult | null> {
   const row = await getRow(addressId);
   if (!row) return null;
@@ -110,6 +123,10 @@ export async function getCachedCompliance(addressId: string): Promise<Compliance
   return decodeComplianceResult(row.compliance_result);
 }
 
+/**
+ * @deprecated Compliance må ikke caches som autoritativ kilde (Rule 4).
+ *   Kald kun fra UI-read-model-flow med eksplicit timestamp-visning.
+ */
 export async function setCachedCompliance(
   addressId: string,
   result: ComplianceResult,

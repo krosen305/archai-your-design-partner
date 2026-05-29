@@ -73,3 +73,25 @@ describe("GsearchService.getSuggestions", () => {
     expect(url).toContain("token=test-token-123");
   });
 });
+
+describe("GsearchService.getHusnummerSuggestions (P2 #1)", () => {
+  beforeEach(() => {
+    delete process.env.DATAFORSYNINGEN_TOKEN;
+    delete process.env.DATAFORSYNINGEN_GSEARCH_ENDPOINT;
+    delete process.env.DATAFORSYNINGEN_GSEARCH_LIMIT;
+    mock.restore();
+    resetMockedFetch();
+  });
+
+  it("rammer /husnummer-endpointet og mapper id til adgangsadresseid", async () => {
+    const spy = mockFetch([suggestion({ id: "0a3f507d-4cf9-32b8-e044-0003ba298018" })]);
+
+    const results = await GsearchService.getHusnummerSuggestions("Hasselvej 48");
+
+    const [url] = spy.mock.calls[0] as [string];
+    expect(url).toContain("/husnummer?");
+    expect(results).toHaveLength(1);
+    expect(results[0].adgangsadresseid).toBe("0a3f507d-4cf9-32b8-e044-0003ba298018");
+    expect(results[0].kommunekode).toBe("0173");
+  });
+});
