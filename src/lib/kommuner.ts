@@ -109,15 +109,3 @@ export const KOMMUNE_MAP: Record<string, string> = {
 export function kommunenavnFraKode(kode: string): string {
   return KOMMUNE_MAP[kode] ?? kode;
 }
-
-/**
- * Udleder kommunekode fra ejerlavskode.
- * Ejerlavskoder følger formatet KKK_NNN (kommunekode × 1000 + ejerlavsnummer),
- * hvor KKK er de første 3 cifre svarende til den 3-cifrede kommunekode (uden leading zero).
- * Eksempel: 173551 → Math.floor(173551/1000) = 173 → "0173" (Lyngby-Taarbæk)
- */
-export function kommunekodeFraEjerlavskode(ejerlavskode: number): string {
-  return Math.floor(ejerlavskode / 1000)
-    .toString()
-    .padStart(4, "0");
-}

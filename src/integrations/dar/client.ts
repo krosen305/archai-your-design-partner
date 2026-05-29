@@ -405,18 +405,17 @@ export class DarService {
       koordinater = utm32ToWgs84(wktPoint.x, wktPoint.y);
     }
 
-    // Udled kommunekode + kommunenavn fra ejerlavskode (KKK × 1000 + løbenummer).
-    // Ejerlavskode er primær kilde; falder tilbage til "" når ejerlavskode mangler.
-    const { kommunekodeFraEjerlavskode, kommunenavnFraKode } = await import("@/lib/kommuner");
-    const kommunekode: string = ejerlavskode ? kommunekodeFraEjerlavskode(ejerlavskode) : "";
-    const kommunenavn: string = kommunekode ? kommunenavnFraKode(kommunekode) : "";
-
+    // P0/P1 #2: kommune udledes IKKE fra ejerlavskode — formlen KKK × 1000 + løbenummer
+    // gælder kun nogle ejerlav (Hasselvej 48: ejerlavskode 12352 → 0012 men reel kommune
+    // er 0173 Lyngby-Taarbæk). Kommunekode skal komme fra GSearch autocomplete-respons
+    // (jf. CLAUDE.md Data Source Rules) eller fra et separat Datafordeler-kommuneopslag.
+    // DAR returnerer tom string her; orchestrator/project-store skal beholde GSearch-koden.
     return {
       adresse: adresse.adressebetegnelse ?? "",
       postnr: postnummerNode?.postnr ?? "",
       postnrnavn: postnummerNode?.navn ?? "",
-      kommunekode,
-      kommunenavn,
+      kommunekode: "",
+      kommunenavn: "",
       matrikel: matrikelnummer,
       adgangsadresseid: husnummerFK,
       koordinater,
