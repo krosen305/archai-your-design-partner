@@ -45,8 +45,8 @@ describe("NaturbeskyttelseService.getTilstand", () => {
         geoServerJson(0), // aa
         geoServerJson(1), // skov — hit
         geoServerJson(0), // kirke
-        matWfsGml(1),     // strand — hit
-        matWfsGml(0),     // klit
+        matWfsGml(1), // strand — hit
+        matWfsGml(0), // klit
       ];
       return responses[call++]!;
     }) as unknown as typeof fetch;

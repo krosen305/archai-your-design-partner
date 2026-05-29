@@ -21,6 +21,7 @@ import type {
   DataSourceStatus,
   DataSourceKind,
   PipelineServiceState,
+  NeighborContextFacts,
 } from "@/types/project-state";
 export type {
   Address,
@@ -35,6 +36,7 @@ export type {
   DataSourceStatus,
   DataSourceKind,
   PipelineServiceState,
+  NeighborContextFacts,
 } from "@/types/project-state";
 export type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 export type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -85,6 +87,7 @@ type State = {
   hard_stop_reason: string | null; // menneskelæsbar årsag
   budget_estimate: number | null; // ARCH-163: projektbudget estimat
   bfe_nr: string | null; // BFE-nummer (Bestemt Fast Ejendom) via EBR
+  neighborContextFacts: NeighborContextFacts | null; // GeoDanmark typed nabofakta fra site_constraints
 
   // Datakilde-status — bruges af cockpittet til at vise fresh/stale/missing
   // pr. kilde og tilbyde manuel genindlæsning. Status er afledt — gemmes IKKE
@@ -133,6 +136,7 @@ type State = {
   setHardStop: (v: boolean, reason: string | null) => void;
   setBudgetEstimate: (v: number | null) => void;
   setBfeNr: (v: string | null) => void;
+  setNeighborContextFacts: (v: NeighborContextFacts | null) => void;
 
   setDataStatus: (kind: DataSourceKind, status: DataSourceStatus) => void;
   setDataStatusBulk: (patch: Partial<Record<DataSourceKind, DataSourceStatus>>) => void;
@@ -201,6 +205,7 @@ export const useProject = create<State>((set) => ({
   hard_stop_reason: null,
   budget_estimate: null,
   bfe_nr: null,
+  neighborContextFacts: null,
   dataStatus: { ...DEFAULT_DATA_STATUS },
   dataLastFetchedAt: null,
   serviceStates: {},
@@ -234,6 +239,7 @@ export const useProject = create<State>((set) => ({
   setHardStop: (hard_stop, hard_stop_reason) => set({ hard_stop, hard_stop_reason }),
   setBudgetEstimate: (budget_estimate) => set({ budget_estimate }),
   setBfeNr: (bfe_nr) => set({ bfe_nr }),
+  setNeighborContextFacts: (neighborContextFacts) => set({ neighborContextFacts }),
 
   setDataStatus: (kind, status) =>
     set((s) => ({ dataStatus: { ...s.dataStatus, [kind]: status } })),
@@ -270,6 +276,7 @@ export const useProject = create<State>((set) => ({
       hard_stop_reason: null,
       budget_estimate: null,
       bfe_nr: null,
+      neighborContextFacts: null,
       dataStatus: { ...DEFAULT_DATA_STATUS },
       dataLastFetchedAt: null,
       serviceStates: {},

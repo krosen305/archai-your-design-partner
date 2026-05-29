@@ -7,6 +7,7 @@ import {
   utm32ToWgs84,
   wgs84ToUtm32,
   polygonToPolygonDistanceM,
+  polygonToLineStringDistanceM,
 } from "./geometry-utils";
 import type * as GeoJSON from "geojson";
 
@@ -147,5 +148,62 @@ describe("polygonToPolygonDistanceM", () => {
     const empty: GeoJSON.Polygon = { type: "Polygon", coordinates: [[]] };
     const b = squareAt(0, 0, 10);
     expect(polygonToPolygonDistanceM(empty, b)).toBeNull();
+  });
+});
+
+describe("polygonToLineStringDistanceM", () => {
+  const squareAt = (x: number, y: number, size: number): GeoJSON.Polygon => ({
+    type: "Polygon",
+    coordinates: [
+      [
+        [x, y],
+        [x + size, y],
+        [x + size, y + size],
+        [x, y + size],
+        [x, y],
+      ],
+    ],
+  });
+
+  it("returnerer 0 for linje der krydser polygon", () => {
+    const polygon = squareAt(0, 0, 10);
+    const line: GeoJSON.LineString = {
+      type: "LineString",
+      coordinates: [
+        [-5, 5],
+        [15, 5],
+      ],
+    };
+    expect(polygonToLineStringDistanceM(polygon, line)).toBe(0);
+  });
+
+  it("returnerer korrekt afstand til naermeste vejmidte", () => {
+    const polygon = squareAt(0, 0, 10);
+    const line: GeoJSON.LineString = {
+      type: "LineString",
+      coordinates: [
+        [15, -5],
+        [15, 15],
+      ],
+    };
+    expect(polygonToLineStringDistanceM(polygon, line)).toBeCloseTo(5, 3);
+  });
+
+  it("haandterer MultiLineString", () => {
+    const polygon = squareAt(0, 0, 10);
+    const lines: GeoJSON.MultiLineString = {
+      type: "MultiLineString",
+      coordinates: [
+        [
+          [30, 0],
+          [30, 10],
+        ],
+        [
+          [12, 0],
+          [12, 10],
+        ],
+      ],
+    };
+    expect(polygonToLineStringDistanceM(polygon, lines)).toBeCloseTo(2, 3);
   });
 });

@@ -4,7 +4,9 @@ export type DrawingSourceQualityReport = {
   overallConfidence: DataConfidence;
   layerReports: LayerQualityReport[];
   missingDataPoints: string[];
-  requiresReviewBy: Array<"landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed">;
+  requiresReviewBy: Array<
+    "landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed"
+  >;
 };
 
 export type LayerQualityReport = {

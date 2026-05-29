@@ -43,10 +43,13 @@ function drawPolygon(page: PDFPage, pageH: number, svgEl: string): void {
   const strokeStr = attr(svgEl, "stroke") ?? "none";
   const strokeW = parseFloat(attr(svgEl, "stroke-width") ?? "1");
 
-  const pts = pointsStr.trim().split(/\s+/).map((p) => {
-    const [x, y] = p.split(",").map(Number);
-    return { x: x * PX_TO_PT, y: pageH - y * PX_TO_PT };
-  });
+  const pts = pointsStr
+    .trim()
+    .split(/\s+/)
+    .map((p) => {
+      const [x, y] = p.split(",").map(Number);
+      return { x: x * PX_TO_PT, y: pageH - y * PX_TO_PT };
+    });
   if (pts.length < 2) return;
 
   const pathParts = [`M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`];
@@ -155,7 +158,9 @@ function drawRectEl(page: PDFPage, pageH: number, svgEl: string): void {
 function renderSvgElement(page: PDFPage, pageH: number, svgEl: string, font: PDFFont): void {
   if (svgEl.trim().startsWith("<g")) {
     const inner = svgEl.replace(/^<g[^>]*>/, "").replace(/<\/g>\s*$/, "");
-    const childMatches = inner.match(/<(?:polygon|line|text|circle|rect)[^>]*(?:\/>|>[^<]*<\/[^>]+>)/g);
+    const childMatches = inner.match(
+      /<(?:polygon|line|text|circle|rect)[^>]*(?:\/>|>[^<]*<\/[^>]+>)/g,
+    );
     if (childMatches) {
       for (const child of childMatches) {
         renderSvgElement(page, pageH, child, font);

@@ -130,6 +130,18 @@ export function minDistanceToBoundaryM(
 
 type Segment = [[number, number], [number, number]];
 
+function pointToSegmentDistanceSq(point: [number, number], segment: Segment): number {
+  const [px, py] = point;
+  const [[ax, ay], [bx, by]] = segment;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  const t = lenSq > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq)) : 0;
+  const nearX = ax + t * dx;
+  const nearY = ay + t * dy;
+  return (px - nearX) ** 2 + (py - nearY) ** 2;
+}
+
 function segmentToSegmentDistanceSq(s1: Segment, s2: Segment): number {
   const [a, b] = s1;
   const [c, d] = s2;
@@ -159,6 +171,26 @@ function segmentToSegmentDistanceSq(s1: Segment, s2: Segment): number {
   return (p1x - p2x) ** 2 + (p1y - p2y) ** 2;
 }
 
+function buildPolygonSegments(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): Segment[] {
+  const rings = extractRings(geometry);
+  const segments: Segment[] = [];
+  for (const ring of rings) {
+    for (let i = 0; i < ring.length - 1; i++) {
+      segments.push([ring[i]!, ring[i + 1]!]);
+    }
+  }
+  return segments;
+}
+
+function extractLineStrings(
+  geometry: GeoJSON.LineString | GeoJSON.MultiLineString,
+): [number, number][][] {
+  if (geometry.type === "LineString") {
+    return [geometry.coordinates as [number, number][]];
+  }
+  return geometry.coordinates as [number, number][][];
+}
+
 function extractRings(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): [number, number][][] {
   if (geometry.type === "Polygon") {
     return geometry.coordinates as [number, number][][];
@@ -185,6 +217,36 @@ export function polygonToPolygonDistanceM(
           const dSq = segmentToSegmentDistanceSq(s1, s2);
           if (dSq < minDistSq) minDistSq = dSq;
         }
+      }
+    }
+  }
+
+  return minDistSq === Infinity ? null : Math.sqrt(minDistSq);
+}
+
+export function polygonToLineStringDistanceM(
+  polygon: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+  lineGeometry: GeoJSON.LineString | GeoJSON.MultiLineString,
+): number | null {
+  const polygonSegments = buildPolygonSegments(polygon);
+  const lineStrings = extractLineStrings(lineGeometry);
+  if (!polygonSegments.length || !lineStrings.some((line) => line.length > 0)) return null;
+
+  let minDistSq = Infinity;
+
+  for (const line of lineStrings) {
+    for (let i = 0; i < line.length - 1; i++) {
+      const lineSegment: Segment = [line[i]!, line[i + 1]!];
+      for (const polygonSegment of polygonSegments) {
+        const dSq = segmentToSegmentDistanceSq(polygonSegment, lineSegment);
+        if (dSq < minDistSq) minDistSq = dSq;
+      }
+    }
+
+    if (line.length === 1) {
+      for (const polygonSegment of polygonSegments) {
+        const dSq = pointToSegmentDistanceSq(line[0]!, polygonSegment);
+        if (dSq < minDistSq) minDistSq = dSq;
       }
     }
   }

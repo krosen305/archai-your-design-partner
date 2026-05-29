@@ -11,6 +11,7 @@ import type {
 } from "@/domain/contracts/rule-engine.types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import { husDnaSchema, restoredComplianceDataSchema } from "./project-restore.schemas";
+export type { NeighborContextFacts } from "@/domain/contracts/surroundings.types";
 
 // ---------------------------------------------------------------------------
 // Adresse

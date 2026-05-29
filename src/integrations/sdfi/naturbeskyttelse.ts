@@ -21,10 +21,8 @@ import { z } from "zod";
 import { getEnvRequired } from "@/lib/env";
 import { makeErrorResult, makeOkResult, type SourceResult } from "@/lib/source-result";
 
-const GEOSERVER_WFS =
-  "https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs";
-const MAT_WFS =
-  "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
+const GEOSERVER_WFS = "https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs";
+const MAT_WFS = "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 
 const SOURCE_URL = `${GEOSERVER_WFS} + ${MAT_WFS}`;
 
@@ -47,13 +45,13 @@ type LayerConfig = GeoServerLayer | MatWfsLayer;
 
 const LAYERS: ReadonlyArray<LayerConfig> = [
   // Kilde A — GeoServer
-  { source: "geoserver", key: "soebeskyttelse",  typename: "dai:soe_bes_linjer" },
-  { source: "geoserver", key: "aabeskyttelse",   typename: "dai:aa_bes_linjer" },
-  { source: "geoserver", key: "skovbyggelinje",  typename: "dai:skovbyggelinjer" },
+  { source: "geoserver", key: "soebeskyttelse", typename: "dai:soe_bes_linjer" },
+  { source: "geoserver", key: "aabeskyttelse", typename: "dai:aa_bes_linjer" },
+  { source: "geoserver", key: "skovbyggelinje", typename: "dai:skovbyggelinjer" },
   { source: "geoserver", key: "kirkebyggelinje", typename: "dai:kirkebyggelinjer" },
   // Kilde B — Datafordeler MAT WFS
   { source: "mat", key: "strandbeskyttelse", typename: "mat:StrandbeskyttelseFlade_Gaeldende" },
-  { source: "mat", key: "klitfredning",      typename: "mat:KlitfredningFlade_Gaeldende" },
+  { source: "mat", key: "klitfredning", typename: "mat:KlitfredningFlade_Gaeldende" },
 ];
 
 type LayerOutcome = {
@@ -70,10 +68,7 @@ const geoServerResponseSchema = z.object({
   features: z.array(z.unknown()).optional(),
 });
 
-async function fetchGeoServerLayer(
-  typename: string,
-  koordinat: Koordinat,
-): Promise<number> {
+async function fetchGeoServerLayer(typename: string, koordinat: Koordinat): Promise<number> {
   const { lat, lng } = koordinat;
   const filter = `INTERSECTS(Shape,SRID=4326;POINT(${lng} ${lat}))`;
   const url =

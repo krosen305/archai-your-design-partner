@@ -20,6 +20,7 @@ import {
   fjernvarmeResultatSchema,
   husDnaSchema,
   neighborBuildingDataSchema,
+  neighborContextFactsSchema,
   ruleEngineDkJordResultatSchema,
   ruleEngineFbbResultSchema,
   ruleEngineGeusRiskDataSchema,
@@ -152,6 +153,9 @@ export function useCockpitRestore(params: {
           if (project.bebygget_areal_m2 != null) setBebyggetAreal(project.bebygget_areal_m2);
           if (project.budget_estimate != null) setBudgetEstimate(project.budget_estimate);
           setBfeNr(project.bfe_nr ?? null);
+          store.setNeighborContextFacts(
+            decodeWithSchema(project.neighbor_context_facts, neighborContextFactsSchema),
+          );
           const billedanalyse = decodeWithSchema(
             project.billedanalyse,
             billedeAnalyseResultatSchema,
@@ -223,7 +227,8 @@ export function useCockpitRestore(params: {
             ),
             naboer: deriveSourceStatus(
               "naboer",
-              objectField(project.compliance_data, "naboer", neighborBuildingDataSchema),
+              project.neighbor_context_facts ??
+                objectField(project.compliance_data, "naboer", neighborBuildingDataSchema),
               lastFetched,
             ),
             vurdering: deriveSourceStatus("vurdering", s.vurderingData, lastFetched),

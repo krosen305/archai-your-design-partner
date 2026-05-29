@@ -15,7 +15,9 @@ export type DrawingReadinessDecision = {
   status: DrawingReadinessStatus;
   reasons: ReadinessReason[];
   missingDataPoints: string[];
-  reviewRequiredBy: Array<"landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed">;
+  reviewRequiredBy: Array<
+    "landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed"
+  >;
 };
 
 export type DrawingReadinessInput = {
@@ -48,7 +50,14 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   if (!input.hasParcelPolygon) {
     return {
       status: "BLOCKED_MISSING_CORE_DATA",
-      reasons: [{ code: "NO_PARCEL_POLYGON", severity: "blocking", message: "Ingen parcelpolygon fundet", affectedLayer: "parcel" }],
+      reasons: [
+        {
+          code: "NO_PARCEL_POLYGON",
+          severity: "blocking",
+          message: "Ingen parcelpolygon fundet",
+          affectedLayer: "parcel",
+        },
+      ],
       missingDataPoints: ["parcel.polygon25832", ...input.missingDataPoints],
       reviewRequiredBy: ["landinspektoer"],
     };
@@ -57,7 +66,14 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   if (!input.hasProposedFootprint) {
     return {
       status: "BLOCKED_MISSING_CORE_DATA",
-      reasons: [{ code: "NO_PROPOSED_FOOTPRINT", severity: "blocking", message: "Ingen foreslaaet bygningsfodprint", affectedLayer: "proposed" }],
+      reasons: [
+        {
+          code: "NO_PROPOSED_FOOTPRINT",
+          severity: "blocking",
+          message: "Ingen foreslaaet bygningsfodprint",
+          affectedLayer: "proposed",
+        },
+      ],
       missingDataPoints: ["proposed.primaryBuilding.footprint25832", ...input.missingDataPoints],
       reviewRequiredBy: ["arkitekt"],
     };
@@ -66,7 +82,14 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   if (!input.hasAddress || !input.hasMatrikel) {
     return {
       status: "BLOCKED_MISSING_CORE_DATA",
-      reasons: [{ code: "NO_ADDRESS_OR_MATRIKEL", severity: "blocking", message: "Adresse eller matrikel mangler", affectedLayer: "metadata" }],
+      reasons: [
+        {
+          code: "NO_ADDRESS_OR_MATRIKEL",
+          severity: "blocking",
+          message: "Adresse eller matrikel mangler",
+          affectedLayer: "metadata",
+        },
+      ],
       missingDataPoints: input.missingDataPoints,
       reviewRequiredBy: [],
     };
@@ -77,13 +100,23 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   const safeDistance = input.setbackRequirementM + THRESHOLDS.setbackSafetyMarginM;
   if (input.minDistanceToSetbackLineM < safeDistance) {
     surveyRequired = true;
-    reasons.push({ code: "BUILDING_TOO_CLOSE_TO_SETBACK", severity: "warning", message: `Bygning er ${input.minDistanceToSetbackLineM.toFixed(2)} m fra byggelinje — krav + margin er ${safeDistance.toFixed(2)} m`, affectedLayer: "proposed" });
+    reasons.push({
+      code: "BUILDING_TOO_CLOSE_TO_SETBACK",
+      severity: "warning",
+      message: `Bygning er ${input.minDistanceToSetbackLineM.toFixed(2)} m fra byggelinje — krav + margin er ${safeDistance.toFixed(2)} m`,
+      affectedLayer: "proposed",
+    });
     reviewRequiredBy.push("landinspektoer");
   }
 
   if (input.parcelAreaDiscrepancyPct > THRESHOLDS.maxParcelAreaDiscrepancyPct) {
     surveyRequired = true;
-    reasons.push({ code: "PARCEL_AREA_DISCREPANCY", severity: "warning", message: `Arealafvigelse er ${input.parcelAreaDiscrepancyPct.toFixed(1)}% — graense er ${THRESHOLDS.maxParcelAreaDiscrepancyPct}%`, affectedLayer: "parcel" });
+    reasons.push({
+      code: "PARCEL_AREA_DISCREPANCY",
+      severity: "warning",
+      message: `Arealafvigelse er ${input.parcelAreaDiscrepancyPct.toFixed(1)}% — graense er ${THRESHOLDS.maxParcelAreaDiscrepancyPct}%`,
+      affectedLayer: "parcel",
+    });
     reviewRequiredBy.push("landinspektoer");
   }
 
@@ -99,7 +132,12 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   }
 
   if (surveyRequired) {
-    return { status: "SURVEY_REQUIRED", reasons, missingDataPoints: input.missingDataPoints, reviewRequiredBy };
+    return {
+      status: "SURVEY_REQUIRED",
+      reasons,
+      missingDataPoints: input.missingDataPoints,
+      reviewRequiredBy,
+    };
   }
 
   const isAutoReview =
@@ -113,8 +151,18 @@ export function classifyDrawingReadiness(input: DrawingReadinessInput): DrawingR
   }
 
   if (input.missingDataPoints.length > 0) {
-    reasons.push({ code: "MISSING_DATA_POINTS", severity: "info", message: `${input.missingDataPoints.length} datapunkter mangler`, affectedLayer: "multiple" });
+    reasons.push({
+      code: "MISSING_DATA_POINTS",
+      severity: "info",
+      message: `${input.missingDataPoints.length} datapunkter mangler`,
+      affectedLayer: "multiple",
+    });
   }
 
-  return { status: "AUTO_DRAFT", reasons, missingDataPoints: input.missingDataPoints, reviewRequiredBy };
+  return {
+    status: "AUTO_DRAFT",
+    reasons,
+    missingDataPoints: input.missingDataPoints,
+    reviewRequiredBy,
+  };
 }

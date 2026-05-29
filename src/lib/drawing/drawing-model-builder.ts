@@ -19,9 +19,7 @@ function coordsToSvgPoints(
   maxY: number,
   scale: number,
 ): string {
-  return coords
-    .map(([x, y]) => `${(x - minX) * scale},${(maxY - y) * scale}`)
-    .join(" ");
+  return coords.map(([x, y]) => `${(x - minX) * scale},${(maxY - y) * scale}`).join(" ");
 }
 
 function polygonFeature(
@@ -234,8 +232,7 @@ export function buildDrawingModel(
     firstFloorM2: null,
     doubleHeightDeductionM2: 0,
     totalResidentialM2: plan.proposed.footprintAreaM2,
-    coveragePercent:
-      (plan.proposed.footprintAreaM2 / plan.parcel.areaRegisteredM2) * 100,
+    coveragePercent: (plan.proposed.footprintAreaM2 / plan.parcel.areaRegisteredM2) * 100,
     calculationBasis: "BR18 §452",
   };
 
@@ -251,10 +248,7 @@ export function buildDrawingModel(
       scale: plan.metadata.scale,
       ...page,
     },
-    viewport: computeViewport(
-      [bboxMinX, bboxMinY, bboxMaxX, bboxMaxY],
-      plan.metadata.scale,
-    ),
+    viewport: computeViewport([bboxMinX, bboxMinY, bboxMaxX, bboxMaxY], plan.metadata.scale),
     features,
     titleBlock: {
       title: plan.metadata.title,
@@ -266,19 +260,12 @@ export function buildDrawingModel(
       paperSize: plan.metadata.paperSize,
       date: plan.metadata.date,
       revision: revisions[0]?.nr ?? "A",
-      disclaimer:
-        readiness.status === "AUTO_DRAFT"
-          ? "FORELOEBIG — ikke til myndighedsbrug"
-          : null,
+      disclaimer: readiness.status === "AUTO_DRAFT" ? "FORELOEBIG — ikke til myndighedsbrug" : null,
       sourceList: [
         `Grundareal: ${areaTable.grundarealM2} m²`,
         `Bebyg.%: ${areaTable.coveragePercent.toFixed(2)}% (${areaTable.calculationBasis})`,
-        ...(plan.metadata.buildingCode
-          ? [`Opføres efter: ${plan.metadata.buildingCode}`]
-          : []),
-        ...(plan.metadata.bygherre
-          ? [`Bygherre: ${plan.metadata.bygherre}`]
-          : []),
+        ...(plan.metadata.buildingCode ? [`Opføres efter: ${plan.metadata.buildingCode}`] : []),
+        ...(plan.metadata.bygherre ? [`Bygherre: ${plan.metadata.bygherre}`] : []),
         ...(plan.metadata.sagNr ? [`Sagsnr.: ${plan.metadata.sagNr}`] : []),
         ...(readiness.reviewRequiredBy.length > 0
           ? [`Review: ${readiness.reviewRequiredBy.join(", ")}`]

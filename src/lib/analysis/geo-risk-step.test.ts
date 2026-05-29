@@ -157,6 +157,46 @@ mock.module("@/integrations/geodanmark/client", () => ({
   },
 }));
 
+mock.module("@/lib/geodanmark-neighbor-context.server", () => ({
+  handleGeoDanmarkNeighborAnalysis: async () => ({
+    siteContextResult: makeOkResult(
+      {
+        ownBuildings: [],
+        neighborBuildings: [],
+        roadCenterlines: [],
+        coverage: "covered" as const,
+      },
+      { kilde: "geodanmark_nabo", sourceUrl: "mock://geodanmark", rawFeatureCount: 0 },
+    ),
+    neighborContextResult: makeOkResult(
+      {
+        count40m: 0,
+        nearestDistanceM: null,
+        nearestRoadCenterlineDistanceM: null,
+        accessRoadNearby: null,
+        buildingDensityWithin100m: null,
+        buildings: [],
+        coverage: "covered" as const,
+      },
+      { kilde: "geodanmark_nabo", sourceUrl: "mock://geodanmark", rawFeatureCount: 0 },
+    ),
+    legacyResult: makeOkResult(
+      {
+        count: 0,
+        nearestDistanceM: null,
+        buildings: [],
+        fejl: null,
+        kilde: "geodanmark",
+        accessRoadNearby: null,
+        roadDistanceM: null,
+      },
+      { kilde: "geodanmark", sourceUrl: "mock://geodanmark", rawFeatureCount: 0 },
+    ),
+    siteConstraintsPatch: null,
+    cacheHit: false,
+  }),
+}));
+
 mock.module("@/integrations/plandata/fjernvarme", () => ({
   FjernvarmeService: {
     getDaekning: async () => null,

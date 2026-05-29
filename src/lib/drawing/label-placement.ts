@@ -20,23 +20,18 @@ export type LabelPlacementResult = PlacedLabel & {
 };
 
 const CANDIDATE_OFFSETS: [number, number][] = [
-  [1, 1],   // NØ (foretrukket)
-  [-1, 1],  // NV
-  [1, -1],  // SØ
+  [1, 1], // NØ (foretrukket)
+  [-1, 1], // NV
+  [1, -1], // SØ
   [-1, -1], // SV
-  [0, 1],   // N
-  [1, 0],   // Ø
-  [0, -1],  // S
-  [-1, 0],  // V
+  [0, 1], // N
+  [1, 0], // Ø
+  [0, -1], // S
+  [-1, 0], // V
 ];
 
 function overlaps(a: PlacedLabel, b: PlacedLabel): boolean {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 export function findLabelPosition(input: LabelPlacementInput): LabelPlacementResult {

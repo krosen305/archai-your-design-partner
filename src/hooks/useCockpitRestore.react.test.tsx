@@ -58,6 +58,13 @@ const MINIMAL_PROJECT: PersistedProject = {
     outsideParcelAreaM2: 0,
     source: "user",
   },
+  neighbor_context_facts: {
+    buildingCount40m: 3,
+    nearestBuildingDistanceM: 8.5,
+    nearestRoadCenterlineDistanceM: 12,
+    accessRoadNearby: true,
+    confidence: "covered",
+  },
   updated_at: "2026-05-22T10:00:00Z",
 };
 
@@ -143,6 +150,31 @@ describe("useCockpitRestore", () => {
 
     expect(useProject.getState().byggeoenske.oensketAreal).toBe(60);
     expect(useProject.getState().designPlacement?.rotationDeg).toBe(10);
+  });
+
+  it("restorer GeoDanmark nabofakta ind i consumer read model", async () => {
+    const { useCockpitRestore } = await import("./useCockpitRestore");
+
+    const { result } = renderHook(() =>
+      useCockpitRestore({
+        adresseId: ADRESSE_ID,
+        searchProjectId: undefined,
+        onSnapshotRestored: () => {},
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.restorePhase).toBe("checked");
+    });
+
+    expect(useProject.getState().neighborContextFacts).toEqual({
+      buildingCount40m: 3,
+      nearestBuildingDistanceM: 8.5,
+      nearestRoadCenterlineDistanceM: 12,
+      accessRoadNearby: true,
+      confidence: "covered",
+    });
+    expect(useProject.getState().dataStatus.naboer).toBe("fresh");
   });
 
   it("sætter restorePhase=checked straks hvis adressen allerede matcher", async () => {

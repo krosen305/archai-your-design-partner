@@ -40,24 +40,35 @@ export function renderSvg(model: DrawingModel): string {
     tbLine(tb.address),
     tbLine(tb.matrikel),
     `<line x1="${tx}" y1="${lineY + 2}" x2="${tx + titleBlockW}" y2="${lineY + 2}" stroke="#bbb" stroke-width="0.3"/>`,
-    ...(() => { lineY += 6; return []; })(),
+    ...(() => {
+      lineY += 6;
+      return [];
+    })(),
     ...tb.sourceList.map((s) => tbLine(s, 6)),
     `<line x1="${tx}" y1="${lineY + 2}" x2="${tx + titleBlockW}" y2="${lineY + 2}" stroke="#bbb" stroke-width="0.3"/>`,
-    ...(() => { lineY += 6; return []; })(),
+    ...(() => {
+      lineY += 6;
+      return [];
+    })(),
     ...(tb.bygherre ? [tbLine(`Bygherre: ${tb.bygherre}`, 6)] : []),
     ...(tb.sagNr ? [tbLine(`Sagsnr.: ${tb.sagNr}`, 6)] : []),
     `<line x1="${tx}" y1="${lineY + 2}" x2="${tx + titleBlockW}" y2="${lineY + 2}" stroke="#bbb" stroke-width="0.3"/>`,
-    ...(() => { lineY += 6; return []; })(),
+    ...(() => {
+      lineY += 6;
+      return [];
+    })(),
     tbLine(`Dato: ${tb.date}`, 6),
     tbLine(`Mål: ${tb.scale}  Ark: ${tb.paperSize}`, 6),
     tbLine(`Rev.: ${tb.revision}`, 6),
     ...(tb.disclaimer
-      ? [`<text x="${tx + 5}" y="${lineY + 4}" font-family="Arial" font-size="6" fill="#c00" font-weight="bold">${esc(tb.disclaimer)}</text>`]
+      ? [
+          `<text x="${tx + 5}" y="${lineY + 4}" font-family="Arial" font-size="6" fill="#c00" font-weight="bold">${esc(tb.disclaimer)}</text>`,
+        ]
       : []),
   ].join("\n");
 
   const scaleBarM = model.page.scale === 250 ? 10 : 20;
-  const metersPerMm = model.viewport.metersPerMm ?? (model.page.scale / 1000);
+  const metersPerMm = model.viewport.metersPerMm ?? model.page.scale / 1000;
   const scaleBarPx = (scaleBarM / metersPerMm) * PX_PER_MM;
   const scaleBarSvg = `<g transform="translate(10,${h - 20})">
   <rect x="0" y="0" width="${scaleBarPx / 2}" height="4" fill="#000"/>

@@ -21,7 +21,11 @@ const base = {
 
 describe("classifyDrawingReadiness", () => {
   it("AUTO_DRAFT naar minimal data er til stede", () => {
-    const r = classifyDrawingReadiness({ ...base, hasExistingBuildingGeometry: false, hasDhmKoter: false });
+    const r = classifyDrawingReadiness({
+      ...base,
+      hasExistingBuildingGeometry: false,
+      hasDhmKoter: false,
+    });
     expect(r.status).toBe("AUTO_DRAFT");
   });
 
@@ -31,7 +35,11 @@ describe("classifyDrawingReadiness", () => {
   });
 
   it("SURVEY_REQUIRED naar bygning er for taet paa byggelinje", () => {
-    const r = classifyDrawingReadiness({ ...base, minDistanceToSetbackLineM: 0.2, setbackRequirementM: 2.5 });
+    const r = classifyDrawingReadiness({
+      ...base,
+      minDistanceToSetbackLineM: 0.2,
+      setbackRequirementM: 2.5,
+    });
     expect(r.status).toBe("SURVEY_REQUIRED");
     expect(r.reasons.some((r) => r.code === "BUILDING_TOO_CLOSE_TO_SETBACK")).toBe(true);
   });
@@ -53,7 +61,11 @@ describe("classifyDrawingReadiness", () => {
   });
 
   it("missingDataPoints propageres til resultatet", () => {
-    const r = classifyDrawingReadiness({ ...base, hasParcelPolygon: false, missingDataPoints: ["parcel.polygon25832"] });
+    const r = classifyDrawingReadiness({
+      ...base,
+      hasParcelPolygon: false,
+      missingDataPoints: ["parcel.polygon25832"],
+    });
     expect(r.missingDataPoints).toContain("parcel.polygon25832");
   });
 

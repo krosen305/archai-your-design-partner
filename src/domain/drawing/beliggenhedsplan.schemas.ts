@@ -23,7 +23,12 @@ export const GeoJsonPolygon25832Schema = z.object({
 
 const DataConfidenceSchema = z.enum(["high", "medium", "low", "unknown"]);
 const DataSourceSchema = z.enum([
-  "survey", "registry", "cad_upload", "manual", "generated", "estimated",
+  "survey",
+  "registry",
+  "cad_upload",
+  "manual",
+  "generated",
+  "estimated",
 ]);
 
 const LayerSourceMetaSchema = z.object({
@@ -69,24 +74,31 @@ export const SurveyLayerSchema = z.object({
   surveyDate: z.string().nullable(),
   surveyorName: z.string().nullable(),
   surveyorLicenseNr: z.string().nullable(),
-  terrainPoints: z.array(z.object({
-    x: z.number(), y: z.number(), z: z.number(),
-    label: z.string(), source: DataSourceSchema,
-  })),
+  terrainPoints: z.array(
+    z.object({
+      x: z.number(),
+      y: z.number(),
+      z: z.number(),
+      label: z.string(),
+      source: DataSourceSchema,
+    }),
+  ),
   boundaryPoints: z.array(GeoJsonPoint25832Schema),
   notes: z.array(z.string()),
   source: LayerSourceMetaSchema,
 });
 
 export const ExistingFeaturesLayerSchema = z.object({
-  buildings: z.array(z.object({
-    bbrId: z.string().nullable(),
-    footprint25832: GeoJsonPolygon25832Schema,
-    usageCode: z.string().nullable(),
-    areaM2: z.number(),
-    sokkelKoteM: z.number().nullable(),
-    source: LayerSourceMetaSchema,
-  })),
+  buildings: z.array(
+    z.object({
+      bbrId: z.string().nullable(),
+      footprint25832: GeoJsonPolygon25832Schema,
+      usageCode: z.string().nullable(),
+      areaM2: z.number(),
+      sokkelKoteM: z.number().nullable(),
+      source: LayerSourceMetaSchema,
+    }),
+  ),
   fences: z.array(GeoJsonLineString25832Schema),
   source: LayerSourceMetaSchema,
 });

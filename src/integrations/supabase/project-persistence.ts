@@ -25,6 +25,7 @@ import type { TerrainData } from "@/integrations/sdfi/dhm-client";
 import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { PlanContextResult } from "@/integrations/plandata/client";
+import type { NeighborContextFacts } from "@/domain/contracts/surroundings.types";
 import {
   getUserId,
   getOrCreateProject,
@@ -115,6 +116,7 @@ export type PersistedProject = {
   billedanalyse: Json | null;
   design_hus_dna: Json | null;
   design_placement: Json | null;
+  neighbor_context_facts: NeighborContextFacts | null;
   updated_at: string | null;
 };
 

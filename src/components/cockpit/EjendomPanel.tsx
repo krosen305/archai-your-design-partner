@@ -9,6 +9,7 @@ import {
   XCircle,
   Copy,
   Check,
+  Users,
 } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { buildSaveFieldView, type SaveFieldTone } from "@/lib/compliance-view-model";
@@ -34,6 +35,7 @@ export function EjendomPanel() {
     bebygget_areal_m2,
     is_fredet,
     bfe_nr,
+    neighborContextFacts,
     serviceStates,
   } = useProject();
   const [showFlags, setShowFlags] = useState(false);
@@ -54,6 +56,7 @@ export function EjendomPanel() {
   const currentEtager = complianceMetrics?.currentEtager ?? null;
   const maxEtager = complianceMetrics?.maxEtager ?? null;
   const maxHoejde = complianceMetrics?.maxBygningshoejde ?? null;
+  const neighborState = serviceStates.naboer ?? (neighborContextFacts ? "success" : "not_run");
 
   const blockers = complianceFlags.filter((f) => f.status === "blocker");
 
@@ -207,6 +210,48 @@ export function EjendomPanel() {
         </Card>
       </div>
 
+      {neighborContextFacts && (
+        <>
+          <SectionHeader title="Naboforhold" />
+          <Card>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Users size={14} className="text-muted-foreground" />
+                <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+                  GEODANMARK
+                </div>
+              </div>
+              <StatusBadge state={neighborState} />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field
+                label="Nabobygninger 40 m"
+                value={
+                  neighborContextFacts.buildingCount40m != null
+                    ? `${neighborContextFacts.buildingCount40m}`
+                    : "-"
+                }
+              />
+              <Field
+                label="Naermeste nabobygning"
+                value={formatMeter(neighborContextFacts.nearestBuildingDistanceM)}
+              />
+              <Field
+                label="Naermeste vejmidte"
+                value={formatMeter(neighborContextFacts.nearestRoadCenterlineDistanceM)}
+              />
+              <Field
+                label="Adgangsvej taet paa"
+                value={formatNullableBoolean(neighborContextFacts.accessRoadNearby)}
+              />
+            </div>
+            <div className="mt-3 text-xs text-muted-foreground">
+              Daekning: {formatNeighborConfidence(neighborContextFacts.confidence)}
+            </div>
+          </Card>
+        </>
+      )}
+
       {complianceFlags.length > 0 && (
         <>
           <SectionHeader title="Kendte begrænsninger" />
@@ -315,6 +360,28 @@ export function EjendomPanel() {
               state={serviceStates.bbr ?? (bfe_nr ? "success" : "not_run")}
               data-testid="datarow-bfe"
             />
+            <DataRow
+              label="Nabobygninger 40 m (GeoDanmark)"
+              value={
+                neighborContextFacts?.buildingCount40m != null
+                  ? `${neighborContextFacts.buildingCount40m}`
+                  : "-"
+              }
+              state={neighborState}
+              data-testid="datarow-geodanmark-neighbor-count"
+            />
+            <DataRow
+              label="Naermeste nabobygning (GeoDanmark)"
+              value={formatMeter(neighborContextFacts?.nearestBuildingDistanceM ?? null)}
+              state={neighborState}
+              data-testid="datarow-geodanmark-nearest-building"
+            />
+            <DataRow
+              label="Naermeste vejmidte (GeoDanmark)"
+              value={formatMeter(neighborContextFacts?.nearestRoadCenterlineDistanceM ?? null)}
+              state={neighborState}
+              data-testid="datarow-geodanmark-nearest-road"
+            />
           </div>
         )}
       </Card>
@@ -338,11 +405,49 @@ function formatMio(v: number | null | undefined): string {
   return `${(v / 1_000_000).toFixed(2).replace(".", ",")} mio. kr.`;
 }
 
+function formatMeter(v: number | null | undefined): string {
+  if (v == null) return "-";
+  return `${v.toLocaleString("da-DK", { maximumFractionDigits: v < 10 ? 1 : 0 })} m`;
+}
+
+function formatNullableBoolean(v: boolean | null | undefined): string {
+  if (v == null) return "-";
+  return v ? "Ja" : "Nej";
+}
+
+function formatNeighborConfidence(v: "covered" | "source_unavailable" | "unknown" | null): string {
+  if (v === "covered") return "Daekket";
+  if (v === "source_unavailable") return "Kilde utilgaengelig";
+  return "Ukendt";
+}
+
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
       {title.toUpperCase()}
     </div>
+  );
+}
+
+function StatusBadge({ state }: { state: PipelineServiceState }) {
+  const badgeStyle: Record<PipelineServiceState, string> = {
+    success: "text-emerald-400 border-emerald-500/40",
+    cache_hit: "text-sky-400 border-sky-500/40",
+    mock_cache_hit: "text-yellow-400 border-yellow-500/40",
+    no_hit: "text-yellow-400 border-yellow-500/40",
+    mock: "text-yellow-400 border-yellow-500/40",
+    error: "text-danger border-danger/40",
+    skipped: "text-muted-foreground border-border",
+    not_run: "text-muted-foreground border-border",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em] ${badgeStyle[state]}`}
+      title={state}
+    >
+      {PIPELINE_SERVICE_STATE_LABELS[state].toUpperCase()}
+    </span>
   );
 }
 

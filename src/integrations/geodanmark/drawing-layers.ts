@@ -12,12 +12,16 @@ import {
   ExistingFeaturesLayerSchema,
 } from "@/domain/drawing/beliggenhedsplan.schemas";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
-import {
-  splitPolygonIntoBoundarySegments,
-  polygonAreaM2,
-} from "@/domain/drawing/geometry-engine";
+import { splitPolygonIntoBoundarySegments, polygonAreaM2 } from "@/domain/drawing/geometry-engine";
 import { fetchParcelGeometryByJordstykkeId } from "@/lib/map-proxy";
 import type * as GeoJSON from "geojson";
+
+export function roadNameFromDarAddressLabel(addressLabel: string): string | null {
+  const streetAndNumber = addressLabel.split(",")[0]?.trim() ?? "";
+  if (!streetAndNumber) return null;
+  const roadName = streetAndNumber.replace(/\s+\d+[A-Za-z]?(?:[-/]\d+[A-Za-z]?)?\s*$/u, "").trim();
+  return roadName || null;
+}
 
 export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort {
   async fetchParcelLayers(matrikelId: string): Promise<ParcelLayer | null> {
@@ -78,8 +82,7 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     const result = await GeoDanmarkNeighborService.getNeighborContext(null, bbox25832, null);
 
     const now = new Date().toISOString();
-    const confidence =
-      result.data?.coverage === "covered" && !result.isMock ? "medium" : "low";
+    const confidence = result.data?.coverage === "covered" && !result.isMock ? "medium" : "low";
 
     const perBuildingSource = {
       source: "registry" as const,
@@ -127,9 +130,11 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     });
   }
 
-  async fetchRoadGeometry(
-    _addressId: string,
-  ): Promise<{ centerline25832: import("@/domain/drawing/beliggenhedsplan.types").GeoJsonLineString25832 | null }> {
+  async fetchRoadGeometry(_addressId: string): Promise<{
+    centerline25832:
+      | import("@/domain/drawing/beliggenhedsplan.types").GeoJsonLineString25832
+      | null;
+  }> {
     return { centerline25832: null };
   }
 
@@ -155,10 +160,18 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
         const geom = p.geometry;
         const polygon25832: GeoJsonPolygon25832 | null =
           geom?.type === "Polygon"
-            ? { type: "Polygon", coordinates: geom.coordinates as [number, number][][], crs: "EPSG:25832" }
+            ? {
+                type: "Polygon",
+                coordinates: geom.coordinates as [number, number][][],
+                crs: "EPSG:25832",
+              }
             : geom?.type === "MultiPolygon"
-            ? { type: "Polygon", coordinates: (geom.coordinates as [number, number][][][])[0] ?? [], crs: "EPSG:25832" }
-            : null;
+              ? {
+                  type: "Polygon",
+                  coordinates: (geom.coordinates as [number, number][][][])[0] ?? [],
+                  crs: "EPSG:25832",
+                }
+              : null;
 
         const coords = polygon25832?.coordinates[0] ?? [];
         const cx = coords.length > 0 ? coords.reduce((s, c) => s + c[0], 0) / coords.length : 0;
@@ -167,21 +180,22 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
         return {
           matrikelnummer: p.matrikelnummer!,
           polygon25832,
-          labelPoint25832: { type: "Point" as const, crs: "EPSG:25832" as const, coordinates: [cx, cy] as [number, number] },
+          labelPoint25832: {
+            type: "Point" as const,
+            crs: "EPSG:25832" as const,
+            coordinates: [cx, cy] as [number, number],
+          },
         };
       });
   }
 
   async fetchRoadName(addressId: string): Promise<{ name: string | null }> {
     try {
-      const url = `https://api.dataforsyningen.dk/adresser/${encodeURIComponent(addressId)}?format=json&noformat=1`;
-      const res = await fetch(url);
-      if (!res.ok) return { name: null };
-      const data = (await res.json()) as Record<string, unknown>;
-      const vejstykke = (data["adgangsadresse"] as Record<string, unknown> | undefined)
-        ?.["vejstykke"] as Record<string, unknown> | undefined;
-      const name = (vejstykke?.["adresseringsnavn"] as string | undefined) ?? null;
-      return { name };
+      const { DarService } = await import("@/integrations/dar/client");
+      const details = await DarService.getAddressDetails(addressId, {
+        skipKoordinaterOgPostnummer: true,
+      });
+      return { name: roadNameFromDarAddressLabel(details.adresse) };
     } catch {
       return { name: null };
     }

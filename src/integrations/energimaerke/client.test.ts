@@ -7,7 +7,9 @@ mock.module("@/lib/env", () => ({
     if (key === "EMODATA_PASSWORD") return "test-pass";
     return undefined;
   },
-  getEnvRequired: (key: string) => { throw new Error(`Missing: ${key}`); },
+  getEnvRequired: (key: string) => {
+    throw new Error(`Missing: ${key}`);
+  },
   validateEnv: () => {},
 }));
 
@@ -55,11 +57,12 @@ describe("EnergyLabelService.getLabel", () => {
   });
 
   it("returns confirmed ok result with valid label", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response(VALID_SOAP_RESPONSE, {
-        status: 200,
-        headers: { "Content-Type": "text/xml" },
-      }),
+    globalThis.fetch = mock(
+      async () =>
+        new Response(VALID_SOAP_RESPONSE, {
+          status: 200,
+          headers: { "Content-Type": "text/xml" },
+        }),
     ) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("building-uuid-123");
@@ -73,11 +76,12 @@ describe("EnergyLabelService.getLabel", () => {
   });
 
   it("marks er_udloebet=true for expired label", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response(EXPIRED_SOAP_RESPONSE, {
-        status: 200,
-        headers: { "Content-Type": "text/xml" },
-      }),
+    globalThis.fetch = mock(
+      async () =>
+        new Response(EXPIRED_SOAP_RESPONSE, {
+          status: 200,
+          headers: { "Content-Type": "text/xml" },
+        }),
     ) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("building-uuid-456");
@@ -88,11 +92,12 @@ describe("EnergyLabelService.getLabel", () => {
   });
 
   it("returns ok with no_hit on SOAP Fault", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response(NO_HIT_SOAP_RESPONSE, {
-        status: 500,
-        headers: { "Content-Type": "text/xml" },
-      }),
+    globalThis.fetch = mock(
+      async () =>
+        new Response(NO_HIT_SOAP_RESPONSE, {
+          status: 500,
+          headers: { "Content-Type": "text/xml" },
+        }),
     ) as unknown as typeof fetch;
 
     const result = await EnergyLabelService.getLabel("unknown-building");
@@ -121,12 +126,13 @@ describe("EnergyLabelService.getLabel without credentials", () => {
     // Re-mock env with no credentials
     mock.module("@/lib/env", () => ({
       getEnvOptional: () => undefined,
-      getEnvRequired: (key: string) => { throw new Error(`Missing: ${key}`); },
+      getEnvRequired: (key: string) => {
+        throw new Error(`Missing: ${key}`);
+      },
       validateEnv: () => {},
     }));
-    const { EnergyLabelService: ServiceNoAuth } = await import(
-      "@/integrations/energimaerke/client"
-    );
+    const { EnergyLabelService: ServiceNoAuth } =
+      await import("@/integrations/energimaerke/client");
 
     const result = await ServiceNoAuth.getLabel("any-uuid");
 

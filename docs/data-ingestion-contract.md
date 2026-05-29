@@ -148,7 +148,7 @@ Each P0/P1 ARCH issue adds its own typed columns to `site_constraints`. Do not a
 
 Planned column groups:
 
-- **ARCH-240 (MAT geometry + GeoDanmark)**: `matGeometri` in `ComplianceResult` — `MatParcelGeometryPayload` (area, centroid, bbox, featureCount, hasCanonicalPolygon). Cached via `address_source_results` source_kind `"mat_geometry"` and `"geodanmark_nabo"` (90-day TTL). No new `site_constraints` columns — geometry data is screening context, not Hard Stop input.
+- **ARCH-240 (MAT geometry + GeoDanmark)**: `matGeometri` in `ComplianceResult` — `MatParcelGeometryPayload` (area, centroid, bbox, featureCount, hasCanonicalPolygon). Raw MAT/GeoDanmark geometry is cached via `address_source_results` source_kind `"mat_geometry"` and `"geodanmark_nabo"` (90-day TTL). GeoDanmark error results are not cached; a transient Datafordeler failure must degrade the current run without poisoning the 90-day cache. GeoDanmark derived neighbor summary values are written to the existing ARCH-240/omgivelser typed `site_constraints` columns when the source result is live and non-mock. Raw geometry remains screening context and is not a Hard Stop input.
 - **ARCH-241 (DK-Jord)**: `jordforurening_v1`, `jordforurening_v2`, `olietank_eksisterer`, `omraadeklassificering`, `jordforurening_nuancering`
 - **ARCH-242 (GEUS/HIP)**: `grundvand_depth_winter_m`, `grundvand_depth_summer_m`, `grundvand_model_uncertainty_m`, `geoteknik_jordart`
 - **ARCH-243 (DHM)**: `terrain_slope_pct`, `terrain_low_point_m`, `bluespot_risk`

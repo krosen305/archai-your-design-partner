@@ -37,19 +37,15 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: ExportInput) => ExportBeliggenhedsplanInputSchema.parse(data))
   .handler(async ({ data }) => {
-    const { assembleBeliggenhedsplan } = await import(
-      "@/services/drawing/assemble-beliggenhedsplan.service"
-    );
+    const { assembleBeliggenhedsplan } =
+      await import("@/services/drawing/assemble-beliggenhedsplan.service");
     const { exportDrawing } = await import("@/services/drawing/export-drawing.service");
-    const { GeoDanmarkDrawingLayersAdapter } = await import(
-      "@/integrations/geodanmark/drawing-layers"
-    );
-    const { DrawingRepository } = await import(
-      "@/integrations/supabase/repositories/drawing.repository"
-    );
-    const { decodeGeoJsonFootprint } = await import(
-      "@/integrations/import/geojson-footprint-decoder"
-    );
+    const { GeoDanmarkDrawingLayersAdapter } =
+      await import("@/integrations/geodanmark/drawing-layers");
+    const { DrawingRepository } =
+      await import("@/integrations/supabase/repositories/drawing.repository");
+    const { decodeGeoJsonFootprint } =
+      await import("@/integrations/import/geojson-footprint-decoder");
 
     // Brug footprint fra UI hvis tilgængeligt; ellers fallback til 10×10m placeholder.
     // Footprint fra kortediteren er EPSG:25832 (se MatrikelMap.tsx + buildSquareFootprint25832).
@@ -61,7 +57,13 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
         type: "Polygon",
         crs: "EPSG:25832",
         coordinates: [
-          [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]],
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 10],
+            [0, 0],
+          ],
         ],
       };
     }

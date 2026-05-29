@@ -69,6 +69,16 @@ export const neighborBuildingDataSchema = z
   })
   .passthrough();
 
+export const neighborContextFactsSchema = z
+  .object({
+    buildingCount40m: z.number().int().nonnegative().nullable(),
+    nearestBuildingDistanceM: z.number().nonnegative().nullable(),
+    nearestRoadCenterlineDistanceM: z.number().nonnegative().nullable(),
+    accessRoadNearby: z.boolean().nullable(),
+    confidence: z.enum(["covered", "source_unavailable", "unknown"]).nullable(),
+  })
+  .strict();
+
 export const matParcelGeometryPayloadSchema = z
   .object({
     polygonAreaM2: z.number().nullable(),
@@ -526,6 +536,7 @@ export const persistedProjectSchema = z.object({
   billedanalyse: billedeAnalyseResultatSchema.nullable(),
   design_hus_dna: husDnaSchema.nullable(),
   design_placement: designPlacementSchema.nullable(),
+  neighbor_context_facts: neighborContextFactsSchema.nullable(),
   updated_at: z.string().nullable(),
 });
 

@@ -1,6 +1,22 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, mock } from "bun:test";
 import type { NeighborContext } from "@/domain/contracts/surroundings.types";
 import type { SourceResult } from "@/lib/source-result";
+
+mock.module("@/lib/feature-flags", () => ({
+  FEATURE_FLAGS: {
+    tinglysningMock: true,
+    pdfExtractorMock: false,
+    husDnaMock: false,
+    byggeanalyseMock: false,
+    fjernvarmeMock: false,
+    billedanalyseMock: false,
+    geodanmarkMock: true,
+    plandataSurroundingsMock: false,
+    matNeighborParcelsMock: false,
+    geusMock: false,
+    dhmMock: false,
+  },
+}));
 
 describe("GeoDanmarkNeighborService (mock)", () => {
   it("returnerer SourceResult<NeighborContext> med mock data", async () => {

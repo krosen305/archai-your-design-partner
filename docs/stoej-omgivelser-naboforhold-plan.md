@@ -182,7 +182,7 @@ Persistence:
 
 - Rå `SourceResult<NoiseScreeningResult>` gemmes i `address_source_results` med
   `source_kind = "mst_noise"`.
-- Typed summary columns bør tilføjes til `site_constraints`:
+- Typed summary columns findes i `site_constraints` og synkroniseres for live non-mock GeoDanmark-resultater:
   - `noise_road_lden_db`
   - `noise_road_lnight_db`
   - `noise_rail_lden_db`

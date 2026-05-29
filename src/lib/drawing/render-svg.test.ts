@@ -62,9 +62,14 @@ describe("renderSvg", () => {
       features: [
         ...model.features,
         {
-          id: "br18-1", kind: "setback_lines",
-          svgElement: '<polygon points="10,10 90,10 90,60 10,60" fill="none" stroke="red" stroke-width="0.5"/>',
-          label: "Byggelinje 2,5 m fra skel", labelX: 50, labelY: 10, zIndex: 20,
+          id: "br18-1",
+          kind: "setback_lines",
+          svgElement:
+            '<polygon points="10,10 90,10 90,60 10,60" fill="none" stroke="red" stroke-width="0.5"/>',
+          label: "Byggelinje 2,5 m fra skel",
+          labelX: 50,
+          labelY: 10,
+          zIndex: 20,
         },
       ],
     };

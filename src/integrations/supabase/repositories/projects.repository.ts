@@ -11,6 +11,7 @@ import {
   existingProjectSnapshotSchema,
   persistedProjectSchema,
 } from "@/types/project-restore.schemas";
+import { getNeighborContextFacts } from "@/integrations/supabase/repositories/site-constraints.repository";
 
 type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
 
@@ -173,13 +174,17 @@ export async function loadProject(
   }
   if (!data) return null;
 
-  const activeDesign = await loadActiveDesignIterationSnapshot(data.id);
+  const [activeDesign, neighborContextFacts] = await Promise.all([
+    loadActiveDesignIterationSnapshot(data.id),
+    data.address_adresseid ? getNeighborContextFacts(data.address_adresseid) : null,
+  ]);
   const rowWithDesignFallback = {
     ...data,
     design_byggeoenske: activeDesign?.design_byggeoenske ?? null,
     design_hus_dna: activeDesign?.design_hus_dna ?? null,
     design_placement: activeDesign?.design_placement ?? null,
     budget_estimate: activeDesign?.budget_estimate ?? data.budget_estimate,
+    neighbor_context_facts: neighborContextFacts,
   };
 
   const parsed = persistedProjectSchema.safeParse(rowWithDesignFallback);
@@ -205,6 +210,7 @@ export async function loadProject(
     billedanalyse: toJsonValue(parsed.data.billedanalyse) ?? null,
     design_hus_dna: toJsonValue(parsed.data.design_hus_dna) ?? null,
     design_placement: toJsonValue(parsed.data.design_placement) ?? null,
+    neighbor_context_facts: parsed.data.neighbor_context_facts,
   };
 }
 

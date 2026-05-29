@@ -63,9 +63,7 @@ function buildBr18Constraint(parcelPolygon: GeoJsonPolygon25832): ConstraintLaye
   };
 }
 
-export async function assembleBeliggenhedsplan(
-  input: AssembleInput,
-): Promise<AssembleResult> {
+export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<AssembleResult> {
   const {
     matrikelId,
     kommunekode,
@@ -185,7 +183,7 @@ export async function assembleBeliggenhedsplan(
     missingDataPoints: [],
     hasRoadCenterlineGeometry: true,
     hasCenterlineDeklaration,
-    hasSurveyorAttestation: !!(survey?.surveyorName),
+    hasSurveyorAttestation: !!survey?.surveyorName,
   });
 
   return { plan, readiness };

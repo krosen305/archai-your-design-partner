@@ -145,8 +145,16 @@ export type ConstraintLayer = {
 };
 
 export type UtilityLayer = {
-  type: "water" | "sewer" | "electric" | "gas" | "rainwater" | "wastewater"
-    | "inspection_well" | "sand_trap" | "rat_barrier";
+  type:
+    | "water"
+    | "sewer"
+    | "electric"
+    | "gas"
+    | "rainwater"
+    | "wastewater"
+    | "inspection_well"
+    | "sand_trap"
+    | "rat_barrier";
   geometry25832: GeoJsonPoint25832 | GeoJsonLineString25832;
   label: string;
   dkKoteM: number | null;

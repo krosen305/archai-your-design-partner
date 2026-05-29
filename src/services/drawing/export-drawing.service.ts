@@ -1,7 +1,10 @@
 // src/services/drawing/export-drawing.service.ts
 import type { BeliggenhedsplanInput } from "@/domain/drawing/beliggenhedsplan.types";
 import type { DrawingExportStorePort } from "@/domain/drawing/ports";
-import type { DrawingReadinessDecision, DrawingReadinessStatus } from "@/domain/drawing/decision-engine";
+import type {
+  DrawingReadinessDecision,
+  DrawingReadinessStatus,
+} from "@/domain/drawing/decision-engine";
 import { renderSvg } from "@/lib/drawing/render-svg";
 import { renderPdf } from "@/lib/drawing/render-pdf";
 import { buildDrawingModel } from "@/lib/drawing/drawing-model-builder";
@@ -67,5 +70,13 @@ export async function exportDrawing(input: ExportInput): Promise<ExportResult> {
     inputHash,
   });
 
-  return { exportId, svgPath, svgContent: svg, pdfPath, pdfUrl, readinessStatus: readiness.status, blockedFromPdf };
+  return {
+    exportId,
+    svgPath,
+    svgContent: svg,
+    pdfPath,
+    pdfUrl,
+    readinessStatus: readiness.status,
+    blockedFromPdf,
+  };
 }

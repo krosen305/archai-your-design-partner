@@ -450,30 +450,37 @@ export async function runGeoRiskStep(
           fallbackBboxRaw.maxX,
           fallbackBboxRaw.maxY,
         ];
-        return import("@/integrations/geodanmark/client")
-          .then(({ GeoDanmarkNaboService }) =>
+        return import("@/lib/geodanmark-neighbor-context.server")
+          .then(({ handleGeoDanmarkNeighborAnalysis }) =>
             traceStep(
               trace,
               {
                 eventType: "api_call",
                 phase: "layer4",
-                service: "GeoDanmark WFS",
-                operation: "getNabobygninger",
-                inputSummary: `hasParcelBbox=${!!matGeometri?.bbox25832}`,
+                service: "GeoDanmark GraphQL",
+                operation: "handleGeoDanmarkNeighborAnalysis",
+                inputSummary: `hasParcelBbox=${!!matGeometri?.bbox25832} ownBbrUuids=${bygningIds.length}`,
               },
               () =>
-                GeoDanmarkNaboService.getNabobygninger(
-                  matGeometri?.bbox25832 ?? null,
-                  fallbackBbox,
-                  jordstykkeId,
+                handleGeoDanmarkNeighborAnalysis(
+                  {
+                    addressId,
+                    parcelBbox25832: matGeometri?.bbox25832 ?? null,
+                    addressBbox25832: fallbackBbox,
+                    ownJordstykkeId: jordstykkeId,
+                    ownBbrUuids: bygningIds,
+                  },
+                  { trace },
                 ),
               {
                 outputSummary: (r) =>
-                  summarizeSourceResult(r, (d) => `count=${d.count} kilde=${d.kilde}`),
+                  summarizeSourceResult(r.legacyResult, (d) => `count=${d.count} kilde=${d.kilde}`),
                 metadata: (r) => ({
-                  source: r.kilde,
-                  isMock: r.isMock,
-                  feature_count: r.rawFeatureCount,
+                  source: r.legacyResult.kilde,
+                  isMock: r.legacyResult.isMock,
+                  feature_count: r.legacyResult.rawFeatureCount,
+                  cache_hit: r.cacheHit,
+                  site_constraints_sync: r.siteConstraintsPatch !== null,
                 }),
               },
             ),
@@ -677,8 +684,8 @@ export async function runGeoRiskStep(
     states.geusRisk = deriveSourceState(geus?.result ?? null, geus?.cacheHit ?? false);
     terrain = terr?.result.data ?? null;
     states.terrain = deriveSourceState(terr?.result ?? null, terr?.cacheHit ?? false);
-    naboer = nabo?.data ?? null;
-    states.naboer = deriveSourceState(nabo);
+    naboer = nabo?.legacyResult.data ?? null;
+    states.naboer = deriveSourceState(nabo?.legacyResult ?? null, nabo?.cacheHit ?? false);
     fjernvarme = varme;
     plandataContext = plandataExt?.result.data ?? null;
     arealdataContext = arealdataExt?.result.data ?? null;

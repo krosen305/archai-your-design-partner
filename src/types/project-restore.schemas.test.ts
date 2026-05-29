@@ -31,6 +31,7 @@ describe("persistedProjectSchema", () => {
       billedanalyse: null,
       design_hus_dna: null,
       design_placement: null,
+      neighbor_context_facts: null,
       updated_at: "2026-05-22T10:00:00.000Z",
     });
 
@@ -77,6 +78,7 @@ describe("persistedProjectSchema", () => {
       billedanalyse: null,
       design_hus_dna: null,
       design_placement: null,
+      neighbor_context_facts: null,
       updated_at: null,
     });
 

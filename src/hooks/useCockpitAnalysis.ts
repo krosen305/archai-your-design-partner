@@ -7,6 +7,7 @@ import { syncPatch } from "@/lib/project-sync";
 import { calculateComplianceMetrics } from "@/lib/compliance-engine";
 import { fetchCompliance, runByggeanalyse } from "@/lib/cockpit.functions";
 import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
+import { neighborContextFactsFromNeighborData } from "@/lib/neighbor-context-facts";
 import { logger } from "@/lib/logger";
 import type { FjernvarmeResultat, NeighborBuildingData } from "@/domain/contracts/analysis.types";
 import type {
@@ -85,6 +86,7 @@ export function useCockpitAnalysis(params: {
     setBebyggetAreal,
     setHardStop,
     setBfeNr,
+    setNeighborContextFacts,
   } = useProject();
 
   const [status, setStatus] = useState<Status>(
@@ -237,6 +239,11 @@ export function useCockpitAnalysis(params: {
           setGrundareal(result.bbr?.grundareal ?? null);
           setBebyggetAreal(result.bbr?.bebygget_areal ?? null);
           setBfeNr(result.vurderingData?.bfeNr ?? null);
+          const neighborFacts = neighborContextFactsFromNeighborData(
+            result.naboer,
+            result.serviceStates?.naboer ?? null,
+          );
+          setNeighborContextFacts(neighborFacts);
           const { hardStop, hardStopReason } = evaluateHardStop({
             saveValue: saveVal,
             isFredet: isFredetVal,
@@ -302,7 +309,7 @@ export function useCockpitAnalysis(params: {
             servitutter: result.servitutter ? "fresh" : "missing",
             terrain: result.terrain ? "fresh" : "missing",
             fjernvarme: result.fjernvarme ? "fresh" : "missing",
-            naboer: result.naboer ? "fresh" : "missing",
+            naboer: neighborFacts ? "fresh" : "missing",
             vurdering: result.vurderingData ? "fresh" : "missing",
           });
           setStatus("done");
@@ -338,6 +345,13 @@ export function useCockpitAnalysis(params: {
     setPhase,
     setVurderingData,
     setSnapshotPatch,
+    setBebyggetAreal,
+    setBfeNr,
+    setGrundareal,
+    setHardStop,
+    setHeritageSaveValue,
+    setIsFredet,
+    setNeighborContextFacts,
   ]);
 
   return {

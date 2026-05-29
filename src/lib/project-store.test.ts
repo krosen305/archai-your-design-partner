@@ -89,6 +89,27 @@ describe("project-store budget_estimate", () => {
   });
 });
 
+describe("project-store neighborContextFacts", () => {
+  it("starter som null", () => {
+    expect(useProject.getState().neighborContextFacts).toBeNull();
+  });
+
+  it("saettes og nulstilles korrekt", () => {
+    useProject.getState().setNeighborContextFacts({
+      buildingCount40m: 2,
+      nearestBuildingDistanceM: 4.5,
+      nearestRoadCenterlineDistanceM: 9,
+      accessRoadNearby: true,
+      confidence: "covered",
+    });
+
+    expect(useProject.getState().neighborContextFacts?.buildingCount40m).toBe(2);
+
+    useProject.getState().reset();
+    expect(useProject.getState().neighborContextFacts).toBeNull();
+  });
+});
+
 describe("project selection - ARCH-147", () => {
   it("reset() clears address so a subsequent restore can load the correct project", () => {
     const { setAddress, setCurrentProjectId, reset } = useProject.getState();

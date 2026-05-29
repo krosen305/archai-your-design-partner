@@ -17,6 +17,14 @@ export type NeighborBuilding = {
 
 export type NeighborCoverage = "covered" | "source_unavailable" | "unknown";
 
+export type NeighborContextFacts = {
+  buildingCount40m: number | null;
+  nearestBuildingDistanceM: number | null;
+  nearestRoadCenterlineDistanceM: number | null;
+  accessRoadNearby: boolean | null;
+  confidence: NeighborCoverage | null;
+};
+
 export type NeighborContext = {
   count40m: number;
   nearestDistanceM: number | null;

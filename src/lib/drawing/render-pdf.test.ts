@@ -10,7 +10,8 @@ function makeMinimalModel(): DrawingModel {
       {
         id: "parcel",
         kind: "parcel_boundary",
-        svgElement: '<polygon points="10,10 110,10 110,110 10,110" fill="none" stroke="#000" stroke-width="1.5"/>',
+        svgElement:
+          '<polygon points="10,10 110,10 110,110 10,110" fill="none" stroke="#000" stroke-width="1.5"/>',
         label: "1a",
         labelX: 60,
         labelY: 60,
@@ -54,7 +55,8 @@ describe("renderPdf", () => {
     model.features.push({
       id: "label-1",
       kind: "labels",
-      svgElement: '<text x="60" y="60" font-family="Arial" font-size="7" fill="#000">Testvej 1</text>',
+      svgElement:
+        '<text x="60" y="60" font-family="Arial" font-size="7" fill="#000">Testvej 1</text>',
       label: "Testvej 1",
       labelX: 60,
       labelY: 60,
