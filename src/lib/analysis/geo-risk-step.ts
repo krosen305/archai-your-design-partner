@@ -195,8 +195,9 @@ export async function runGeoRiskStep(
       status: "skipped",
       metadata: { reason: "bbr_hard_stop" },
     });
+    let naturSkipResult: SourceResult<RuleEngineNaturbeskyttelsesResultat> | null = null;
     if (koordinater) {
-      naturbeskyttelse = await import("@/integrations/sdfi/naturbeskyttelse")
+      naturSkipResult = await import("@/integrations/sdfi/naturbeskyttelse")
         .then(({ NaturbeskyttelseService }) =>
           traceStep(
             trace,
@@ -207,13 +208,22 @@ export async function runGeoRiskStep(
               operation: "naturbeskyttelse.getTilstand",
             },
             () => NaturbeskyttelseService.getTilstand(koordinater),
+            {
+              outputSummary: (r) =>
+                summarizeSourceResult(
+                  r,
+                  (d) =>
+                    `strand=${d.strandbeskyttelse} skov=${d.skovbyggelinje} soe=${d.soebeskyttelse}`,
+                ),
+            },
           ),
         )
         .catch(() => null);
+      naturbeskyttelse = naturSkipResult?.data ?? null;
     }
 
     states.fbb = fbbData ? "success" : "no_hit";
-    states.naturbeskyttelse = naturbeskyttelse ? "success" : "no_hit";
+    states.naturbeskyttelse = deriveSourceState(naturSkipResult);
     states.arealdata = "skipped";
     states.geusRisk = "skipped";
     states.terrain = "skipped";
@@ -250,6 +260,15 @@ export async function runGeoRiskStep(
               operation: "naturbeskyttelse.getTilstand",
             },
             () => NaturbeskyttelseService.getTilstand(koordinater),
+            {
+              outputSummary: (r) =>
+                summarizeSourceResult(
+                  r,
+                  (d) =>
+                    `strand=${d.strandbeskyttelse} skov=${d.skovbyggelinje} soe=${d.soebeskyttelse}`,
+                ),
+              metadata: (r) => ({ source: r.kilde, feature_count: r.rawFeatureCount }),
+            },
           ),
         )
         .catch((e: Error) => {
@@ -617,7 +636,8 @@ export async function runGeoRiskStep(
         }),
     ]);
 
-    naturbeskyttelse = natur;
+    naturbeskyttelse = natur?.data ?? null;
+    states.naturbeskyttelse = deriveSourceState(natur);
     dkjord = jord?.data ?? null;
     states.dkjord = deriveSourceState(jord);
     geusRisk = geus?.result.data ?? null;
@@ -637,7 +657,7 @@ export async function runGeoRiskStep(
 
   // Set all remaining service states.
   states.fbb = fbbData ? "success" : "no_hit";
-  states.naturbeskyttelse = naturbeskyttelse ? "success" : "no_hit";
+  // states.naturbeskyttelse er allerede sat fra deriveSourceState(natur) i parallel-blokken.
   // geus and terrain are IS_MOCK=true services.
   // servitutter is IS_MOCK=true (TingbogenV2 — feature flag).
   states.servitutter = "mock";

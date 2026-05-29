@@ -85,7 +85,18 @@ mock.module("@/integrations/cache/client", () => ({
 
 mock.module("@/integrations/sdfi/naturbeskyttelse", () => ({
   NaturbeskyttelseService: {
-    getTilstand: async () => null,
+    getTilstand: async () =>
+      makeOkResult(
+        {
+          strandbeskyttelse: false,
+          skovbyggelinje: false,
+          soebeskyttelse: false,
+          aabeskyttelse: false,
+          klitfredning: false,
+          kirkebyggelinje: false,
+        },
+        { kilde: "naturbeskyttelse", sourceUrl: "mock://naturbeskyttelse", rawFeatureCount: 0 },
+      ),
   },
 }));
 

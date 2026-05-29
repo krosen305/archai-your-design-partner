@@ -15,9 +15,10 @@
 // OBS: strandbeskyttelse + klitfredning dækkes OGSÅ af MAT_Jordstykke (live).
 // DAI WFS er den spatiale kilde; MAT er den registrerede kilde — komplementære checks.
 
-const IS_MOCK = false;
+import { makeErrorResult, makeOkResult, type SourceResult } from "@/lib/source-result";
 
 const DAI_WFS = "https://arealinformation.miljoeportal.dk/gis/services/DAIdb/MapServer/WFSServer";
+const SOURCE_URL = `${DAI_WFS}?service=WFS&typenames=dmp:STRANDBESKYTTELSESLINJE,SKOVBYGGELINJE,SOEBESKYTTELSESLINJE,AABESKYTTELSESLINJE,KLITFREDNING`;
 
 export type NaturbeskyttelsesResultat = {
   strandbeskyttelse: boolean;
@@ -30,7 +31,17 @@ export type NaturbeskyttelsesResultat = {
 
 type Koordinat = { lat: number; lng: number };
 
-async function erIndenforLag(typename: string, koordinat: Koordinat): Promise<boolean> {
+type LayerKey = Exclude<keyof NaturbeskyttelsesResultat, "kirkebyggelinje">;
+
+const LAYERS: ReadonlyArray<{ typename: string; key: LayerKey }> = [
+  { typename: "dmp:STRANDBESKYTTELSESLINJE", key: "strandbeskyttelse" },
+  { typename: "dmp:SKOVBYGGELINJE", key: "skovbyggelinje" },
+  { typename: "dmp:SOEBESKYTTELSESLINJE", key: "soebeskyttelse" },
+  { typename: "dmp:AABESKYTTELSESLINJE", key: "aabeskyttelse" },
+  { typename: "dmp:KLITFREDNING", key: "klitfredning" },
+];
+
+async function erIndenforLag(typename: string, koordinat: Koordinat): Promise<number> {
   const { lat, lng } = koordinat;
   const filter = encodeURIComponent(`INTERSECTS(Shape,SRID=4326;POINT(${lng} ${lat}))`);
   const url =
@@ -49,14 +60,36 @@ async function erIndenforLag(typename: string, koordinat: Koordinat): Promise<bo
   }
 
   const data = (await res.json()) as { totalFeatures?: number; features?: unknown[] };
-  return (data.totalFeatures ?? data.features?.length ?? 0) > 0;
+  return data.totalFeatures ?? data.features?.length ?? 0;
 }
 
+type LayerOutcome = { key: LayerKey; value: boolean; featureCount: number; errored: boolean };
+
 export class NaturbeskyttelseService {
-  static async getTilstand(koordinat: Koordinat): Promise<NaturbeskyttelsesResultat> {
-    if (IS_MOCK) {
-      // Typisk resultat for urban adresse (fx Hasselvej 48, Skovlunde)
-      return {
+  static async getTilstand(koordinat: Koordinat): Promise<SourceResult<NaturbeskyttelsesResultat>> {
+    try {
+      const outcomes = await Promise.all(
+        LAYERS.map(async (layer): Promise<LayerOutcome> => {
+          try {
+            const count = await erIndenforLag(layer.typename, koordinat);
+            return { key: layer.key, value: count > 0, featureCount: count, errored: false };
+          } catch {
+            // Per-lag fejl mappes til false for at bevare downstream-kontrakten,
+            // men confidence sættes til "unknown" hvis nogen lag fejlede.
+            return { key: layer.key, value: false, featureCount: 0, errored: true };
+          }
+        }),
+      );
+
+      const successCount = outcomes.filter((o) => !o.errored).length;
+      if (successCount === 0) {
+        return makeErrorResult<NaturbeskyttelsesResultat>(
+          new Error("DAI Naturbeskyttelse: alle lag fejlede"),
+          { kilde: "naturbeskyttelse", sourceUrl: SOURCE_URL },
+        );
+      }
+
+      const result: NaturbeskyttelsesResultat = {
         strandbeskyttelse: false,
         skovbyggelinje: false,
         soebeskyttelse: false,
@@ -64,24 +97,24 @@ export class NaturbeskyttelseService {
         klitfredning: false,
         kirkebyggelinje: false,
       };
+      let totalFeatureCount = 0;
+      for (const outcome of outcomes) {
+        result[outcome.key] = outcome.value;
+        totalFeatureCount += outcome.featureCount;
+      }
+
+      const someErrored = outcomes.some((o) => o.errored);
+      return makeOkResult(result, {
+        kilde: "naturbeskyttelse",
+        sourceUrl: SOURCE_URL,
+        rawFeatureCount: totalFeatureCount,
+        confidence: someErrored ? "unknown" : "confirmed",
+      });
+    } catch (error) {
+      return makeErrorResult<NaturbeskyttelsesResultat>(error, {
+        kilde: "naturbeskyttelse",
+        sourceUrl: SOURCE_URL,
+      });
     }
-
-    const [strandbeskyttelse, skovbyggelinje, soebeskyttelse, aabeskyttelse, klitfredning] =
-      await Promise.all([
-        erIndenforLag("dmp:STRANDBESKYTTELSESLINJE", koordinat).catch(() => false),
-        erIndenforLag("dmp:SKOVBYGGELINJE", koordinat).catch(() => false),
-        erIndenforLag("dmp:SOEBESKYTTELSESLINJE", koordinat).catch(() => false),
-        erIndenforLag("dmp:AABESKYTTELSESLINJE", koordinat).catch(() => false),
-        erIndenforLag("dmp:KLITFREDNING", koordinat).catch(() => false),
-      ]);
-
-    return {
-      strandbeskyttelse,
-      skovbyggelinje,
-      soebeskyttelse,
-      aabeskyttelse,
-      klitfredning,
-      kirkebyggelinje: false,
-    };
   }
 }
