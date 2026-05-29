@@ -17,6 +17,7 @@
 //   Output:   GML XML (JSON ikke understøttet)
 //   Geometri: geometri
 
+import { z } from "zod";
 import { getEnvRequired } from "@/lib/env";
 import { makeErrorResult, makeOkResult, type SourceResult } from "@/lib/source-result";
 
@@ -25,7 +26,7 @@ const GEOSERVER_WFS =
 const MAT_WFS =
   "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 
-const SOURCE_URL = GEOSERVER_WFS;
+const SOURCE_URL = `${GEOSERVER_WFS} + ${MAT_WFS}`;
 
 export type NaturbeskyttelsesResultat = {
   strandbeskyttelse: boolean;
@@ -64,10 +65,10 @@ type LayerOutcome = {
 
 // --- GeoServer fetcher (JSON output) ---
 
-type GeoServerJsonResponse = {
-  totalFeatures?: number;
-  features?: unknown[];
-};
+const geoServerResponseSchema = z.object({
+  totalFeatures: z.number().optional(),
+  features: z.array(z.unknown()).optional(),
+});
 
 async function fetchGeoServerLayer(
   typename: string,
@@ -87,8 +88,9 @@ async function fetchGeoServerLayer(
 
   if (!res.ok) throw new Error(`GeoServer WFS HTTP ${res.status} for ${typename}`);
 
-  const data = (await res.json()) as GeoServerJsonResponse;
-  return data.totalFeatures ?? data.features?.length ?? 0;
+  const parsed = geoServerResponseSchema.safeParse(await res.json());
+  if (!parsed.success) throw new Error(`GeoServer: unexpected response for ${typename}`);
+  return parsed.data.totalFeatures ?? parsed.data.features?.length ?? 0;
 }
 
 // --- MAT WFS fetcher (GML XML output) ---
