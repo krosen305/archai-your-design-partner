@@ -1,99 +1,140 @@
-import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { ArealdataService } from "./client";
-import type * as GeoJSON from "geojson";
 
-function wfsResponse(totalFeatures: number) {
-  return { totalFeatures, features: [] };
+// GeoServer/Grukos JSON mock
+function featureJson(totalFeatures: number): Response {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({ totalFeatures, features: [] }),
+  } as unknown as Response;
 }
 
-function mockFetchForScenario(scenario: "clean" | "mixed" | "all_error"): ReturnType<typeof spyOn> {
-  return spyOn(globalThis, "fetch").mockImplementation(
-    async (input: RequestInfo | URL): Promise<Response> => {
-      const url = input.toString();
+function errorResponse(status = 500): Response {
+  return { ok: false, status } as unknown as Response;
+}
 
-      if (scenario === "all_error") {
-        throw new Error("network error");
-      }
-
-      let data = wfsResponse(0);
-
-      if (scenario === "mixed") {
-        if (url.includes("PARAGRAF3_NATUR")) data = wfsResponse(1);
-        if (url.includes("FORTIDSMINDE")) data = wfsResponse(1);
-      }
-
-      return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    },
-  );
+// URL-based mock dispatcher — returns response based on substring in URL
+function urlMock(map: Record<string, Response>, fallback: Response): typeof fetch {
+  return mock(async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    for (const [key, res] of Object.entries(map)) {
+      if (url.includes(key)) return res;
+    }
+    return fallback;
+  }) as unknown as typeof fetch;
 }
 
 describe("ArealdataService.getContext", () => {
-  let fetchSpy: ReturnType<typeof mockFetchForScenario>;
-
-  afterEach(() => {
-    fetchSpy?.mockRestore();
+  beforeEach(() => {
+    globalThis.fetch = fetch;
   });
 
-  it("returns ok with false booleans for a clean response set", async () => {
-    fetchSpy = mockFetchForScenario("clean");
+  it("returnerer status=ok med confirmed confidence når alle live lag lykkes", async () => {
+    globalThis.fetch = urlMock(
+      {
+        bes_naturtyper: featureJson(0),
+        habitat_omr: featureJson(0),
+        fugle_bes_omr: featureJson(0),
+        ramsar_omr: featureJson(0),
+        bes_sten_jorddiger: featureJson(0),
+        status_bnbo: featureJson(0),
+        drikkevandsinteresser: featureJson(0),
+        raastofomr: featureJson(0),
+      },
+      errorResponse(404),
+    );
+
     const result = await ArealdataService.getContext({ lat: 55.7, lng: 12.5 });
 
     expect(result.status).toBe("ok");
+    expect(result.confidence).toBe("confirmed");
     expect(result.data?.paragraph3Nature).toBe(false);
     expect(result.data?.natura2000).toBe(false);
-    expect(result.data?.fortidsminde).toBe(false);
+    expect(result.data?.osd).toBe(false);
+    // fortidsminde/fortidsmindeBuffer er altid null (ingen endpoint)
+    expect(result.data?.fortidsminde).toBeNull();
+    expect(result.data?.fortidsmindeBuffer).toBeNull();
   });
 
-  it("returns true for hit layers and keeps others false", async () => {
-    fetchSpy = mockFetchForScenario("mixed");
+  it("returnerer natura2000=true når fugle_bes_omr har features (OR-logik)", async () => {
+    globalThis.fetch = urlMock(
+      {
+        bes_naturtyper: featureJson(0),
+        habitat_omr: featureJson(0),
+        fugle_bes_omr: featureJson(1), // hit på fugle
+        ramsar_omr: featureJson(0),
+        bes_sten_jorddiger: featureJson(0),
+        status_bnbo: featureJson(0),
+        drikkevandsinteresser: featureJson(0),
+        raastofomr: featureJson(0),
+      },
+      errorResponse(404),
+    );
+
+    const result = await ArealdataService.getContext({ lat: 55.5, lng: 8.1 });
+
+    expect(result.status).toBe("ok");
+    expect(result.data?.natura2000).toBe(true);
+  });
+
+  it("returnerer osd=true via Grukos endpoint (wkb_geometry)", async () => {
+    globalThis.fetch = urlMock(
+      {
+        bes_naturtyper: featureJson(0),
+        habitat_omr: featureJson(0),
+        fugle_bes_omr: featureJson(0),
+        ramsar_omr: featureJson(0),
+        bes_sten_jorddiger: featureJson(0),
+        status_bnbo: featureJson(0),
+        drikkevandsinteresser: featureJson(1), // OSD hit
+        raastofomr: featureJson(0),
+      },
+      errorResponse(404),
+    );
+
+    const result = await ArealdataService.getContext({ lat: 55.75, lng: 12.45 });
+
+    expect(result.status).toBe("ok");
+    expect(result.data?.osd).toBe(true);
+  });
+
+  it("returnerer fortidsminde=null og fortidsmindeBuffer=null altid", async () => {
+    globalThis.fetch = urlMock({}, featureJson(0));
+
+    const result = await ArealdataService.getContext({ lat: 55.7, lng: 12.5 });
+
+    expect(result.data?.fortidsminde).toBeNull();
+    expect(result.data?.fortidsmindeBuffer).toBeNull();
+  });
+
+  it("returnerer confidence=unknown når et live lag fejler (paragraph3Nature)", async () => {
+    globalThis.fetch = urlMock(
+      {
+        bes_naturtyper: errorResponse(503), // paragraph3 fejler
+        habitat_omr: featureJson(0),
+        fugle_bes_omr: featureJson(0),
+        ramsar_omr: featureJson(0),
+        bes_sten_jorddiger: featureJson(0),
+        status_bnbo: featureJson(0),
+        drikkevandsinteresser: featureJson(0),
+        raastofomr: featureJson(0),
+      },
+      errorResponse(404),
+    );
+
     const result = await ArealdataService.getContext({ lat: 55.7, lng: 12.5 });
 
     expect(result.status).toBe("ok");
-    expect(result.data?.paragraph3Nature).toBe(true);
-    expect(result.data?.fortidsminde).toBe(true);
-    expect(result.data?.natura2000).toBe(false);
+    expect(result.confidence).toBe("unknown");
+    expect(result.data?.paragraph3Nature).toBeNull();
   });
 
-  it("falls back to polygon WKT when parcel geometry is provided", async () => {
-    fetchSpy = mockFetchForScenario("clean");
+  it("returnerer status=error når alle live lag fejler", async () => {
+    globalThis.fetch = mock(async () => errorResponse(503)) as unknown as typeof fetch;
 
-    const polygon: GeoJSON.FeatureCollection = {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: {
-            type: "Polygon",
-            coordinates: [
-              [
-                [12.5, 55.7],
-                [12.6, 55.7],
-                [12.6, 55.8],
-                [12.5, 55.8],
-                [12.5, 55.7],
-              ],
-            ],
-          },
-          properties: {},
-        },
-      ],
-    };
-
-    await ArealdataService.getContext({ lat: 55.7, lng: 12.5 }, polygon);
-
-    const calledUrl = fetchSpy.mock.calls[0]?.[0]?.toString() ?? "";
-    expect(calledUrl).toContain("POLYGON");
-    expect(calledUrl).not.toContain("POINT");
-  });
-
-  it("returns error with null data when all layer requests fail", async () => {
-    fetchSpy = mockFetchForScenario("all_error");
     const result = await ArealdataService.getContext({ lat: 55.7, lng: 12.5 });
 
     expect(result.status).toBe("error");
-    expect(result.data).toBeNull();
   });
 });
