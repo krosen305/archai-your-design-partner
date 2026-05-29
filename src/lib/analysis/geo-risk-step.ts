@@ -113,7 +113,7 @@ export async function runGeoRiskStep(
       },
       () =>
         import("@/integrations/mat/geometry").then(({ MatGeometryService }) =>
-          MatGeometryService.getParcelGeometry(jordstykkeId, grundareal),
+          MatGeometryService.getParcelGeometry(jordstykkeId, grundareal, addressId),
         ),
       {
         outputSummary: (r) =>

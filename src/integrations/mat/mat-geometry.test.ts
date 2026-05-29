@@ -12,6 +12,12 @@ mock.module("@/lib/map-proxy", () => ({
   createBboxAroundPoint: () => ({ minX: 0, minY: 0, maxX: 1, maxY: 1 }),
 }));
 
+const mockSetCachedJordstykkePolygon = mock(async (_addressId: string, _fc: unknown) => undefined);
+
+mock.module("@/integrations/cache/client", () => ({
+  setCachedJordstykkePolygon: mockSetCachedJordstykkePolygon,
+}));
+
 const { MatGeometryService } = await import("./geometry");
 
 // 100×100 m square in UTM32 — area = 10 000 m²
@@ -40,6 +46,7 @@ const SQUARE_FC: GeoJSON.FeatureCollection = {
 describe("MatGeometryService.getParcelGeometry", () => {
   beforeEach(() => {
     mockFetchParcelGeometry.mockReset();
+    mockSetCachedJordstykkePolygon.mockReset();
   });
 
   it("returnerer metrics for normal parcel (ét feature)", async () => {
@@ -79,6 +86,23 @@ describe("MatGeometryService.getParcelGeometry", () => {
 
     expect(result.status).toBe("error");
     expect(result.data).toBeNull();
+  });
+
+  it("persisterer parcelpolygon i cache når addressId er sat (P0/P1 #6)", async () => {
+    mockFetchParcelGeometry.mockResolvedValue({ featureCollection: SQUARE_FC, source: "wfs" });
+
+    await MatGeometryService.getParcelGeometry("mat-js-abc123", 9800, "addr-001");
+
+    expect(mockSetCachedJordstykkePolygon).toHaveBeenCalledTimes(1);
+    expect(mockSetCachedJordstykkePolygon.mock.calls[0]?.[0]).toBe("addr-001");
+  });
+
+  it("springer cache-write over når addressId mangler", async () => {
+    mockFetchParcelGeometry.mockResolvedValue({ featureCollection: SQUARE_FC, source: "wfs" });
+
+    await MatGeometryService.getParcelGeometry("mat-js-abc123", 9800);
+
+    expect(mockSetCachedJordstykkePolygon).not.toHaveBeenCalled();
   });
 
   it("hasCanonicalPolygon=false når WFS returnerer flere features", async () => {

@@ -1,8 +1,8 @@
 // SERVER-SIDE ONLY — calls Datafordeler WFS via fetchParcelGeometryByJordstykkeId.
 //
 // Returns SourceResult<MatParcelGeometryPayload>. The GeoJSON FeatureCollection
-// is cached separately in address_analysis.jordstykke_polygon (90-day TTL).
-// Computed metrics (area, centroid, bbox) are the payload of this service.
+// is cached in address_analysis.jordstykke_polygon (90-day TTL) when addressId
+// is provided. Computed metrics (area, centroid, bbox) are the payload.
 
 import type { MatParcelGeometryPayload } from "@/domain/contracts/analysis.types";
 import { fetchParcelGeometryByJordstykkeId } from "@/lib/map-proxy";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/geometry-utils";
 import { makeErrorResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
+import { logServerEvent } from "@/lib/server-logger";
 import type * as GeoJSON from "geojson";
 
 export type { MatParcelGeometryPayload } from "@/domain/contracts/analysis.types";
@@ -26,10 +27,15 @@ export class MatGeometryService {
    *
    * @param jordstykkeLokalId  MAT_Jordstykke.id_lokalId fra MatService/GrundarealResolver
    * @param registreretArealM2 Registreret areal fra MAT GraphQL — til area-sammenligning
+   * @param addressId          Hvis sat, persisteres GeoJSON FeatureCollection
+   *                           i address_analysis.jordstykke_polygon så downstream
+   *                           geokald (DKJord, Arealdata, Plandata ext, GeoDanmark)
+   *                           kan læse parcelgeometri fra cache (P0/P1 #6).
    */
   static async getParcelGeometry(
     jordstykkeLokalId: string,
     registreretArealM2: number | null,
+    addressId?: string,
   ): Promise<SourceResult<MatParcelGeometryPayload>> {
     try {
       const { featureCollection, source } =
@@ -64,6 +70,25 @@ export class MatGeometryService {
         polygonAreaM2 !== null && registreretArealM2 !== null
           ? polygonAreaM2 - registreretArealM2
           : null;
+
+      // P0/P1 #6: persistér parcelpolygon synkront så downstream-kald i samme
+      // run kan læse fra address_analysis.jordstykke_polygon. Tidligere blev cache
+      // skrevet fire-and-forget i map-proxy — fejl blev swallowed lydløst og
+      // DKJord/Arealdata/Plandata ext/GeoDanmark faldt tilbage til POINT-filtre.
+      if (addressId && featureCollection.features.length > 0) {
+        try {
+          const { setCachedJordstykkePolygon } = await import("@/integrations/cache/client");
+          await setCachedJordstykkePolygon(addressId, featureCollection);
+        } catch (cacheErr) {
+          logServerEvent({
+            module: "mat/geometry",
+            operation: "setCachedJordstykkePolygon",
+            severity: "degraded",
+            message: "Kunne ikke cache parcelpolygon — downstream-kald falder tilbage til POINT",
+            error: cacheErr,
+          });
+        }
+      }
 
       return makeOkResult<MatParcelGeometryPayload>(
         {
