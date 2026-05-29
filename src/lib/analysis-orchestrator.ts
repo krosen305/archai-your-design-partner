@@ -34,6 +34,7 @@ import type {
   VurData,
 } from "@/domain/contracts/analysis.types";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
+import type { AddressEnrichmentPatch } from "@/lib/analysis/address-patch-schema";
 import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
 import {
   finishAnalysisRun,
@@ -78,6 +79,9 @@ export type ComplianceResult = {
   ruleEngine?: RuleEngineResult; // sættes af runByggeanalyse (ARCH-109)
   analysisRunId?: string | null;
   serviceStates?: Partial<Record<DataSourceKind, PipelineServiceState>>;
+  // Felter beriget af DAR/MAT serverside som klienten bør persistere på address.
+  // Kun udfyldt når DAR enrichment leverede værdier udover det klienten allerede sendte.
+  addressPatch?: AddressEnrichmentPatch | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -255,7 +259,37 @@ async function analyseAddressWithTrace(
     tjekditnetCoverage: forsyning.tjekditnetCoverage,
     energimaerke: forsyning.energimaerke,
     serviceStates,
+    addressPatch: buildAddressPatch(input, enriched),
   };
+}
+
+function buildAddressPatch(
+  input: AnalysisInput,
+  enriched: {
+    adgangsadresseid: string;
+    ejerlavskode: number | null;
+    matrikelnummer: string | null;
+    grundareal: number | null;
+  },
+): AddressEnrichmentPatch | null {
+  const patch: AddressEnrichmentPatch = {};
+  if (enriched.adgangsadresseid && enriched.adgangsadresseid !== input.adgangsadresseid) {
+    patch.adgangsadresseid = enriched.adgangsadresseid;
+  }
+  if (enriched.ejerlavskode !== null && enriched.ejerlavskode !== input.ejerlavskode) {
+    patch.ejerlavskode = enriched.ejerlavskode;
+  }
+  if (enriched.matrikelnummer !== null && enriched.matrikelnummer !== input.matrikelnummer) {
+    patch.matrikelnummer = enriched.matrikelnummer;
+  }
+  if (
+    enriched.grundareal !== null &&
+    enriched.grundareal > 0 &&
+    enriched.grundareal !== (input.grundareal ?? null)
+  ) {
+    patch.grundareal = enriched.grundareal;
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
 }
 
 // ---------------------------------------------------------------------------

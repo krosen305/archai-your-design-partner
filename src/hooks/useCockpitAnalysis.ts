@@ -68,6 +68,7 @@ export function useCockpitAnalysis(params: {
     lokalplaner,
     byggeoenske,
     byggeanalyseResultat,
+    setAddress,
     setBbrData,
     setComplianceDone,
     setComplianceFlags,
@@ -245,10 +246,23 @@ export function useCockpitAnalysis(params: {
           });
           setHardStop(hardStop, hardStopReason ?? null);
 
+          // Persistér beriget adresse (P0/P1 #1): adgangsadresseid, ejerlavskode,
+          // matrikelnummer og grundareal blev udfyldt af DAR/MAT enrichment serverside.
+          // Merger ind i den eksisterende address så typed kolonner og store er på linje.
+          const currentAddress = useProject.getState().address;
+          const mergedAddress =
+            currentAddress && result.addressPatch
+              ? { ...currentAddress, ...result.addressPatch }
+              : currentAddress;
+          if (mergedAddress && result.addressPatch) {
+            setAddress(mergedAddress);
+          }
+
           setComplianceDone(true);
           setPhase("hus-dna", "complete");
           setPhase("match", "complete");
           syncPatch({
+            ...(mergedAddress && result.addressPatch ? { address: mergedAddress } : {}),
             bbrData: result.bbr,
             complianceFlags: flags,
             lokalplaner: result.lokalplaner,
@@ -313,6 +327,7 @@ export function useCockpitAnalysis(params: {
     navigate,
     restorePhase,
     byggeanalyseResultat,
+    setAddress,
     setBbrData,
     setComplianceDone,
     setComplianceFlags,

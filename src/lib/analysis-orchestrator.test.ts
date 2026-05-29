@@ -241,6 +241,73 @@ describe("analyseAddress — cache write exception returnerer stadig resultat", 
   });
 });
 
+describe("analyseAddress — addressPatch fra DAR enrichment (P0/P1 #1)", () => {
+  const SPARSE_INPUT: AnalysisInput = {
+    addressId: "addr-001",
+    adgangsadresseid: "",
+    ejerlavskode: null,
+    matrikelnummer: null,
+    koordinater: null,
+    grundareal: null,
+  };
+
+  it("returnerer addressPatch når DAR enrichment udfylder felter klienten ikke havde", async () => {
+    const enrichAddressDetails = mock(async (_addressId, _initial, _trace) => ({
+      adgangsadresseid: "0a3f507d-4cf9-32b8-e044-0003ba298018",
+      ejerlavskode: 12352,
+      matrikelnummer: "5fo",
+      grundareal: 441,
+    })) as any;
+    const deps = makeDeps({ enrichAddressDetails });
+
+    const result = await createAnalysisOrchestrator(deps).analyseAddress(SPARSE_INPUT);
+
+    expect(result.addressPatch).toEqual({
+      adgangsadresseid: "0a3f507d-4cf9-32b8-e044-0003ba298018",
+      ejerlavskode: 12352,
+      matrikelnummer: "5fo",
+      grundareal: 441,
+    });
+  });
+
+  it("returnerer null når klienten allerede havde alle berigede felter", async () => {
+    const enrichAddressDetails = mock(async (_addressId, initial, _trace) => initial) as any;
+    const deps = makeDeps({ enrichAddressDetails });
+    const FULL_INPUT: AnalysisInput = {
+      ...SPARSE_INPUT,
+      adgangsadresseid: "0a3f507d-4cf9-32b8-e044-0003ba298018",
+      ejerlavskode: 12352,
+      matrikelnummer: "5fo",
+      grundareal: 441,
+    };
+
+    const result = await createAnalysisOrchestrator(deps).analyseAddress(FULL_INPUT);
+
+    expect(result.addressPatch).toBeNull();
+  });
+
+  it("inkluderer kun de felter der faktisk blev beriget", async () => {
+    const enrichAddressDetails = mock(async (_addressId, _initial, _trace) => ({
+      adgangsadresseid: "new-adgang",
+      ejerlavskode: 12352,
+      matrikelnummer: null,
+      grundareal: null,
+    })) as any;
+    const deps = makeDeps({ enrichAddressDetails });
+    const PARTIAL_INPUT: AnalysisInput = {
+      ...SPARSE_INPUT,
+      matrikelnummer: "existing",
+    };
+
+    const result = await createAnalysisOrchestrator(deps).analyseAddress(PARTIAL_INPUT);
+
+    expect(result.addressPatch).toEqual({
+      adgangsadresseid: "new-adgang",
+      ejerlavskode: 12352,
+    });
+  });
+});
+
 describe("analyseAddress — layer1 states merges korrekt med geoRisk states", () => {
   it("serviceStates indeholder felter fra både layer1States og geoRisk.states", async () => {
     const runLayer1Analysis = mock(async () => ({
