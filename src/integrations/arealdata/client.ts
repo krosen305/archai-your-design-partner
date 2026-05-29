@@ -91,10 +91,7 @@ function buildCqlFilter(
 
 // ---- GeoServer fetcher (JSON) ----
 
-async function fetchGeoServer(
-  typename: string,
-  cqlFilter: string,
-): Promise<number> {
+async function fetchGeoServer(typename: string, cqlFilter: string): Promise<number> {
   const url =
     `${GEOSERVER_WFS}?service=WFS&version=2.0.0&request=GetFeature` +
     `&typeName=${typename}&count=1&outputFormat=application/json` +
@@ -113,10 +110,7 @@ async function fetchGeoServer(
 
 // ---- Miljoegis Grukos fetcher (JSON) ----
 
-async function fetchGrukos(
-  typename: string,
-  cqlFilter: string,
-): Promise<number> {
+async function fetchGrukos(typename: string, cqlFilter: string): Promise<number> {
   const url =
     `${MILJOEGIS_GRUKOS_WFS}?service=WFS&version=2.0.0&request=GetFeature` +
     `&typeName=${typename}&count=1&outputFormat=application/json` +
@@ -248,7 +242,12 @@ export class ArealdataService {
       // fortidsminde og fortidsmindeBuffer tæller ikke som "fejl" i confidence-forstand
       // — de er eksplicit uafklarede, ikke netværksfejl
       const resolvedKeys = new Set<keyof ArealdataContextResult>([
-        "paragraph3Nature", "natura2000", "protectedDige", "bnbo", "osd", "rawMaterialArea",
+        "paragraph3Nature",
+        "natura2000",
+        "protectedDige",
+        "bnbo",
+        "osd",
+        "rawMaterialArea",
       ]);
       const resolvedOutcomes = outcomes.filter((o) => resolvedKeys.has(o.key));
       const successCount = resolvedOutcomes.filter((o) => !o.errored).length;
