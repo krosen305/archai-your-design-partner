@@ -169,6 +169,24 @@ export function buildDrawingModel(
     }
   });
 
+  // Vejnavn-label — placeret syd for parcelpolygon
+  if (plan.parcel.roadName) {
+    const parcelCoords = plan.parcel.polygon25832.coordinates[0] as [number, number][];
+    const centerX = parcelCoords.reduce((s, c) => s + c[0], 0) / parcelCoords.length;
+    const southY = Math.min(...parcelCoords.map((c) => c[1]));
+    const labelPxX = (centerX - bboxMinX) * scale;
+    const labelPxY = (bboxMaxY - southY) * scale + 14;
+    features.push({
+      id: "road-name",
+      kind: "road_label",
+      svgElement: `<text x="${labelPxX.toFixed(1)}" y="${labelPxY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(plan.parcel.roadName)}</text>`,
+      label: plan.parcel.roadName,
+      labelX: labelPxX,
+      labelY: labelPxY,
+      zIndex: 45,
+    });
+  }
+
   // Mål-linjer
   const dimLines = buildDimensionLines(plan.proposed.footprint25832);
   dimLines.forEach((dl, i) => {
