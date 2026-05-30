@@ -220,9 +220,7 @@ export type ProjectDrawingData = {
   bfeNr: string | null;
 };
 
-export async function getProjectDrawingData(
-  projectId: string,
-): Promise<ProjectDrawingData | null> {
+export async function getProjectDrawingData(projectId: string): Promise<ProjectDrawingData | null> {
   const { data, error } = await supabaseAdmin
     .from("projects")
     .select("grundareal_m2, bebygget_areal_m2, bfe_nr")

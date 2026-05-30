@@ -142,9 +142,8 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     _kommunekode: string,
     bbox25832: BBox25832,
   ): Promise<ConstraintLayer[]> {
-    const { fetchBuildingFieldConstraints } = await import(
-      "@/integrations/plandata/drawing-constraints"
-    );
+    const { fetchBuildingFieldConstraints } =
+      await import("@/integrations/plandata/drawing-constraints");
     return fetchBuildingFieldConstraints(bbox25832);
   }
 
