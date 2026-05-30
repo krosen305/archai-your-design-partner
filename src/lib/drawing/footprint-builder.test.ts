@@ -105,4 +105,31 @@ describe("buildRectangularFootprint25832", () => {
     expect(rect.coordinates[0]).toHaveLength(5);
     expect(sq.coordinates[0]).toHaveLength(5);
   });
+
+  it("12m × 8m rectangle has area ≈ 96 m² (shoelace formula)", () => {
+    const result = buildRectangularFootprint25832({
+      centroidWgs84: [10.2, 55.7],
+      widthM: 12,
+      depthM: 8,
+      rotationDeg: 0,
+    });
+    const ring = result.coordinates[0];
+    // Shoelace formula: area = 0.5 * |Σ (xi * y(i+1) - x(i+1) * yi)|
+    // Ring is closed so we iterate over the 4 edges (indices 0..3, with wrap)
+    let sum = 0;
+    for (let i = 0; i < ring.length - 1; i++) {
+      sum += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+    }
+    const computedArea = Math.abs(sum) / 2;
+    // 12 × 8 = 96 m², allow ±1 m² tolerance for projection rounding
+    expect(computedArea).toBeGreaterThan(95);
+    expect(computedArea).toBeLessThan(97);
+  });
 });
+
+// Note: api.drawing.ts fallback logic (buildRectangularFootprint25832 when no
+// footprintGeojson is supplied, decodeGeoJsonFootprint when it is) cannot be
+// unit-tested in isolation because it is wrapped in a TanStack createServerFn
+// handler that requires the full Cloudflare/Vite runtime. The tests above
+// cover the pure footprint-builder that the fallback delegates to, giving
+// indirect coverage of the happy-path footprint construction branch.

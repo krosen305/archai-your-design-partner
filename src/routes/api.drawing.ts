@@ -30,8 +30,8 @@ const ExportBeliggenhedsplanInputSchema = z.object({
   heightM: z.number().min(0).max(30).optional().nullable(),
   centroidLng: z.number().optional().nullable(),
   centroidLat: z.number().optional().nullable(),
-  buildingWidthM: z.number().positive().max(60).optional().nullable(),
-  buildingDepthM: z.number().positive().max(60).optional().nullable(),
+  buildingWidthM: z.number().min(0.5).max(60).optional().nullable(),
+  buildingDepthM: z.number().min(0.5).max(60).optional().nullable(),
   rotationDeg: z.number().min(0).max(360).optional().nullable(),
 });
 
