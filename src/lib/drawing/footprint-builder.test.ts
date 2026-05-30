@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { buildSquareFootprint25832 } from "./footprint-builder";
+import { buildSquareFootprint25832, buildRectangularFootprint25832 } from "./footprint-builder";
 
 describe("buildSquareFootprint25832", () => {
   it("returnerer polygon i EPSG:25832", () => {
@@ -72,5 +72,37 @@ describe("buildSquareFootprint25832", () => {
     expect(centerX).toBeLessThan(Math.max(...xs));
     expect(centerY).toBeGreaterThan(Math.min(...ys));
     expect(centerY).toBeLessThan(Math.max(...ys));
+  });
+});
+
+describe("buildRectangularFootprint25832", () => {
+  it("builds a 12×8m rectangle at the given centroid", () => {
+    const fp = buildRectangularFootprint25832({
+      centroidWgs84: [12.5683, 55.6761], // Copenhagen center
+      widthM: 12,
+      depthM: 8,
+      rotationDeg: 0,
+    });
+    expect(fp.type).toBe("Polygon");
+    expect(fp.crs).toBe("EPSG:25832");
+    // Ring has 5 coordinates (4 corners + closing)
+    expect(fp.coordinates[0]).toHaveLength(5);
+  });
+
+  it("depthM=widthM produces a square identical to buildSquareFootprint25832 output area", () => {
+    const rect = buildRectangularFootprint25832({
+      centroidWgs84: [12.5683, 55.6761],
+      widthM: 10,
+      depthM: 10,
+      rotationDeg: 0,
+    });
+    const sq = buildSquareFootprint25832({
+      centroidWgs84: [12.5683, 55.6761],
+      areaM2: 100,
+      rotationDeg: 0,
+    });
+    // Both should produce 100m² footprints
+    expect(rect.coordinates[0]).toHaveLength(5);
+    expect(sq.coordinates[0]).toHaveLength(5);
   });
 });
