@@ -39,6 +39,14 @@ export async function datafordelerGraphqlFetch<T>(
   const module = operation.split("_")[0].toLowerCase() + "/client";
   const service = `Datafordeler ${operation.split("_")[0]}`;
 
+  // Datafordeler GraphQL er sporadisk flaky: identisk query svinger 20ms → 7000ms
+  // og enkelte workers hænger til AbortSignal-timeout. Tre tilpasninger:
+  //  - timeoutMs 6s (var 12s) — fang hængende workers hurtigere
+  //  - retryOnAbort=false — sekventielle retries på timeout forværrer UX uden at hjælpe;
+  //    enrichAddressDetails/layer1 har graceful fallback til degraded data
+  //  - hedgeAfterMs 2s — efter 2s uden svar fyrer vi parallel duplikat-request;
+  //    første successful response vinder. Mod en stuck worker rammer hedge'en
+  //    typisk en frisk worker.
   const response = await fetchWithRetry(
     url.toString(),
     {
@@ -46,7 +54,11 @@ export async function datafordelerGraphqlFetch<T>(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, variables }),
     },
-    { timeoutMs: options?.timeoutMs ?? 12_000 },
+    {
+      timeoutMs: options?.timeoutMs ?? 6_000,
+      retryOnAbort: false,
+      hedgeAfterMs: 2_000,
+    },
     {
       trace: options?.trace ?? null,
       service,
