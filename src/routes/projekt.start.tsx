@@ -119,7 +119,7 @@ function LoggedInView({
         newId = await serverCreateProject({ data: { accessToken: session.access_token } });
       }
     } catch {
-      // fail-open — første syncPatch opretter et nyt projekt via getOrCreateProject
+      // fail-open — projektet kan stadig oprettes senere i flowet, hvis det mangler her
     }
     reset();
     if (newId) setCurrentProjectId(newId);

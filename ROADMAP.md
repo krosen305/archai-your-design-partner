@@ -21,9 +21,9 @@ Statusmarkeringer:
    - Begrundelse: Domænelaget fremstår fortsat rent, og flere boundary-moduler bruger nu reelle schemas/decoders, fx `src/integrations/supabase/repositories/projects.repository.ts`.
    - Opfølgning: Ingen selvstændig epic nødvendig. Nye ændringer skal blot fortsætte samme retning.
 
-2. [ ] **Boundary Cleanup**
-   - Vurdering: Stadig den vigtigste aktive opgave.
-   - Problem: Flere server boundaries og klientnære workflows blander stadig auth, persistence, orchestration og UI-store-mutation.
+2. [-] **Boundary Cleanup**
+   - Vurdering: Størstedelen er nu løst, men enkelte hotspots er stadig åbne.
+   - Problem: De fleste tunge server boundaries er ryddet op, men enkelte klientnære workflows og kompositionslag bærer stadig for meget orchestration.
    - Særligt fokus:
      - `src/hooks/useCockpitAnalysis.ts`
      - `src/routes/__root.tsx`
@@ -32,14 +32,14 @@ Statusmarkeringer:
      - `src/lib/billede-analyse.functions.ts`
      - `src/lib/project-sync.ts`
 
-3. [ ] **Validation**
-   - Vurdering: Stadig aktiv, men ikke som bred “fjern alle casts”-øvelse.
-   - Problem: Der findes fortsat manglende runtime-validering på flere systemgrænser, især server inputs og restore/persisted payloads.
+3. [-] **Validation**
+   - Vurdering: Væsentligt forbedret, men ikke helt lukket.
+   - Problem: De vigtigste server boundaries og restore/persisted payloads er nu valideret bedre, men der findes stadig resterende kontraktoprydning.
    - Retning: Prioritér boundary-validation før oprydning i interne eller testrelaterede casts.
 
-4. [ ] **Fase-normalisering**
-   - Vurdering: Stadig aktiv og tværgående.
-   - Problem: Koden bruger stadig flere parallelle fasebegreber i stedet for de 4 kanoniske faser:
+4. [-] **Fase-normalisering**
+   - Vurdering: Kerne og navigation er normaliseret, men den sidste produktmæssige afstemning er stadig åben.
+   - Problem: Koden er nu i hovedtræk flyttet til de 4 kanoniske faser, men enkelte read-models og progressionstolkninger mangler endelig afklaring:
      - `Sandkassen`
      - `Matriklen`
      - `Maskinrummet`
@@ -94,31 +94,28 @@ Statusmarkeringer:
      - `useDispensationFlow()`
    - Restarbejde: Komponenten bærer stadig en del workflow- og projectionsammensætning og bør fortsat tyndes ud gradvist.
 
-2. [-] **`project-sync.ts` er blevet bedre valideret, men er stadig for koblet til store/auth**
+2. [-] **`project-sync.ts` er blevet bedre valideret, men er stadig ikke helt afviklet som legacy-lag**
    - Fil: `src/lib/project-sync.ts`
    - Vurdering: Delvist løst.
-   - Begrundelse: Der er nu Zod-schemas i `src/types/project-sync.schemas.ts`.
+   - Begrundelse: Der er nu Zod-schemas i `src/types/project-sync.schemas.ts`, eksplicitte save/restore-contexts og workflow-lag til både save og restore.
    - Restarbejde:
-     - `syncPatch()` finder stadig selv auth-token
-     - `syncPatch()` læser stadig `currentProjectId` fra `useProject.getState()`
-     - restore/sync-laget er stadig svært at isolere som application-service boundary
+     - `syncPatch()` er fjernet helt
+     - `restoreProject()` findes stadig som compatibility helper
+     - `project-sync.ts` fungerer stadig delvist som legacy adapter ved siden af de nye workflows
 
 3. [-] **`__root.tsx` er mindre usikker end før, men stadig arkitektonisk tung**
    - Fil: `src/routes/__root.tsx`
    - Vurdering: Delvist løst.
-   - Begrundelse: Flere persisted felter dekodes nu med schemas i stedet for rå casts.
-   - Restarbejde: Root-route ejer stadig restore-orchestration og direkte store-hydrering i stor skala.
+   - Begrundelse: Restore går nu gennem shared facade/workflow-lag og typed snapshot-kontrakter.
+   - Restarbejde: Root-route ejer stadig noget bootstrap/orchestration, men ikke længere den store felt-for-felt restore-logik.
 
 4. [-] **`useCockpitAnalysis.ts` er fortsat et hotspot**
    - Fil: `src/hooks/useCockpitAnalysis.ts`
-   - Vurdering: Stadig aktiv, men problemet er nu bedre afgrænset end i den gamle roadmap.
+   - Vurdering: Delvist løst, men stadig et vigtigt opfølgningspunkt.
    - Restarbejde:
-     - auth-session lookup
-     - serverkald
-     - afledte compliance-flags
-     - store-mutation
-     - persistence via `syncPatch`
-     - faseopdatering med gamle fase-IDs
+     - compliance-fetch, byggeanalyse-fetch og resultatanvendelse er nu flyttet til workflow/facade-lag
+     - hooken bærer stadig React-orkestrering og en del store-koordination
+     - videre tynding bør ske gradvist, ikke som fuld omskrivning
 
 ### Forældede referencespor i gammel roadmap
 
@@ -135,12 +132,12 @@ Statusmarkeringer:
 
 ### Spor 1 — Fase-normalisering
 
-1. [ ] Indfør én kanonisk fasekontrakt på tværs af typer, navigation og UI.
+1. [x] Indfør én kanonisk fasekontrakt på tværs af typer, navigation og UI.
    - Start i `src/types/project-state.ts`
    - Opdater derefter `src/lib/phases.ts`
    - Synkronisér `src/lib/datacheck.ts` og `src/lib/datacheck-config.ts`
 
-2. [ ] Fjern eller oversæt gamle fase-ID’er og labels.
+2. [-] Fjern eller oversæt gamle fase-ID’er og labels.
    - Udfas:
      - `hus-dna`
      - `match`
@@ -150,55 +147,55 @@ Statusmarkeringer:
      - `skitse`
    - Erstat med de 4 kanoniske faser fra `AGENTS.md`
 
-3. [ ] Tilpas faseafhængig store-state og UI-flow.
+3. [-] Tilpas faseafhængig store-state og UI-flow.
    - Særligt i `src/hooks/useCockpitAnalysis.ts`
    - Verificér at sidebars, progressionsvisning og readiness-views stadig giver mening efter normaliseringen
 
 ### Spor 2 — Server Boundaries Med Runtime-validering
 
-1. [ ] Stram `src/routes/api.map-tiles.ts`
+1. [x] Stram `src/routes/api.map-tiles.ts`
    - Erstat type-only validators med Zod-schemas for:
      - parcel geometry request
      - parcel preview request
      - tile request
      - `jordstykkeLokalId`
 
-2. [ ] Stram `src/routes/projekt.datacheck.tsx`
+2. [x] Stram `src/routes/projekt.datacheck.tsx`
    - Flyt load/save-workflow til service-lag
    - Brug etableret auth-pattern i stedet for rå token-flow til persistence
 
-3. [ ] Stram `src/routes/debug.analyse.tsx`
+3. [x] Stram `src/routes/debug.analyse.tsx`
    - Indfør eksplicit auth-/miljø-gate
    - Lad route-serverfunktion være tynd wrapper omkring service
 
-4. [ ] Stram `src/lib/billede-analyse.functions.ts`
+4. [x] Stram `src/lib/billede-analyse.functions.ts`
    - Flyt project ownership, auth og storage-arbejde ud af server function handleren
    - Behold handleren som validate -> auth -> delegate
 
 ### Spor 3 — Restore Og Sync Som Rigtigt Application-lag
 
-1. [ ] Indfør typed restore snapshot/facade
+1. [x] Indfør typed restore snapshot/facade
    - Mål: `__root.tsx` og cockpit-hooks skal modtage et valideret snapshot frem for at samle persisted state stykkevis
 
-2. [ ] Flyt restore-hydrering ud af root-route
+2. [-] Flyt restore-hydrering ud af root-route
    - Fil: `src/routes/__root.tsx`
    - Root-route bør ikke eje stor felt-for-felt restore-logik
 
-3. [ ] Afkobling af `syncPatch()` fra global store og intern auth lookup
+3. [x] Afkobling af `syncPatch()` fra global store og intern auth lookup
    - Fil: `src/lib/project-sync.ts`
    - Mål: Kaldende lag skal levere nødvendig kontekst, så sync-laget bliver testbart og mindre magisk
 
 ### Spor 4 — Cockpit-workflows Ud Af UI-nære Hooks
 
-1. [ ] Split `src/hooks/useCockpitAnalysis.ts`
+1. [-] Split `src/hooks/useCockpitAnalysis.ts`
    - Del i:
      - typed compliance-fetch/service
      - snapshot transformer / mapping-lag
      - tynd React-hook
 
-2. [ ] Gennemgå `src/hooks/useAiDesignWorkflow.ts`
+2. [-] Gennemgå `src/hooks/useAiDesignWorkflow.ts`
    - Ikke en akut P0, men næste naturlige kandidat efter `useCockpitAnalysis`
-   - Fokus: reducér direkte `useProject.getState()`- og `syncPatch()`-kobling
+   - Fokus: reducér direkte `useProject.getState()`- og global store-kobling yderligere
 
 3. [ ] Tynd `src/components/cockpit/index.tsx` yderligere
    - Flyt mere sammensætning/projection ud i view-model helpers
@@ -206,10 +203,10 @@ Statusmarkeringer:
 
 ### Spor 5 — Målrettet Validation Cleanup
 
-1. [ ] Fjern manglende runtime-kontrakter før kosmetiske casts
+1. [-] Fjern manglende runtime-kontrakter før kosmetiske casts
    - Prioritér boundary-data over interne UI-casts
 
-2. [ ] Gennemgå gamle fase- og restore-relaterede typer
+2. [-] Gennemgå gamle fase- og restore-relaterede typer
    - Fil: `src/types/project-state.ts`
    - Mål: sikre at persisted og runtime-relevante contracts matcher den aktuelle arkitektur
 
@@ -224,24 +221,24 @@ Statusmarkeringer:
 
 ## Anbefalet Implementeringsrækkefølge
 
-1. [ ] Fase-normalisering
-2. [ ] `api.map-tiles` runtime-validation
-3. [ ] `projekt.datacheck` service/auth cleanup
-4. [ ] `debug.analyse` auth/miljø-gate
-5. [ ] `project-sync` restore/sync-afkobling
-6. [ ] `__root.tsx` typed restore facade
-7. [ ] Split af `useCockpitAnalysis`
+1. [x] Fase-normalisering
+2. [x] `api.map-tiles` runtime-validation
+3. [x] `projekt.datacheck` service/auth cleanup
+4. [x] `debug.analyse` auth/miljø-gate
+5. [x] `project-sync` restore/sync-afkobling
+6. [x] `__root.tsx` typed restore facade
+7. [-] Split af `useCockpitAnalysis`
 8. [ ] Opfølgning på `useAiDesignWorkflow` og resterende cockpit-view-models
 
 ---
 
 ## Definition Of Done For Hvert Spor
 
-- [ ] Boundary-data valideres ved runtime med Zod eller eksplicit decoder
-- [ ] UI ejer ikke compliance- eller persistencepolitik
-- [ ] Server functions er tynde inbound adapters
-- [ ] Restore/sync kan testes uden implicit afhængighed af global store
-- [ ] Faser bruger de kanoniske navne fra `AGENTS.md`
+- [-] Boundary-data valideres ved runtime med Zod eller eksplicit decoder
+- [-] UI ejer ikke compliance- eller persistencepolitik
+- [-] Server functions er tynde inbound adapters
+- [x] Restore/sync kan testes uden implicit afhængighed af global store
+- [-] Faser bruger de kanoniske navne fra `AGENTS.md`
 - [ ] `bunx tsc --noEmit`
 - [ ] `bun test`
 - [ ] `bunx eslint .`
@@ -292,4 +289,15 @@ Dato: 2026-05-30
 - [x] `api.map-tiles` har nu runtime-validation.
 - [x] `projekt.datacheck` er flyttet til validate -> auth -> delegate.
 - [x] `debug.analyse` bruger nu middleware-baseret auth og server-side brugerafgrænsning.
-- [ ] `datacheck`/readiness skal stadig oversættes til den nye fasefortælling.
+- [-] `datacheck`/readiness er delvist oversat til den nye fasefortælling, men kræver stadig sidste produktmæssige oprydning.
+
+---
+
+## Status Efter Seneste Refaktorering
+
+- [x] `syncPatch()` er fjernet helt fra `src/lib/project-sync.ts`.
+- [x] Save-flows bruger nu eksplicitte workflow-indgange med kendt kontekst i stedet for global implicit sync.
+- [x] Restore går gennem shared workflow + facade i stedet for duplikeret felt-for-felt hydrering.
+- [x] `useCockpitAnalysis.ts` er reduceret via dedikerede workflow- og facade-lag.
+- [ ] `restoreProject()` står stadig tilbage som compatibility helper og bør vurderes afviklet eller markeret tydeligere som legacy.
+- [ ] `useAiDesignWorkflow.ts` og `src/components/cockpit/index.tsx` er de tydeligste tilbageværende UI-nære opfølgningsspor.

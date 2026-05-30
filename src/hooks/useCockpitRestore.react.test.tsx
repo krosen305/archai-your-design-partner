@@ -88,7 +88,6 @@ mock.module("@/lib/project-sync", () => ({
     return MINIMAL_PROJECT;
   },
   restoreProject: async (_pid: unknown, _adresseId: unknown) => MINIMAL_PROJECT,
-  syncPatch: async () => {},
 }));
 
 // ---------------------------------------------------------------------------

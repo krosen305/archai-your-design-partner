@@ -3,7 +3,6 @@ import type { PersistedProject, ProjectPatch } from "@/integrations/supabase/pro
 import { getSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { withAuth } from "@/lib/server-auth";
-import { useProject } from "@/lib/project-store";
 import {
   createProjectSchema,
   deleteProjectSchema,
@@ -85,20 +84,6 @@ export async function saveProjectPatch(
   } catch (e) {
     logger.warn("[ProjectSync] gem fejlede (ikke kritisk):", (e as Error).message);
   }
-}
-
-// Mutation policy: fire-and-forget / last-write-wins.
-// syncPatch is called from UI event handlers and is not awaited by callers.
-// Concurrent saves for the same project are possible - the last write wins.
-// Critical writes (e.g., project creation) use serverCreateProject directly and are awaited by callers.
-export async function syncPatch(patch: ProjectPatch): Promise<void> {
-  const session = await getSession();
-  const accessToken = session?.access_token ?? null;
-  if (!accessToken) return;
-  await saveProjectPatch(patch, {
-    accessToken,
-    projectId: useProject.getState().currentProjectId,
-  });
 }
 
 // In-flight + short-lived cache for restoreProject - avoids duplicate requests

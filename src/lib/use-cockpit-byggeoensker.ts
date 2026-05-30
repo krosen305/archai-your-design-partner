@@ -35,7 +35,7 @@ export type ReactiveContext = {
  *  1. Opdaterer Zustand-store øjeblikkeligt (UI reaktiv)
  *  2. Kører `computePartialUpdate` client-side (ingen API-kald) — opdaterer complianceMetrics + flags
  *  3. Beregner boligoenskeValidering (etager/areal) mod plangrænser
- *  4. Debouncer `syncPatch` med 500 ms
+ *  4. Debouncer persistence via project save workflow med 500 ms
  */
 export function useCockpitByggeoensker(reactiveContext: ReactiveContext): {
   patch: (partial: Partial<Byggeoenske>) => void;

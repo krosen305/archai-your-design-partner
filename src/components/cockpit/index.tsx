@@ -37,7 +37,6 @@ import {
   type Step,
   type Option,
 } from "@/lib/byggeoenske-steps";
-import { syncPatch } from "@/lib/project-sync";
 import { useCockpitByggeoensker, type ReactiveContext } from "@/lib/use-cockpit-byggeoensker";
 import { useCockpitUpload } from "@/lib/use-cockpit-upload";
 import type { NeighborBuildingData, VurData } from "@/domain/contracts/analysis.types";

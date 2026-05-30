@@ -2,10 +2,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useProject } from "@/lib/project-store";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch } from "@/lib/project-sync";
 import { fetchCompliance, runByggeanalyse } from "@/lib/cockpit.functions";
 import { runCockpitComplianceWorkflow } from "@/lib/cockpit-compliance-workflow";
 import { runCockpitByggeanalyseWorkflow } from "@/lib/cockpit-byggeanalyse-workflow";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 import { routeMatchesAddress } from "@/hooks/cockpit-restore-utils";
 import { EMPTY_ANALYSIS_SNAPSHOT, type AnalysisSnapshot } from "@/lib/project-restore-facade";
 import { buildComplianceApplication } from "@/lib/cockpit-analysis-facade";
@@ -109,7 +110,16 @@ export function useCockpitAnalysis(params: {
       if (workflowResult.status === "ok") {
         setByggeanalyseResultat(workflowResult.analyse);
         const analyse = workflowResult.analyse;
-        syncPatch({ byggeanalyseResultat: analyse });
+        void runProjectSaveWorkflow(
+          {
+            patch: { byggeanalyseResultat: analyse },
+            projectId: state.currentProjectId,
+          },
+          {
+            getSession,
+            saveProjectPatch,
+          },
+        );
       } else if (workflowResult.status === "blocked") {
         logger.warn("[Cockpit] Byggeanalyse blokeret af Hard Stop:", workflowResult.hardStopReason);
       } else {
@@ -183,8 +193,8 @@ export function useCockpitAnalysis(params: {
           setComplianceMetrics(application.complianceMetrics);
 
           // Sync typed store fields immediately so UI reflects current analysis without reload.
-          // syncPatch persists these to Supabase typed columns; useCockpitRestore reads them back
-          // on next load, but the in-memory store must also be updated for the current session.
+          // Persist happens separately via the project save workflow, but the in-memory store
+          // must also be updated for the current session.
           setHeritageSaveValue(application.heritageSaveValue);
           setIsFredet(application.isFredet);
           setGrundareal(application.grundarealM2);
@@ -203,7 +213,16 @@ export function useCockpitAnalysis(params: {
           setPhase("sandkassen", application.phaseUpdates.sandkassen);
           setPhase("matriklen", application.phaseUpdates.matriklen);
           setPhase("maskinrummet", application.phaseUpdates.maskinrummet);
-          syncPatch(application.syncPatch);
+          void runProjectSaveWorkflow(
+            {
+              patch: application.syncPatch,
+              projectId: useProject.getState().currentProjectId,
+            },
+            {
+              getSession,
+              saveProjectPatch,
+            },
+          );
           if (application.serviceStates) {
             useProject.setState({ serviceStates: application.serviceStates });
           }
