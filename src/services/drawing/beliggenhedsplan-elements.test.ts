@@ -10,7 +10,6 @@ import type {
   BBox25832,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
-import type { DrawingExportStorePort, DrawingExportRecord } from "@/domain/drawing/ports";
 import { buildDrawingModel } from "@/lib/drawing/drawing-model-builder";
 import { renderSvg } from "@/lib/drawing/render-svg";
 
