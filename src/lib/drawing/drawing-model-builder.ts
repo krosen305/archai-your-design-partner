@@ -36,13 +36,18 @@ function polygonFeature(
   const pts = coordsToSvgPoints(coords, minX, maxY, scale);
   const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
   const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+  const labelX = (cx - minX) * scale;
+  const labelY = (maxY - cy) * scale;
+  const labelSvg = label
+    ? `<text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#444">${esc(label)}</text>`
+    : "";
   return {
     id,
     kind,
-    svgElement: `<polygon points="${pts}" ${style}/>`,
+    svgElement: `<g><polygon points="${pts}" ${style}/>${labelSvg}</g>`,
     label,
-    labelX: (cx - minX) * scale,
-    labelY: (maxY - cy) * scale,
+    labelX,
+    labelY,
     zIndex,
   };
 }
