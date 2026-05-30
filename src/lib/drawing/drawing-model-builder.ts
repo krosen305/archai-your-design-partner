@@ -44,7 +44,9 @@ function polygonFeature(
   return {
     id,
     kind,
-    svgElement: `<g><polygon points="${pts}" ${style}/>${labelSvg}</g>`,
+    svgElement: labelSvg
+      ? `<g><polygon points="${pts}" ${style}/>${labelSvg}</g>`
+      : `<polygon points="${pts}" ${style}/>`,
     label,
     labelX,
     labelY,
