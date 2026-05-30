@@ -171,9 +171,8 @@ export function buildDrawingModel(
 
   // Vejnavn-label — placeret syd for parcelpolygon
   if (plan.parcel.roadName) {
-    const parcelCoords = plan.parcel.polygon25832.coordinates[0] as [number, number][];
-    const centerX = parcelCoords.reduce((s, c) => s + c[0], 0) / parcelCoords.length;
-    const southY = Math.min(...parcelCoords.map((c) => c[1]));
+    const centerX = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+    const southY = Math.min(...coords.map((c) => c[1]));
     const labelPxX = (centerX - bboxMinX) * scale;
     const labelPxY = (bboxMaxY - southY) * scale + 14;
     features.push({

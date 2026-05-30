@@ -164,4 +164,30 @@ describe("buildDrawingModel — label-rendering", () => {
     expect(parcelFeature).toBeDefined();
     expect(parcelFeature!.svgElement).toContain("<g>");
   });
+
+  it("road_label feature emitted when roadName is non-empty", () => {
+    const planWithRoad = {
+      ...minimalPlan,
+      parcel: { ...minimalPlan.parcel, roadName: "Testvej" },
+    };
+    const model = buildDrawingModel(planWithRoad, autoReadiness);
+    const f = model.features.find((feat) => feat.kind === "road_label");
+    expect(f).toBeDefined();
+    expect(f!.svgElement).toContain("Testvej");
+    expect(f!.label).toBe("Testvej");
+  });
+
+  it("road_label NOT emitted when roadName is null", () => {
+    const model = buildDrawingModel(minimalPlan, autoReadiness);
+    expect(model.features.find((feat) => feat.kind === "road_label")).toBeUndefined();
+  });
+
+  it("road_label NOT emitted when roadName is empty string", () => {
+    const planEmpty = {
+      ...minimalPlan,
+      parcel: { ...minimalPlan.parcel, roadName: "" },
+    };
+    const model = buildDrawingModel(planEmpty, autoReadiness);
+    expect(model.features.find((feat) => feat.kind === "road_label")).toBeUndefined();
+  });
 });
