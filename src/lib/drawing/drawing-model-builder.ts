@@ -4,6 +4,9 @@ import type { DrawingReadinessDecision } from "@/domain/drawing/decision-engine"
 import type { DrawingModel, DrawingFeature } from "@/domain/drawing/drawing-model";
 import { PAGE_SIZES, computeViewport } from "@/domain/drawing/drawing-model";
 import { buildDimensionLines } from "./dimension-lines";
+import {
+  buildSetbackAnnotations,
+} from "@/domain/drawing/geometry-engine";
 
 function esc(s: string): string {
   return s
@@ -207,6 +210,33 @@ export function buildDrawingModel(
       labelX: null,
       labelY: null,
       zIndex: 35,
+    });
+  });
+
+  // Skel-afstandsmål — obligatoriske afstandsannotationer til myndighed
+  const setbackAnnotations = buildSetbackAnnotations(
+    plan.proposed.footprint25832,
+    plan.parcel.polygon25832,
+  );
+  setbackAnnotations.forEach((ann, i) => {
+    const bx = (ann.buildingPt[0] - bboxMinX) * scale;
+    const by = (bboxMaxY - ann.buildingPt[1]) * scale;
+    const px = (ann.parcelPt[0] - bboxMinX) * scale;
+    const py = (bboxMaxY - ann.parcelPt[1]) * scale;
+    const mx = (bx + px) / 2;
+    const my = (by + py) / 2;
+    const label = `${ann.distanceM.toFixed(2)} m`;
+    features.push({
+      id: `setback-ann-${i}`,
+      kind: "dimension_lines",
+      svgElement: `<g>
+        <line x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="#b00" stroke-width="0.5" stroke-dasharray="3,1.5"/>
+        <text x="${mx.toFixed(1)}" y="${(my - 2).toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="5.5" fill="#b00" font-weight="bold">${label}</text>
+      </g>`,
+      label,
+      labelX: mx,
+      labelY: my,
+      zIndex: 36,
     });
   });
 

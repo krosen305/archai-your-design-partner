@@ -24,6 +24,66 @@ function fromJstsPolygon(geom: JstsGeometry): GeoJsonPolygon25832 {
   return { type: "Polygon", coordinates: raw.coordinates, crs: "EPSG:25832" };
 }
 
+export type SetbackAnnotation = {
+  buildingPt: [number, number];
+  parcelPt: [number, number];
+  distanceM: number;
+};
+
+function nearestPointOnSegment(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): [number, number] {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-10) return [ax, ay];
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+  return [ax + t * dx, ay + t * dy];
+}
+
+export function buildSetbackAnnotations(
+  building: GeoJsonPolygon25832,
+  parcel: GeoJsonPolygon25832,
+): SetbackAnnotation[] {
+  const buildingRing = building.coordinates[0] as [number, number][];
+  const parcelRing = parcel.coordinates[0] as [number, number][];
+  const results: SetbackAnnotation[] = [];
+
+  for (let i = 0; i < buildingRing.length - 1; i++) {
+    const [ax, ay] = buildingRing[i]!;
+    const [bx, by] = buildingRing[i + 1]!;
+    const midX = (ax + bx) / 2;
+    const midY = (ay + by) / 2;
+
+    let minDist = Infinity;
+    let nearestPt: [number, number] = [midX, midY];
+
+    for (let j = 0; j < parcelRing.length - 1; j++) {
+      const [px, py] = parcelRing[j]!;
+      const [qx, qy] = parcelRing[j + 1]!;
+      const [nx, ny] = nearestPointOnSegment(midX, midY, px, py, qx, qy);
+      const d = Math.sqrt((midX - nx) ** 2 + (midY - ny) ** 2);
+      if (d < minDist) {
+        minDist = d;
+        nearestPt = [nx, ny];
+      }
+    }
+
+    results.push({
+      buildingPt: [midX, midY],
+      parcelPt: nearestPt,
+      distanceM: Math.round(minDist * 100) / 100,
+    });
+  }
+
+  return results;
+}
+
 export function polygonAreaM2(polygon: GeoJsonPolygon25832): number {
   return Math.abs(toJsts(polygon).getArea());
 }
