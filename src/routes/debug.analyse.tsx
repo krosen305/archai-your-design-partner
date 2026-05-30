@@ -33,6 +33,36 @@ function formatRunDate(iso: string): string {
   return `${date} ${time}`;
 }
 
+function formatExactTimestamp(iso: string): string {
+  return new Date(iso).toISOString();
+}
+
+function toObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getEndpointLabel(metadata: unknown, service: string): string {
+  const meta = toObject(metadata);
+  const endpointPath = readString(meta?.endpointPath);
+  if (endpointPath) return endpointPath;
+
+  const endpoint = readString(meta?.endpoint);
+  if (endpoint) {
+    try {
+      return new URL(endpoint).pathname || endpoint;
+    } catch {
+      return endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    }
+  }
+
+  return service;
+}
+
 function DebugAnalysePage() {
   const [addressId, setAddressId] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -179,30 +209,49 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
       : event.status === "error"
         ? "text-danger"
         : "text-muted-foreground";
+  const endpointLabel = getEndpointLabel(event.metadata, event.service);
 
   return (
-    <div
-      className="grid grid-cols-[80px_100px_1fr] gap-2 py-1 text-xs"
-      data-testid="debug-event-row"
-    >
+    <div className="grid grid-cols-[80px_1fr] gap-3 py-2 text-xs" data-testid="debug-event-row">
       <span className={`font-mono ${statusColor}`}>{event.status.toUpperCase()}</span>
-      <span className="truncate text-muted-foreground font-mono">{event.service}</span>
-      <div className="space-y-0.5">
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-foreground">{endpointLabel}</span>
+          <span className="font-mono text-muted-foreground/80">
+            {formatExactTimestamp(event.created_at)}
+          </span>
+          {event.status === "error" && (
+            <span className="rounded border border-danger/40 px-1 font-mono text-danger">
+              {event.http_status != null ? `HTTP ${event.http_status}` : "HTTP n/a"}
+            </span>
+          )}
+        </div>
         <div className="text-foreground">{event.operation}</div>
         {event.input_summary && (
-          <div className="text-muted-foreground">in: {event.input_summary}</div>
+          <div className="break-words whitespace-pre-wrap text-muted-foreground">
+            input: {event.input_summary}
+          </div>
         )}
         {event.output_summary && (
-          <div className="text-muted-foreground">out: {event.output_summary}</div>
+          <div className="break-words whitespace-pre-wrap text-muted-foreground">
+            out: {event.output_summary}
+          </div>
         )}
         {event.decision_summary && (
-          <div className="text-yellow-400">decision: {event.decision_summary}</div>
+          <div className="break-words whitespace-pre-wrap text-yellow-400">
+            decision: {event.decision_summary}
+          </div>
         )}
-        {event.error_message && <div className="text-danger">error: {event.error_message}</div>}
+        {event.error_message && (
+          <div className="break-words whitespace-pre-wrap text-danger">
+            error: {event.error_message}
+          </div>
+        )}
         <div className="text-muted-foreground/50">
           {event.phase && `${event.phase} | `}
           {event.duration_ms != null && `${event.duration_ms}ms`}
           {event.cache_hit === true && " | cache-hit"}
+          {event.http_status != null && event.status !== "error" && ` | HTTP ${event.http_status}`}
         </div>
       </div>
     </div>

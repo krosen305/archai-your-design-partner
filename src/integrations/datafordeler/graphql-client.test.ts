@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { z } from "zod";
-import { datafordelerGraphqlFetch } from "./graphql-client";
+import { datafordelerGraphqlFetch, summarizeGraphqlQuery } from "./graphql-client";
 import { installSequentialJsonFetch, resetMockedFetch } from "@/testing/fetch-mocks";
 
 beforeEach(() => resetMockedFetch());
@@ -18,6 +18,18 @@ const testResponseSchema = z.object({
 });
 
 describe("datafordelerGraphqlFetch", () => {
+  it("summarizes GraphQL queries onto one line", () => {
+    expect(
+      summarizeGraphqlQuery(`
+        query Foo($id: String!) {
+          Foo(where: { id: { eq: $id } }) {
+            nodes { id }
+          }
+        }
+      `),
+    ).toBe("query Foo($id: String!) { Foo(where: { id: { eq: $id } }) { nodes { id } } }");
+  });
+
   it("returns typed data on success", async () => {
     installSequentialJsonFetch([{ data: { DAR_Adresse: { nodes: [{ id_lokalId: "abc" }] } } }]);
     const result = await datafordelerGraphqlFetch<TestResponse>(

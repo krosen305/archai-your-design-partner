@@ -169,6 +169,13 @@ export function useCockpitAnalysis(params: {
         },
       );
 
+      if (workflowResult.status === "missing_project") {
+        // Stale tab: cockpit-URL'en peger på en adresse uden et aktivt
+        // projektkontekst. Send brugeren tilbage til adresse-trinnet i stedet
+        // for at brænde en orphan-analyse.
+        navigate({ to: "/projekt/adresse" });
+        return;
+      }
       if (workflowResult.status !== "ok") {
         setFetchError(workflowResult.message);
         setStatus("error");

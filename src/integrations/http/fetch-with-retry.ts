@@ -31,6 +31,7 @@ export type FetchTraceOptions = {
   operation: string;
   phase?: string;
   metadata?: Record<string, unknown>;
+  inputSummary?: string;
 };
 
 const DEFAULTS: RetryOptions = {
@@ -119,6 +120,7 @@ export async function fetchWithRetry(
         httpStatus: res.status,
         durationMs: Math.max(0, Date.now() - startedAt),
         metadata: traceOptions?.metadata,
+        inputSummary: traceOptions?.inputSummary,
       });
 
       if (!o.retryOnStatuses.includes(res.status) || attempt === o.retries) return res;
@@ -140,6 +142,7 @@ export async function fetchWithRetry(
         durationMs: Math.max(0, Date.now() - startedAt),
         errorMessage: e instanceof Error ? e.message : String(e),
         metadata: traceOptions?.metadata,
+        inputSummary: traceOptions?.inputSummary,
       });
 
       // Retry på timeout/abort kan forværre tingene mod flaky endpoints —

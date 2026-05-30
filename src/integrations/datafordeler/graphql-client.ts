@@ -23,6 +23,15 @@ const graphQlEnvelopeSchema = z.object({
   errors: z.array(graphQlErrorSchema).optional(),
 });
 
+function normalizeGraphqlQuery(query: string): string {
+  return query.trim().replace(/\s+/g, " ");
+}
+
+export function summarizeGraphqlQuery(query: string): string {
+  const normalized = normalizeGraphqlQuery(query);
+  return normalized.length > 500 ? `${normalized.slice(0, 497)}...` : normalized;
+}
+
 export async function datafordelerGraphqlFetch<T>(
   url: URL,
   query: string,
@@ -38,6 +47,8 @@ export async function datafordelerGraphqlFetch<T>(
 
   const module = operation.split("_")[0].toLowerCase() + "/client";
   const service = `Datafordeler ${operation.split("_")[0]}`;
+  const querySummary = summarizeGraphqlQuery(query);
+  const endpointPath = url.pathname;
 
   // Datafordeler GraphQL er sporadisk flaky: identisk query svinger 20ms → 7000ms
   // og enkelte workers hænger til AbortSignal-timeout. Tre tilpasninger:
@@ -64,7 +75,11 @@ export async function datafordelerGraphqlFetch<T>(
       service,
       operation,
       phase: options?.phase ?? "layer1",
-      metadata: options?.metadata,
+      metadata: {
+        ...(options?.metadata ?? {}),
+        endpointPath,
+      },
+      inputSummary: querySummary,
     },
   );
 

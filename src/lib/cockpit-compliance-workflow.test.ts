@@ -55,6 +55,28 @@ describe("runCockpitComplianceWorkflow", () => {
     });
   });
 
+  it("returnerer missing_project når brugeren er logget ind men intet projectId er sat", async () => {
+    // Stale-tab beskyttelse: hvis URL'en peger på /projekt/{addr}/cockpit men
+    // brugeren ikke har et aktivt projektkontekst, skal vi IKKE køre en dyr
+    // analyseAddress (det producerede tidligere orphan-runs med project_id=null
+    // hver gang en gammel fane blev genåbnet).
+    const fetchComplianceMock = mock(async () => {
+      throw new Error("should not run");
+    });
+
+    const result = await runCockpitComplianceWorkflow(
+      { address: ADDRESS, projectId: null },
+      {
+        fetchCompliance: fetchComplianceMock as never,
+        getSession: async () => makeSession(),
+        isGuest: () => false,
+      },
+    );
+
+    expect(result.status).toBe("missing_project");
+    expect(fetchComplianceMock).not.toHaveBeenCalled();
+  });
+
   it("calls fetchCompliance with address payload and projectId when session exists", async () => {
     const fetchComplianceMock = mock(async ({ data }: { data: Record<string, unknown> }) => ({
       bbr: null,
