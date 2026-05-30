@@ -12,6 +12,7 @@ import { FloorPlanCommandSchema } from "@/domain/floor-plan/command.schemas";
 import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
 import type { FloorPlanVerificationResult } from "@/services/floor-plan/verify-floor-plan.service";
 import type { ApplyFloorPlanCommandResult } from "@/services/floor-plan/apply-floor-plan-command.service";
+import type { ExportFloorPlanResult } from "@/services/floor-plan/export-floor-plan.service";
 
 // --- Schemas ---------------------------------------------------------------
 
@@ -31,6 +32,13 @@ const applyFloorPlanCommandInput = z.object({
   floorPlanIterationId: z.string().uuid(),
   command: FloorPlanCommandSchema,
   source: z.enum(["drag", "keyboard", "ai", "system"]).default("drag"),
+  token: z.string().min(1),
+});
+
+const exportFloorPlanInput = z.object({
+  projectId: z.string().uuid(),
+  floorPlanIterationId: z.string().uuid(),
+  levelId: z.string().min(1).optional(),
   token: z.string().min(1),
 });
 
@@ -110,6 +118,59 @@ export const applyFloorPlanCommandFn = createServerFn({ method: "POST" })
         },
         principal,
         { read: repo, write: repo },
+      );
+    });
+  });
+
+export const exportFloorPlanFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => exportFloorPlanInput.parse(data))
+  .handler(async ({ data }): Promise<ExportFloorPlanResult> => {
+    return withAuth(data.token, async (userId) => {
+      const { verifyProjectOwnership } =
+        await import("@/integrations/supabase/repositories/projects.repository");
+      const { buildOwnerPrincipal } = await import("@/services/floor-plan/principal");
+      const { verifyFloorPlan } = await import("@/services/floor-plan/verify-floor-plan.service");
+      const { exportFloorPlan } = await import("@/services/floor-plan/export-floor-plan.service");
+      const { TrustedSiteAdapter } =
+        await import("@/services/floor-plan/trusted-site.adapter.server");
+      const { FloorPlanRepository } =
+        await import("@/integrations/supabase/repositories/floor-plan.repository");
+      const { FloorPlanVerificationRepository } =
+        await import("@/integrations/supabase/repositories/floor-plan-verification.repository");
+      const { FloorPlanExportRepository } =
+        await import("@/integrations/supabase/repositories/floor-plan-export.repository");
+
+      const principal = buildOwnerPrincipal(
+        userId,
+        await verifyProjectOwnership(data.projectId, userId),
+      );
+
+      const repo = new FloorPlanRepository();
+      const document = await repo.loadActiveDocument(data.projectId, data.floorPlanIterationId);
+      if (!document) throw new Response("Plantegning ikke fundet", { status: 404 });
+
+      // Verification is the server-side authority for export readiness (§17.5).
+      const verification = await verifyFloorPlan(
+        { projectId: data.projectId, floorPlanIterationId: data.floorPlanIterationId },
+        principal,
+        {
+          read: repo,
+          site: new TrustedSiteAdapter(),
+          store: new FloorPlanVerificationRepository(),
+        },
+      );
+
+      return exportFloorPlan(
+        {
+          projectId: data.projectId,
+          floorPlanIterationId: data.floorPlanIterationId,
+          document,
+          levelId: data.levelId ?? document.levels[0]!.id,
+          verificationStatus: verification.status,
+          inputHash: verification.inputHash,
+        },
+        principal,
+        { store: new FloorPlanExportRepository() },
       );
     });
   });

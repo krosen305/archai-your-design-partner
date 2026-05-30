@@ -40,6 +40,21 @@ export interface FloorPlanWritePort {
   }): Promise<void>;
 }
 
+export interface FloorPlanExportStorePort {
+  saveSvg(projectId: string, svg: string): Promise<string>;
+  savePdf(projectId: string, pdf: Uint8Array): Promise<string>;
+  createSignedUrl(path: string, expiresInSeconds: number): Promise<string | null>;
+  saveExportRecord(params: {
+    projectId: string;
+    floorPlanIterationId: string;
+    drawingType: string;
+    readinessStatus: string;
+    svgPath: string | null;
+    pdfPath: string | null;
+    inputHash: string;
+  }): Promise<string>;
+}
+
 export interface FloorPlanVerificationStorePort {
   saveVerification(snapshot: {
     projectId: string;
