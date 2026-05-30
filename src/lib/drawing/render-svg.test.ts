@@ -90,4 +90,23 @@ describe("renderSvg", () => {
   it("indeholder skalastav-tekst", () => {
     expect(renderSvg(model)).toContain("1:250");
   });
+
+  it("indeholder legend-items fra model.legend", () => {
+    const modelWithLegend: DrawingModel = {
+      ...model,
+      legend: [
+        {
+          symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>',
+          label: "Parcel",
+        },
+        {
+          symbol: '<rect width="12" height="8" fill="#d4e8ff" stroke="#00f" stroke-width="1"/>',
+          label: "Nyt byggeri",
+        },
+      ],
+    };
+    const svg = renderSvg(modelWithLegend);
+    expect(svg).toContain("Parcel");
+    expect(svg).toContain("Nyt byggeri");
+  });
 });
