@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { Json } from "@/integrations/supabase/types";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
@@ -22,11 +21,11 @@ import {
   dataStatusMapSchema,
   getReadinessScores,
   getRiskFlags,
-  parsePersistedDataStatusMap,
   type DataPointId,
   type DataPointStatus,
   type DataStatusMap,
 } from "@/lib/datacheck";
+import { withAuth } from "@/lib/server-auth";
 
 // ---------------------------------------------------------------------------
 // Server functions
@@ -41,9 +40,14 @@ const loadDatacheckSchema = z.object({
 const loadDatacheck = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => loadDatacheckSchema.parse(data))
   .handler(async ({ data }): Promise<DataStatusMap> => {
-    const { loadProject } = await import("@/integrations/supabase/project-persistence");
-    const project = await loadProject(data.token, data.projectId ?? null);
-    return parsePersistedDataStatusMap(project?.project_data_status);
+    return withAuth(data.token, async (userId) => {
+      const { loadDatacheckState } = await import("@/lib/datacheck.server");
+      return loadDatacheckState({
+        userId,
+        projectId: data.projectId ?? null,
+        addressId: data.addressId,
+      });
+    });
   });
 
 const saveDatacheckSchema = z.object({
@@ -56,12 +60,14 @@ const saveDatacheckSchema = z.object({
 const saveDatacheck = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => saveDatacheckSchema.parse(data))
   .handler(async ({ data }): Promise<void> => {
-    const { saveProject } = await import("@/integrations/supabase/project-persistence");
-    await saveProject(
-      data.token,
-      { projectDataStatus: data.statusMap as Json },
-      data.projectId ?? null,
-    );
+    return withAuth(data.token, async (userId) => {
+      const { saveDatacheckState } = await import("@/lib/datacheck.server");
+      await saveDatacheckState({
+        userId,
+        projectId: data.projectId ?? null,
+        statusMap: data.statusMap,
+      });
+    });
   });
 
 // ---------------------------------------------------------------------------

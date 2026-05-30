@@ -10,7 +10,7 @@ type AnalysisRunWithRelation = AnalysisRunRow & { analysis_events: AnalysisEvent
 export type LoadDebugAnalysisRunsInput = {
   addressId: string | null;
   projectId: string | null;
-  token: string;
+  userId: string;
 };
 
 export function canAccessDebugAnalysis(
@@ -23,10 +23,6 @@ export function canAccessDebugAnalysis(
 export async function loadDebugAnalysisRuns(
   input: LoadDebugAnalysisRunsInput,
 ): Promise<AnalysisRunView[]> {
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(input.token);
-  if (authError || !authData.user) throw new Error("401: Ikke autentificeret");
-
-  const role = String(authData.user.app_metadata?.role ?? "");
   if (!canAccessDebugAnalysis(getEnvOptional("ENVIRONMENT"))) {
     throw new Error("403: Debug analyse er ikke tilgaengelig i produktionsmiljoet");
   }
@@ -45,6 +41,7 @@ export async function loadDebugAnalysisRuns(
     .order("started_at", { ascending: false })
     .limit(20);
 
+  query = query.eq("user_id", input.userId);
   if (input.addressId) query = query.eq("address_id", input.addressId);
   if (input.projectId) query = query.eq("project_id", input.projectId);
 

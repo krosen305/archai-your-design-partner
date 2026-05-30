@@ -9,19 +9,13 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import { TopBar } from "@/components/wizard-chrome";
-import { decodeWithSchema } from "@/hooks/cockpit-restore-utils";
+import { getSession } from "@/lib/auth";
+import { hydrateProjectIntoStore } from "@/lib/project-restore-facade";
 import { useProject } from "@/lib/project-store";
-import { parseComplianceData } from "@/types/project-state";
 // Protected restore path; keep logic thin and deterministic.
-import { restoreProject } from "@/lib/project-sync";
+import { loadProjectRestore } from "@/lib/project-sync";
+import { runProjectRestoreWorkflow } from "@/lib/project-restore-workflow";
 import { AuthProvider } from "@/lib/auth-context";
-import {
-  addressKoordinaterSchema,
-  billedeAnalyseResultatSchema,
-  byggeoenskeSchema,
-  designPlacementSchema,
-  husDnaSchema,
-} from "@/types/project-restore.schemas";
 
 import appCss from "../styles.css?url";
 
@@ -91,33 +85,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const location = useLocation();
   const isWelcome = location.pathname === "/" || location.pathname === "/projekt/start";
-  const {
-    address,
-    setAddress,
-    setBbrData,
-    setComplianceFlags,
-    setLokalplaner,
-    setComplianceDone,
-    setHusDna,
-    setKommuneplanramme,
-    setByggeoenske,
-    resetByggeoenske,
-    setDesignPlacement,
-    setByggeanalyseResultat,
-    setBilledanalyse,
-    setVurderingData,
-    setCurrentProjectId,
-    setHeritageSaveValue,
-    setIsFredet,
-    setGrundareal,
-    setBebyggetAreal,
-    setHardStop,
-    setBudgetEstimate,
-    setBfeNr,
-  } = useProject();
+  const { address, setCurrentProjectId } = useProject();
 
   useEffect(() => {
     if (address) return;
+    let cancelled = false;
 
     const selectedProjectId =
       typeof window !== "undefined"
@@ -134,68 +106,24 @@ function RootComponent() {
       setCurrentProjectId(selectedProjectId);
     }
 
-    restoreProject(selectedProjectId, restoreAddressId).then((project) => {
-      if (!project) return;
+    (async () => {
+      const project = await runProjectRestoreWorkflow(
+        {
+          projectId: selectedProjectId,
+          addressId: restoreAddressId,
+        },
+        {
+          getSession,
+          loadProjectRestore,
+        },
+      );
+      if (cancelled || !project) return;
+      hydrateProjectIntoStore(project, { routeAddressId: restoreAddressId });
+    })();
 
-      setCurrentProjectId(project.id);
-      if (project.address_full && (project.address_adresseid || project.address_bbr)) {
-        const resolvedAdresseid = project.address_adresseid ?? project.address_bbr!;
-        const resolvedAdgangsadresseid = project.address_bbr ?? project.address_adresseid!;
-        setAddress({
-          adresseid: resolvedAdresseid,
-          adresse: project.address_full,
-          postnr: project.address_postnr ?? "",
-          postnrnavn: project.address_postnrnavn ?? "",
-          kommune: project.address_kommune ?? "",
-          kommunekode: "",
-          matrikel: project.address_matrikel,
-          adgangsadresseid: resolvedAdgangsadresseid,
-          grundareal: null,
-          koordinater: decodeWithSchema(project.address_koordinater, addressKoordinaterSchema) ?? {
-            lat: 0,
-            lng: 0,
-          },
-          bbrId: null,
-          ejerlavskode: project.address_ejerlavskode ?? null,
-          matrikelnummer: project.address_matrikelnummer ?? null,
-        });
-      }
-
-      resetByggeoenske();
-      const byggeoenske = decodeWithSchema(project.design_byggeoenske, byggeoenskeSchema);
-      if (byggeoenske) {
-        setByggeoenske(byggeoenske);
-      }
-
-      const husDna = decodeWithSchema(project.design_hus_dna, husDnaSchema);
-      setHusDna(husDna);
-
-      setDesignPlacement(decodeWithSchema(project.design_placement, designPlacementSchema));
-
-      const cd = parseComplianceData(project.compliance_data);
-      if (cd) {
-        if (cd.bbr) setBbrData(cd.bbr);
-        setComplianceFlags(cd.flags);
-        setLokalplaner(cd.lokalplaner);
-        if (cd.kommuneplanramme) setKommuneplanramme(cd.kommuneplanramme);
-        if (cd.byggeanalyseResultat) setByggeanalyseResultat(cd.byggeanalyseResultat);
-        if (cd.vurderingData) setVurderingData(cd.vurderingData);
-        if (project.compliance_done) setComplianceDone(true);
-      }
-
-      const billedanalyse = decodeWithSchema(project.billedanalyse, billedeAnalyseResultatSchema);
-      if (billedanalyse) {
-        setBilledanalyse(billedanalyse);
-      }
-
-      if (project.heritage_save_value != null) setHeritageSaveValue(project.heritage_save_value);
-      if (project.is_fredet != null) setIsFredet(project.is_fredet);
-      if (project.grundareal_m2 != null) setGrundareal(project.grundareal_m2);
-      if (project.bebygget_areal_m2 != null) setBebyggetAreal(project.bebygget_areal_m2);
-      setHardStop(project.hard_stop ?? false, project.hard_stop_reason ?? null);
-      if (project.budget_estimate != null) setBudgetEstimate(project.budget_estimate);
-      setBfeNr(project.bfe_nr ?? null);
-    });
+    return () => {
+      cancelled = true;
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

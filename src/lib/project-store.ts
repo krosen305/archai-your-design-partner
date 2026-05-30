@@ -53,7 +53,7 @@ type State = {
   project: ProjectData;
   briefDone: boolean;
 
-  // 5-fase arkitektur
+  // Kanoniske faser
   phases: Record<PhaseName, PhaseStatus>;
   husDna: HusDna | null;
   byggeoenske: Byggeoenske;
@@ -146,11 +146,10 @@ type State = {
 };
 
 const DEFAULT_PHASES: Record<PhaseName, PhaseStatus> = {
-  "hus-dna": "active",
-  match: "locked",
-  finans: "locked",
-  engineering: "locked",
-  udbud: "locked",
+  sandkassen: "active",
+  matriklen: "locked",
+  maskinrummet: "locked",
+  myndighed: "locked",
 };
 
 const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {

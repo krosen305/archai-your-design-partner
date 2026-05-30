@@ -11,6 +11,7 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import "../testing/react-test-setup";
 import { useProject } from "@/lib/project-store";
 import type { PersistedProject } from "@/integrations/supabase/project-persistence";
+import { MOCK_BBR } from "@/lib/mock-data";
 
 // ---------------------------------------------------------------------------
 // Minimal PersistedProject fixture — only the fields useCockpitRestore reads
@@ -68,10 +69,24 @@ const MINIMAL_PROJECT: PersistedProject = {
   updated_at: "2026-05-22T10:00:00Z",
 };
 
+mock.module("@/lib/auth", () => ({
+  getSession: async () => ({
+    access_token: "test-token",
+  }),
+}));
+
 // ---------------------------------------------------------------------------
-// Mock @/lib/project-sync — allowed (not the project-store)
+// Mock @/lib/project-sync — allowed (not the project-store).
+// loadProjectRestoreCallCount lader os verificere om restore reelt blev kaldt
+// (vs. sprunget over fordi address allerede matcher).
 // ---------------------------------------------------------------------------
+let loadProjectRestoreCallCount = 0;
+
 mock.module("@/lib/project-sync", () => ({
+  loadProjectRestore: async (_context: unknown) => {
+    loadProjectRestoreCallCount += 1;
+    return MINIMAL_PROJECT;
+  },
   restoreProject: async (_pid: unknown, _adresseId: unknown) => MINIMAL_PROJECT,
   syncPatch: async () => {},
 }));
@@ -84,6 +99,7 @@ describe("useCockpitRestore", () => {
   beforeEach(() => {
     // Reset the real store before each test
     useProject.getState().reset();
+    loadProjectRestoreCallCount = 0;
   });
 
   it("restorer address ind i project store", async () => {
@@ -177,8 +193,11 @@ describe("useCockpitRestore", () => {
     expect(useProject.getState().dataStatus.naboer).toBe("fresh");
   });
 
-  it("sætter restorePhase=checked straks hvis adressen allerede matcher", async () => {
-    // Pre-populate store with matching address
+  it("kører restore selv når adressen matcher, hvis bbrData mangler", async () => {
+    // Scenario: handleFortsaet på /projekt/start kalder reset() + setAddress
+    // før navigation, så når cockpit mounter matcher address URL'en, men
+    // bbrData er null. Vi SKAL stadig restore'e fra Supabase i stedet for at
+    // lade useCockpitAnalysis fyre en ny dyr fetchCompliance.
     useProject.getState().setAddress({
       adresseid: ADRESSE_ID,
       adgangsadresseid: ADRESSE_ID,
@@ -205,7 +224,53 @@ describe("useCockpitRestore", () => {
       }),
     );
 
-    // Should be checked immediately — no async needed
+    // Restore skal være pending fordi bbrData mangler — vi har ikke compliance
+    // i hukommelsen, så vi skal hente fra Supabase.
+    expect(result.current.restorePhase).toBe("pending");
+
+    await waitFor(() => {
+      expect(result.current.restorePhase).toBe("checked");
+    });
+
+    expect(loadProjectRestoreCallCount).toBe(1);
+    // Andre felter fra projektet skal være restored
+    expect(useProject.getState().grundareal_m2).toBe(441);
+  });
+
+  it("springer restore over når adressen matcher OG bbrData allerede er sat", async () => {
+    // Scenario: en analyse er allerede kørt for denne adresse i samme session,
+    // bbrData er sat i hukommelsen. Ingen grund til at hente fra Supabase
+    // eller starte en ny analyse.
+    const store = useProject.getState();
+    store.setAddress({
+      adresseid: ADRESSE_ID,
+      adgangsadresseid: ADRESSE_ID,
+      adresse: "Testgade 1, 2800 Kongens Lyngby",
+      postnr: "2800",
+      postnrnavn: "Kongens Lyngby",
+      kommune: "Lyngby-Taarbæk",
+      kommunekode: "",
+      matrikel: null,
+      grundareal: 441,
+      koordinater: { lat: 55.77, lng: 12.5 },
+      bbrId: null,
+      ejerlavskode: null,
+      matrikelnummer: null,
+    });
+    store.setBbrData(MOCK_BBR);
+
+    const { useCockpitRestore } = await import("./useCockpitRestore");
+
+    const { result } = renderHook(() =>
+      useCockpitRestore({
+        adresseId: ADRESSE_ID,
+        searchProjectId: undefined,
+        onSnapshotRestored: () => {},
+      }),
+    );
+
+    // Begge betingelser opfyldt → restore skal springes over straks
     expect(result.current.restorePhase).toBe("checked");
+    expect(loadProjectRestoreCallCount).toBe(0);
   });
 });

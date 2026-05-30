@@ -12,7 +12,7 @@ export function PhaseSidebar() {
   const { address } = useProject();
 
   const handlePhaseClick = (phaseId: number, route: string) => {
-    if (phaseId === 2 && address?.adresseid) {
+    if (phaseId === 3 && address?.adresseid) {
       navigate({ to: `/projekt/${address.adresseid}/cockpit` as never });
     } else {
       navigate({ to: route });

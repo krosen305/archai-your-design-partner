@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { MapPin } from "lucide-react";
+import { getSession } from "@/lib/auth";
 import { useProject } from "@/lib/project-store";
 import { PageTransition } from "@/components/wizard-ui";
 import { searchAddresses } from "@/lib/adresse.functions";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch } from "@/lib/project-sync";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 import { kommunenavnFraKode } from "@/lib/kommuner";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import type { Address } from "@/types/project-state";
@@ -15,7 +17,7 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const { setAddress, setBbrData, setComplianceDone } = useProject();
+  const { setAddress, setBbrData, setComplianceDone, currentProjectId } = useProject();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<GsearchSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,7 +79,16 @@ function AddressStep() {
     setBbrData(null);
     setComplianceDone(false);
     setAddress(selected);
-    syncPatch({ address: selected, complianceDone: false, currentStep: "boligoenske" });
+    void runProjectSaveWorkflow(
+      {
+        patch: { address: selected, complianceDone: false, currentStep: "boligoenske" },
+        projectId: currentProjectId,
+      },
+      {
+        getSession,
+        saveProjectPatch,
+      },
+    );
     navigate({ to: `/projekt/${selected.adresseid}/cockpit` as never });
   }
 

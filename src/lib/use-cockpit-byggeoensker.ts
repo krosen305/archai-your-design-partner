@@ -14,8 +14,10 @@ import type {
   RuleEngineTerrainData,
   RuleEngineTinglysningResult,
 } from "@/domain/contracts/rule-engine.types";
+import { getSession } from "@/lib/auth";
 import { useProject } from "@/lib/project-store";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch } from "@/lib/project-sync";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import type { Byggeoenske } from "@/types/project-state";
 
@@ -111,8 +113,18 @@ export function useCockpitByggeoensker(reactiveContext: ReactiveContext): {
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      const next = { ...useProject.getState().byggeoenske };
-      syncPatch({ byggeoenske: next });
+      const currentState = useProject.getState();
+      const next = { ...currentState.byggeoenske };
+      void runProjectSaveWorkflow(
+        {
+          patch: { byggeoenske: next },
+          projectId: currentState.currentProjectId,
+        },
+        {
+          getSession,
+          saveProjectPatch,
+        },
+      );
     }, 500);
   };
 

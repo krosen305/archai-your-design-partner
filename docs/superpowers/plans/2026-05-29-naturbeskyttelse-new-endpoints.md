@@ -13,39 +13,41 @@
 ## Endpoint-oversigt (verificeret live)
 
 ### GeoServer — ingen auth krævet
+
 - URL: `https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs`
 - Output: `application/json`
 - Geometry-felt: `Shape`
 - Filter-syntax: `CQL_FILTER=INTERSECTS(Shape,SRID=4326;POINT(lng lat))`
 - Parse: `response.totalFeatures ?? response.features?.length ?? 0`
 
-| Lag | typename |
-|---|---|
-| Søbeskyttelse | `dai:soe_bes_linjer` |
-| Åbeskyttelse | `dai:aa_bes_linjer` |
-| Skovbyggelinje | `dai:skovbyggelinjer` |
+| Lag             | typename               |
+| --------------- | ---------------------- |
+| Søbeskyttelse   | `dai:soe_bes_linjer`   |
+| Åbeskyttelse    | `dai:aa_bes_linjer`    |
+| Skovbyggelinje  | `dai:skovbyggelinjer`  |
 | Kirkebyggelinje | `dai:kirkebyggelinjer` |
 
 ### Datafordeler MAT WFS — `DATAFORDELER_API_KEY` (allerede i brug)
+
 - URL: `https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS`
 - Output: GML XML (JSON ikke understøttet af denne service)
 - Geometry-felt: `geometri`
 - Filter-syntax: `CQL_FILTER=INTERSECTS(geometri,SRID=4326;POINT(lng lat))`
 - Parse: regex `numberMatched="(\d+)"` på response-tekst
 
-| Lag | typename |
-|---|---|
+| Lag               | typename                               |
+| ----------------- | -------------------------------------- |
 | Strandbeskyttelse | `mat:StrandbeskyttelseFlade_Gaeldende` |
-| Klitfredning | `mat:KlitfredningFlade_Gaeldende` |
+| Klitfredning      | `mat:KlitfredningFlade_Gaeldende`      |
 
 ---
 
 ## Berørte filer
 
-| Fil | Ændring |
-|---|---|
-| `src/integrations/sdfi/naturbeskyttelse.ts` | Fuldt omskrevet — split endpoints, ny type, kirkebyggelinje aktiveret |
-| `src/integrations/sdfi/naturbeskyttelse.test.ts` | Opdateret tests — håndterer to fetch-mønstre, tester kirkebyggelinje |
+| Fil                                              | Ændring                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------- |
+| `src/integrations/sdfi/naturbeskyttelse.ts`      | Fuldt omskrevet — split endpoints, ny type, kirkebyggelinje aktiveret |
+| `src/integrations/sdfi/naturbeskyttelse.test.ts` | Opdateret tests — håndterer to fetch-mønstre, tester kirkebyggelinje  |
 
 **Ikke berørt:** `src/integrations/arealdata/client.ts` bruger samme gamle endpoint — separat issue, ikke i scope her.
 
@@ -54,6 +56,7 @@
 ## Task 1: Opdater `naturbeskyttelse.ts` med split-endpoint arkitektur
 
 **Files:**
+
 - Modify: `src/integrations/sdfi/naturbeskyttelse.ts`
 
 - [ ] **Step 1: Erstat hele filen med ny implementation**
@@ -81,10 +84,8 @@
 import { getEnvRequired } from "@/lib/env";
 import { makeErrorResult, makeOkResult, type SourceResult } from "@/lib/source-result";
 
-const GEOSERVER_WFS =
-  "https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs";
-const MAT_WFS =
-  "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
+const GEOSERVER_WFS = "https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs";
+const MAT_WFS = "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 
 const SOURCE_URL = GEOSERVER_WFS;
 
@@ -107,13 +108,13 @@ type LayerConfig = GeoServerLayer | MatWfsLayer;
 
 const LAYERS: ReadonlyArray<LayerConfig> = [
   // Kilde A — GeoServer
-  { source: "geoserver", key: "soebeskyttelse",  typename: "dai:soe_bes_linjer" },
-  { source: "geoserver", key: "aabeskyttelse",   typename: "dai:aa_bes_linjer" },
-  { source: "geoserver", key: "skovbyggelinje",  typename: "dai:skovbyggelinjer" },
+  { source: "geoserver", key: "soebeskyttelse", typename: "dai:soe_bes_linjer" },
+  { source: "geoserver", key: "aabeskyttelse", typename: "dai:aa_bes_linjer" },
+  { source: "geoserver", key: "skovbyggelinje", typename: "dai:skovbyggelinjer" },
   { source: "geoserver", key: "kirkebyggelinje", typename: "dai:kirkebyggelinjer" },
   // Kilde B — Datafordeler MAT WFS
   { source: "mat", key: "strandbeskyttelse", typename: "mat:StrandbeskyttelseFlade_Gaeldende" },
-  { source: "mat", key: "klitfredning",      typename: "mat:KlitfredningFlade_Gaeldende" },
+  { source: "mat", key: "klitfredning", typename: "mat:KlitfredningFlade_Gaeldende" },
 ];
 
 type LayerOutcome = {
@@ -130,10 +131,7 @@ type GeoServerJsonResponse = {
   features?: unknown[];
 };
 
-async function fetchGeoServerLayer(
-  typename: string,
-  koordinat: Koordinat,
-): Promise<number> {
+async function fetchGeoServerLayer(typename: string, koordinat: Koordinat): Promise<number> {
   const { lat, lng } = koordinat;
   const filter = `INTERSECTS(Shape,SRID=4326;POINT(${lng} ${lat}))`;
   const url =
@@ -268,6 +266,7 @@ Activates kirkebyggelinje as real data source."
 ## Task 2: Opdater tests til to-kilde arkitektur
 
 **Files:**
+
 - Modify: `src/integrations/sdfi/naturbeskyttelse.test.ts`
 
 - [ ] **Step 1: Erstat hele testfilen**
@@ -322,8 +321,8 @@ describe("NaturbeskyttelseService.getTilstand", () => {
         geoServerJson(0), // aa
         geoServerJson(1), // skov — hit
         geoServerJson(0), // kirke
-        matWfsGml(1),     // strand — hit
-        matWfsGml(0),     // klit
+        matWfsGml(1), // strand — hit
+        matWfsGml(0), // klit
       ];
       return responses[call++]!;
     }) as unknown as typeof fetch;
@@ -445,6 +444,7 @@ out: status=ok confidence=confirmed features=N error_kind=(absent)
 ```
 
 I stedet for det nuværende:
+
 ```
 out: status=error confidence=unknown features=null error_kind=all_layers_failed
 ```

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
+import { getSession } from "@/lib/auth";
 import { useProject } from "@/lib/project-store";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch } from "@/lib/project-sync";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 
 export function useBudgetSync(totalTypisk: number): void {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -8,8 +10,18 @@ export function useBudgetSync(totalTypisk: number): void {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      useProject.getState().setBudgetEstimate(totalTypisk);
-      void syncPatch({ budget_estimate: totalTypisk });
+      const state = useProject.getState();
+      state.setBudgetEstimate(totalTypisk);
+      void runProjectSaveWorkflow(
+        {
+          patch: { budget_estimate: totalTypisk },
+          projectId: state.currentProjectId,
+        },
+        {
+          getSession,
+          saveProjectPatch,
+        },
+      );
     }, 800);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

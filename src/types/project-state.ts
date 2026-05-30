@@ -52,10 +52,10 @@ export type ProjectData = {
 };
 
 // ---------------------------------------------------------------------------
-// 5-fase arkitektur
+// Kanoniske faser
 // ---------------------------------------------------------------------------
 
-export type PhaseName = "hus-dna" | "match" | "finans" | "engineering" | "udbud";
+export type PhaseName = "sandkassen" | "matriklen" | "maskinrummet" | "myndighed";
 export type PhaseStatus = "locked" | "active" | "complete" | "error";
 
 // ---------------------------------------------------------------------------

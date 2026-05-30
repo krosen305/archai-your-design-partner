@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import type { PersistedProject, ProjectPatch } from "@/integrations/supabase/project-persistence";
+import { getSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { withAuth } from "@/lib/server-auth";
 import { useProject } from "@/lib/project-store";
@@ -14,8 +14,19 @@ import {
 
 export { projectPatchSchema, saveProjectSchema } from "@/types/project-sync.schemas";
 
+export type ProjectSaveContext = {
+  accessToken: string;
+  projectId?: string | null;
+};
+
+export type ProjectRestoreContext = {
+  accessToken: string;
+  projectId?: string | null;
+  addressId?: string | null;
+};
+
 // ---------------------------------------------------------------------------
-// Server functions — auth validated via withAuth before delegating to persistence
+// Server functions - auth validated via withAuth before delegating to persistence
 // ---------------------------------------------------------------------------
 
 export const serverCreateProject = createServerFn({ method: "POST" })
@@ -32,7 +43,7 @@ export const serverSaveProject = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<void> => {
     return withAuth(data.accessToken, async () => {
       const { saveProject } = await import("@/integrations/supabase/project-persistence");
-      // Zod-validated above — shape matches ProjectPatch contract
+      // Zod-validated above - shape matches ProjectPatch contract
       await saveProject(data.accessToken, data.patch as ProjectPatch, data.projectId);
     });
   });
@@ -59,49 +70,60 @@ export const serverDeleteProject = createServerFn({ method: "POST" })
 // Client-side helpers
 // ---------------------------------------------------------------------------
 
-async function getAccessToken(): Promise<string | null> {
+export async function saveProjectPatch(
+  patch: ProjectPatch,
+  context: ProjectSaveContext,
+): Promise<void> {
   try {
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// Mutation policy: fire-and-forget / last-write-wins.
-// syncPatch is called from UI event handlers and is not awaited by callers.
-// Concurrent saves for the same project are possible — the last write wins.
-// Critical writes (e.g., project creation) use serverCreateProject directly and are awaited by callers.
-export async function syncPatch(patch: ProjectPatch): Promise<void> {
-  const accessToken = await getAccessToken();
-  if (!accessToken) return;
-  const projectId = useProject.getState().currentProjectId;
-  try {
-    await serverSaveProject({ data: { accessToken, patch, projectId } });
+    await serverSaveProject({
+      data: {
+        accessToken: context.accessToken,
+        patch,
+        projectId: context.projectId,
+      },
+    });
   } catch (e) {
     logger.warn("[ProjectSync] gem fejlede (ikke kritisk):", (e as Error).message);
   }
 }
 
-// In-flight + short-lived cache for restoreProject — undgår dobbeltkald når både
-// __root.tsx (app-mount) og cockpit-route restorer samme projekt indenfor få sekunder.
+// Mutation policy: fire-and-forget / last-write-wins.
+// syncPatch is called from UI event handlers and is not awaited by callers.
+// Concurrent saves for the same project are possible - the last write wins.
+// Critical writes (e.g., project creation) use serverCreateProject directly and are awaited by callers.
+export async function syncPatch(patch: ProjectPatch): Promise<void> {
+  const session = await getSession();
+  const accessToken = session?.access_token ?? null;
+  if (!accessToken) return;
+  await saveProjectPatch(patch, {
+    accessToken,
+    projectId: useProject.getState().currentProjectId,
+  });
+}
+
+// In-flight + short-lived cache for restoreProject - avoids duplicate requests
+// when both __root.tsx (app mount) and cockpit-route restore ask for the same
+// project within a few seconds.
 const RESTORE_CACHE_TTL_MS = 5000;
 const restoreCache = new Map<string, { promise: Promise<PersistedProject | null>; ts: number }>();
 
-export async function restoreProject(
-  projectId?: string | null,
-  addressId?: string | null,
+export async function loadProjectRestore(
+  context: ProjectRestoreContext,
 ): Promise<PersistedProject | null> {
-  const accessToken = await getAccessToken();
-  if (!accessToken) return null;
-  const cacheKey = `${accessToken}::${projectId ?? ""}::${addressId ?? ""}`;
+  const cacheKey = `${context.accessToken}::${context.projectId ?? ""}::${context.addressId ?? ""}`;
   const cached = restoreCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < RESTORE_CACHE_TTL_MS) {
     return cached.promise;
   }
   const promise = (async () => {
     try {
-      return await serverLoadProject({ data: { accessToken, projectId, addressId } });
+      return await serverLoadProject({
+        data: {
+          accessToken: context.accessToken,
+          projectId: context.projectId,
+          addressId: context.addressId,
+        },
+      });
     } catch (e) {
       logger.warn("[ProjectSync] gendan fejlede:", (e as Error).message);
       return null;
@@ -109,4 +131,14 @@ export async function restoreProject(
   })();
   restoreCache.set(cacheKey, { promise, ts: Date.now() });
   return promise;
+}
+
+export async function restoreProject(
+  projectId?: string | null,
+  addressId?: string | null,
+): Promise<PersistedProject | null> {
+  const session = await getSession();
+  const accessToken = session?.access_token ?? null;
+  if (!accessToken) return null;
+  return loadProjectRestore({ accessToken, projectId, addressId });
 }

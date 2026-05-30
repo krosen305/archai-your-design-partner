@@ -3,18 +3,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { useState, useEffect, useCallback } from "react";
 import { z } from "zod";
 import type { AnalysisEventRow, AnalysisRunView } from "@/lib/debug-analysis";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const getAnalysisRunsSchema = z.object({
   addressId: z.string().nullable(),
   projectId: z.string().nullable(),
-  token: z.string().min(1),
 });
 
 const getAnalysisRuns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => getAnalysisRunsSchema.parse(d))
-  .handler(async ({ data }): Promise<AnalysisRunView[]> => {
+  .handler(async ({ data, context }): Promise<AnalysisRunView[]> => {
     const { loadDebugAnalysisRuns } = await import("@/lib/debug-analysis");
-    return loadDebugAnalysisRuns(data);
+    return loadDebugAnalysisRuns({ ...data, userId: context.userId });
   });
 
 export const Route = createFileRoute("/debug/analyse")({
@@ -44,15 +45,10 @@ function DebugAnalysePage() {
     setLoading(true);
     setError(null);
     try {
-      const { getSession } = await import("@/lib/auth");
-      const session = await getSession();
-      if (!session) throw new Error("Ingen session");
-
       const result = await getAnalysisRuns({
         data: {
           addressId: addressId || null,
           projectId: projectId || null,
-          token: session.access_token,
         },
       });
       setRuns(result);

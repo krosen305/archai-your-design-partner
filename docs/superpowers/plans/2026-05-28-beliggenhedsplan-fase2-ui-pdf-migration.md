@@ -12,20 +12,21 @@
 
 ## Filer: opret / modificer
 
-| Handling | Fil | Ansvar |
-|---|---|---|
-| **Opret** | `supabase/migrations/20260528100000_drawing_exports.sql` | `drawing_exports`-tabel + indexes + RLS |
-| **Opret** | `src/lib/drawing/render-pdf.ts` | PDF-renderer fra `DrawingModel` via pdf-lib |
-| **Ændr** | `src/services/drawing/export-drawing.service.ts` | Kald renderPdf, sæt pdfPath, returner svgContent + pdfUrl |
-| **Ændr** | `src/routes/api.drawing.ts` | footprintGeojson + addressText i schema, brug decodeGeoJsonFootprint |
-| **Ændr** | `src/integrations/geodanmark/drawing-layers.ts` | Implementer fetchRoadName via DAWA |
-| **Ændr** | `src/routes/projekt.teknik.tsx` | Erstat Coming Soon med beliggenhedsplan-UI |
+| Handling  | Fil                                                      | Ansvar                                                               |
+| --------- | -------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Opret** | `supabase/migrations/20260528100000_drawing_exports.sql` | `drawing_exports`-tabel + indexes + RLS                              |
+| **Opret** | `src/lib/drawing/render-pdf.ts`                          | PDF-renderer fra `DrawingModel` via pdf-lib                          |
+| **Ændr**  | `src/services/drawing/export-drawing.service.ts`         | Kald renderPdf, sæt pdfPath, returner svgContent + pdfUrl            |
+| **Ændr**  | `src/routes/api.drawing.ts`                              | footprintGeojson + addressText i schema, brug decodeGeoJsonFootprint |
+| **Ændr**  | `src/integrations/geodanmark/drawing-layers.ts`          | Implementer fetchRoadName via DAWA                                   |
+| **Ændr**  | `src/routes/projekt.teknik.tsx`                          | Erstat Coming Soon med beliggenhedsplan-UI                           |
 
 ---
 
 ## Task 1: Supabase-migration — `drawing_exports`
 
 **Files:**
+
 - Create: `supabase/migrations/20260528100000_drawing_exports.sql`
 
 - [ ] **Step 1: Skriv migration-filen**
@@ -94,6 +95,7 @@ git commit -m "feat(migration): drawing_exports tabel til beliggenhedsplan-ekspo
 ## Task 2: Installer pdf-lib
 
 **Files:**
+
 - Modify: `package.json` (via bun add)
 
 - [ ] **Step 1: Installer pdf-lib**
@@ -117,12 +119,14 @@ Forventet: ingen fejl relateret til `pdf-lib`.
 ## Task 3: PDF-renderer fra DrawingModel
 
 **Files:**
+
 - Create: `src/lib/drawing/render-pdf.ts`
 - Test: skrives inline nedenfor (se step 1)
 
 Arkitektur: `renderPdf(model: DrawingModel): Promise<Uint8Array>` renderers direkte fra modellen — ingen SVG-streng-parsing. SVG-elementstrengene i `DrawingFeature.svgElement` parses med simple regex for `<polygon>`, `<line>`, `<text>`, `<circle>`. Koordinater er allerede i SVG-pixels (3.7795 px/mm); konverteres til PDF-points (2.8346 pt/mm).
 
 **Koordinatkonvertering:**
+
 - `pdfX = svgPx * 0.75` (px→pt: 2.8346/3.7795 ≈ 0.75)
 - `pdfY = pageHeightPt − svgPx * 0.75` (flip Y: SVG har 0,0 top-left, PDF har 0,0 bottom-left)
 
@@ -143,7 +147,8 @@ function makeMinimalModel(): DrawingModel {
       {
         id: "parcel",
         kind: "parcel_boundary",
-        svgElement: '<polygon points="10,10 110,10 110,110 10,110" fill="none" stroke="#000" stroke-width="1.5"/>',
+        svgElement:
+          '<polygon points="10,10 110,10 110,110 10,110" fill="none" stroke="#000" stroke-width="1.5"/>',
         label: "1a",
         labelX: 60,
         labelY: 60,
@@ -187,7 +192,8 @@ describe("renderPdf", () => {
     model.features.push({
       id: "label-1",
       kind: "labels",
-      svgElement: '<text x="60" y="60" font-family="Arial" font-size="7" fill="#000">Testvej 1</text>',
+      svgElement:
+        '<text x="60" y="60" font-family="Arial" font-size="7" fill="#000">Testvej 1</text>',
       label: "Testvej 1",
       labelX: 60,
       labelY: 60,
@@ -214,7 +220,7 @@ Opret `src/lib/drawing/render-pdf.ts`:
 import { PDFDocument, rgb, StandardFonts, type PDFPage, type PDFFont } from "pdf-lib";
 import type { DrawingModel } from "@/domain/drawing/drawing-model";
 
-const PX_TO_PT = 0.7500; // (72pt/inch) / (96px/inch) ≈ 0.75; i dette projekt 2.8346/3.7795
+const PX_TO_PT = 0.75; // (72pt/inch) / (96px/inch) ≈ 0.75; i dette projekt 2.8346/3.7795
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const clean = hex.trim().toLowerCase();
@@ -246,21 +252,20 @@ function attr(el: string, name: string): string | null {
   return m ? m[1] : null;
 }
 
-function drawPolygon(
-  page: PDFPage,
-  pageH: number,
-  svgEl: string,
-): void {
+function drawPolygon(page: PDFPage, pageH: number, svgEl: string): void {
   const pointsStr = attr(svgEl, "points");
   if (!pointsStr) return;
   const fillStr = attr(svgEl, "fill") ?? "none";
   const strokeStr = attr(svgEl, "stroke") ?? "none";
   const strokeW = parseFloat(attr(svgEl, "stroke-width") ?? "1");
 
-  const pts = pointsStr.trim().split(/\s+/).map((p) => {
-    const [x, y] = p.split(",").map(Number);
-    return { x: x * PX_TO_PT, y: pageH - y * PX_TO_PT };
-  });
+  const pts = pointsStr
+    .trim()
+    .split(/\s+/)
+    .map((p) => {
+      const [x, y] = p.split(",").map(Number);
+      return { x: x * PX_TO_PT, y: pageH - y * PX_TO_PT };
+    });
 
   if (pts.length < 2) return;
 
@@ -301,12 +306,7 @@ function drawLine(page: PDFPage, pageH: number, svgEl: string): void {
   });
 }
 
-function drawText(
-  page: PDFPage,
-  pageH: number,
-  svgEl: string,
-  font: PDFFont,
-): void {
+function drawText(page: PDFPage, pageH: number, svgEl: string, font: PDFFont): void {
   const x = parseFloat(attr(svgEl, "x") ?? "0");
   const y = parseFloat(attr(svgEl, "y") ?? "0");
   const fontSize = parseFloat(attr(svgEl, "font-size") ?? "7");
@@ -314,7 +314,11 @@ function drawText(
   const fillRgb = hexToRgb(fillStr);
   const textMatch = svgEl.match(/>([^<]+)</);
   const text = textMatch
-    ? textMatch[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+    ? textMatch[1]
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
     : "";
   if (!text.trim()) return;
 
@@ -364,17 +368,14 @@ function drawRect(page: PDFPage, pageH: number, svgEl: string): void {
   });
 }
 
-function renderSvgElement(
-  page: PDFPage,
-  pageH: number,
-  svgEl: string,
-  font: PDFFont,
-): void {
+function renderSvgElement(page: PDFPage, pageH: number, svgEl: string, font: PDFFont): void {
   // Recurse into <g> wrappers
   if (svgEl.trim().startsWith("<g")) {
     const inner = svgEl.replace(/^<g[^>]*>/, "").replace(/<\/g>\s*$/, "");
     // Split child elements naively by top-level tags
-    const childMatches = inner.match(/<(?:polygon|line|text|circle|rect)[^>]*(?:\/>|>[\s\S]*?<\/[^>]+>)/g);
+    const childMatches = inner.match(
+      /<(?:polygon|line|text|circle|rect)[^>]*(?:\/>|>[\s\S]*?<\/[^>]+>)/g,
+    );
     if (childMatches) {
       for (const child of childMatches) {
         renderSvgElement(page, pageH, child, font);
@@ -493,9 +494,11 @@ git commit -m "feat(drawing): PDF-renderer via pdf-lib — vektortegning fra Dra
 ## Task 4: Opdater ExportResult og export-drawing.service.ts
 
 **Files:**
+
 - Modify: `src/services/drawing/export-drawing.service.ts`
 
 Ændringer:
+
 1. Tilføj `svgContent` og `pdfPath` / `pdfUrl` til `ExportResult`
 2. Kald `renderPdf(model)` og `store.savePdf()`
 3. Generer signed URL til PDF via Supabase (returneres til UI)
@@ -538,7 +541,10 @@ Erstat hele `src/services/drawing/export-drawing.service.ts`:
 // src/services/drawing/export-drawing.service.ts
 import type { BeliggenhedsplanInput } from "@/domain/drawing/beliggenhedsplan.types";
 import type { DrawingExportStorePort } from "@/domain/drawing/ports";
-import type { DrawingReadinessDecision, DrawingReadinessStatus } from "@/domain/drawing/decision-engine";
+import type {
+  DrawingReadinessDecision,
+  DrawingReadinessStatus,
+} from "@/domain/drawing/decision-engine";
 import { renderSvg } from "@/lib/drawing/render-svg";
 import { renderPdf } from "@/lib/drawing/render-pdf";
 import { buildDrawingModel } from "@/lib/drawing/drawing-model-builder";
@@ -604,7 +610,15 @@ export async function exportDrawing(input: ExportInput): Promise<ExportResult> {
     inputHash,
   });
 
-  return { exportId, svgPath, svgContent: svg, pdfPath, pdfUrl, readinessStatus: readiness.status, blockedFromPdf };
+  return {
+    exportId,
+    svgPath,
+    svgContent: svg,
+    pdfPath,
+    pdfUrl,
+    readinessStatus: readiness.status,
+    blockedFromPdf,
+  };
 }
 ```
 
@@ -636,9 +650,11 @@ git commit -m "feat(drawing): PDF-eksport i exportDrawing service — pdfPath + 
 ## Task 5: Opdater server-funktion med footprintGeojson + addressText
 
 **Files:**
+
 - Modify: `src/routes/api.drawing.ts`
 
 Ændringer:
+
 1. Tilføj `footprintGeojson` (optional GeoJSON polygon) til inputschema
 2. Tilføj `addressText` (optional string) til metadata
 3. Brug `decodeGeoJsonFootprint(data.footprintGeojson)` hvis tilgængeligt; ellers fallback til 10×10m bbox-placeholder
@@ -685,19 +701,15 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: ExportInput) => ExportBeliggenhedsplanInputSchema.parse(data))
   .handler(async ({ data }) => {
-    const { assembleBeliggenhedsplan } = await import(
-      "@/services/drawing/assemble-beliggenhedsplan.service"
-    );
+    const { assembleBeliggenhedsplan } =
+      await import("@/services/drawing/assemble-beliggenhedsplan.service");
     const { exportDrawing } = await import("@/services/drawing/export-drawing.service");
-    const { GeoDanmarkDrawingLayersAdapter } = await import(
-      "@/integrations/geodanmark/drawing-layers"
-    );
-    const { DrawingRepository } = await import(
-      "@/integrations/supabase/repositories/drawing.repository"
-    );
-    const { decodeGeoJsonFootprint } = await import(
-      "@/integrations/import/geojson-footprint-decoder"
-    );
+    const { GeoDanmarkDrawingLayersAdapter } =
+      await import("@/integrations/geodanmark/drawing-layers");
+    const { DrawingRepository } =
+      await import("@/integrations/supabase/repositories/drawing.repository");
+    const { decodeGeoJsonFootprint } =
+      await import("@/integrations/import/geojson-footprint-decoder");
 
     // Brug footprint fra UI hvis tilgængeligt; ellers fallback til 10×10m placeholder.
     // Footprint fra kortediteren er EPSG:25832 (se MatrikelMap.tsx + buildSquareFootprint25832).
@@ -709,7 +721,13 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
         type: "Polygon",
         crs: "EPSG:25832",
         coordinates: [
-          [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]],
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 10],
+            [0, 0],
+          ],
         ],
       };
     }
@@ -783,6 +801,7 @@ git commit -m "feat(drawing): footprintGeojson + addressText i exportBeliggenhed
 ## Task 6: Implementer fetchRoadName via DAWA
 
 **Files:**
+
 - Modify: `src/integrations/geodanmark/drawing-layers.ts`
 
 Implementerer `fetchRoadName(addressId)` via DAWA REST API `https://api.dataforsyningen.dk/adresser/{id}?format=json`. DAWA er tilladt for display-data jf. CLAUDE.md (vejnavn er ikke compliance-data).
@@ -819,9 +838,7 @@ describe("GeoDanmarkDrawingLayersAdapter.fetchRoadName", () => {
     const result = await adapter.fetchRoadName("test-adresse-id");
 
     expect(result.name).toBe("Hasselvej");
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("test-adresse-id"),
-    );
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("test-adresse-id"));
   });
 
   it("returnerer null ved fetch-fejl", async () => {
@@ -897,9 +914,11 @@ git commit -m "feat(drawing): fetchRoadName via DAWA REST — vejnavn til beligg
 ## Task 7: Beliggenhedsplan UI i projekt/teknik
 
 **Files:**
+
 - Modify: `src/routes/projekt.teknik.tsx`
 
 UI-ansvar (jf. CLAUDE.md Rule 2 — UI er adapter):
+
 - Henter projekt-data via `useProject()`
 - Kalder `exportBeliggenhedsplanFn` (serverFn)
 - Viser readiness-status med forklaringer
@@ -907,6 +926,7 @@ UI-ansvar (jf. CLAUDE.md Rule 2 — UI er adapter):
 - Tilbyder SVG- og PDF-download
 
 **Data fra `useProject()`:**
+
 - `address.adresseid` → `addressId`
 - `address.adresse` → `addressText`
 - `address.kommunekode` → `kommunekode`
@@ -961,28 +981,18 @@ function downloadSvg(svgContent: string, filename: string) {
 // ---------------------------------------------------------------------------
 
 function TeknikPage() {
-  const {
-    address,
-    bbrData,
-    currentProjectId,
-    designPlacement,
-  } = useProject();
+  const { address, bbrData, currentProjectId, designPlacement } = useProject();
 
   const [result, setResult] = useState<ExportResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const backTo = address?.adresseid
-    ? `/projekt/${address.adresseid}/cockpit`
-    : "/projekt/start";
+  const backTo = address?.adresseid ? `/projekt/${address.adresseid}/cockpit` : "/projekt/start";
 
   // Bestem om vi kan generere
   const matrikelId = bbrData?.jordstykke_lokal_id ?? null;
   const canGenerate =
-    !!currentProjectId &&
-    !!address?.adresseid &&
-    !!address?.kommunekode &&
-    !!matrikelId;
+    !!currentProjectId && !!address?.adresseid && !!address?.kommunekode && !!matrikelId;
 
   const missingFields: string[] = [];
   if (!currentProjectId) missingFields.push("Projekt ikke gemt");
@@ -1004,7 +1014,9 @@ function TeknikPage() {
           kommunekode: address!.kommunekode,
           addressId: address!.adresseid,
           addressText: address!.adresse ?? null,
-          footprintGeojson: (designPlacement?.footprintGeojson as Record<string, unknown> | null | undefined) ?? null,
+          footprintGeojson:
+            (designPlacement?.footprintGeojson as Record<string, unknown> | null | undefined) ??
+            null,
         },
       });
       setResult(res);
@@ -1018,7 +1030,6 @@ function TeknikPage() {
   return (
     <div className="min-h-screen bg-stone-50 p-6">
       <div className="max-w-5xl mx-auto space-y-6">
-
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -1038,7 +1049,9 @@ function TeknikPage() {
             <p className="text-sm font-medium text-amber-800 mb-2">Mangler data for at generere:</p>
             <ul className="list-disc list-inside space-y-1">
               {missingFields.map((f) => (
-                <li key={f} className="text-sm text-amber-700">{f}</li>
+                <li key={f} className="text-sm text-amber-700">
+                  {f}
+                </li>
               ))}
             </ul>
           </div>
@@ -1072,7 +1085,6 @@ function TeknikPage() {
         {/* Resultat */}
         {result && (
           <div className="space-y-4">
-
             {/* Readiness-badge */}
             <div className={`rounded-lg border p-4 ${READINESS_COLORS[result.readinessStatus]}`}>
               <p className="text-sm font-semibold">
@@ -1126,10 +1138,8 @@ function TeknikPage() {
                 dangerouslySetInnerHTML={{ __html: result.svgContent }}
               />
             </div>
-
           </div>
         )}
-
       </div>
     </div>
   );
@@ -1149,11 +1159,12 @@ bunx tsc --noEmit
 Forventet: ingen fejl. Hvis `useProject()` ikke returnerer `bbrData` direkte, brug `useProject(s => s.bbrData)`.
 
 **Vigtigt:** Hvis TypeScript klager over at `bbrData` ikke er del af det der returneres fra `useProject()`, opdater destructuring til:
+
 ```tsx
-const address = useProject(s => s.address);
-const bbrData = useProject(s => s.bbrData);
-const currentProjectId = useProject(s => s.currentProjectId);
-const designPlacement = useProject(s => s.designPlacement);
+const address = useProject((s) => s.address);
+const bbrData = useProject((s) => s.bbrData);
+const currentProjectId = useProject((s) => s.currentProjectId);
+const designPlacement = useProject((s) => s.designPlacement);
 ```
 
 - [ ] **Step 3: Lint check**
@@ -1211,18 +1222,18 @@ Forventet: build succeederer.
 
 Verificer alle krav fra spec'en er opfyldt:
 
-| Krav | Verificeret? |
-|---|---|
-| `drawing_exports`-tabel migration oprettet | [ ] |
-| `pdf-lib` installeret | [ ] |
-| `render-pdf.ts` eksisterer og unit-tests passer | [ ] |
-| `ExportResult` har `svgContent`, `pdfPath`, `pdfUrl` | [ ] |
-| `exportDrawing` genererer PDF for non-BLOCKED status | [ ] |
-| `api.drawing.ts` accepterer `footprintGeojson` | [ ] |
-| `fetchRoadName` returnerer vejnavn fra DAWA | [ ] |
-| `/projekt/teknik` viser "Generer"-knap, preview, download-knapper | [ ] |
-| Ingen nye `any`-casts eller uchecked boundary-kald | [ ] |
-| Ingen nye direkte Supabase-kald uden for repositories | [ ] |
+| Krav                                                              | Verificeret? |
+| ----------------------------------------------------------------- | ------------ |
+| `drawing_exports`-tabel migration oprettet                        | [ ]          |
+| `pdf-lib` installeret                                             | [ ]          |
+| `render-pdf.ts` eksisterer og unit-tests passer                   | [ ]          |
+| `ExportResult` har `svgContent`, `pdfPath`, `pdfUrl`              | [ ]          |
+| `exportDrawing` genererer PDF for non-BLOCKED status              | [ ]          |
+| `api.drawing.ts` accepterer `footprintGeojson`                    | [ ]          |
+| `fetchRoadName` returnerer vejnavn fra DAWA                       | [ ]          |
+| `/projekt/teknik` viser "Generer"-knap, preview, download-knapper | [ ]          |
+| Ingen nye `any`-casts eller uchecked boundary-kald                | [ ]          |
+| Ingen nye direkte Supabase-kald uden for repositories             | [ ]          |
 
 - [ ] **Step 6: Final commit**
 

@@ -23,32 +23,32 @@
 
 ## File Map
 
-| Fil | Ansvar | Task |
-|-----|--------|------|
-| `src/domain/contracts/noise.types.ts` | NoiseMetric, NoiseScreeningResult, NoiseRisk | 2 |
-| `src/domain/contracts/surroundings.types.ts` | NeighborBuilding, NeighborContext, NeighborParcel, PlanningSurroundingsContext | 2 |
-| `src/domain/contracts/rule-engine.types.ts` | Extend: RuleEngineNoiseData, RuleEngineNeighborData, RuleEngineSurroundingsData | 3 |
-| `src/lib/rule-engine/types.ts` | Extend RuleEngineInput med noise?, neighborContext?, surroundings? | 3 |
-| `supabase/migrations/20260526100000_site_constraints_noise_neighbor.sql` | Additive migration: noise + neighbor typed columns | 4 |
-| `src/lib/cache-policy.ts` | Extend SOURCE_RESULT_TTL_OVERRIDES med nye source kinds | 5 |
-| `src/lib/geometry-utils.ts` | Extend: polygonToPolygonDistanceM() | 6 |
-| `src/lib/geometry-utils.test.ts` | Tests for ny distance-funktion | 6 |
-| `src/integrations/geodanmark/neighbor-geometry.ts` | GeoDanmarkNeighborService — erstatter defekt live-sti i client.ts | 7 |
-| `src/integrations/geodanmark/neighbor-geometry.test.ts` | Unit tests med fake WFS features | 7 |
-| `src/integrations/mat/neighbor-parcels.ts` | MatNeighborParcelService — nabomatrikler via MAT WFS | 8 |
-| `src/integrations/mat/neighbor-parcels.test.ts` | Unit tests med fake WFS features | 8 |
-| `src/integrations/plandata/surroundings.ts` | PlandataSurroundingsService — støj/lugt/konsekvensområder | 9 |
-| `src/integrations/plandata/surroundings.test.ts` | Unit tests | 9 |
-| `src/integrations/stoej/mst-noise.schemas.ts` | Zod schemas til MST WMS/WFS response | 10 |
-| `src/integrations/stoej/mst-noise.ts` | MstNoiseService — IS_MOCK=true til endpoint er verificeret | 10 |
-| `src/integrations/stoej/mst-noise.test.ts` | Unit tests | 10 |
-| `src/lib/rule-engine/rules/noise-rules.ts` | checkNoiseRules() | 11 |
-| `src/lib/rule-engine/rules/noise-rules.test.ts` | Tier 1 tests | 11 |
-| `src/lib/rule-engine/rules/surroundings-rules.ts` | checkSurroundingsRules() | 12 |
-| `src/lib/rule-engine/rules/surroundings-rules.test.ts` | Tier 1 tests | 12 |
-| `src/lib/surroundings-analysis.server.ts` | Application service: orchestrerer alle adaptere | 13 |
-| `src/lib/surroundings-analysis.server.test.ts` | Tier 2 tests med fake gateways | 13 |
-| `src/integrations/geodanmark/drawing-layers.ts` | Modify: fetchNeighborBuildings bruger NeighborGeometryService | 14 |
+| Fil                                                                      | Ansvar                                                                          | Task |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- | ---- |
+| `src/domain/contracts/noise.types.ts`                                    | NoiseMetric, NoiseScreeningResult, NoiseRisk                                    | 2    |
+| `src/domain/contracts/surroundings.types.ts`                             | NeighborBuilding, NeighborContext, NeighborParcel, PlanningSurroundingsContext  | 2    |
+| `src/domain/contracts/rule-engine.types.ts`                              | Extend: RuleEngineNoiseData, RuleEngineNeighborData, RuleEngineSurroundingsData | 3    |
+| `src/lib/rule-engine/types.ts`                                           | Extend RuleEngineInput med noise?, neighborContext?, surroundings?              | 3    |
+| `supabase/migrations/20260526100000_site_constraints_noise_neighbor.sql` | Additive migration: noise + neighbor typed columns                              | 4    |
+| `src/lib/cache-policy.ts`                                                | Extend SOURCE_RESULT_TTL_OVERRIDES med nye source kinds                         | 5    |
+| `src/lib/geometry-utils.ts`                                              | Extend: polygonToPolygonDistanceM()                                             | 6    |
+| `src/lib/geometry-utils.test.ts`                                         | Tests for ny distance-funktion                                                  | 6    |
+| `src/integrations/geodanmark/neighbor-geometry.ts`                       | GeoDanmarkNeighborService — erstatter defekt live-sti i client.ts               | 7    |
+| `src/integrations/geodanmark/neighbor-geometry.test.ts`                  | Unit tests med fake WFS features                                                | 7    |
+| `src/integrations/mat/neighbor-parcels.ts`                               | MatNeighborParcelService — nabomatrikler via MAT WFS                            | 8    |
+| `src/integrations/mat/neighbor-parcels.test.ts`                          | Unit tests med fake WFS features                                                | 8    |
+| `src/integrations/plandata/surroundings.ts`                              | PlandataSurroundingsService — støj/lugt/konsekvensområder                       | 9    |
+| `src/integrations/plandata/surroundings.test.ts`                         | Unit tests                                                                      | 9    |
+| `src/integrations/stoej/mst-noise.schemas.ts`                            | Zod schemas til MST WMS/WFS response                                            | 10   |
+| `src/integrations/stoej/mst-noise.ts`                                    | MstNoiseService — IS_MOCK=true til endpoint er verificeret                      | 10   |
+| `src/integrations/stoej/mst-noise.test.ts`                               | Unit tests                                                                      | 10   |
+| `src/lib/rule-engine/rules/noise-rules.ts`                               | checkNoiseRules()                                                               | 11   |
+| `src/lib/rule-engine/rules/noise-rules.test.ts`                          | Tier 1 tests                                                                    | 11   |
+| `src/lib/rule-engine/rules/surroundings-rules.ts`                        | checkSurroundingsRules()                                                        | 12   |
+| `src/lib/rule-engine/rules/surroundings-rules.test.ts`                   | Tier 1 tests                                                                    | 12   |
+| `src/lib/surroundings-analysis.server.ts`                                | Application service: orchestrerer alle adaptere                                 | 13   |
+| `src/lib/surroundings-analysis.server.test.ts`                           | Tier 2 tests med fake gateways                                                  | 13   |
+| `src/integrations/geodanmark/drawing-layers.ts`                          | Modify: fetchNeighborBuildings bruger NeighborGeometryService                   | 14   |
 
 ---
 
@@ -109,6 +109,7 @@ Se: https://mst.dk/erhverv/rent-miljoe-og-sikker-forsyning/stoej/kortlaegning-af
 ## Task 1: Opret noise.types.ts og surroundings.types.ts
 
 **Files:**
+
 - Create: `src/domain/contracts/noise.types.ts`
 - Create: `src/domain/contracts/surroundings.types.ts`
 
@@ -121,11 +122,7 @@ Se: https://mst.dk/erhverv/rent-miljoe-og-sikker-forsyning/stoej/kortlaegning-af
 
 export type NoiseSourceKind = "road" | "rail" | "air" | "industry";
 
-export type NoiseCoverage =
-  | "covered"
-  | "outside_mapped_area"
-  | "source_unavailable"
-  | "unknown";
+export type NoiseCoverage = "covered" | "outside_mapped_area" | "source_unavailable" | "unknown";
 
 export type NoiseRisk = "ok" | "warning" | "review_required" | "unknown";
 
@@ -243,6 +240,7 @@ git commit -m "feat(surroundings): tilfoej noise og surroundings domain contract
 ## Task 2: Udvid rule-engine.types.ts og RuleEngineInput
 
 **Files:**
+
 - Modify: `src/domain/contracts/rule-engine.types.ts`
 - Modify: `src/lib/rule-engine/types.ts`
 
@@ -330,6 +328,7 @@ git commit -m "feat(surroundings): udvid RuleEngineInput med noise og surroundin
 ## Task 3: DB Migration — Noise og Naboforhold Kolonner
 
 **Files:**
+
 - Create: `supabase/migrations/20260526100000_site_constraints_noise_neighbor.sql`
 
 - [ ] **Step 1: Opret migrationsfil**
@@ -429,6 +428,7 @@ git commit -m "feat(surroundings): additive migration for noise og naboforhold t
 ## Task 4: Udvid cache-policy.ts med nye TTL-værdier
 
 **Files:**
+
 - Modify: `src/lib/cache-policy.ts`
 
 - [ ] **Step 1: Tilføj TTL-entries**
@@ -514,6 +514,7 @@ git commit -m "feat(surroundings): tilfoej TTL-vaerdier for nabogeometri og stoe
 Bruges af GeoDanmark-adapteren til at beregne edge-to-edge afstand fra parcelpolygon til nabobygningspolygon.
 
 **Files:**
+
 - Modify: `src/lib/geometry-utils.ts`
 - Modify: `src/lib/geometry-utils.test.ts` (opret hvis den ikke eksisterer)
 
@@ -553,8 +554,8 @@ describe("polygonToPolygonDistanceM", () => {
   });
 
   it("returnerer korrekt afstand for polygoner med 10m mellemrum", () => {
-    const a = squareAt(0, 0, 10);   // 0..10
-    const b = squareAt(20, 0, 10);  // 20..30 — 10m gap
+    const a = squareAt(0, 0, 10); // 0..10
+    const b = squareAt(20, 0, 10); // 20..30 — 10m gap
     const dist = polygonToPolygonDistanceM(a, b);
     expect(dist).not.toBeNull();
     expect(Math.abs(dist! - 10)).toBeLessThan(0.01);
@@ -612,9 +613,7 @@ function segmentToSegmentDistanceSq(s1: Segment, s2: Segment): number {
   return (p1x - p2x) ** 2 + (p1y - p2y) ** 2;
 }
 
-function extractRings(
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
-): [number, number][][] {
+function extractRings(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): [number, number][][] {
   if (geometry.type === "Polygon") {
     return geometry.coordinates as [number, number][][];
   }
@@ -680,6 +679,7 @@ Erstatter den defekte live-sti i `src/integrations/geodanmark/client.ts`. Den ek
 **Opdatér typenames fra Task 0 inden IS_MOCK sættes til false.**
 
 **Files:**
+
 - Create: `src/integrations/geodanmark/neighbor-geometry.ts`
 - Create: `src/integrations/geodanmark/neighbor-geometry.test.ts`
 
@@ -698,11 +698,12 @@ import type { SourceResult } from "@/lib/source-result";
 describe("GeoDanmarkNeighborService (mock)", () => {
   it("returnerer SourceResult<NeighborContext> med mock data", async () => {
     const { GeoDanmarkNeighborService } = await import("./neighbor-geometry");
-    const result: SourceResult<NeighborContext> = await GeoDanmarkNeighborService.getNeighborContext(
-      null,
-      [720000, 6175000, 720200, 6175200],
-      null,
-    );
+    const result: SourceResult<NeighborContext> =
+      await GeoDanmarkNeighborService.getNeighborContext(
+        null,
+        [720000, 6175000, 720200, 6175200],
+        null,
+      );
     expect(result.status).toBe("mock");
     expect(result.isMock).toBe(true);
     expect(result.data).not.toBeNull();
@@ -777,7 +778,11 @@ const wfsResponseSchema = z.object({
 
 type WfsFeature = z.infer<typeof wfsFeatureSchema>;
 
-async function fetchWfsFeatures(typename: string, bboxStr: string, apiKey: string): Promise<WfsFeature[]> {
+async function fetchWfsFeatures(
+  typename: string,
+  bboxStr: string,
+  apiKey: string,
+): Promise<WfsFeature[]> {
   const url = new URL(WFS_BASE);
   url.searchParams.set("apikey", apiKey);
   url.searchParams.set("service", "WFS");
@@ -882,7 +887,7 @@ export class GeoDanmarkNeighborService {
       const nearestDistanceM = buildings[0]?.distanceM ?? null;
       const roadDistanceM =
         roadFeatures.length > 0
-          ? (roadFeatures[0]?.properties?.["afstand"] as number | undefined) ?? null
+          ? ((roadFeatures[0]?.properties?.["afstand"] as number | undefined) ?? null)
           : null;
 
       // Tæthedsestimering: antal bygninger inden for 100m / areal_100m_cirkel (ha)
@@ -940,6 +945,7 @@ git commit -m "feat(surroundings): tilfoej GeoDanmarkNeighborService med korrekt
 ## Task 7: MAT Nabomatrikel Service
 
 **Files:**
+
 - Create: `src/integrations/mat/neighbor-parcels.ts`
 - Create: `src/integrations/mat/neighbor-parcels.test.ts`
 
@@ -1005,8 +1011,7 @@ import { z } from "zod";
 
 const IS_MOCK = true;
 
-const MAT_WFS_BASE =
-  "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
+const MAT_WFS_BASE = "https://wfs.datafordeler.dk/MATRIKLEN2/MatGaeldendeOgForeloebigWFS/1.0.0/WFS";
 const JORDSTYKKE_TYPENAME = "mat:Jordstykke";
 const SOURCE_URL = MAT_WFS_BASE;
 
@@ -1131,6 +1136,7 @@ git commit -m "feat(surroundings): tilfoej MatNeighborParcelService med nabomatr
 Screener parcel mod kommuneplanretningslinjer for støj, lugt og konsekvensområder.
 
 **Files:**
+
 - Create: `src/integrations/plandata/surroundings.ts`
 - Create: `src/integrations/plandata/surroundings.test.ts`
 
@@ -1144,9 +1150,9 @@ import { describe, it, expect } from "bun:test";
 describe("PlandataSurroundingsService (mock)", () => {
   it("returnerer SourceResult med mock data", async () => {
     const { PlandataSurroundingsService } = await import("./surroundings");
-    const result = await PlandataSurroundingsService.getSurroundings(
-      [720000, 6175000, 720500, 6175500],
-    );
+    const result = await PlandataSurroundingsService.getSurroundings([
+      720000, 6175000, 720500, 6175500,
+    ]);
     expect(result.status).toBe("mock");
     expect(result.isMock).toBe(true);
     expect(result.data).not.toBeNull();
@@ -1236,7 +1242,15 @@ function str(v: unknown): string | null {
 async function fetchSurroundingsFeatures(
   typename: string,
   bbox25832: [number, number, number, number],
-): Promise<Array<{ themeCode: string; planId: string; planTitle: string | null; municipalityName: string | null; status: "vedtaget" | "forslag" }>> {
+): Promise<
+  Array<{
+    themeCode: string;
+    planId: string;
+    planTitle: string | null;
+    municipalityName: string | null;
+    status: "vedtaget" | "forslag";
+  }>
+> {
   const bboxStr = `${bbox25832[0]},${bbox25832[1]},${bbox25832[2]},${bbox25832[3]},EPSG:25832`;
   const url = `${WFS_BASE}?service=WFS&version=2.0.0&request=GetFeature&typeName=${encodeURIComponent(typename)}&bbox=${encodeURIComponent(bboxStr)}&outputFormat=application/json`;
 
@@ -1304,7 +1318,8 @@ export class PlandataSurroundingsService {
         return hit ? true : all.length > 0 ? false : null;
       };
 
-      const proposedConflict = forslag.length > 0 ? true : forslag.length === 0 && vedtaget.length > 0 ? false : null;
+      const proposedConflict =
+        forslag.length > 0 ? true : forslag.length === 0 && vedtaget.length > 0 ? false : null;
 
       const result: PlanningSurroundingsContext = {
         noiseDesignatedArea: hasCode(NOISE_THEME_CODES),
@@ -1357,6 +1372,7 @@ git commit -m "feat(surroundings): tilfoej PlandataSurroundingsService for stoej
 MST støjkortlægning er tilgængeligt som WMS (billeder). WFS-data er ikke bekræftet tilgængeligt. Servicen starter med `IS_MOCK=true` og `coverage: "source_unavailable"` — se Task 0 step 6.
 
 **Files:**
+
 - Create: `src/integrations/stoej/mst-noise.schemas.ts`
 - Create: `src/integrations/stoej/mst-noise.ts`
 - Create: `src/integrations/stoej/mst-noise.test.ts`
@@ -1400,7 +1416,10 @@ import { describe, it, expect } from "bun:test";
 describe("MstNoiseService (mock)", () => {
   it("returnerer SourceResult med mock data", async () => {
     const { MstNoiseService } = await import("./mst-noise");
-    const result = await MstNoiseService.getNoiseForParcel("adr-123", [720000, 6175000, 720200, 6175200]);
+    const result = await MstNoiseService.getNoiseForParcel(
+      "adr-123",
+      [720000, 6175000, 720200, 6175200],
+    );
     expect(result.status).toBe("mock");
     expect(result.isMock).toBe(true);
     expect(result.data).not.toBeNull();
@@ -1448,7 +1467,8 @@ import type { SourceResult } from "@/lib/source-result";
 import type { NoiseScreeningResult } from "@/domain/contracts/noise.types";
 
 const IS_MOCK = true;
-const SOURCE_URL = "https://mst.dk/erhverv/rent-miljoe-og-sikker-forsyning/stoej/kortlaegning-af-stoej";
+const SOURCE_URL =
+  "https://mst.dk/erhverv/rent-miljoe-og-sikker-forsyning/stoej/kortlaegning-af-stoej";
 
 export class MstNoiseService {
   static async getNoiseForParcel(
@@ -1460,9 +1480,33 @@ export class MstNoiseService {
         addressId,
         parcelIntersectionUsed: false,
         metrics: [
-          { source: "road", ldenDb: null, lnightDb: null, heightM: null, model: "unknown", year: null, coverage: "source_unavailable" },
-          { source: "rail", ldenDb: null, lnightDb: null, heightM: null, model: "unknown", year: null, coverage: "source_unavailable" },
-          { source: "air", ldenDb: null, lnightDb: null, heightM: null, model: "unknown", year: null, coverage: "source_unavailable" },
+          {
+            source: "road",
+            ldenDb: null,
+            lnightDb: null,
+            heightM: null,
+            model: "unknown",
+            year: null,
+            coverage: "source_unavailable",
+          },
+          {
+            source: "rail",
+            ldenDb: null,
+            lnightDb: null,
+            heightM: null,
+            model: "unknown",
+            year: null,
+            coverage: "source_unavailable",
+          },
+          {
+            source: "air",
+            ldenDb: null,
+            lnightDb: null,
+            heightM: null,
+            model: "unknown",
+            year: null,
+            coverage: "source_unavailable",
+          },
         ],
         highestRisk: "unknown",
         requiresAcousticReview: null,
@@ -1509,6 +1553,7 @@ git commit -m "feat(surroundings): tilfoej MstNoiseService med korrekt source_un
 ## Task 10: Noise Rule Engine
 
 **Files:**
+
 - Create: `src/lib/rule-engine/rules/noise-rules.ts`
 - Create: `src/lib/rule-engine/rules/noise-rules.test.ts`
 
@@ -1526,13 +1571,38 @@ import { checkNoiseRules } from "./noise-rules";
 function makeInput(noise: RuleEngineInput["noise"]): RuleEngineInput {
   return {
     project: { type: "new_build", municipality: "Testby", kommunekode: "0000" },
-    plot: { areaM2: 800, zone: "urban", hasLocalplan: false, hasServitudes: false, localplanIds: [] },
-    heritage: { listedBuilding: null, saveValue: null, preservationLocalplan: false, protectionLines: { coastal: false, forest: false, lakeRiver: false, lake: false, clitFredning: false, churchSurroundings: false } },
+    plot: {
+      areaM2: 800,
+      zone: "urban",
+      hasLocalplan: false,
+      hasServitudes: false,
+      localplanIds: [],
+    },
+    heritage: {
+      listedBuilding: null,
+      saveValue: null,
+      preservationLocalplan: false,
+      protectionLines: {
+        coastal: false,
+        forest: false,
+        lakeRiver: false,
+        lake: false,
+        clitFredning: false,
+        churchSurroundings: false,
+      },
+    },
     localplan: null,
     municipalPlan: null,
     existingBuilding: null,
     newBuilding: null,
-    geotechnical: { radonRisk: "unknown", groundwaterDepthM: null, slopePercent: null, jordforureningV1: null, jordforureningV2: null, omraadeklassificering: null },
+    geotechnical: {
+      radonRisk: "unknown",
+      groundwaterDepthM: null,
+      slopePercent: null,
+      jordforureningV1: null,
+      jordforureningV2: null,
+      omraadeklassificering: null,
+    },
     servituts: { hasCritical: false, criticalTexts: [] },
     noise,
   };
@@ -1544,65 +1614,114 @@ describe("checkNoiseRules", () => {
   });
 
   it("ingen violations ved vejstøj under 58 dB med dækning", () => {
-    const result = checkNoiseRules(makeInput({
-      roadLdenDb: 55, railLdenDb: null, airLdenDb: null, industryLdenDb: null,
-      coverageStatus: "covered", highestRisk: "ok", requiresAcousticReview: false,
-    }));
+    const result = checkNoiseRules(
+      makeInput({
+        roadLdenDb: 55,
+        railLdenDb: null,
+        airLdenDb: null,
+        industryLdenDb: null,
+        coverageStatus: "covered",
+        highestRisk: "ok",
+        requiresAcousticReview: false,
+      }),
+    );
     expect(result).toHaveLength(0);
   });
 
   it("warning ved vejstøj >= 58 dB", () => {
-    const violations = checkNoiseRules(makeInput({
-      roadLdenDb: 60, railLdenDb: null, airLdenDb: null, industryLdenDb: null,
-      coverageStatus: "covered", highestRisk: "warning", requiresAcousticReview: null,
-    }));
+    const violations = checkNoiseRules(
+      makeInput({
+        roadLdenDb: 60,
+        railLdenDb: null,
+        airLdenDb: null,
+        industryLdenDb: null,
+        coverageStatus: "covered",
+        highestRisk: "warning",
+        requiresAcousticReview: null,
+      }),
+    );
     expect(violations).toHaveLength(1);
     expect(violations[0]!.rule).toBe("noise_road_threshold");
     expect(violations[0]!.severity).toBe("warning");
   });
 
   it("warning ved togstøj >= 64 dB", () => {
-    const violations = checkNoiseRules(makeInput({
-      roadLdenDb: null, railLdenDb: 65, airLdenDb: null, industryLdenDb: null,
-      coverageStatus: "covered", highestRisk: "warning", requiresAcousticReview: null,
-    }));
+    const violations = checkNoiseRules(
+      makeInput({
+        roadLdenDb: null,
+        railLdenDb: 65,
+        airLdenDb: null,
+        industryLdenDb: null,
+        coverageStatus: "covered",
+        highestRisk: "warning",
+        requiresAcousticReview: null,
+      }),
+    );
     expect(violations).toHaveLength(1);
     expect(violations[0]!.rule).toBe("noise_rail_threshold");
   });
 
   it("warning ved flystøj >= 55 dB", () => {
-    const violations = checkNoiseRules(makeInput({
-      roadLdenDb: null, railLdenDb: null, airLdenDb: 58, industryLdenDb: null,
-      coverageStatus: "covered", highestRisk: "warning", requiresAcousticReview: null,
-    }));
+    const violations = checkNoiseRules(
+      makeInput({
+        roadLdenDb: null,
+        railLdenDb: null,
+        airLdenDb: 58,
+        industryLdenDb: null,
+        coverageStatus: "covered",
+        highestRisk: "warning",
+        requiresAcousticReview: null,
+      }),
+    );
     expect(violations).toHaveLength(1);
     expect(violations[0]!.rule).toBe("noise_air_threshold");
   });
 
   it("review_required ved virksomhedsstøj uanset niveau", () => {
-    const violations = checkNoiseRules(makeInput({
-      roadLdenDb: null, railLdenDb: null, airLdenDb: null, industryLdenDb: 45,
-      coverageStatus: "covered", highestRisk: "review_required", requiresAcousticReview: null,
-    }));
+    const violations = checkNoiseRules(
+      makeInput({
+        roadLdenDb: null,
+        railLdenDb: null,
+        airLdenDb: null,
+        industryLdenDb: 45,
+        coverageStatus: "covered",
+        highestRisk: "review_required",
+        requiresAcousticReview: null,
+      }),
+    );
     const rule = violations.find((v) => v.rule === "noise_industry_review");
     expect(rule).toBeDefined();
     expect(rule!.severity).toBe("warning");
   });
 
   it("warning ved coverage=outside_mapped_area — ukendt er ikke ok", () => {
-    const violations = checkNoiseRules(makeInput({
-      roadLdenDb: null, railLdenDb: null, airLdenDb: null, industryLdenDb: null,
-      coverageStatus: "outside_mapped_area", highestRisk: "unknown", requiresAcousticReview: null,
-    }));
+    const violations = checkNoiseRules(
+      makeInput({
+        roadLdenDb: null,
+        railLdenDb: null,
+        airLdenDb: null,
+        industryLdenDb: null,
+        coverageStatus: "outside_mapped_area",
+        highestRisk: "unknown",
+        requiresAcousticReview: null,
+      }),
+    );
     const rule = violations.find((v) => v.rule === "noise_coverage_unknown");
     expect(rule).toBeDefined();
   });
 
   it("acoustic_review_required violation når flagget er true", () => {
-    const violations = checkNoiseRules(makeInput({
-      roadLdenDb: 62, railLdenDb: null, airLdenDb: null, industryLdenDb: null,
-      coverageStatus: "covered", highestRisk: "review_required", requiresAcousticReview: true,
-    }));
+    const violations = checkNoiseRules(
+      makeInput({
+        roadLdenDb: 62,
+        railLdenDb: null,
+        airLdenDb: null,
+        industryLdenDb: null,
+        coverageStatus: "covered",
+        highestRisk: "review_required",
+        requiresAcousticReview: true,
+      }),
+    );
     const acoustic = violations.find((v) => v.rule === "noise_acoustic_review_required");
     expect(acoustic).toBeDefined();
   });
@@ -1635,10 +1754,7 @@ export function checkNoiseRules(input: RuleEngineInput): RuleViolation[] {
 
   const violations: RuleViolation[] = [];
 
-  if (
-    noise.coverageStatus === "outside_mapped_area" ||
-    noise.coverageStatus === "unknown"
-  ) {
+  if (noise.coverageStatus === "outside_mapped_area" || noise.coverageStatus === "unknown") {
     violations.push({
       rule: "noise_coverage_unknown",
       severity: "warning",
@@ -1720,6 +1836,7 @@ git commit -m "feat(surroundings): tilfoej checkNoiseRules med MST dB-tærskler 
 ## Task 11: Surroundings Rule Engine
 
 **Files:**
+
 - Create: `src/lib/rule-engine/rules/surroundings-rules.ts`
 - Create: `src/lib/rule-engine/rules/surroundings-rules.test.ts`
 
@@ -1738,10 +1855,38 @@ function makeInput(
 ): RuleEngineInput {
   return {
     project: { type: "new_build", municipality: "Testby", kommunekode: "0000" },
-    plot: { areaM2: 800, zone: "urban", hasLocalplan: false, hasServitudes: false, localplanIds: [] },
-    heritage: { listedBuilding: null, saveValue: null, preservationLocalplan: false, protectionLines: { coastal: false, forest: false, lakeRiver: false, lake: false, clitFredning: false, churchSurroundings: false } },
-    localplan: null, municipalPlan: null, existingBuilding: null, newBuilding: null,
-    geotechnical: { radonRisk: "unknown", groundwaterDepthM: null, slopePercent: null, jordforureningV1: null, jordforureningV2: null, omraadeklassificering: null },
+    plot: {
+      areaM2: 800,
+      zone: "urban",
+      hasLocalplan: false,
+      hasServitudes: false,
+      localplanIds: [],
+    },
+    heritage: {
+      listedBuilding: null,
+      saveValue: null,
+      preservationLocalplan: false,
+      protectionLines: {
+        coastal: false,
+        forest: false,
+        lakeRiver: false,
+        lake: false,
+        clitFredning: false,
+        churchSurroundings: false,
+      },
+    },
+    localplan: null,
+    municipalPlan: null,
+    existingBuilding: null,
+    newBuilding: null,
+    geotechnical: {
+      radonRisk: "unknown",
+      groundwaterDepthM: null,
+      slopePercent: null,
+      jordforureningV1: null,
+      jordforureningV2: null,
+      omraadeklassificering: null,
+    },
     servituts: { hasCritical: false, criticalTexts: [] },
     surroundings,
     neighborContext,
@@ -1754,45 +1899,65 @@ describe("checkSurroundingsRules", () => {
   });
 
   it("warning ved plandata støjbelastet areal", () => {
-    const violations = checkSurroundingsRules(makeInput({
-      noiseDesignatedArea: true, productionNoiseConsequenceArea: null,
-      odorConsequenceArea: null, odorDesignatedArea: null,
-      technicalFacilityConsequenceArea: null, largeLivestockFarmArea: null,
-      proposedPlanConflict: null,
-    }));
+    const violations = checkSurroundingsRules(
+      makeInput({
+        noiseDesignatedArea: true,
+        productionNoiseConsequenceArea: null,
+        odorConsequenceArea: null,
+        odorDesignatedArea: null,
+        technicalFacilityConsequenceArea: null,
+        largeLivestockFarmArea: null,
+        proposedPlanConflict: null,
+      }),
+    );
     const v = violations.find((x) => x.rule === "planning_noise_area");
     expect(v).toBeDefined();
     expect(v!.severity).toBe("warning");
   });
 
   it("warning ved produktionsvirksomhed konsekvensområde", () => {
-    const violations = checkSurroundingsRules(makeInput({
-      noiseDesignatedArea: null, productionNoiseConsequenceArea: true,
-      odorConsequenceArea: null, odorDesignatedArea: null,
-      technicalFacilityConsequenceArea: null, largeLivestockFarmArea: null,
-      proposedPlanConflict: null,
-    }));
+    const violations = checkSurroundingsRules(
+      makeInput({
+        noiseDesignatedArea: null,
+        productionNoiseConsequenceArea: true,
+        odorConsequenceArea: null,
+        odorDesignatedArea: null,
+        technicalFacilityConsequenceArea: null,
+        largeLivestockFarmArea: null,
+        proposedPlanConflict: null,
+      }),
+    );
     const v = violations.find((x) => x.rule === "planning_production_noise_consequence");
     expect(v).toBeDefined();
   });
 
   it("warning ved lugt konsekvensområde", () => {
-    const violations = checkSurroundingsRules(makeInput({
-      noiseDesignatedArea: null, productionNoiseConsequenceArea: null,
-      odorConsequenceArea: true, odorDesignatedArea: null,
-      technicalFacilityConsequenceArea: null, largeLivestockFarmArea: null,
-      proposedPlanConflict: null,
-    }));
+    const violations = checkSurroundingsRules(
+      makeInput({
+        noiseDesignatedArea: null,
+        productionNoiseConsequenceArea: null,
+        odorConsequenceArea: true,
+        odorDesignatedArea: null,
+        technicalFacilityConsequenceArea: null,
+        largeLivestockFarmArea: null,
+        proposedPlanConflict: null,
+      }),
+    );
     expect(violations.find((x) => x.rule === "planning_odor_consequence")).toBeDefined();
   });
 
   it("warning ved forslag-plankonflikt — markeres som fremtidig risiko", () => {
-    const violations = checkSurroundingsRules(makeInput({
-      noiseDesignatedArea: null, productionNoiseConsequenceArea: null,
-      odorConsequenceArea: null, odorDesignatedArea: null,
-      technicalFacilityConsequenceArea: null, largeLivestockFarmArea: null,
-      proposedPlanConflict: true,
-    }));
+    const violations = checkSurroundingsRules(
+      makeInput({
+        noiseDesignatedArea: null,
+        productionNoiseConsequenceArea: null,
+        odorConsequenceArea: null,
+        odorDesignatedArea: null,
+        technicalFacilityConsequenceArea: null,
+        largeLivestockFarmArea: null,
+        proposedPlanConflict: true,
+      }),
+    );
     const v = violations.find((x) => x.rule === "planning_proposed_conflict");
     expect(v).toBeDefined();
     expect(v!.severity).toBe("warning");
@@ -1940,6 +2105,7 @@ Ejer workflowet: modtager trusted input, kalder adaptere, kører classifiers, re
 **Beskyttet fil-note:** Denne service må IKKE kaldes fra `analysis-orchestrator.ts` i denne plan. Wiring er en separat ticket der kræver human review.
 
 **Files:**
+
 - Create: `src/lib/surroundings-analysis.server.ts`
 - Create: `src/lib/surroundings-analysis.server.test.ts`
 
@@ -1950,7 +2116,10 @@ Opret `src/lib/surroundings-analysis.server.test.ts`:
 ```typescript
 import { describe, it, expect } from "bun:test";
 import type { SourceResult } from "@/lib/source-result";
-import type { NeighborContext, PlanningSurroundingsContext } from "@/domain/contracts/surroundings.types";
+import type {
+  NeighborContext,
+  PlanningSurroundingsContext,
+} from "@/domain/contracts/surroundings.types";
 import type { NoiseScreeningResult } from "@/domain/contracts/noise.types";
 import { makeMockResult } from "@/lib/source-result";
 import {
@@ -2068,7 +2237,11 @@ bun test src/lib/surroundings-analysis.server.test.ts
 // Wiring kræver human review af beskyttet fil.
 
 import type { SourceResult } from "@/lib/source-result";
-import type { NeighborContext, NeighborParcel, PlanningSurroundingsContext } from "@/domain/contracts/surroundings.types";
+import type {
+  NeighborContext,
+  NeighborParcel,
+  PlanningSurroundingsContext,
+} from "@/domain/contracts/surroundings.types";
 import type { NoiseScreeningResult } from "@/domain/contracts/noise.types";
 import type { RuleViolation } from "@/lib/rule-engine/types";
 import type * as GeoJSON from "geojson";
@@ -2127,19 +2300,23 @@ function deriveNoiseInput(noise: NoiseScreeningResult | null) {
     noise.metrics.length === 0
       ? "unknown"
       : noise.metrics.every((m) => m.coverage === "source_unavailable")
-      ? "source_unavailable"
-      : noise.metrics.every((m) => m.coverage === "outside_mapped_area")
-      ? "outside_mapped_area"
-      : noise.metrics.some((m) => m.coverage === "covered")
-      ? "covered"
-      : "unknown";
+        ? "source_unavailable"
+        : noise.metrics.every((m) => m.coverage === "outside_mapped_area")
+          ? "outside_mapped_area"
+          : noise.metrics.some((m) => m.coverage === "covered")
+            ? "covered"
+            : "unknown";
 
   return {
     roadLdenDb: road?.ldenDb ?? null,
     railLdenDb: rail?.ldenDb ?? null,
     airLdenDb: air?.ldenDb ?? null,
     industryLdenDb: industry?.ldenDb ?? null,
-    coverageStatus: coverageStatus as "covered" | "outside_mapped_area" | "source_unavailable" | "unknown",
+    coverageStatus: coverageStatus as
+      | "covered"
+      | "outside_mapped_area"
+      | "source_unavailable"
+      | "unknown",
     highestRisk: noise.highestRisk,
     requiresAcousticReview: noise.requiresAcousticReview,
   };
@@ -2170,19 +2347,21 @@ export async function handleSurroundingsAnalysis(
     access_road_nearby: neighbor?.accessRoadNearby ?? null,
     neighbor_context_confidence: neighbor?.coverage ?? null,
     planning_noise_area: surroundings?.noiseDesignatedArea ?? null,
-    planning_production_noise_consequence_area: surroundings?.productionNoiseConsequenceArea ?? null,
-    planning_odor_area: surroundings?.odorConsequenceArea ?? surroundings?.odorDesignatedArea ?? null,
-    planning_technical_facility_consequence_area: surroundings?.technicalFacilityConsequenceArea ?? null,
+    planning_production_noise_consequence_area:
+      surroundings?.productionNoiseConsequenceArea ?? null,
+    planning_odor_area:
+      surroundings?.odorConsequenceArea ?? surroundings?.odorDesignatedArea ?? null,
+    planning_technical_facility_consequence_area:
+      surroundings?.technicalFacilityConsequenceArea ?? null,
     planning_large_livestock_area: surroundings?.largeLivestockFarmArea ?? null,
-    planning_surroundings_review_required:
-      surroundings
-        ? [
-            surroundings.noiseDesignatedArea,
-            surroundings.productionNoiseConsequenceArea,
-            surroundings.odorConsequenceArea,
-            surroundings.technicalFacilityConsequenceArea,
-          ].some(Boolean)
-        : null,
+    planning_surroundings_review_required: surroundings
+      ? [
+          surroundings.noiseDesignatedArea,
+          surroundings.productionNoiseConsequenceArea,
+          surroundings.odorConsequenceArea,
+          surroundings.technicalFacilityConsequenceArea,
+        ].some(Boolean)
+      : null,
     noise_road_lden_db: noiseMetric("road"),
     noise_rail_lden_db: noiseMetric("rail"),
     noise_air_lden_db: noiseMetric("air"),
@@ -2192,11 +2371,108 @@ export async function handleSurroundingsAnalysis(
   };
 
   const violations: RuleViolation[] = [
-    ...checkNoiseRules({ project: { type: "new_build", municipality: "", kommunekode: "" }, plot: { areaM2: null, zone: "unknown", hasLocalplan: false, hasServitudes: false, localplanIds: [] }, heritage: { listedBuilding: null, saveValue: null, preservationLocalplan: false, protectionLines: { coastal: false, forest: false, lakeRiver: false, lake: false, clitFredning: false, churchSurroundings: false } }, localplan: null, municipalPlan: null, existingBuilding: null, newBuilding: null, geotechnical: { radonRisk: "unknown", groundwaterDepthM: null, slopePercent: null, jordforureningV1: null, jordforureningV2: null, omraadeklassificering: null }, servituts: { hasCritical: false, criticalTexts: [] }, noise: noiseInput }),
-    ...checkSurroundingsRules({ project: { type: "new_build", municipality: "", kommunekode: "" }, plot: { areaM2: null, zone: "unknown", hasLocalplan: false, hasServitudes: false, localplanIds: [] }, heritage: { listedBuilding: null, saveValue: null, preservationLocalplan: false, protectionLines: { coastal: false, forest: false, lakeRiver: false, lake: false, clitFredning: false, churchSurroundings: false } }, localplan: null, municipalPlan: null, existingBuilding: null, newBuilding: null, geotechnical: { radonRisk: "unknown", groundwaterDepthM: null, slopePercent: null, jordforureningV1: null, jordforureningV2: null, omraadeklassificering: null }, servituts: { hasCritical: false, criticalTexts: [] }, surroundings: surroundings ? { noiseDesignatedArea: surroundings.noiseDesignatedArea, productionNoiseConsequenceArea: surroundings.productionNoiseConsequenceArea, odorConsequenceArea: surroundings.odorConsequenceArea, odorDesignatedArea: surroundings.odorDesignatedArea, technicalFacilityConsequenceArea: surroundings.technicalFacilityConsequenceArea, largeLivestockFarmArea: surroundings.largeLivestockFarmArea, proposedPlanConflict: surroundings.proposedPlanConflict } : null, neighborContext: neighbor ? { nearestBuildingDistanceM: neighbor.nearestDistanceM, nearestRoadCenterlineDistanceM: neighbor.nearestRoadCenterlineDistanceM, buildingCount40m: neighbor.count40m, accessRoadNearby: neighbor.accessRoadNearby, coverage: neighbor.coverage } : null }),
+    ...checkNoiseRules({
+      project: { type: "new_build", municipality: "", kommunekode: "" },
+      plot: {
+        areaM2: null,
+        zone: "unknown",
+        hasLocalplan: false,
+        hasServitudes: false,
+        localplanIds: [],
+      },
+      heritage: {
+        listedBuilding: null,
+        saveValue: null,
+        preservationLocalplan: false,
+        protectionLines: {
+          coastal: false,
+          forest: false,
+          lakeRiver: false,
+          lake: false,
+          clitFredning: false,
+          churchSurroundings: false,
+        },
+      },
+      localplan: null,
+      municipalPlan: null,
+      existingBuilding: null,
+      newBuilding: null,
+      geotechnical: {
+        radonRisk: "unknown",
+        groundwaterDepthM: null,
+        slopePercent: null,
+        jordforureningV1: null,
+        jordforureningV2: null,
+        omraadeklassificering: null,
+      },
+      servituts: { hasCritical: false, criticalTexts: [] },
+      noise: noiseInput,
+    }),
+    ...checkSurroundingsRules({
+      project: { type: "new_build", municipality: "", kommunekode: "" },
+      plot: {
+        areaM2: null,
+        zone: "unknown",
+        hasLocalplan: false,
+        hasServitudes: false,
+        localplanIds: [],
+      },
+      heritage: {
+        listedBuilding: null,
+        saveValue: null,
+        preservationLocalplan: false,
+        protectionLines: {
+          coastal: false,
+          forest: false,
+          lakeRiver: false,
+          lake: false,
+          clitFredning: false,
+          churchSurroundings: false,
+        },
+      },
+      localplan: null,
+      municipalPlan: null,
+      existingBuilding: null,
+      newBuilding: null,
+      geotechnical: {
+        radonRisk: "unknown",
+        groundwaterDepthM: null,
+        slopePercent: null,
+        jordforureningV1: null,
+        jordforureningV2: null,
+        omraadeklassificering: null,
+      },
+      servituts: { hasCritical: false, criticalTexts: [] },
+      surroundings: surroundings
+        ? {
+            noiseDesignatedArea: surroundings.noiseDesignatedArea,
+            productionNoiseConsequenceArea: surroundings.productionNoiseConsequenceArea,
+            odorConsequenceArea: surroundings.odorConsequenceArea,
+            odorDesignatedArea: surroundings.odorDesignatedArea,
+            technicalFacilityConsequenceArea: surroundings.technicalFacilityConsequenceArea,
+            largeLivestockFarmArea: surroundings.largeLivestockFarmArea,
+            proposedPlanConflict: surroundings.proposedPlanConflict,
+          }
+        : null,
+      neighborContext: neighbor
+        ? {
+            nearestBuildingDistanceM: neighbor.nearestDistanceM,
+            nearestRoadCenterlineDistanceM: neighbor.nearestRoadCenterlineDistanceM,
+            buildingCount40m: neighbor.count40m,
+            accessRoadNearby: neighbor.accessRoadNearby,
+            coverage: neighbor.coverage,
+          }
+        : null,
+    }),
   ];
 
-  return { neighborContextResult, surroundingsResult, noiseResult, siteConstraintsPatch: patch, violations };
+  return {
+    neighborContextResult,
+    surroundingsResult,
+    noiseResult,
+    siteConstraintsPatch: patch,
+    violations,
+  };
 }
 ```
 
@@ -2230,6 +2506,7 @@ git commit -m "feat(surroundings): tilfoej SurroundingsAnalysis application serv
 `fetchNeighborBuildings` i `src/integrations/geodanmark/drawing-layers.ts` returnerer i dag en tom mock. Opdatér den til at bruge `GeoDanmarkNeighborService`.
 
 **Files:**
+
 - Modify: `src/integrations/geodanmark/drawing-layers.ts`
 
 - [ ] **Step 1: Verificer eksisterende implementering**

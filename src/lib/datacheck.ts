@@ -7,13 +7,14 @@ import {
   SECTIONS,
   type DataPointDef,
   type DataPointId,
-  type Phase,
+  mapDataPointPhaseToReadinessPhase,
+  type ReadinessPhase,
   type ReadinessScore,
   type RiskFlag,
 } from "@/lib/datacheck-config";
 
 export { DATA_POINT_DEFS, PHASE_LABELS, SECTIONS };
-export type { DataPointDef, DataPointId, Phase, ReadinessScore, RiskFlag };
+export type { DataPointDef, DataPointId, ReadinessPhase, ReadinessScore, RiskFlag };
 
 export type DataPointStatus = "not_started" | "in_progress" | "done" | "not_applicable";
 
@@ -60,10 +61,12 @@ export function parsePersistedDataStatusMap(input: unknown): DataStatusMap {
 }
 
 export function getReadinessScores(statusMap: DataStatusMap): ReadinessScore[] {
-  const phases: Phase[] = ["skitse", "myndighed", "udbud"];
+  const phases: ReadinessPhase[] = ["maskinrummet", "myndighed"];
 
   return phases.map((phase) => {
-    const criticalByPhase = DATA_POINT_DEFS.filter((def) => def.phase === phase && def.kritisk);
+    const criticalByPhase = DATA_POINT_DEFS.filter(
+      (def) => mapDataPointPhaseToReadinessPhase(def.phase) === phase && def.kritisk,
+    );
     const done = criticalByPhase.filter((def) => {
       const status = statusMap[def.id]?.status;
       return status === "done" || status === "not_applicable";
@@ -88,11 +91,12 @@ export function getRiskFlags(statusMap: DataStatusMap): RiskFlag[] {
     if (status === "done" || status === "not_applicable") continue;
 
     if (HIGH_RISK_IDS.has(def.id)) {
+      const readinessPhase = mapDataPointPhaseToReadinessPhase(def.phase);
       flags.push({
         fieldId: def.id,
         label: def.label,
         severity: "high",
-        message: `${def.label} mangler - blokerer fremskridt i ${PHASE_LABELS[def.phase].toLowerCase()}`,
+        message: `${def.label} mangler - blokerer fremskridt i ${PHASE_LABELS[readinessPhase].toLowerCase()}`,
       });
       continue;
     }

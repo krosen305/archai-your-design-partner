@@ -15,55 +15,50 @@ export type Phase = {
 export const PHASES: Phase[] = [
   {
     id: 1,
-    label: "GRUNDLAGET",
-    shortLabel: "Grundlaget",
-    route: "/projekt/adresse",
-    description: "Adresse & ejendomsdata",
+    label: "SANDKASSEN",
+    shortLabel: "Sandkassen",
+    route: "/projekt/start",
+    description: "Inspiration, ønsker og Hus-DNA",
   },
   {
     id: 2,
-    label: "COCKPIT",
-    shortLabel: "Cockpit",
-    route: "/projekt/cockpit",
-    description: "Analyse, design & økonomi",
+    label: "MATRIKLEN",
+    shortLabel: "Matriklen",
+    route: "/projekt/adresse",
+    description: "Adresse, plot og ejendomsdata",
   },
   {
     id: 3,
-    label: "TEKNIK",
-    shortLabel: "Teknik",
-    route: "/projekt/teknik",
-    description: "BR18 & statik",
+    label: "MASKINRUMMET",
+    shortLabel: "Maskinrummet",
+    route: "/projekt/cockpit",
+    description: "Analyse, design og økonomi",
   },
   {
     id: 4,
-    label: "UDBUD",
-    shortLabel: "Udbud",
-    route: "/projekt/udbud",
-    description: "Udbud & kontrakt",
+    label: "MYNDIGHED",
+    shortLabel: "Myndighed",
+    route: "/projekt/teknik",
+    description: "Ansøgning, teknik og dokumentation",
   },
 ];
 
-const PHASE_1_ROUTES = ["/projekt/start", "/projekt/adresse"];
+const PHASE_1_ROUTES = ["/projekt/start"];
 
 /** Hvilken fase en given route hører til (null hvis ingen). */
 export function phaseForRoute(pathname: string): PhaseId | null {
   if (PHASE_1_ROUTES.includes(pathname)) return 1;
-  if (/^\/projekt\/[^/]+\/cockpit$/.test(pathname)) return 2;
-  if (pathname === "/projekt/teknik") return 3;
-  if (pathname === "/projekt/udbud") return 4;
+  if (pathname === "/projekt/adresse") return 2;
+  if (/^\/projekt\/[^/]+\/cockpit$/.test(pathname)) return 3;
+  if (pathname === "/projekt/teknik" || pathname === "/projekt/udbud") return 4;
   return null;
 }
 
 export type PhaseStateMap = Record<PhaseId, PhaseStatus>;
 
 /**
- * Status-indicators (Cockpit-paradigme):
- *   complete = grøn (data OK)
- *   warning  = gul (data hentet men advarsler/blockers)
- *   missing  = grå (data ikke hentet endnu)
- *   active   = nuværende fase
- *
- * Når en adresse er valgt er ALLE faser klikbare (cockpit-navigation, ikke wizard-låse).
+ * Status indicators for the current product navigation.
+ * This is still a UI read model, but now aligned to the canonical phase names.
  */
 export function usePhaseStates(currentPath: string): PhaseStateMap {
   const { address, husDna, complianceDone, bbrData, complianceFlags } = useProject();
@@ -72,8 +67,9 @@ export function usePhaseStates(currentPath: string): PhaseStateMap {
   const hasWarnings = complianceFlags.some((f) => f.status === "advarsel");
 
   const statuses: Record<PhaseId, PhaseStatus> = {
-    1: address ? (husDna ? "complete" : "warning") : "missing",
-    2:
+    1: husDna ? "complete" : address ? "warning" : "missing",
+    2: address ? (bbrData ? "complete" : "warning") : "missing",
+    3:
       complianceDone && bbrData
         ? hasBlockers
           ? "warning"
@@ -83,7 +79,6 @@ export function usePhaseStates(currentPath: string): PhaseStateMap {
         : address
           ? "missing"
           : "missing",
-    3: "missing",
     4: "missing",
   };
 
@@ -105,16 +100,16 @@ export function usePhaseClickable(): boolean {
 export function usePhaseSubKeys(): Record<PhaseId, { label: string; value: string }[]> {
   const { address, husDna, bbrData } = useProject();
   return {
-    1: [
+    1: [{ label: "Hus-DNA", value: husDna ? "Udfyldt" : "—" }],
+    2: [
       { label: "Adresse", value: address?.adresse?.split(",")[0] ?? "—" },
       { label: "Ejendom", value: bbrData ? "Hentet" : "—" },
     ],
-    2: [
+    3: [
       { label: "BBR", value: bbrData ? "Hentet" : "—" },
       { label: "Lokalplan", value: bbrData ? "Tjekket" : "—" },
-      { label: "Byggeønske", value: husDna ? "Udfyldt" : "—" },
+      { label: "Byggeønske", value: husDna ? "Påbegyndt" : "—" },
     ],
-    3: [],
     4: [],
   };
 }

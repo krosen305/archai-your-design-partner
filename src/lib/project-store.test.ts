@@ -110,6 +110,26 @@ describe("project-store neighborContextFacts", () => {
   });
 });
 
+describe("project-store canonical phases", () => {
+  it("starter med sandkassen som aktiv fase", () => {
+    expect(useProject.getState().phases).toEqual({
+      sandkassen: "active",
+      matriklen: "locked",
+      maskinrummet: "locked",
+      myndighed: "locked",
+    });
+  });
+
+  it("setPhase opdaterer de kanoniske faser", () => {
+    useProject.getState().setPhase("matriklen", "complete");
+    useProject.getState().setPhase("maskinrummet", "active");
+
+    expect(useProject.getState().phases.matriklen).toBe("complete");
+    expect(useProject.getState().phases.maskinrummet).toBe("active");
+    expect(useProject.getState().phases.myndighed).toBe("locked");
+  });
+});
+
 describe("project selection - ARCH-147", () => {
   it("reset() clears address so a subsequent restore can load the correct project", () => {
     const { setAddress, setCurrentProjectId, reset } = useProject.getState();

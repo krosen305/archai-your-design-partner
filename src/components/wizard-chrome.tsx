@@ -94,7 +94,7 @@ function PhaseRail() {
   const { address } = useProject();
 
   const handleClick = (phaseId: PhaseId, route: string) => {
-    if (phaseId === 2 && address?.adresseid) {
+    if (phaseId === 3 && address?.adresseid) {
       navigate({ to: `/projekt/${address.adresseid}/cockpit` as never });
     } else {
       navigate({ to: route });
