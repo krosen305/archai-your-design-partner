@@ -52,10 +52,10 @@ describe("datacheck", () => {
     };
 
     const scores = getReadinessScores(statusMap);
-    const skitse = scores.find((score) => score.phase === "skitse");
+    const maskinrummet = scores.find((score) => score.phase === "maskinrummet");
 
-    expect(skitse).toBeDefined();
-    expect((skitse?.pct ?? 0) > 0).toBeTrue();
+    expect(maskinrummet).toBeDefined();
+    expect((maskinrummet?.pct ?? 0) > 0).toBeTrue();
   });
 
   it("tomme status maps giver 0 pct", () => {

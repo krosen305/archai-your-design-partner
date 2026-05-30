@@ -65,6 +65,24 @@ export function renderSvg(model: DrawingModel): string {
           `<text x="${tx + 5}" y="${lineY + 4}" font-family="Arial" font-size="6" fill="#c00" font-weight="bold">${esc(tb.disclaimer)}</text>`,
         ]
       : []),
+    ...(model.legend.length > 0
+      ? [
+          `<line x1="${(tx + 2).toFixed(1)}" y1="${(lineY + 14).toFixed(1)}" x2="${(tx + titleBlockW - 2).toFixed(1)}" y2="${(lineY + 14).toFixed(1)}" stroke="#bbb" stroke-width="0.3"/>`,
+          ...model.legend.map((item, i) => {
+            const ly = lineY + 24 + i * 13;
+            return [
+              `<g transform="translate(${(tx + 5).toFixed(1)},${(ly - 7).toFixed(1)})"><svg width="14" height="9" viewBox="0 0 12 8">${item.symbol}</svg></g>`,
+              `<text x="${(tx + 22).toFixed(1)}" y="${ly.toFixed(1)}" font-family="Arial" font-size="5.5" fill="#333">${esc(item.label)}</text>`,
+            ].join("\n");
+          }),
+        ]
+      : []),
+    ...(model.legend.length > 0
+      ? (() => {
+          lineY += 14 + model.legend.length * 13;
+          return [];
+        })()
+      : []),
   ].join("\n");
 
   const scaleBarM = model.page.scale === 250 ? 10 : 20;

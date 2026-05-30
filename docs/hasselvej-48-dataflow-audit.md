@@ -92,35 +92,35 @@ Se også den generelle flow-visualisering i `docs/adresse-dataflow.md`.
 
 ## Faktisk kald-række og input
 
-| Trin | Endpoint/service | Input | Input kommer fra | Output i Hasselvej-run |
-| --- | --- | --- | --- | --- |
-| 1 | GSearch v2 `/adresse` | `q="Hasselvej 48, 2830 Virum"` | Brugerinput | `adresseid`, adresse, `kommunekode=0173`, koordinat |
-| 1b | GSearch v2 `/husnummer` testet manuelt | Samme `q` | Brugerinput | `id=0a3f507d-...`, samme som senere DAR `adgangsadresseid` |
-| 2 | `project-store` + `syncPatch` | GSearch suggestion | UI | Gemmer address, men `adgangsadresseid=""` |
-| 3 | `fetchCompliance` | `addressId`, tom `adgangsadresseid`, koordinater | Project store | Validated server input |
-| 4 | DAR `DAR_Adresse` | `id_lokalId = adresseid` | GSearch `/adresse` | `husnummer=0a3f507d-...` |
-| 5 | DAR `DAR_Husnummer` | `id_lokalId = husnummer` | DAR Adresse | `jordstykke` FK |
-| 6 | MAT `MAT_Jordstykke` | `id_lokalId = jordstykke` | DAR Husnummer | `matrikelnummer=5fo`, `registreretAreal=441` |
-| 7 | MAT `MAT_Ejerlav` | `id_lokalId = ejerlavLokalId` | MAT Jordstykke | `ejerlavskode=12352` |
-| 8 | MAT `getGrundareal` | `ejerlavskode=12352`, `matrikelnummer=5fo` | Enrichment | `registreretAreal=441`, `jordstykkeLokalId=2468837` |
-| 9 | BBR `BBR_Bygning` | `husnummer=adgangsadresseid` | DAR enrichment | Byggeår 1937, bebygget areal 68, samlet areal 129, bygning-UUID'er |
-| 10 | Plandata WFS lokalplan | Punkt fra GSearch-koordinat | GSearch | Lokalplan `1024788`, plan nr. `198` |
-| 11 | Plandata WFS kommuneplanramme | Punkt fra GSearch-koordinat | GSearch | Kommuneplanramme `11709010`, bebyggelsesprocent 60 |
-| 12 | EBR | `husnummerLokalId=adgangsadresseid` | DAR enrichment | `bfeNr=2073922` |
-| 13 | VUR | `bfeNr -> recordId -> propertyId` | EBR | Ejendomsværdi 3.450.000, grundværdi 1.391.500, vurderet areal 441 |
-| 14 | Lokalplan PDF extraction/cache | `addressId`, lokalplan PDF URL | GSearch + Plandata | Cache hit fra `address_analysis` |
-| 15 | Servitut extraction/cache | `addressId`, ejerlav, matrikel | GSearch + MAT | Cache hit, mock-data |
-| 16 | MAT WFS geometri | `jordstykkeLokalId=2468837` | MAT Layer 1 | Parcelpolygon, areal 434.44 m2, bbox, centroid |
-| 17 | FBB WFS | BBR bygning-UUID'er | BBR | SAVE 3 på primær bygning, ikke fredet |
-| 18 | DKJord WFS | Parcelpolygon fra cache eller punkt | MAT WFS/cache + GSearch | Fejl: gammel endpoint/typenames |
-| 19 | DAI Naturbeskyttelse | Punkt | GSearch | Returnerede "success", men endpoint gav HTML/ikke-reel WFS-respons |
-| 20 | DAI Arealdata | Parcelpolygon fra cache eller punkt | MAT WFS/cache + GSearch | Fejl, bl.a. fordi polygon ikke lå i cache |
-| 21 | GEUS | BBox omkring punkt | GSearch | Cache hit, mock-resultat |
-| 22 | DHM WCS | UTM bbox fra punkt/grundareal | GSearch + MAT | Cache hit, mock-resultat |
-| 23 | GeoDanmark WFS | Parcel bbox eller fallback bbox | MAT WFS + GSearch | Fejl/resultatstatus skjult som intern SourceResult |
-| 24 | Fjernvarme/Plandata | Punkt | GSearch | `false` |
-| 25 | Tjekditnet | `adgangsadresseid` | DAR enrichment | `no_hit` |
-| 26 | EMOData | BBR bygning-ID | BBR | Sprunget over pga. manglende credentials |
+| Trin | Endpoint/service                       | Input                                            | Input kommer fra        | Output i Hasselvej-run                                             |
+| ---- | -------------------------------------- | ------------------------------------------------ | ----------------------- | ------------------------------------------------------------------ |
+| 1    | GSearch v2 `/adresse`                  | `q="Hasselvej 48, 2830 Virum"`                   | Brugerinput             | `adresseid`, adresse, `kommunekode=0173`, koordinat                |
+| 1b   | GSearch v2 `/husnummer` testet manuelt | Samme `q`                                        | Brugerinput             | `id=0a3f507d-...`, samme som senere DAR `adgangsadresseid`         |
+| 2    | `project-store` + `syncPatch`          | GSearch suggestion                               | UI                      | Gemmer address, men `adgangsadresseid=""`                          |
+| 3    | `fetchCompliance`                      | `addressId`, tom `adgangsadresseid`, koordinater | Project store           | Validated server input                                             |
+| 4    | DAR `DAR_Adresse`                      | `id_lokalId = adresseid`                         | GSearch `/adresse`      | `husnummer=0a3f507d-...`                                           |
+| 5    | DAR `DAR_Husnummer`                    | `id_lokalId = husnummer`                         | DAR Adresse             | `jordstykke` FK                                                    |
+| 6    | MAT `MAT_Jordstykke`                   | `id_lokalId = jordstykke`                        | DAR Husnummer           | `matrikelnummer=5fo`, `registreretAreal=441`                       |
+| 7    | MAT `MAT_Ejerlav`                      | `id_lokalId = ejerlavLokalId`                    | MAT Jordstykke          | `ejerlavskode=12352`                                               |
+| 8    | MAT `getGrundareal`                    | `ejerlavskode=12352`, `matrikelnummer=5fo`       | Enrichment              | `registreretAreal=441`, `jordstykkeLokalId=2468837`                |
+| 9    | BBR `BBR_Bygning`                      | `husnummer=adgangsadresseid`                     | DAR enrichment          | Byggeår 1937, bebygget areal 68, samlet areal 129, bygning-UUID'er |
+| 10   | Plandata WFS lokalplan                 | Punkt fra GSearch-koordinat                      | GSearch                 | Lokalplan `1024788`, plan nr. `198`                                |
+| 11   | Plandata WFS kommuneplanramme          | Punkt fra GSearch-koordinat                      | GSearch                 | Kommuneplanramme `11709010`, bebyggelsesprocent 60                 |
+| 12   | EBR                                    | `husnummerLokalId=adgangsadresseid`              | DAR enrichment          | `bfeNr=2073922`                                                    |
+| 13   | VUR                                    | `bfeNr -> recordId -> propertyId`                | EBR                     | Ejendomsværdi 3.450.000, grundværdi 1.391.500, vurderet areal 441  |
+| 14   | Lokalplan PDF extraction/cache         | `addressId`, lokalplan PDF URL                   | GSearch + Plandata      | Cache hit fra `address_analysis`                                   |
+| 15   | Servitut extraction/cache              | `addressId`, ejerlav, matrikel                   | GSearch + MAT           | Cache hit, mock-data                                               |
+| 16   | MAT WFS geometri                       | `jordstykkeLokalId=2468837`                      | MAT Layer 1             | Parcelpolygon, areal 434.44 m2, bbox, centroid                     |
+| 17   | FBB WFS                                | BBR bygning-UUID'er                              | BBR                     | SAVE 3 på primær bygning, ikke fredet                              |
+| 18   | DKJord WFS                             | Parcelpolygon fra cache eller punkt              | MAT WFS/cache + GSearch | Fejl: gammel endpoint/typenames                                    |
+| 19   | DAI Naturbeskyttelse                   | Punkt                                            | GSearch                 | Returnerede "success", men endpoint gav HTML/ikke-reel WFS-respons |
+| 20   | DAI Arealdata                          | Parcelpolygon fra cache eller punkt              | MAT WFS/cache + GSearch | Fejl, bl.a. fordi polygon ikke lå i cache                          |
+| 21   | GEUS                                   | BBox omkring punkt                               | GSearch                 | Cache hit, mock-resultat                                           |
+| 22   | DHM WCS                                | UTM bbox fra punkt/grundareal                    | GSearch + MAT           | Cache hit, mock-resultat                                           |
+| 23   | GeoDanmark WFS                         | Parcel bbox eller fallback bbox                  | MAT WFS + GSearch       | Fejl/resultatstatus skjult som intern SourceResult                 |
+| 24   | Fjernvarme/Plandata                    | Punkt                                            | GSearch                 | `false`                                                            |
+| 25   | Tjekditnet                             | `adgangsadresseid`                               | DAR enrichment          | `no_hit`                                                           |
+| 26   | EMOData                                | BBR bygning-ID                                   | BBR                     | Sprunget over pga. manglende credentials                           |
 
 ## Vigtigste fund
 
@@ -265,16 +265,16 @@ Se også den generelle flow-visualisering i `docs/adresse-dataflow.md`.
 
 ## Hvad gemmes hvor og hvornår
 
-| Tidspunkt | Tabel/store | Hvad gemmes | Observation |
-| --- | --- | --- | --- |
-| Adressevalg | `project-store` og projektsync | `address` fra GSearch | `adgangsadresseid` gemmes som tom streng |
-| Cockpit live-run | `analysis_runs` | Run-id, bruger/projekt hvis tilgængelig | Direkte test-run havde `projectId=null`, men tracing blev oprettet |
-| Under analyse | `analysis_events` | Hvert større integrationstrin | Viser timings; nogle SourceResult-fejl fremstår for skjult |
-| Lokalplan extraction | `address_analysis` | PDF URL og lokalplanudtræk | Cache hit fra tidligere run |
-| Servitutter | `address_analysis` | Servitut-resultat | Cache hit, mock |
-| Parcelpolygon | `address_analysis` | Burde gemme `jordstykke_polygon` | Blev ikke opdateret, selv om MAT WFS lykkedes |
-| Source-result caches | `address_source_results` | GEUS, DHM, Plandata ext, Arealdata ext m.m. | GEUS/DHM var mock-cache hits; Arealdata fejl blev skrevet |
-| Reelt cockpit-flow efter result | `project-store`/projektsync | BBR, flags, service states, lokalplaner, geodata m.m. | Gemmer analyseoutput, men ikke beriget `address` |
+| Tidspunkt                       | Tabel/store                    | Hvad gemmes                                           | Observation                                                        |
+| ------------------------------- | ------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| Adressevalg                     | `project-store` og projektsync | `address` fra GSearch                                 | `adgangsadresseid` gemmes som tom streng                           |
+| Cockpit live-run                | `analysis_runs`                | Run-id, bruger/projekt hvis tilgængelig               | Direkte test-run havde `projectId=null`, men tracing blev oprettet |
+| Under analyse                   | `analysis_events`              | Hvert større integrationstrin                         | Viser timings; nogle SourceResult-fejl fremstår for skjult         |
+| Lokalplan extraction            | `address_analysis`             | PDF URL og lokalplanudtræk                            | Cache hit fra tidligere run                                        |
+| Servitutter                     | `address_analysis`             | Servitut-resultat                                     | Cache hit, mock                                                    |
+| Parcelpolygon                   | `address_analysis`             | Burde gemme `jordstykke_polygon`                      | Blev ikke opdateret, selv om MAT WFS lykkedes                      |
+| Source-result caches            | `address_source_results`       | GEUS, DHM, Plandata ext, Arealdata ext m.m.           | GEUS/DHM var mock-cache hits; Arealdata fejl blev skrevet          |
+| Reelt cockpit-flow efter result | `project-store`/projektsync    | BBR, flags, service states, lokalplaner, geodata m.m. | Gemmer analyseoutput, men ikke beriget `address`                   |
 
 ## Konkrete anbefalinger i prioriteret rækkefølge
 

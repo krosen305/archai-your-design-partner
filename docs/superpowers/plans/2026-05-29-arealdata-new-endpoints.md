@@ -13,31 +13,33 @@
 ## Verificeret endpoint-mapping
 
 ### GeoServer — ingen auth påkrævet
+
 Base URL: `https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs`
 Geometrifelt: `Shape`
 
-| Key | Ny typename | Filtertype | Verificering |
-|---|---|---|---|
-| `paragraph3Nature` | `dai:bes_naturtyper` | INTERSECTS | ✅ 1 hit ved Mols Bjerge hede |
-| `natura2000` | `dai:habitat_omr` OR `dai:fugle_bes_omr` OR `dai:ramsar_omr` | INTERSECTS, OR | ✅ hits ved Blåvand og Mols Bjerge |
-| `protectedDige` | `dai:bes_sten_jorddiger_2022` | DWITHIN 2m | ⚠️ MultiCurve-geometri bekræftet, semantisk korrekt |
-| `bnbo` | `dai:status_bnbo` | INTERSECTS | ⚠️ endpoint bekræftet |
-| `rawMaterialArea` | `dai:raastofomr` | INTERSECTS | ✅ BBOX-test 257 features |
+| Key                | Ny typename                                                  | Filtertype     | Verificering                                        |
+| ------------------ | ------------------------------------------------------------ | -------------- | --------------------------------------------------- |
+| `paragraph3Nature` | `dai:bes_naturtyper`                                         | INTERSECTS     | ✅ 1 hit ved Mols Bjerge hede                       |
+| `natura2000`       | `dai:habitat_omr` OR `dai:fugle_bes_omr` OR `dai:ramsar_omr` | INTERSECTS, OR | ✅ hits ved Blåvand og Mols Bjerge                  |
+| `protectedDige`    | `dai:bes_sten_jorddiger_2022`                                | DWITHIN 2m     | ⚠️ MultiCurve-geometri bekræftet, semantisk korrekt |
+| `bnbo`             | `dai:status_bnbo`                                            | INTERSECTS     | ⚠️ endpoint bekræftet                               |
+| `rawMaterialArea`  | `dai:raastofomr`                                             | INTERSECTS     | ✅ BBOX-test 257 features                           |
 
 ### Miljoegis Grukos — ingen auth påkrævet
+
 Base URL: `https://wfs2-miljoegis.mim.dk/grukos/ows`
 Geometrifelt: `wkb_geometry`
 
-| Key | Typename | Verificering |
-|---|---|---|
+| Key   | Typename                       | Verificering                               |
+| ----- | ------------------------------ | ------------------------------------------ |
 | `osd` | `grukos:drikkevandsinteresser` | ✅ returnerer GeoJSON med features ved Kbh |
 
 ### Uafklarede lag — degraderer til `null`
 
-| Key | Årsag |
-|---|---|
-| `fortidsminde` | `kulturarv.dk/ffgeoserver` utilgængeligt; `dai:fredede_omr` dækker naturreservater (naturbeskyttelsesloven), ikke fortidsminder (museumsloven) |
-| `fortidsmindeBuffer` | Samme årsag |
+| Key                  | Årsag                                                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fortidsminde`       | `kulturarv.dk/ffgeoserver` utilgængeligt; `dai:fredede_omr` dækker naturreservater (naturbeskyttelsesloven), ikke fortidsminder (museumsloven) |
+| `fortidsmindeBuffer` | Samme årsag                                                                                                                                    |
 
 **Bemærk:** `null` er bedre end det nuværende `false` (som pt. returneres fordi alle lag fejler på det døde endpoint). `null` = ukendt, `false` = afkræftet. Downstream bør vise "data utilgængelig" snarere end "ingen restriktion".
 
@@ -45,9 +47,9 @@ Geometrifelt: `wkb_geometry`
 
 ## Berørte filer
 
-| Fil | Ændring |
-|---|---|
-| `src/integrations/arealdata/client.ts` | Fuldt omskrevet — multi-endpoint arkitektur, Zod-validering |
+| Fil                                         | Ændring                                                          |
+| ------------------------------------------- | ---------------------------------------------------------------- |
+| `src/integrations/arealdata/client.ts`      | Fuldt omskrevet — multi-endpoint arkitektur, Zod-validering      |
 | `src/integrations/arealdata/client.test.ts` | Ny testfil — dækker alle 4 kildetyper og OR-logik for natura2000 |
 
 ---
@@ -55,6 +57,7 @@ Geometrifelt: `wkb_geometry`
 ## Task 1: Omskriv `arealdata/client.ts` med multi-endpoint arkitektur
 
 **Files:**
+
 - Modify: `src/integrations/arealdata/client.ts`
 
 - [ ] **Step 1: Læs den nuværende fil og forstå strukturen**
@@ -157,10 +160,7 @@ function buildCqlFilter(
 
 // ---- GeoServer fetcher (JSON) ----
 
-async function fetchGeoServer(
-  typename: string,
-  cqlFilter: string,
-): Promise<number> {
+async function fetchGeoServer(typename: string, cqlFilter: string): Promise<number> {
   const url =
     `${GEOSERVER_WFS}?service=WFS&version=2.0.0&request=GetFeature` +
     `&typeName=${typename}&count=1&outputFormat=application/json` +
@@ -179,10 +179,7 @@ async function fetchGeoServer(
 
 // ---- Miljoegis Grukos fetcher (JSON) ----
 
-async function fetchGrukos(
-  typename: string,
-  cqlFilter: string,
-): Promise<number> {
+async function fetchGrukos(typename: string, cqlFilter: string): Promise<number> {
   const url =
     `${MILJOEGIS_GRUKOS_WFS}?service=WFS&version=2.0.0&request=GetFeature` +
     `&typeName=${typename}&count=1&outputFormat=application/json` +
@@ -309,7 +306,12 @@ export class ArealdataService {
       // fortidsminde og fortidsmindeBuffer tæller ikke som "fejl" i confidence-forstand
       // — de er eksplicit uafklarede, ikke netværksfejl
       const resolvedKeys = new Set<keyof ArealdataContextResult>([
-        "paragraph3Nature", "natura2000", "protectedDige", "bnbo", "osd", "rawMaterialArea",
+        "paragraph3Nature",
+        "natura2000",
+        "protectedDige",
+        "bnbo",
+        "osd",
+        "rawMaterialArea",
       ]);
       const resolvedOutcomes = outcomes.filter((o) => resolvedKeys.has(o.key));
       const successCount = resolvedOutcomes.filter((o) => !o.errored).length;
@@ -376,6 +378,7 @@ Zod validation added on all JSON boundaries (Rule 1)."
 Tjek om der allerede eksisterer en testfil: `src/integrations/arealdata/client.test.ts`. Opret den hvis den mangler.
 
 **Files:**
+
 - Create/Modify: `src/integrations/arealdata/client.test.ts`
 
 - [ ] **Step 1: Skriv testfil**
@@ -416,14 +419,14 @@ describe("ArealdataService.getContext", () => {
   it("returnerer status=ok med confirmed confidence når alle live lag lykkes", async () => {
     globalThis.fetch = urlMock(
       {
-        "bes_naturtyper": geoServerJson(0),
-        "habitat_omr": geoServerJson(0),
-        "fugle_bes_omr": geoServerJson(0),
-        "ramsar_omr": geoServerJson(0),
-        "bes_sten_jorddiger": geoServerJson(0),
-        "status_bnbo": geoServerJson(0),
-        "drikkevandsinteresser": geoServerJson(0),
-        "raastofomr": geoServerJson(0),
+        bes_naturtyper: geoServerJson(0),
+        habitat_omr: geoServerJson(0),
+        fugle_bes_omr: geoServerJson(0),
+        ramsar_omr: geoServerJson(0),
+        bes_sten_jorddiger: geoServerJson(0),
+        status_bnbo: geoServerJson(0),
+        drikkevandsinteresser: geoServerJson(0),
+        raastofomr: geoServerJson(0),
       },
       errorResponse(404),
     );
@@ -443,14 +446,14 @@ describe("ArealdataService.getContext", () => {
   it("returnerer natura2000=true når et af de tre sub-lag har features", async () => {
     globalThis.fetch = urlMock(
       {
-        "bes_naturtyper": geoServerJson(0),
-        "habitat_omr": geoServerJson(0),
-        "fugle_bes_omr": geoServerJson(1), // hit på fugle
-        "ramsar_omr": geoServerJson(0),
-        "bes_sten_jorddiger": geoServerJson(0),
-        "status_bnbo": geoServerJson(0),
-        "drikkevandsinteresser": geoServerJson(0),
-        "raastofomr": geoServerJson(0),
+        bes_naturtyper: geoServerJson(0),
+        habitat_omr: geoServerJson(0),
+        fugle_bes_omr: geoServerJson(1), // hit på fugle
+        ramsar_omr: geoServerJson(0),
+        bes_sten_jorddiger: geoServerJson(0),
+        status_bnbo: geoServerJson(0),
+        drikkevandsinteresser: geoServerJson(0),
+        raastofomr: geoServerJson(0),
       },
       errorResponse(404),
     );
@@ -464,14 +467,14 @@ describe("ArealdataService.getContext", () => {
   it("returnerer osd=true ved OSD-koordinat via Grukos endpoint", async () => {
     globalThis.fetch = urlMock(
       {
-        "bes_naturtyper": geoServerJson(0),
-        "habitat_omr": geoServerJson(0),
-        "fugle_bes_omr": geoServerJson(0),
-        "ramsar_omr": geoServerJson(0),
-        "bes_sten_jorddiger": geoServerJson(0),
-        "status_bnbo": geoServerJson(0),
-        "drikkevandsinteresser": geoServerJson(1), // OSD hit
-        "raastofomr": geoServerJson(0),
+        bes_naturtyper: geoServerJson(0),
+        habitat_omr: geoServerJson(0),
+        fugle_bes_omr: geoServerJson(0),
+        ramsar_omr: geoServerJson(0),
+        bes_sten_jorddiger: geoServerJson(0),
+        status_bnbo: geoServerJson(0),
+        drikkevandsinteresser: geoServerJson(1), // OSD hit
+        raastofomr: geoServerJson(0),
       },
       errorResponse(404),
     );
@@ -494,14 +497,14 @@ describe("ArealdataService.getContext", () => {
   it("returnerer confidence=unknown når et live lag fejler", async () => {
     globalThis.fetch = urlMock(
       {
-        "bes_naturtyper": errorResponse(503), // paragraph3 fejler
-        "habitat_omr": geoServerJson(0),
-        "fugle_bes_omr": geoServerJson(0),
-        "ramsar_omr": geoServerJson(0),
-        "bes_sten_jorddiger": geoServerJson(0),
-        "status_bnbo": geoServerJson(0),
-        "drikkevandsinteresser": geoServerJson(0),
-        "raastofomr": geoServerJson(0),
+        bes_naturtyper: errorResponse(503), // paragraph3 fejler
+        habitat_omr: geoServerJson(0),
+        fugle_bes_omr: geoServerJson(0),
+        ramsar_omr: geoServerJson(0),
+        bes_sten_jorddiger: geoServerJson(0),
+        status_bnbo: geoServerJson(0),
+        drikkevandsinteresser: geoServerJson(0),
+        raastofomr: geoServerJson(0),
       },
       errorResponse(404),
     );
@@ -561,10 +564,11 @@ git commit -m "test(arealdata): add tests for multi-endpoint architecture"
 ### Hvorfor `fortidsminde` og `fortidsmindeBuffer` returnerer `null` og ikke `false`
 
 Den semantiske forskel er afgørende for et compliance-system:
+
 - `false` = "vi har tjekket, der er ingen restriktion"
 - `null` = "vi ved det ikke"
 
-Med det lukkede DAI WFS returnerede koden pt. `null` for alle lag (de fejlede alle). Med den nye implementering er `null` en *eksplicit* degradering for de to uafklarede lag, mens de øvrige lag giver pålidelige `true`/`false`.
+Med det lukkede DAI WFS returnerede koden pt. `null` for alle lag (de fejlede alle). Med den nye implementering er `null` en _eksplicit_ degradering for de to uafklarede lag, mens de øvrige lag giver pålidelige `true`/`false`.
 
 ### Hvorfor `protectedDige` bruger `DWITHIN 2m`
 

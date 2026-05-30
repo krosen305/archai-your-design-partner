@@ -5,12 +5,14 @@
 **Goal:** Byg et versioneret BR18-compliance modul med applicability engine, evidence ledger og myndighedspakke-generator — struktureret som Ports & Adapters med pure TypeScript i domænelaget.
 
 **Scope (Fase 0 — lukket beslutning):**
+
 - Bygningstyper: enfamiliehus, tilbygning, nedrivning_nybyg, renovering
 - Katalogformat: repo-fixtures i kode (ikke database-seed i v1)
 - P0-kapitler: Bebyggelsesregulerende (kap 8), Brand (kap 5), Konstruktioner (kap 15), Energi (kap 11-13), LCA/klima, D&V/færdigmelding
 - AI-rolle: Forklare og opsummere. Aldrig markere krav som opfyldt.
 
 **Architecture:**
+
 - Domænelag `src/lib/br18/` — pure TypeScript, nul eksterne deps, ingen imports fra rule-engine
 - Eksisterende `rule-engine/` håndterer allerede machine-checkable BR18-beregninger (bebyggelsesprocent, højde, etager, skelafstand) via `calculations.ts` med `appliedRule: "br18_default"` fallback. BR18-modulet tilføjer IKKE duplicate regler — det mapper eksisterende `RuleEngineResult` til BR18-kravformatet
 - Import-retning: `br18/` ← ingen imports fra `rule-engine/`. `br18-compliance.service.server.ts` importerer fra begge og mapper imellem dem
@@ -24,6 +26,7 @@
 ## Filstruktur
 
 ### Nye filer
+
 ```
 src/lib/br18/
   types.ts                              — Br18Requirement, Br18ApplicabilityResult, EvidenceItem, AuthorityPackageManifest, Br18ProjectFacts
@@ -67,6 +70,7 @@ src/components/br18/
 ```
 
 ### Modificerede filer
+
 ```
 src/integrations/supabase/repositories/projects.repository.ts
   — Tilføj updateBr18HardStop(projectId, hardStop, reason) hvis metoden ikke allerede eksisterer
@@ -82,17 +86,14 @@ src/integrations/supabase/repositories/projects.repository.ts
 ### Task 1: BR18 domænetyper og Zod-schemas
 
 **Filer:**
+
 - Create: `src/lib/br18/types.ts`
 - Create: `src/lib/br18/schemas.ts`
 
 - [ ] **Step 1.1: Opret `src/lib/br18/types.ts`**
 
 ```typescript
-export type ProjectScope =
-  | "enfamiliehus"
-  | "tilbygning"
-  | "nedrivning_nybyg"
-  | "renovering";
+export type ProjectScope = "enfamiliehus" | "tilbygning" | "nedrivning_nybyg" | "renovering";
 
 export type RequirementKind =
   | "machine_checkable"
@@ -121,11 +122,23 @@ export type ApplicabilityStatus =
 export type EvidenceStatus = "missing" | "draft" | "uploaded" | "validated" | "rejected";
 
 export type EvidenceSource =
-  | "datafordeler" | "plandata" | "user_upload" | "advisor" | "ai_extract" | "manual";
+  | "datafordeler"
+  | "plandata"
+  | "user_upload"
+  | "advisor"
+  | "ai_extract"
+  | "manual";
 
 export type EvidenceType =
-  | "register_data" | "drawing" | "calculation" | "declaration"
-  | "product_documentation" | "photo" | "manual_upload" | "advisor_note" | "authority_response";
+  | "register_data"
+  | "drawing"
+  | "calculation"
+  | "declaration"
+  | "product_documentation"
+  | "photo"
+  | "manual_upload"
+  | "advisor_note"
+  | "authority_response";
 
 export type AuthorityReadinessStatus =
   | "preliminary"
@@ -220,38 +233,68 @@ export type Br18ProjectFacts = {
 import { z } from "zod";
 
 export const projectScopeSchema = z.enum([
-  "enfamiliehus", "tilbygning", "nedrivning_nybyg", "renovering",
+  "enfamiliehus",
+  "tilbygning",
+  "nedrivning_nybyg",
+  "renovering",
 ]);
 
 export const requirementKindSchema = z.enum([
-  "machine_checkable", "documentation", "specialist_review", "authority_discretion",
+  "machine_checkable",
+  "documentation",
+  "specialist_review",
+  "authority_discretion",
 ]);
 
 export const requirementSeveritySchema = z.enum([
-  "hard_stop", "dispensation", "warning", "documentation",
+  "hard_stop",
+  "dispensation",
+  "warning",
+  "documentation",
 ]);
 
 export const applicabilityStatusSchema = z.enum([
-  "relevant", "not_relevant", "unknown_missing_data",
-  "requires_specialist_review", "requires_authority_decision",
+  "relevant",
+  "not_relevant",
+  "unknown_missing_data",
+  "requires_specialist_review",
+  "requires_authority_decision",
 ]);
 
 export const evidenceStatusSchema = z.enum([
-  "missing", "draft", "uploaded", "validated", "rejected",
+  "missing",
+  "draft",
+  "uploaded",
+  "validated",
+  "rejected",
 ]);
 
 export const evidenceSourceSchema = z.enum([
-  "datafordeler", "plandata", "user_upload", "advisor", "ai_extract", "manual",
+  "datafordeler",
+  "plandata",
+  "user_upload",
+  "advisor",
+  "ai_extract",
+  "manual",
 ]);
 
 export const evidenceTypeSchema = z.enum([
-  "register_data", "drawing", "calculation", "declaration",
-  "product_documentation", "photo", "manual_upload", "advisor_note", "authority_response",
+  "register_data",
+  "drawing",
+  "calculation",
+  "declaration",
+  "product_documentation",
+  "photo",
+  "manual_upload",
+  "advisor_note",
+  "authority_response",
 ]);
 
 export const authorityReadinessStatusSchema = z.enum([
-  "preliminary", "ready_for_advisor_review",
-  "ready_for_authority_review", "missing_critical_documentation",
+  "preliminary",
+  "ready_for_advisor_review",
+  "ready_for_authority_review",
+  "missing_critical_documentation",
 ]);
 
 export const applicabilityConditionSchema = z.object({
@@ -274,13 +317,20 @@ export const br18RequirementSchema = z.object({
   requirementKind: requirementKindSchema,
   severity: requirementSeveritySchema,
   applicability: z.array(applicabilityConditionSchema),
-  requiredEvidence: z.array(z.object({
-    evidenceType: evidenceTypeSchema,
-    description: z.string(),
-  })),
+  requiredEvidence: z.array(
+    z.object({
+      evidenceType: evidenceTypeSchema,
+      description: z.string(),
+    }),
+  ),
   responsibleRole: z.enum([
-    "owner", "architect", "engineer", "certified_static_engineer",
-    "certified_fire_consultant", "energy_consultant", "municipality",
+    "owner",
+    "architect",
+    "engineer",
+    "certified_static_engineer",
+    "certified_fire_consultant",
+    "energy_consultant",
+    "municipality",
   ]),
 });
 
@@ -291,11 +341,13 @@ export const br18ApplicabilityResultSchema = z.object({
   status: applicabilityStatusSchema,
   reasons: z.array(z.string()),
   missingInputs: z.array(z.string()),
-  sourceFacts: z.array(z.object({
-    source: evidenceSourceSchema,
-    field: z.string(),
-    value: z.unknown(),
-  })),
+  sourceFacts: z.array(
+    z.object({
+      source: evidenceSourceSchema,
+      field: z.string(),
+      value: z.unknown(),
+    }),
+  ),
 });
 
 export const evidenceItemSchema = z.object({
@@ -356,6 +408,7 @@ git commit -m "feat(br18): tilfoej domænetyper og Zod-schemas"
 ### Task 2: BR18 kravkatalog-fixture (P0)
 
 **Filer:**
+
 - Create: `src/lib/br18/fixtures/br18-2024-catalog.ts`
 
 - [ ] **Step 2.1: Opret `src/lib/br18/fixtures/br18-2024-catalog.ts`**
@@ -374,7 +427,8 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "8",
     paragraph: "8.3.1",
     title: "Bebyggelsesprocent — enfamiliehuse",
-    description: "Bebyggelsesprocenten for enfamiliehuse og dobbelthuse må ikke overstige 30 (BR18 default). Lokalplan kan fastsætte anden grænse.",
+    description:
+      "Bebyggelsesprocenten for enfamiliehuse og dobbelthuse må ikke overstige 30 (BR18 default). Lokalplan kan fastsætte anden grænse.",
     sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/08/krav/",
     validFrom: "2018-01-01",
     validTo: null,
@@ -382,11 +436,18 @@ export const br18_2024_catalog: Br18Requirement[] = [
     requirementKind: "machine_checkable",
     severity: "hard_stop",
     applicability: [
-      { field: "projectScope", operator: "in", value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"] },
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
       { field: "grundarealM2", operator: "present", value: null },
     ],
     requiredEvidence: [
-      { evidenceType: "drawing", description: "Situationsplan med arealopmåling og beregning af bebyggelsesprocent" },
+      {
+        evidenceType: "drawing",
+        description: "Situationsplan med arealopmåling og beregning af bebyggelsesprocent",
+      },
     ],
     responsibleRole: "architect",
   },
@@ -396,7 +457,8 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "8",
     paragraph: "8.4.1",
     title: "Bygningshøjde — enfamiliehuse",
-    description: "Bygningshøjden for enfamiliehuse og dobbelthuse må ikke overstige 8,5 m (BR18 default).",
+    description:
+      "Bygningshøjden for enfamiliehuse og dobbelthuse må ikke overstige 8,5 m (BR18 default).",
     sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/08/krav/",
     validFrom: "2018-01-01",
     validTo: null,
@@ -404,11 +466,13 @@ export const br18_2024_catalog: Br18Requirement[] = [
     requirementKind: "machine_checkable",
     severity: "hard_stop",
     applicability: [
-      { field: "projectScope", operator: "in", value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"] },
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
     ],
-    requiredEvidence: [
-      { evidenceType: "drawing", description: "Facadetegning med koter" },
-    ],
+    requiredEvidence: [{ evidenceType: "drawing", description: "Facadetegning med koter" }],
     responsibleRole: "architect",
   },
   {
@@ -425,7 +489,11 @@ export const br18_2024_catalog: Br18Requirement[] = [
     requirementKind: "machine_checkable",
     severity: "hard_stop",
     applicability: [
-      { field: "projectScope", operator: "in", value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"] },
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
     ],
     requiredEvidence: [],
     responsibleRole: "architect",
@@ -436,7 +504,8 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "8",
     paragraph: "8.4.3",
     title: "Skelafstand — enfamiliehuse",
-    description: "Bebyggelse skal holdes i mindst 2,5 m fra skel mod nabo og vej (BR18 default). Lokalplan kan fastsætte anden grænse.",
+    description:
+      "Bebyggelse skal holdes i mindst 2,5 m fra skel mod nabo og vej (BR18 default). Lokalplan kan fastsætte anden grænse.",
     sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/08/krav/",
     validFrom: "2018-01-01",
     validTo: null,
@@ -444,7 +513,11 @@ export const br18_2024_catalog: Br18Requirement[] = [
     requirementKind: "machine_checkable",
     severity: "hard_stop",
     applicability: [
-      { field: "projectScope", operator: "in", value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"] },
+      {
+        field: "projectScope",
+        operator: "in",
+        value: ["enfamiliehus", "tilbygning", "nedrivning_nybyg"],
+      },
       { field: "skelafstandM", operator: "present", value: null },
     ],
     requiredEvidence: [
@@ -459,7 +532,8 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "5",
     paragraph: null,
     title: "Branddokumentation",
-    description: "Bygninger skal opfylde brandsikringskrav. Brandklasse og dokumentationskrav afhænger af anvendelseskategori, størrelse og kompleksitet. Kræver typisk certificeret brandrådgiver.",
+    description:
+      "Bygninger skal opfylde brandsikringskrav. Brandklasse og dokumentationskrav afhænger af anvendelseskategori, størrelse og kompleksitet. Kræver typisk certificeret brandrådgiver.",
     sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/05/krav/",
     validFrom: "2018-01-01",
     validTo: null,
@@ -468,7 +542,10 @@ export const br18_2024_catalog: Br18Requirement[] = [
     severity: "dispensation",
     applicability: [],
     requiredEvidence: [
-      { evidenceType: "declaration", description: "Brandteknisk dokumentation eller erklæring fra certificeret brandrådgiver" },
+      {
+        evidenceType: "declaration",
+        description: "Brandteknisk dokumentation eller erklæring fra certificeret brandrådgiver",
+      },
     ],
     responsibleRole: "certified_fire_consultant",
   },
@@ -479,7 +556,8 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "15",
     paragraph: null,
     title: "Konstruktionsdokumentation",
-    description: "Bærende konstruktioner skal dokumenteres. Konstruktionsklasse afhænger af byggeriets art og kompleksitet. Typisk kræves certificeret statiker.",
+    description:
+      "Bærende konstruktioner skal dokumenteres. Konstruktionsklasse afhænger af byggeriets art og kompleksitet. Typisk kræves certificeret statiker.",
     sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/15/krav/",
     validFrom: "2018-01-01",
     validTo: null,
@@ -488,8 +566,14 @@ export const br18_2024_catalog: Br18Requirement[] = [
     severity: "dispensation",
     applicability: [],
     requiredEvidence: [
-      { evidenceType: "calculation", description: "Statisk beregning og konstruktionsdokumentation" },
-      { evidenceType: "declaration", description: "Erklæring fra certificeret statiker (konstruktionsklasse 2+)" },
+      {
+        evidenceType: "calculation",
+        description: "Statisk beregning og konstruktionsdokumentation",
+      },
+      {
+        evidenceType: "declaration",
+        description: "Erklæring fra certificeret statiker (konstruktionsklasse 2+)",
+      },
     ],
     responsibleRole: "certified_static_engineer",
   },
@@ -500,7 +584,8 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "11",
     paragraph: null,
     title: "Energiramme",
-    description: "Nyt byggeri og tilbygninger over 50 m² skal overholde energirammen (BE18). Kræver energiberegning.",
+    description:
+      "Nyt byggeri og tilbygninger over 50 m² skal overholde energirammen (BE18). Kræver energiberegning.",
     sourceUrl: "https://www.bygningsreglementet.dk/tekniske-bestemmelser/11/krav/",
     validFrom: "2018-01-01",
     validTo: null,
@@ -522,16 +607,16 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "11",
     paragraph: null,
     title: "LCA-klimakrav (CO₂-dokumentation)",
-    description: "LCA-krav for bygninger fra 2023. Tærskel og omfang afhænger af bruttoetageareal og bygningstype. Ukendt/relevant for enfamiliehuse.",
-    sourceUrl: "https://www.sbst.dk/byggeri/baeredygtigt-byggeri/national-strategi-for-baeredygtigt-byggeri/klimakrav-lca-i-bygningsreglementet",
+    description:
+      "LCA-krav for bygninger fra 2023. Tærskel og omfang afhænger af bruttoetageareal og bygningstype. Ukendt/relevant for enfamiliehuse.",
+    sourceUrl:
+      "https://www.sbst.dk/byggeri/baeredygtigt-byggeri/national-strategi-for-baeredygtigt-byggeri/klimakrav-lca-i-bygningsreglementet",
     validFrom: "2023-01-01",
     validTo: null,
     projectScopes: ["enfamiliehus", "nedrivning_nybyg"],
     requirementKind: "documentation",
     severity: "warning",
-    applicability: [
-      { field: "bebyggetArealM2", operator: "present", value: null },
-    ],
+    applicability: [{ field: "bebyggetArealM2", operator: "present", value: null }],
     requiredEvidence: [
       { evidenceType: "calculation", description: "LCA-beregning (livscyklusvurdering)" },
     ],
@@ -544,8 +629,10 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "1",
     paragraph: null,
     title: "D&V-dokumentation til færdigmelding",
-    description: "Inden færdigmelding skal bygherren sikre drifts- og vedligeholdelsesdokumentation.",
-    sourceUrl: "https://www.bygningsreglementet.dk/media/0o1nbejw/dokumentation-af-bygningsreglementets-tekniske-bestemmelser-i-forbindelse-med-faerdigmelding-af-byggeriet-2025.pdf",
+    description:
+      "Inden færdigmelding skal bygherren sikre drifts- og vedligeholdelsesdokumentation.",
+    sourceUrl:
+      "https://www.bygningsreglementet.dk/media/0o1nbejw/dokumentation-af-bygningsreglementets-tekniske-bestemmelser-i-forbindelse-med-faerdigmelding-af-byggeriet-2025.pdf",
     validFrom: "2018-01-01",
     validTo: null,
     projectScopes: ["enfamiliehus", "tilbygning", "nedrivning_nybyg", "renovering"],
@@ -553,7 +640,10 @@ export const br18_2024_catalog: Br18Requirement[] = [
     severity: "documentation",
     applicability: [],
     requiredEvidence: [
-      { evidenceType: "declaration", description: "D&V-manual til ejendommens drift og vedligehold" },
+      {
+        evidenceType: "declaration",
+        description: "D&V-manual til ejendommens drift og vedligehold",
+      },
     ],
     responsibleRole: "owner",
   },
@@ -564,7 +654,8 @@ export const br18_2024_catalog: Br18Requirement[] = [
     chapter: "1",
     paragraph: null,
     title: "Dispensation fra lokalplan eller BR18",
-    description: "Overskrides lokalplan- eller BR18-grænser kræves dispensation fra kommunen. Afhænger af konkret projekt og kommunal praksis.",
+    description:
+      "Overskrides lokalplan- eller BR18-grænser kræves dispensation fra kommunen. Afhænger af konkret projekt og kommunal praksis.",
     sourceUrl: "https://www.bygningsreglementet.dk/administrative-bestemmelser/krav/",
     validFrom: "2018-01-01",
     validTo: null,
@@ -598,6 +689,7 @@ git commit -m "feat(br18): tilfoej P0 kravkatalog-fixture (BR18 2024)"
 ### Task 3: Catalog loader
 
 **Filer:**
+
 - Create: `src/lib/br18/requirements/catalog.ts`
 - Create: `src/lib/br18/requirements/catalog.test.ts`
 
@@ -689,6 +781,7 @@ git commit -m "feat(br18): tilfoej catalog loader med version-validering"
 ### Task 4: Applicability Engine
 
 **Filer:**
+
 - Create: `src/lib/br18/applicability/engine.ts`
 - Create: `src/lib/br18/applicability/engine.test.ts`
 
@@ -714,9 +807,7 @@ const baseReq: Br18Requirement = {
   projectScopes: ["enfamiliehus"],
   requirementKind: "machine_checkable",
   severity: "hard_stop",
-  applicability: [
-    { field: "projectScope", operator: "in", value: ["enfamiliehus"] },
-  ],
+  applicability: [{ field: "projectScope", operator: "in", value: ["enfamiliehus"] }],
   requiredEvidence: [],
   responsibleRole: "architect",
 };
@@ -755,12 +846,20 @@ describe("evaluateApplicability", () => {
   });
 
   it("requires_specialist_review for specialist_review krav", () => {
-    const req: Br18Requirement = { ...baseReq, requirementKind: "specialist_review", applicability: [] };
+    const req: Br18Requirement = {
+      ...baseReq,
+      requirementKind: "specialist_review",
+      applicability: [],
+    };
     expect(evaluateApplicability(req, baseFacts).status).toBe("requires_specialist_review");
   });
 
   it("requires_authority_decision for authority_discretion krav", () => {
-    const req: Br18Requirement = { ...baseReq, requirementKind: "authority_discretion", applicability: [] };
+    const req: Br18Requirement = {
+      ...baseReq,
+      requirementKind: "authority_discretion",
+      applicability: [],
+    };
     expect(evaluateApplicability(req, baseFacts).status).toBe("requires_authority_decision");
   });
 });
@@ -784,7 +883,7 @@ import type {
 
 function checkCondition(
   condition: ApplicabilityCondition,
-  facts: Br18ProjectFacts
+  facts: Br18ProjectFacts,
 ): { passes: boolean; missingInput: string | null } {
   const value = facts[condition.field as keyof Br18ProjectFacts];
 
@@ -798,19 +897,26 @@ function checkCondition(
   }
 
   switch (condition.operator) {
-    case "eq":  return { passes: value === condition.value, missingInput: null };
-    case "gt":  return { passes: (value as number) > (condition.value as number), missingInput: null };
-    case "lt":  return { passes: (value as number) < (condition.value as number), missingInput: null };
-    case "gte": return { passes: (value as number) >= (condition.value as number), missingInput: null };
-    case "lte": return { passes: (value as number) <= (condition.value as number), missingInput: null };
-    case "in":  return { passes: (condition.value as unknown[]).includes(value), missingInput: null };
-    default:    return { passes: false, missingInput: null };
+    case "eq":
+      return { passes: value === condition.value, missingInput: null };
+    case "gt":
+      return { passes: (value as number) > (condition.value as number), missingInput: null };
+    case "lt":
+      return { passes: (value as number) < (condition.value as number), missingInput: null };
+    case "gte":
+      return { passes: (value as number) >= (condition.value as number), missingInput: null };
+    case "lte":
+      return { passes: (value as number) <= (condition.value as number), missingInput: null };
+    case "in":
+      return { passes: (condition.value as unknown[]).includes(value), missingInput: null };
+    default:
+      return { passes: false, missingInput: null };
   }
 }
 
 export function evaluateApplicability(
   requirement: Br18Requirement,
-  facts: Br18ProjectFacts
+  facts: Br18ProjectFacts,
 ): Br18ApplicabilityResult {
   if (!requirement.projectScopes.includes(facts.projectScope)) {
     return {
@@ -823,10 +929,22 @@ export function evaluateApplicability(
   }
 
   if (requirement.requirementKind === "specialist_review") {
-    return { requirementId: requirement.id, status: "requires_specialist_review", reasons: ["Kræver faglig review"], missingInputs: [], sourceFacts: [] };
+    return {
+      requirementId: requirement.id,
+      status: "requires_specialist_review",
+      reasons: ["Kræver faglig review"],
+      missingInputs: [],
+      sourceFacts: [],
+    };
   }
   if (requirement.requirementKind === "authority_discretion") {
-    return { requirementId: requirement.id, status: "requires_authority_decision", reasons: ["Afgøres af myndighed"], missingInputs: [], sourceFacts: [] };
+    return {
+      requirementId: requirement.id,
+      status: "requires_authority_decision",
+      reasons: ["Afgøres af myndighed"],
+      missingInputs: [],
+      sourceFacts: [],
+    };
   }
 
   const missingInputs: string[] = [];
@@ -835,22 +953,41 @@ export function evaluateApplicability(
   for (const condition of requirement.applicability) {
     const { passes, missingInput } = checkCondition(condition, facts);
     if (missingInput) missingInputs.push(missingInput);
-    else if (!passes) failedConditions.push(`${condition.field} ${condition.operator} ikke opfyldt`);
+    else if (!passes)
+      failedConditions.push(`${condition.field} ${condition.operator} ikke opfyldt`);
   }
 
   if (missingInputs.length > 0) {
-    return { requirementId: requirement.id, status: "unknown_missing_data", reasons: ["Manglende data"], missingInputs, sourceFacts: [] };
+    return {
+      requirementId: requirement.id,
+      status: "unknown_missing_data",
+      reasons: ["Manglende data"],
+      missingInputs,
+      sourceFacts: [],
+    };
   }
   if (failedConditions.length > 0) {
-    return { requirementId: requirement.id, status: "not_relevant", reasons: failedConditions, missingInputs: [], sourceFacts: [] };
+    return {
+      requirementId: requirement.id,
+      status: "not_relevant",
+      reasons: failedConditions,
+      missingInputs: [],
+      sourceFacts: [],
+    };
   }
 
-  return { requirementId: requirement.id, status: "relevant", reasons: ["Krav er relevant"], missingInputs: [], sourceFacts: [] };
+  return {
+    requirementId: requirement.id,
+    status: "relevant",
+    reasons: ["Krav er relevant"],
+    missingInputs: [],
+    sourceFacts: [],
+  };
 }
 
 export function evaluateAllRequirements(
   requirements: Br18Requirement[],
-  facts: Br18ProjectFacts
+  facts: Br18ProjectFacts,
 ): Br18ApplicabilityResult[] {
   return requirements.map((req) => evaluateApplicability(req, facts));
 }
@@ -877,6 +1014,7 @@ Mapper eksisterende `RuleEngineResult`-violations til `Br18ApplicabilityResult` 
 `RuleViolation` fra `src/lib/rule-engine/types.ts` har: `rule: string`, `severity: "illegal" | "dispensation_required" | "warning"`, `reason: string`.
 
 **Filer:**
+
 - Create: `src/lib/br18/applicability/rule-engine-bridge.ts`
 - Create: `src/lib/br18/applicability/rule-engine-bridge.test.ts`
 
@@ -931,7 +1069,7 @@ const RULE_TO_BR18_ID: Record<string, string> = {
 };
 
 export function mapRuleEngineViolationsToBr18(
-  violations: RuleViolation[]
+  violations: RuleViolation[],
 ): Br18ApplicabilityResult[] {
   const results: Br18ApplicabilityResult[] = [];
 
@@ -972,6 +1110,7 @@ git commit -m "feat(br18): tilfoej rule-engine bridge der mapper violations til 
 ### Task 6: Evidence Ledger helpers
 
 **Filer:**
+
 - Create: `src/lib/br18/evidence/ledger.ts`
 - Create: `src/lib/br18/evidence/ledger.test.ts`
 
@@ -985,13 +1124,28 @@ import { deriveRequirementReadiness, getMissingEvidence, derivePackageReadiness 
 import type { EvidenceItem, Br18ApplicabilityResult } from "../types";
 
 const makeEvidence = (reqId: string, status: EvidenceItem["status"]): EvidenceItem => ({
-  id: `ev-${reqId}`, projectId: "p1", requirementId: reqId,
-  evidenceType: "drawing", status, source: "user_upload",
-  fileId: null, structuredPayload: null, validationNotes: [], reviewedByRole: null, reviewedAt: null,
+  id: `ev-${reqId}`,
+  projectId: "p1",
+  requirementId: reqId,
+  evidenceType: "drawing",
+  status,
+  source: "user_upload",
+  fileId: null,
+  structuredPayload: null,
+  validationNotes: [],
+  reviewedByRole: null,
+  reviewedAt: null,
 });
 
-const makeResult = (reqId: string, status: Br18ApplicabilityResult["status"]): Br18ApplicabilityResult => ({
-  requirementId: reqId, status, reasons: [], missingInputs: [], sourceFacts: [],
+const makeResult = (
+  reqId: string,
+  status: Br18ApplicabilityResult["status"],
+): Br18ApplicabilityResult => ({
+  requirementId: reqId,
+  status,
+  reasons: [],
+  missingInputs: [],
+  sourceFacts: [],
 });
 
 describe("deriveRequirementReadiness", () => {
@@ -999,10 +1153,14 @@ describe("deriveRequirementReadiness", () => {
     expect(deriveRequirementReadiness([], "req-1")).toBe("missing");
   });
   it("validated ved validated evidens", () => {
-    expect(deriveRequirementReadiness([makeEvidence("req-1", "validated")], "req-1")).toBe("validated");
+    expect(deriveRequirementReadiness([makeEvidence("req-1", "validated")], "req-1")).toBe(
+      "validated",
+    );
   });
   it("rejected ved rejected evidens", () => {
-    expect(deriveRequirementReadiness([makeEvidence("req-1", "rejected")], "req-1")).toBe("rejected");
+    expect(deriveRequirementReadiness([makeEvidence("req-1", "rejected")], "req-1")).toBe(
+      "rejected",
+    );
   });
 });
 
@@ -1050,7 +1208,7 @@ import type {
 
 export function deriveRequirementReadiness(
   items: EvidenceItem[],
-  requirementId: string
+  requirementId: string,
 ): EvidenceStatus {
   const relevant = items.filter((e) => e.requirementId === requirementId);
   if (relevant.length === 0) return "missing";
@@ -1063,7 +1221,7 @@ export function deriveRequirementReadiness(
 
 export function getMissingEvidence(
   applicabilityResults: Br18ApplicabilityResult[],
-  evidenceItems: EvidenceItem[]
+  evidenceItems: EvidenceItem[],
 ): string[] {
   return applicabilityResults
     .filter((r) => r.status === "relevant")
@@ -1073,7 +1231,7 @@ export function getMissingEvidence(
 
 export function derivePackageReadiness(
   applicabilityResults: Br18ApplicabilityResult[],
-  evidenceItems: EvidenceItem[]
+  evidenceItems: EvidenceItem[],
 ): AuthorityReadinessStatus {
   const relevant = applicabilityResults.filter((r) => r.status === "relevant");
   if (relevant.length === 0) return "preliminary";
@@ -1086,7 +1244,7 @@ export function derivePackageReadiness(
   }
 
   const allValidated = relevant.every(
-    (r) => deriveRequirementReadiness(evidenceItems, r.requirementId) === "validated"
+    (r) => deriveRequirementReadiness(evidenceItems, r.requirementId) === "validated",
   );
   return allValidated ? "ready_for_advisor_review" : "preliminary";
 }
@@ -1118,6 +1276,7 @@ git commit -m "feat(br18): tilfoej evidence ledger helpers"
 ### Task 7: Authority Package manifest builder
 
 **Filer:**
+
 - Create: `src/lib/br18/authority/manifest.ts`
 - Create: `src/lib/br18/authority/manifest.test.ts`
 
@@ -1133,7 +1292,13 @@ import type { Br18ApplicabilityResult, EvidenceItem } from "../types";
 describe("buildAuthorityPackageManifest", () => {
   it("preliminary med manglende evidens", () => {
     const applicability: Br18ApplicabilityResult[] = [
-      { requirementId: "req-1", status: "relevant", reasons: [], missingInputs: [], sourceFacts: [] },
+      {
+        requirementId: "req-1",
+        status: "relevant",
+        reasons: [],
+        missingInputs: [],
+        sourceFacts: [],
+      },
     ];
     const manifest = buildAuthorityPackageManifest("proj-1", "2024", applicability, []);
     expect(manifest.readinessStatus).toBe("missing_critical_documentation");
@@ -1142,13 +1307,29 @@ describe("buildAuthorityPackageManifest", () => {
 
   it("ready_for_advisor_review ved validated evidens", () => {
     const applicability: Br18ApplicabilityResult[] = [
-      { requirementId: "req-1", status: "relevant", reasons: [], missingInputs: [], sourceFacts: [] },
+      {
+        requirementId: "req-1",
+        status: "relevant",
+        reasons: [],
+        missingInputs: [],
+        sourceFacts: [],
+      },
     ];
-    const evidence: EvidenceItem[] = [{
-      id: "ev-1", projectId: "proj-1", requirementId: "req-1",
-      evidenceType: "drawing", status: "validated", source: "user_upload",
-      fileId: null, structuredPayload: null, validationNotes: [], reviewedByRole: null, reviewedAt: null,
-    }];
+    const evidence: EvidenceItem[] = [
+      {
+        id: "ev-1",
+        projectId: "proj-1",
+        requirementId: "req-1",
+        evidenceType: "drawing",
+        status: "validated",
+        source: "user_upload",
+        fileId: null,
+        structuredPayload: null,
+        validationNotes: [],
+        reviewedByRole: null,
+        reviewedAt: null,
+      },
+    ];
     const manifest = buildAuthorityPackageManifest("proj-1", "2024", applicability, evidence);
     expect(manifest.readinessStatus).toBe("ready_for_advisor_review");
     expect(manifest.missingItems).toHaveLength(0);
@@ -1156,7 +1337,13 @@ describe("buildAuthorityPackageManifest", () => {
 
   it("unknownItems indeholder unknown_missing_data krav", () => {
     const applicability: Br18ApplicabilityResult[] = [
-      { requirementId: "req-unknown", status: "unknown_missing_data", reasons: [], missingInputs: ["grundarealM2"], sourceFacts: [] },
+      {
+        requirementId: "req-unknown",
+        status: "unknown_missing_data",
+        reasons: [],
+        missingInputs: ["grundarealM2"],
+        sourceFacts: [],
+      },
     ];
     const manifest = buildAuthorityPackageManifest("proj-1", "2024", applicability, []);
     expect(manifest.unknownItems).toContain("req-unknown");
@@ -1180,7 +1367,7 @@ export function buildAuthorityPackageManifest(
   projectId: string,
   br18Version: string,
   applicabilityResults: Br18ApplicabilityResult[],
-  evidenceItems: EvidenceItem[]
+  evidenceItems: EvidenceItem[],
 ): AuthorityPackageManifest {
   return {
     projectId,
@@ -1218,6 +1405,7 @@ git commit -m "feat(br18): tilfoej authority package manifest builder"
 ### Task 8: Database migrations
 
 **Filer:**
+
 - Create: `supabase/migrations/[TIMESTAMP]_br18_tables.sql`
 - Create: `supabase/migrations/[TIMESTAMP+1]_br18_columns.sql`
 
@@ -1302,6 +1490,7 @@ git commit -m "feat(br18): tilfoej database migrations for BR18 tabeller og kolo
 ### Task 9: BR18 Applicability Repository
 
 **Filer:**
+
 - Create: `src/integrations/supabase/repositories/br18-applicability.repository.ts`
 - Create: `src/integrations/supabase/repositories/br18-applicability.repository.test.ts`
 
@@ -1311,7 +1500,10 @@ Opret `src/integrations/supabase/repositories/br18-applicability.repository.test
 
 ```typescript
 import { describe, expect, it } from "bun:test";
-import { upsertApplicabilityResult, getApplicabilityForProject } from "./br18-applicability.repository";
+import {
+  upsertApplicabilityResult,
+  getApplicabilityForProject,
+} from "./br18-applicability.repository";
 
 const LIVE = process.env.RUN_LIVE_SUPABASE_TESTS === "true";
 
@@ -1335,7 +1527,7 @@ import type { Br18ApplicabilityResult } from "@/lib/br18/types";
 export async function upsertApplicabilityResult(
   projectId: string,
   result: Br18ApplicabilityResult,
-  br18Version: string
+  br18Version: string,
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("project_br18_applicability").upsert(
@@ -1349,13 +1541,13 @@ export async function upsertApplicabilityResult(
       evaluated_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "project_id,requirement_id,br18_version" }
+    { onConflict: "project_id,requirement_id,br18_version" },
   );
   if (error) throw new Error(`br18-applicability upsert: ${error.message}`);
 }
 
 export async function getApplicabilityForProject(
-  projectId: string
+  projectId: string,
 ): Promise<Br18ApplicabilityResult[]> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -1371,7 +1563,7 @@ export async function getApplicabilityForProject(
       reasons: row.reasons,
       missingInputs: row.missing_inputs,
       sourceFacts: [],
-    })
+    }),
   );
 }
 ```
@@ -1396,6 +1588,7 @@ git commit -m "feat(br18): tilfoej BR18 applicability repository"
 ### Task 10: BR18 Evidence Repository
 
 **Filer:**
+
 - Create: `src/integrations/supabase/repositories/br18-evidence.repository.ts`
 - Create: `src/integrations/supabase/repositories/br18-evidence.repository.test.ts`
 
@@ -1405,7 +1598,11 @@ Opret `src/integrations/supabase/repositories/br18-evidence.repository.test.ts`:
 
 ```typescript
 import { describe, expect, it } from "bun:test";
-import { upsertEvidenceItem, getEvidenceForProject, updateEvidenceStatus } from "./br18-evidence.repository";
+import {
+  upsertEvidenceItem,
+  getEvidenceForProject,
+  updateEvidenceStatus,
+} from "./br18-evidence.repository";
 
 describe("br18-evidence.repository (type-check)", () => {
   it("eksporterer forventede funktioner", () => {
@@ -1440,7 +1637,7 @@ export async function upsertEvidenceItem(item: EvidenceItem): Promise<void> {
       reviewed_at: item.reviewedAt,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "id" }
+    { onConflict: "id" },
   );
   if (error) throw new Error(`br18-evidence upsert: ${error.message}`);
 }
@@ -1454,19 +1651,25 @@ export async function getEvidenceForProject(projectId: string): Promise<Evidence
   if (error) throw new Error(`br18-evidence read: ${error.message}`);
   return (data ?? []).map((row) =>
     evidenceItemSchema.parse({
-      id: row.id, projectId: row.project_id, requirementId: row.requirement_id,
-      evidenceType: row.evidence_type, status: row.status, source: row.source,
-      fileId: row.file_id, structuredPayload: row.structured_payload,
+      id: row.id,
+      projectId: row.project_id,
+      requirementId: row.requirement_id,
+      evidenceType: row.evidence_type,
+      status: row.status,
+      source: row.source,
+      fileId: row.file_id,
+      structuredPayload: row.structured_payload,
       validationNotes: row.validation_notes,
-      reviewedByRole: row.reviewed_by_role, reviewedAt: row.reviewed_at,
-    })
+      reviewedByRole: row.reviewed_by_role,
+      reviewedAt: row.reviewed_at,
+    }),
   );
 }
 
 export async function updateEvidenceStatus(
   evidenceId: string,
   status: EvidenceStatus,
-  validationNotes: string[]
+  validationNotes: string[],
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
@@ -1496,6 +1699,7 @@ git commit -m "feat(br18): tilfoej BR18 evidence repository"
 > Tjek om `src/lib/services/` eksisterer: `ls src/lib/services/`. Opret mappen hvis den ikke er der.
 
 **Filer:**
+
 - Create: `src/lib/services/br18-compliance.service.server.ts`
 - Create: `src/lib/services/br18-compliance.service.test.ts`
 
@@ -1517,24 +1721,42 @@ const fakeDeps = {
 
 describe("runBr18Compliance", () => {
   it("returnerer applicability-resultater for enfamiliehus med fulde data", async () => {
-    const result = await runBr18Compliance("proj-1", {
-      projectScope: "enfamiliehus",
-      bebyggetArealM2: 60, grundarealM2: 300, antalEtager: 1,
-      bygningshojdeM: 5.0, skelafstandM: 3.5,
-      anvendelseskategori: null, br18Version: "2024", municipality: "0101",
-    }, fakeDeps);
+    const result = await runBr18Compliance(
+      "proj-1",
+      {
+        projectScope: "enfamiliehus",
+        bebyggetArealM2: 60,
+        grundarealM2: 300,
+        antalEtager: 1,
+        bygningshojdeM: 5.0,
+        skelafstandM: 3.5,
+        anvendelseskategori: null,
+        br18Version: "2024",
+        municipality: "0101",
+      },
+      fakeDeps,
+    );
     expect(result.applicabilityResults.length).toBeGreaterThan(0);
     expect(result.hardStopTriggered).toBe(false);
   });
 
   it("sætter hardStopTriggered når tilbygning har wrong scope krav", async () => {
     // Tilbygning matcher ikke krav der kun gælder enfamiliehus → not_relevant
-    const result = await runBr18Compliance("proj-1", {
-      projectScope: "tilbygning",
-      bebyggetArealM2: null, grundarealM2: null, antalEtager: null,
-      bygningshojdeM: null, skelafstandM: null,
-      anvendelseskategori: null, br18Version: "2024", municipality: "0101",
-    }, fakeDeps);
+    const result = await runBr18Compliance(
+      "proj-1",
+      {
+        projectScope: "tilbygning",
+        bebyggetArealM2: null,
+        grundarealM2: null,
+        antalEtager: null,
+        bygningshojdeM: null,
+        skelafstandM: null,
+        anvendelseskategori: null,
+        br18Version: "2024",
+        municipality: "0101",
+      },
+      fakeDeps,
+    );
     const unknown = result.applicabilityResults.filter((r) => r.status === "unknown_missing_data");
     // Krav med `present`-condition og null facts → unknown_missing_data
     expect(unknown.length).toBeGreaterThan(0);
@@ -1565,18 +1787,15 @@ export type Br18ComplianceDeps = {
   upsertApplicabilityResult: (
     projectId: string,
     result: Br18ApplicabilityResult,
-    br18Version: string
+    br18Version: string,
   ) => Promise<void>;
   getApplicabilityForProject: (projectId: string) => Promise<Br18ApplicabilityResult[]>;
   updateProjectHardStop?: (
     projectId: string,
     hardStop: boolean,
-    reason: string | null
+    reason: string | null,
   ) => Promise<void>;
-  updateAuthorityReadiness?: (
-    projectId: string,
-    status: AuthorityReadinessStatus
-  ) => Promise<void>;
+  updateAuthorityReadiness?: (projectId: string, status: AuthorityReadinessStatus) => Promise<void>;
 };
 
 export type Br18ComplianceResult = {
@@ -1590,19 +1809,19 @@ export async function runBr18Compliance(
   projectId: string,
   facts: Br18ProjectFacts,
   deps: Br18ComplianceDeps,
-  evidenceItems: EvidenceItem[] = []
+  evidenceItems: EvidenceItem[] = [],
 ): Promise<Br18ComplianceResult> {
   const catalog = loadBr18Catalog(facts.br18Version);
   const applicabilityResults = evaluateAllRequirements(catalog, facts);
 
   await Promise.all(
     applicabilityResults.map((r) =>
-      deps.upsertApplicabilityResult(projectId, r, facts.br18Version)
-    )
+      deps.upsertApplicabilityResult(projectId, r, facts.br18Version),
+    ),
   );
 
   const missingCritical = applicabilityResults.some(
-    (r) => r.status === "unknown_missing_data" && r.missingInputs.length > 0
+    (r) => r.status === "unknown_missing_data" && r.missingInputs.length > 0,
   );
   const hardStopTriggered = missingCritical;
   const hardStopReason = missingCritical
@@ -1648,7 +1867,8 @@ git commit -m "feat(br18): tilfoej BR18 compliance service med injected deps"
 > Tjek eksisterende server function-mønster: `grep -r "createServerFn" src/ --include="*.ts" -l | head -5`. Matc filplacering og import-sti til eksisterende konvention.
 
 **Filer:**
-- Create: `src/server-functions/get-br18-compliance.ts` *(tilpas sti til eksisterende konvention)*
+
+- Create: `src/server-functions/get-br18-compliance.ts` _(tilpas sti til eksisterende konvention)_
 - Create: `src/server-functions/update-br18-evidence.ts`
 
 - [ ] **Step 12.1: Implementer `get-br18-compliance.ts`**
@@ -1668,21 +1888,22 @@ export const getBr18Compliance = createServerFn({ method: "POST" })
   .validator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
     return withAuth(async () => {
-      const { runBr18Compliance } = await import(
-        "@/lib/services/br18-compliance.service.server"
-      );
-      const { upsertApplicabilityResult, getApplicabilityForProject } = await import(
-        "@/integrations/supabase/repositories/br18-applicability.repository"
-      );
-      const { getEvidenceForProject } = await import(
-        "@/integrations/supabase/repositories/br18-evidence.repository"
-      );
+      const { runBr18Compliance } = await import("@/lib/services/br18-compliance.service.server");
+      const { upsertApplicabilityResult, getApplicabilityForProject } =
+        await import("@/integrations/supabase/repositories/br18-applicability.repository");
+      const { getEvidenceForProject } =
+        await import("@/integrations/supabase/repositories/br18-evidence.repository");
 
       const evidenceItems = await getEvidenceForProject(data.projectId);
-      return runBr18Compliance(data.projectId, data.facts, {
-        upsertApplicabilityResult,
-        getApplicabilityForProject,
-      }, evidenceItems);
+      return runBr18Compliance(
+        data.projectId,
+        data.facts,
+        {
+          upsertApplicabilityResult,
+          getApplicabilityForProject,
+        },
+        evidenceItems,
+      );
     });
   });
 ```
@@ -1707,9 +1928,8 @@ export const updateBr18Evidence = createServerFn({ method: "POST" })
   .validator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
     return withAuth(async () => {
-      const { updateEvidenceStatus } = await import(
-        "@/integrations/supabase/repositories/br18-evidence.repository"
-      );
+      const { updateEvidenceStatus } =
+        await import("@/integrations/supabase/repositories/br18-evidence.repository");
       await updateEvidenceStatus(data.evidenceId, data.status, data.validationNotes);
       return { success: true };
     });
@@ -1736,6 +1956,7 @@ git commit -m "feat(br18): tilfoej server functions for BR18 compliance og evide
 ### Task 13: Hook og komponent
 
 **Filer:**
+
 - Create: `src/hooks/use-project-br18-compliance.ts`
 - Create: `src/components/br18/Br18KravMatrix.tsx`
 
@@ -1766,7 +1987,7 @@ export function useProjectBr18Compliance(projectId: string) {
         setState({ status: "error", message: String(e) });
       }
     },
-    [projectId]
+    [projectId],
   );
 
   return { state, runCompliance };
@@ -1850,6 +2071,7 @@ bun run build            # bygger uden fejl
 ```
 
 Tjekliste:
+
 - [ ] Ingen `any` eller `as unknown as Type` casts i nye filer
 - [ ] Ingen direkte Supabase-kald uden for `repositories/`
 - [ ] Ingen compliance-logik i React-komponenter

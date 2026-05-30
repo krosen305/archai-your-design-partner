@@ -4,6 +4,9 @@ import type { DrawingReadinessDecision } from "@/domain/drawing/decision-engine"
 import type { DrawingModel, DrawingFeature } from "@/domain/drawing/drawing-model";
 import { PAGE_SIZES, computeViewport } from "@/domain/drawing/drawing-model";
 import { buildDimensionLines } from "./dimension-lines";
+import {
+  buildSetbackAnnotations,
+} from "@/domain/drawing/geometry-engine";
 
 function esc(s: string): string {
   return s
@@ -36,13 +39,20 @@ function polygonFeature(
   const pts = coordsToSvgPoints(coords, minX, maxY, scale);
   const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
   const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+  const labelX = (cx - minX) * scale;
+  const labelY = (maxY - cy) * scale;
+  const labelSvg = label
+    ? `<text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#444">${esc(label)}</text>`
+    : "";
   return {
     id,
     kind,
-    svgElement: `<polygon points="${pts}" ${style}/>`,
+    svgElement: labelSvg
+      ? `<g><polygon points="${pts}" ${style}/>${labelSvg}</g>`
+      : `<polygon points="${pts}" ${style}/>`,
     label,
-    labelX: (cx - minX) * scale,
-    labelY: (maxY - cy) * scale,
+    labelX,
+    labelY,
     zIndex,
   };
 }
@@ -70,6 +80,10 @@ export function buildDrawingModel(
   const scaleX = drawWidthPx / (bboxMaxX - bboxMinX);
   const scaleY = drawHeightPx / (bboxMaxY - bboxMinY);
   const scale = Math.min(scaleX, scaleY) * 0.9;
+
+  // Actual scale: PX_PER_MM / (px per UTM-meter) = meters per mm of paper
+  const actualMetersPerMm = PX_PER_MM / scale;
+  const actualScaleRounded = Math.round(actualMetersPerMm * 1000);
 
   const features: DrawingFeature[] = [];
 
@@ -162,6 +176,23 @@ export function buildDrawingModel(
     }
   });
 
+  // Vejnavn-label — placeret syd for parcelpolygon
+  if (plan.parcel.roadName) {
+    const centerX = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+    const southY = Math.min(...coords.map((c) => c[1]));
+    const labelPxX = (centerX - bboxMinX) * scale;
+    const labelPxY = (bboxMaxY - southY) * scale + 14;
+    features.push({
+      id: "road-name",
+      kind: "road_label",
+      svgElement: `<text x="${labelPxX.toFixed(1)}" y="${labelPxY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(plan.parcel.roadName)}</text>`,
+      label: plan.parcel.roadName,
+      labelX: labelPxX,
+      labelY: labelPxY,
+      zIndex: 45,
+    });
+  }
+
   // Mål-linjer
   const dimLines = buildDimensionLines(plan.proposed.footprint25832);
   dimLines.forEach((dl, i) => {
@@ -179,6 +210,33 @@ export function buildDrawingModel(
       labelX: null,
       labelY: null,
       zIndex: 35,
+    });
+  });
+
+  // Skel-afstandsmål — obligatoriske afstandsannotationer til myndighed
+  const setbackAnnotations = buildSetbackAnnotations(
+    plan.proposed.footprint25832,
+    plan.parcel.polygon25832,
+  );
+  setbackAnnotations.forEach((ann, i) => {
+    const bx = (ann.buildingPt[0] - bboxMinX) * scale;
+    const by = (bboxMaxY - ann.buildingPt[1]) * scale;
+    const px = (ann.parcelPt[0] - bboxMinX) * scale;
+    const py = (bboxMaxY - ann.parcelPt[1]) * scale;
+    const mx = (bx + px) / 2;
+    const my = (by + py) / 2;
+    const label = `${ann.distanceM.toFixed(2)} m`;
+    features.push({
+      id: `setback-ann-${i}`,
+      kind: "dimension_lines",
+      svgElement: `<g>
+        <line x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="#b00" stroke-width="0.5" stroke-dasharray="3,1.5"/>
+        <text x="${mx.toFixed(1)}" y="${(my - 2).toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="5.5" fill="#b00" font-weight="bold">${label}</text>
+      </g>`,
+      label,
+      labelX: mx,
+      labelY: my,
+      zIndex: 36,
     });
   });
 
@@ -263,7 +321,7 @@ export function buildDrawingModel(
       scale: plan.metadata.scale,
       ...page,
     },
-    viewport: computeViewport([bboxMinX, bboxMinY, bboxMaxX, bboxMaxY], plan.metadata.scale),
+    viewport: computeViewport([bboxMinX, bboxMinY, bboxMaxX, bboxMaxY], actualMetersPerMm),
     features,
     titleBlock: {
       title: plan.metadata.title,
@@ -271,7 +329,7 @@ export function buildDrawingModel(
       matrikel: plan.metadata.matrikel,
       bygherre: plan.metadata.bygherre,
       sagNr: plan.metadata.sagNr,
-      scale: `1:${plan.metadata.scale}`,
+      scale: `1:${actualScaleRounded}`,
       paperSize: plan.metadata.paperSize,
       date: plan.metadata.date,
       revision: revisions[0]?.nr ?? "A",

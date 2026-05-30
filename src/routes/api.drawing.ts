@@ -28,6 +28,11 @@ const ExportBeliggenhedsplanInputSchema = z.object({
   bygherre: z.string().max(200).optional().nullable(),
   sokkelKoteM: z.number().min(-10).max(100).optional().nullable(),
   heightM: z.number().min(0).max(30).optional().nullable(),
+  centroidLng: z.number().optional().nullable(),
+  centroidLat: z.number().optional().nullable(),
+  buildingWidthM: z.number().min(0.5).max(60).optional().nullable(),
+  buildingDepthM: z.number().min(0.5).max(60).optional().nullable(),
+  rotationDeg: z.number().min(0).max(360).optional().nullable(),
 });
 
 type ExportInput = z.infer<typeof ExportBeliggenhedsplanInputSchema>;
@@ -55,20 +60,24 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
     let proposedFootprint25832: GeoJsonPolygon25832;
     if (data.footprintGeojson) {
       proposedFootprint25832 = decodeGeoJsonFootprint(data.footprintGeojson);
+    } else if (
+      data.centroidLng != null &&
+      data.centroidLat != null &&
+      data.buildingWidthM != null
+    ) {
+      const { buildRectangularFootprint25832 } = await import(
+        "@/lib/drawing/footprint-builder"
+      );
+      proposedFootprint25832 = buildRectangularFootprint25832({
+        centroidWgs84: [data.centroidLng, data.centroidLat],
+        widthM: data.buildingWidthM,
+        depthM: data.buildingDepthM ?? data.buildingWidthM,
+        rotationDeg: data.rotationDeg ?? 0,
+      });
     } else {
-      proposedFootprint25832 = {
-        type: "Polygon",
-        crs: "EPSG:25832",
-        coordinates: [
-          [
-            [0, 0],
-            [10, 0],
-            [10, 10],
-            [0, 10],
-            [0, 0],
-          ],
-        ],
-      };
+      throw new Error(
+        "MISSING_FOOTPRINT: angiv enten fodprint fra designværktøjet eller bredde/dybde i formularen",
+      );
     }
 
     const projectData = await getProjectDrawingData(data.projectId);

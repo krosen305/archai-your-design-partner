@@ -17,27 +17,28 @@
 
 Disse filer eksisterer allerede og skal KENDES før implementering:
 
-| Fil | Indhold |
-|---|---|
-| `src/domain/drawing/beliggenhedsplan.types.ts` | Alle domain-typer — **modificeres i Task 1** |
-| `src/domain/drawing/beliggenhedsplan.schemas.ts` | Zod-schemas — **modificeres i Task 2** |
-| `src/domain/drawing/decision-engine.ts` | Readiness-klassificering — **modificeres i Task 3** |
-| `src/domain/drawing/decision-engine.test.ts` | Tier 1 tests for decision engine |
-| `src/domain/drawing/ports.ts` | Port-interfaces — **modificeres i Task 4** |
-| `src/domain/drawing/geometry-engine.ts` | jsts-baseret geometrimotor (areal, afstand, buffer) |
-| `src/domain/drawing/source-quality.ts` | `registrySourceMeta`, `surveySourceMeta`, `generatedSourceMeta` |
-| `src/integrations/geodanmark/drawing-layers.ts` | `GeoDanmarkDrawingLayersAdapter` — fetchNeighborBuildings kalder allerede live-service |
-| `src/integrations/geodanmark/neighbor-geometry.ts` | `GeoDanmarkNeighborService` — IS_MOCK via `FEATURE_FLAGS.geodanmarkMock` |
-| `src/integrations/mat/neighbor-parcels.ts` | `MatNeighborParcelService` — IS_MOCK via `FEATURE_FLAGS.matNeighborParcelsMock` |
-| `src/integrations/survey/upload-decoder.ts` | `SurveyUploadDecoder` implementerer `SurveyUploadDecoderPort` |
-| `src/services/drawing/assemble-beliggenhedsplan.service.ts` | Samler `BeliggenhedsplanInput` via ports |
-| `src/lib/drawing/render-svg.ts` | SVG-renderer — basis titleblok, nordpil, parcel-features |
-| `src/lib/drawing/drawing-model-builder.ts` | `buildDrawingModel(plan, readiness) → DrawingModel` |
-| `src/lib/drawing/drawing-symbols.ts` | `northArrowSvg`, `lineDashed`, `lineDotted` |
-| `src/lib/runtime-config.ts` | `FEATURE_FLAGS` inkl. `geodanmarkMock`, `matNeighborParcelsMock` |
-| `src/lib/env.ts` | Alle env-vars — skal bruges til nye env-vars |
+| Fil                                                         | Indhold                                                                                |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/domain/drawing/beliggenhedsplan.types.ts`              | Alle domain-typer — **modificeres i Task 1**                                           |
+| `src/domain/drawing/beliggenhedsplan.schemas.ts`            | Zod-schemas — **modificeres i Task 2**                                                 |
+| `src/domain/drawing/decision-engine.ts`                     | Readiness-klassificering — **modificeres i Task 3**                                    |
+| `src/domain/drawing/decision-engine.test.ts`                | Tier 1 tests for decision engine                                                       |
+| `src/domain/drawing/ports.ts`                               | Port-interfaces — **modificeres i Task 4**                                             |
+| `src/domain/drawing/geometry-engine.ts`                     | jsts-baseret geometrimotor (areal, afstand, buffer)                                    |
+| `src/domain/drawing/source-quality.ts`                      | `registrySourceMeta`, `surveySourceMeta`, `generatedSourceMeta`                        |
+| `src/integrations/geodanmark/drawing-layers.ts`             | `GeoDanmarkDrawingLayersAdapter` — fetchNeighborBuildings kalder allerede live-service |
+| `src/integrations/geodanmark/neighbor-geometry.ts`          | `GeoDanmarkNeighborService` — IS_MOCK via `FEATURE_FLAGS.geodanmarkMock`               |
+| `src/integrations/mat/neighbor-parcels.ts`                  | `MatNeighborParcelService` — IS_MOCK via `FEATURE_FLAGS.matNeighborParcelsMock`        |
+| `src/integrations/survey/upload-decoder.ts`                 | `SurveyUploadDecoder` implementerer `SurveyUploadDecoderPort`                          |
+| `src/services/drawing/assemble-beliggenhedsplan.service.ts` | Samler `BeliggenhedsplanInput` via ports                                               |
+| `src/lib/drawing/render-svg.ts`                             | SVG-renderer — basis titleblok, nordpil, parcel-features                               |
+| `src/lib/drawing/drawing-model-builder.ts`                  | `buildDrawingModel(plan, readiness) → DrawingModel`                                    |
+| `src/lib/drawing/drawing-symbols.ts`                        | `northArrowSvg`, `lineDashed`, `lineDotted`                                            |
+| `src/lib/runtime-config.ts`                                 | `FEATURE_FLAGS` inkl. `geodanmarkMock`, `matNeighborParcelsMock`                       |
+| `src/lib/env.ts`                                            | Alle env-vars — skal bruges til nye env-vars                                           |
 
 Feature flags styres via env-vars læst i `src/lib/runtime-config.ts`:
+
 - `GEODANMARK_MOCK=false` deaktiverer `FEATURE_FLAGS.geodanmarkMock`
 - `MAT_NEIGHBOR_PARCELS_MOCK=false` deaktiverer `FEATURE_FLAGS.matNeighborParcelsMock`
 
@@ -45,31 +46,31 @@ Feature flags styres via env-vars læst i `src/lib/runtime-config.ts`:
 
 ## Filkort
 
-| Fil | Handling | Fase |
-|---|---|---|
-| `src/domain/drawing/beliggenhedsplan.types.ts` | Modificer | 1 |
-| `src/domain/drawing/beliggenhedsplan.schemas.ts` | Modificer | 1 |
-| `src/domain/drawing/decision-engine.ts` | Modificer | 1 |
-| `src/domain/drawing/decision-engine.test.ts` | Modificer | 1 |
-| `src/domain/drawing/ports.ts` | Modificer | 1 |
-| `src/domain/drawing/drawing-model.ts` | Modificer | 3 |
-| `src/integrations/geodanmark/drawing-layers.ts` | Modificer | 1 |
-| `src/integrations/mat/neighbor-parcels.ts` | Ingen kodeændring (env-var aktiverer) | 1 |
-| `src/integrations/survey/upload-decoder.ts` | Modificer | 2 |
-| `src/integrations/survey/survey.schemas.ts` | Modificer | 2 |
-| `src/integrations/import/geojson-footprint-decoder.ts` | Opret | 2 |
-| `src/integrations/import/utility-input-decoder.ts` | Opret | 3 |
-| `src/services/drawing/assemble-beliggenhedsplan.service.ts` | Modificer | 1+2 |
-| `src/services/drawing/assemble-beliggenhedsplan.service.test.ts` | Modificer | 1+2 |
-| `src/lib/drawing/drawing-model-builder.ts` | Modificer | 3 |
-| `src/lib/drawing/render-svg.ts` | Modificer | 3 |
-| `src/lib/drawing/render-svg.test.ts` | Modificer | 3 |
-| `src/lib/drawing/drawing-symbols.ts` | Modificer | 3 |
-| `src/lib/drawing/label-placement.ts` | Opret | 2 |
-| `src/lib/drawing/label-placement.test.ts` | Opret | 2 |
-| `src/lib/drawing/dimension-lines.ts` | Opret | 2 |
-| `src/lib/drawing/dimension-lines.test.ts` | Opret | 2 |
-| `.env.example` | Modificer | 1 |
+| Fil                                                              | Handling                              | Fase |
+| ---------------------------------------------------------------- | ------------------------------------- | ---- |
+| `src/domain/drawing/beliggenhedsplan.types.ts`                   | Modificer                             | 1    |
+| `src/domain/drawing/beliggenhedsplan.schemas.ts`                 | Modificer                             | 1    |
+| `src/domain/drawing/decision-engine.ts`                          | Modificer                             | 1    |
+| `src/domain/drawing/decision-engine.test.ts`                     | Modificer                             | 1    |
+| `src/domain/drawing/ports.ts`                                    | Modificer                             | 1    |
+| `src/domain/drawing/drawing-model.ts`                            | Modificer                             | 3    |
+| `src/integrations/geodanmark/drawing-layers.ts`                  | Modificer                             | 1    |
+| `src/integrations/mat/neighbor-parcels.ts`                       | Ingen kodeændring (env-var aktiverer) | 1    |
+| `src/integrations/survey/upload-decoder.ts`                      | Modificer                             | 2    |
+| `src/integrations/survey/survey.schemas.ts`                      | Modificer                             | 2    |
+| `src/integrations/import/geojson-footprint-decoder.ts`           | Opret                                 | 2    |
+| `src/integrations/import/utility-input-decoder.ts`               | Opret                                 | 3    |
+| `src/services/drawing/assemble-beliggenhedsplan.service.ts`      | Modificer                             | 1+2  |
+| `src/services/drawing/assemble-beliggenhedsplan.service.test.ts` | Modificer                             | 1+2  |
+| `src/lib/drawing/drawing-model-builder.ts`                       | Modificer                             | 3    |
+| `src/lib/drawing/render-svg.ts`                                  | Modificer                             | 3    |
+| `src/lib/drawing/render-svg.test.ts`                             | Modificer                             | 3    |
+| `src/lib/drawing/drawing-symbols.ts`                             | Modificer                             | 3    |
+| `src/lib/drawing/label-placement.ts`                             | Opret                                 | 2    |
+| `src/lib/drawing/label-placement.test.ts`                        | Opret                                 | 2    |
+| `src/lib/drawing/dimension-lines.ts`                             | Opret                                 | 2    |
+| `src/lib/drawing/dimension-lines.test.ts`                        | Opret                                 | 2    |
+| `.env.example`                                                   | Modificer                             | 1    |
 
 ---
 
@@ -85,6 +86,7 @@ Feature flags styres via env-vars læst i `src/lib/runtime-config.ts`:
 **Læs inden start:** `src/domain/drawing/beliggenhedsplan.types.ts`
 
 **Filer:**
+
 - Modificer: `src/domain/drawing/beliggenhedsplan.types.ts`
 
 Erstat hele filens indhold med følgende (alle eksisterende typer bevares, nye tilføjes/udvides):
@@ -239,8 +241,16 @@ export type ConstraintLayer = {
 };
 
 export type UtilityLayer = {
-  type: "water" | "sewer" | "electric" | "gas" | "rainwater" | "wastewater"
-    | "inspection_well" | "sand_trap" | "rat_barrier";
+  type:
+    | "water"
+    | "sewer"
+    | "electric"
+    | "gas"
+    | "rainwater"
+    | "wastewater"
+    | "inspection_well"
+    | "sand_trap"
+    | "rat_barrier";
   geometry25832: GeoJsonPoint25832 | GeoJsonLineString25832;
   label: string;
   dkKoteM: number | null;
@@ -346,6 +356,7 @@ git commit -m "feat(drawing): udvid domain types — sokkelkote, revisionstabel,
 **Læs inden start:** `src/domain/drawing/beliggenhedsplan.schemas.ts` + den opdaterede `beliggenhedsplan.types.ts` fra Task 1.
 
 **Filer:**
+
 - Modificer: `src/domain/drawing/beliggenhedsplan.schemas.ts`
 
 - [ ] **Step 1: Erstat filindhold**
@@ -376,7 +387,12 @@ export const GeoJsonPolygon25832Schema = z.object({
 
 const DataConfidenceSchema = z.enum(["high", "medium", "low", "unknown"]);
 const DataSourceSchema = z.enum([
-  "survey", "registry", "cad_upload", "manual", "generated", "estimated",
+  "survey",
+  "registry",
+  "cad_upload",
+  "manual",
+  "generated",
+  "estimated",
 ]);
 
 const LayerSourceMetaSchema = z.object({
@@ -422,24 +438,31 @@ export const SurveyLayerSchema = z.object({
   surveyDate: z.string().nullable(),
   surveyorName: z.string().nullable(),
   surveyorLicenseNr: z.string().nullable(),
-  terrainPoints: z.array(z.object({
-    x: z.number(), y: z.number(), z: z.number(),
-    label: z.string(), source: DataSourceSchema,
-  })),
+  terrainPoints: z.array(
+    z.object({
+      x: z.number(),
+      y: z.number(),
+      z: z.number(),
+      label: z.string(),
+      source: DataSourceSchema,
+    }),
+  ),
   boundaryPoints: z.array(GeoJsonPoint25832Schema),
   notes: z.array(z.string()),
   source: LayerSourceMetaSchema,
 });
 
 export const ExistingFeaturesLayerSchema = z.object({
-  buildings: z.array(z.object({
-    bbrId: z.string().nullable(),
-    footprint25832: GeoJsonPolygon25832Schema,
-    usageCode: z.string().nullable(),
-    areaM2: z.number(),
-    sokkelKoteM: z.number().nullable(),
-    source: LayerSourceMetaSchema,
-  })),
+  buildings: z.array(
+    z.object({
+      bbrId: z.string().nullable(),
+      footprint25832: GeoJsonPolygon25832Schema,
+      usageCode: z.string().nullable(),
+      areaM2: z.number(),
+      sokkelKoteM: z.number().nullable(),
+      source: LayerSourceMetaSchema,
+    }),
+  ),
   fences: z.array(GeoJsonLineString25832Schema),
   source: LayerSourceMetaSchema,
 });
@@ -566,6 +589,7 @@ git commit -m "feat(drawing): opdater Zod-schemas — roadName, surveyor, Dimens
 **Læs inden start:** `src/domain/drawing/decision-engine.ts` og `src/domain/drawing/decision-engine.test.ts`.
 
 **Filer:**
+
 - Modificer: `src/domain/drawing/decision-engine.ts`
 - Modificer: `src/domain/drawing/decision-engine.test.ts`
 
@@ -623,24 +647,24 @@ Tilføj de tre nye felter til `DrawingReadinessInput` og den nye regel i `classi
 
 ```typescript
 // I DrawingReadinessInput — tilføj efter eksisterende felter:
-  hasRoadCenterlineGeometry: boolean;
-  hasCenterlineDeklaration: boolean;
-  hasSurveyorAttestation: boolean;
+hasRoadCenterlineGeometry: boolean;
+hasCenterlineDeklaration: boolean;
+hasSurveyorAttestation: boolean;
 ```
 
 Tilføj denne regel i `classifyDrawingReadiness` umiddelbart efter parcel-discrepancy-tjekket:
 
 ```typescript
-  if (input.hasCenterlineDeklaration && !input.hasRoadCenterlineGeometry) {
-    surveyRequired = true;
-    reasons.push({
-      code: "CENTERLINE_DEKLARATION_WITHOUT_GEOMETRY",
-      severity: "warning",
-      message: "Byggelinje fra vejmidte (deklaration) kræver opmålt vejmidte-geometri",
-      affectedLayer: "constraints",
-    });
-    reviewRequiredBy.push("landinspektoer");
-  }
+if (input.hasCenterlineDeklaration && !input.hasRoadCenterlineGeometry) {
+  surveyRequired = true;
+  reasons.push({
+    code: "CENTERLINE_DEKLARATION_WITHOUT_GEOMETRY",
+    severity: "warning",
+    message: "Byggelinje fra vejmidte (deklaration) kræver opmålt vejmidte-geometri",
+    affectedLayer: "constraints",
+  });
+  reviewRequiredBy.push("landinspektoer");
+}
 ```
 
 - [ ] **Step 4: Kør tests — alle grønne**
@@ -671,6 +695,7 @@ git commit -m "feat(drawing): decision engine — vejmidte-deklaration og survey
 **Læs inden start:** `src/domain/drawing/ports.ts`.
 
 **Filer:**
+
 - Modificer: `src/domain/drawing/ports.ts`
 
 Tilføj `fetchNeighborParcels` til `DrawingGeometrySourcePort` og `fetchRoadName` til samme interface.
@@ -709,6 +734,7 @@ git commit -m "feat(drawing): udvid DrawingGeometrySourcePort med fetchNeighborP
 **Læs inden start:** `src/integrations/geodanmark/drawing-layers.ts`, `src/integrations/mat/neighbor-parcels.ts`, `src/lib/runtime-config.ts`.
 
 **Filer:**
+
 - Modificer: `src/integrations/geodanmark/drawing-layers.ts`
 
 Implementer de to nye port-metoder. `fetchNeighborParcels` delegerer til `MatNeighborParcelService`. `fetchRoadName` returnerer vejnavn fra DAR-adresse (returner null for nu).
@@ -803,10 +829,12 @@ git commit -m "feat(geodanmark): fetchNeighborParcels delegerer til MatNeighborP
 `src/services/drawing/assemble-beliggenhedsplan.service.test.ts`
 
 **Filer:**
+
 - Modificer: `src/services/drawing/assemble-beliggenhedsplan.service.ts`
 - Modificer: `src/services/drawing/assemble-beliggenhedsplan.service.test.ts`
 
 Service skal nu:
+
 1. Hente naboparceller via `fetchNeighborParcels`
 2. Hente vejnavn via `fetchRoadName`
 3. Auto-udfylde `mandatoryAnnotations` baseret på aktive lag
@@ -833,27 +861,42 @@ Tilføj disse tests:
 ```typescript
 it("plan indeholder mandatoryAnnotations med koteDatum", async () => {
   const result = await assembleBeliggenhedsplan({
-    matrikelId: "test-id", kommunekode: "0101", addressId: "addr-1",
-    proposedFootprint25832: fakeFootprint, projectId: "proj-1",
-    metadata: baseMeta, geometrySource: fakeSource, survey: null,
+    matrikelId: "test-id",
+    kommunekode: "0101",
+    addressId: "addr-1",
+    proposedFootprint25832: fakeFootprint,
+    projectId: "proj-1",
+    metadata: baseMeta,
+    geometrySource: fakeSource,
+    survey: null,
   });
   expect(result.plan?.mandatoryAnnotations.koteDatum).toContain("DVR90");
 });
 
 it("plan indeholder BR18-byggelinje i constraints", async () => {
   const result = await assembleBeliggenhedsplan({
-    matrikelId: "test-id", kommunekode: "0101", addressId: "addr-1",
-    proposedFootprint25832: fakeFootprint, projectId: "proj-1",
-    metadata: baseMeta, geometrySource: fakeSource, survey: null,
+    matrikelId: "test-id",
+    kommunekode: "0101",
+    addressId: "addr-1",
+    proposedFootprint25832: fakeFootprint,
+    projectId: "proj-1",
+    metadata: baseMeta,
+    geometrySource: fakeSource,
+    survey: null,
   });
   expect(result.plan?.constraints.some((c) => c.type === "br18_setback")).toBe(true);
 });
 
 it("plan.parcel.roadName sættes fra fetchRoadName", async () => {
   const result = await assembleBeliggenhedsplan({
-    matrikelId: "test-id", kommunekode: "0101", addressId: "addr-1",
-    proposedFootprint25832: fakeFootprint, projectId: "proj-1",
-    metadata: baseMeta, geometrySource: fakeSource, survey: null,
+    matrikelId: "test-id",
+    kommunekode: "0101",
+    addressId: "addr-1",
+    proposedFootprint25832: fakeFootprint,
+    projectId: "proj-1",
+    metadata: baseMeta,
+    geometrySource: fakeSource,
+    survey: null,
   });
   expect(result.plan?.parcel.roadName).toBe("Testvej");
 });
@@ -956,10 +999,16 @@ function buildBr18Constraint(parcelPolygon: GeoJsonPolygon25832): ConstraintLaye
   };
 }
 
-export async function assembleBeliggenhedsplan(
-  input: AssembleInput,
-): Promise<AssembleResult> {
-  const { matrikelId, kommunekode, addressId, proposedFootprint25832, geometrySource, survey, metadata } = input;
+export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<AssembleResult> {
+  const {
+    matrikelId,
+    kommunekode,
+    addressId,
+    proposedFootprint25832,
+    geometrySource,
+    survey,
+    metadata,
+  } = input;
 
   const parcel = await geometrySource.fetchParcelLayers(matrikelId);
 
@@ -967,25 +1016,41 @@ export async function assembleBeliggenhedsplan(
     return {
       plan: null,
       readiness: classifyDrawingReadiness({
-        hasAddress: true, hasMatrikel: true, hasParcelPolygon: false, hasProposedFootprint: true,
-        hasCrsContract: true, parcelAreaDiscrepancyPct: 0, minDistanceToSetbackLineM: 999,
-        setbackRequirementM: 2.5, hasOpmaalteKoter: false, hasDhmKoter: false,
-        hasExistingBuildingGeometry: false, missingDataPoints: ["parcel.polygon25832"],
-        hasRoadCenterlineGeometry: true, hasCenterlineDeklaration: false, hasSurveyorAttestation: false,
+        hasAddress: true,
+        hasMatrikel: true,
+        hasParcelPolygon: false,
+        hasProposedFootprint: true,
+        hasCrsContract: true,
+        parcelAreaDiscrepancyPct: 0,
+        minDistanceToSetbackLineM: 999,
+        setbackRequirementM: 2.5,
+        hasOpmaalteKoter: false,
+        hasDhmKoter: false,
+        hasExistingBuildingGeometry: false,
+        missingDataPoints: ["parcel.polygon25832"],
+        hasRoadCenterlineGeometry: true,
+        hasCenterlineDeklaration: false,
+        hasSurveyorAttestation: false,
       }),
     };
   }
 
   const parcelWithSegments = {
     ...parcel,
-    boundarySegments: parcel.boundarySegments.length > 0
-      ? parcel.boundarySegments
-      : splitPolygonIntoBoundarySegments(parcel.polygon25832),
+    boundarySegments:
+      parcel.boundarySegments.length > 0
+        ? parcel.boundarySegments
+        : splitPolygonIntoBoundarySegments(parcel.polygon25832),
   };
 
   const xs = parcel.polygon25832.coordinates[0].map((c) => c[0]);
   const ys = parcel.polygon25832.coordinates[0].map((c) => c[1]);
-  const bbox: [number, number, number, number] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  const bbox: [number, number, number, number] = [
+    Math.min(...xs),
+    Math.min(...ys),
+    Math.max(...xs),
+    Math.max(...ys),
+  ];
 
   const [existing, constraints, neighborParcels, roadNameResult] = await Promise.all([
     geometrySource.fetchNeighborBuildings(bbox),
@@ -998,9 +1063,15 @@ export async function assembleBeliggenhedsplan(
   const allConstraints: ConstraintLayer[] = [br18Constraint, ...constraints];
 
   const footprintAreaM2 = polygonAreaM2(proposedFootprint25832);
-  const minDistanceToBoundaryM = distanceToNearestBoundaryM(proposedFootprint25832, parcelWithSegments.polygon25832);
-  const areaDiscrepancyPct = (parcelWithSegments.areaDiscrepancyM2 / parcelWithSegments.areaRegisteredM2) * 100;
-  const hasCenterlineDeklaration = allConstraints.some((c) => c.type === "road_centerline_deklaration");
+  const minDistanceToBoundaryM = distanceToNearestBoundaryM(
+    proposedFootprint25832,
+    parcelWithSegments.polygon25832,
+  );
+  const areaDiscrepancyPct =
+    (parcelWithSegments.areaDiscrepancyM2 / parcelWithSegments.areaRegisteredM2) * 100;
+  const hasCenterlineDeklaration = allConstraints.some(
+    (c) => c.type === "road_centerline_deklaration",
+  );
 
   const parcelWithNeighbors = {
     ...parcelWithSegments,
@@ -1034,8 +1105,11 @@ export async function assembleBeliggenhedsplan(
   };
 
   const readiness = classifyDrawingReadiness({
-    hasAddress: !!metadata.address, hasMatrikel: !!metadata.matrikel,
-    hasParcelPolygon: true, hasProposedFootprint: true, hasCrsContract: true,
+    hasAddress: !!metadata.address,
+    hasMatrikel: !!metadata.matrikel,
+    hasParcelPolygon: true,
+    hasProposedFootprint: true,
+    hasCrsContract: true,
     parcelAreaDiscrepancyPct: areaDiscrepancyPct,
     minDistanceToSetbackLineM: minDistanceToBoundaryM,
     setbackRequirementM: 2.5,
@@ -1045,7 +1119,7 @@ export async function assembleBeliggenhedsplan(
     missingDataPoints: [],
     hasRoadCenterlineGeometry: true,
     hasCenterlineDeklaration,
-    hasSurveyorAttestation: !!(survey?.surveyorName),
+    hasSurveyorAttestation: !!survey?.surveyorName,
   });
 
   return { plan, readiness };
@@ -1088,6 +1162,7 @@ git commit -m "feat(drawing): assemble service — naboparceller, vejnavn, BR18-
 **Læs inden start:** `src/integrations/survey/upload-decoder.ts` + `src/integrations/survey/survey.schemas.ts`
 
 **Filer:**
+
 - Modificer: `src/integrations/survey/survey.schemas.ts`
 - Modificer: `src/integrations/survey/upload-decoder.ts`
 
@@ -1098,8 +1173,8 @@ git commit -m "feat(drawing): assemble service — naboparceller, vejnavn, BR18-
 ```typescript
 export const SurveyUploadPayloadSchema = z.object({
   surveyDate: z.string().optional().nullable(),
-  surveyorName: z.string().optional().nullable(),        // NY
-  surveyorLicenseNr: z.string().optional().nullable(),   // NY
+  surveyorName: z.string().optional().nullable(), // NY
+  surveyorLicenseNr: z.string().optional().nullable(), // NY
   crs: z.literal("EPSG:25832"),
   points: z.array(SurveyPointRowSchema).min(1),
   notes: z.array(z.string()).optional().default([]),
@@ -1114,14 +1189,18 @@ I `src/integrations/survey/upload-decoder.ts`, tilføj de to nye felter til det 
 const layer: SurveyLayer = {
   uploadedAt: now,
   surveyDate: payload.surveyDate ?? null,
-  surveyorName: payload.surveyorName ?? null,           // NY
+  surveyorName: payload.surveyorName ?? null, // NY
   surveyorLicenseNr: payload.surveyorLicenseNr ?? null, // NY
   terrainPoints: payload.points
     .filter((p) => p.type === "terrain")
     .map((p) => ({ x: p.x, y: p.y, z: p.z, label: p.label, source: "survey" as const })),
   boundaryPoints: payload.points
     .filter((p) => p.type === "boundary")
-    .map((p) => ({ type: "Point" as const, crs: "EPSG:25832" as const, coordinates: [p.x, p.y] as [number, number] })),
+    .map((p) => ({
+      type: "Point" as const,
+      crs: "EPSG:25832" as const,
+      coordinates: [p.x, p.y] as [number, number],
+    })),
   notes: payload.notes,
   source: surveySourceMeta(now),
 };
@@ -1145,6 +1224,7 @@ git commit -m "feat(survey): tilføj surveyorName og surveyorLicenseNr til Surve
 ### Task 8: GeoJSON footprint decoder
 
 **Filer:**
+
 - Opret: `src/integrations/import/geojson-footprint-decoder.ts`
 - Opret: `src/integrations/import/geojson-footprint-decoder.test.ts`
 
@@ -1159,18 +1239,33 @@ import { decodeGeoJsonFootprint } from "./geojson-footprint-decoder";
 
 const rawPolygon = {
   type: "Polygon",
-  coordinates: [[[720005, 6170005], [720015, 6170005], [720015, 6170015], [720005, 6170015], [720005, 6170005]]],
+  coordinates: [
+    [
+      [720005, 6170005],
+      [720015, 6170005],
+      [720015, 6170015],
+      [720005, 6170015],
+      [720005, 6170005],
+    ],
+  ],
 };
 
 describe("decodeGeoJsonFootprint", () => {
   it("accepterer rå Polygon", () => {
-    const result = decodeGeoJsonFootprint({ ...rawPolygon, crs: { type: "name", properties: { name: "urn:ogc:def:crs:EPSG::25832" } } });
+    const result = decodeGeoJsonFootprint({
+      ...rawPolygon,
+      crs: { type: "name", properties: { name: "urn:ogc:def:crs:EPSG::25832" } },
+    });
     expect(result.type).toBe("Polygon");
     expect(result.crs).toBe("EPSG:25832");
   });
 
   it("accepterer Feature med Polygon-geometri", () => {
-    const result = decodeGeoJsonFootprint({ type: "Feature", geometry: rawPolygon, properties: null });
+    const result = decodeGeoJsonFootprint({
+      type: "Feature",
+      geometry: rawPolygon,
+      properties: null,
+    });
     expect(result.crs).toBe("EPSG:25832");
   });
 
@@ -1269,6 +1364,7 @@ git commit -m "feat(import): GeoJSON footprint decoder — Polygon, Feature, Fea
 ### Task 9: Dimension lines helper
 
 **Filer:**
+
 - Opret: `src/lib/drawing/dimension-lines.ts`
 - Opret: `src/lib/drawing/dimension-lines.test.ts`
 
@@ -1286,7 +1382,15 @@ const rect15x10: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
   // Rektangel 15m bred (Ø-V) × 10m dyb (N-S)
-  coordinates: [[[720000, 6170000], [720015, 6170000], [720015, 6170010], [720000, 6170010], [720000, 6170000]]],
+  coordinates: [
+    [
+      [720000, 6170000],
+      [720015, 6170000],
+      [720015, 6170010],
+      [720000, 6170010],
+      [720000, 6170000],
+    ],
+  ],
 };
 
 describe("buildDimensionLines", () => {
@@ -1311,7 +1415,17 @@ describe("buildDimensionLines", () => {
   });
 
   it("returnerer tom liste for polygon med færre end 3 punkter", () => {
-    const bad: GeoJsonPolygon25832 = { type: "Polygon", crs: "EPSG:25832", coordinates: [[[0, 0], [1, 0], [0, 0]]] };
+    const bad: GeoJsonPolygon25832 = {
+      type: "Polygon",
+      crs: "EPSG:25832",
+      coordinates: [
+        [
+          [0, 0],
+          [1, 0],
+          [0, 0],
+        ],
+      ],
+    };
     expect(buildDimensionLines(bad)).toHaveLength(0);
   });
 });
@@ -1333,7 +1447,12 @@ function sideLength(ax: number, ay: number, bx: number, by: number): number {
   return Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
 }
 
-function sideDirection(ax: number, ay: number, bx: number, by: number): "north" | "south" | "east" | "west" {
+function sideDirection(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): "north" | "south" | "east" | "west" {
   const dx = bx - ax;
   const dy = by - ay;
   if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "east" : "west";
@@ -1382,6 +1501,7 @@ git commit -m "feat(drawing): dimension-lines helper — beregner mål-linjer fr
 ### Task 10: Label placement engine
 
 **Filer:**
+
 - Opret: `src/lib/drawing/label-placement.ts`
 - Opret: `src/lib/drawing/label-placement.test.ts`
 
@@ -1396,7 +1516,12 @@ import { findLabelPosition, type PlacedLabel } from "./label-placement";
 
 describe("findLabelPosition", () => {
   it("returnerer nordøst-position når ingen konflikter", () => {
-    const pos = findLabelPosition({ anchorX: 100, anchorY: 100, text: "27.20", existingLabels: [] });
+    const pos = findLabelPosition({
+      anchorX: 100,
+      anchorY: 100,
+      text: "27.20",
+      existingLabels: [],
+    });
     expect(pos.x).toBeGreaterThan(100);
     expect(pos.y).toBeGreaterThan(100);
     expect(pos.requiresManualReview).toBe(false);
@@ -1405,7 +1530,9 @@ describe("findLabelPosition", () => {
   it("undgår eksisterende label ved at vælge anden kandidat", () => {
     const blocking: PlacedLabel = { x: 108, y: 108, width: 20, height: 8 };
     const pos = findLabelPosition({
-      anchorX: 100, anchorY: 100, text: "27.20",
+      anchorX: 100,
+      anchorY: 100,
+      text: "27.20",
       existingLabels: [blocking],
     });
     const overlapsBlocking =
@@ -1427,7 +1554,12 @@ describe("findLabelPosition", () => {
       { x: 120, y: 90, width: 40, height: 30 },
       { x: 120, y: 60, width: 40, height: 30 },
     ];
-    const pos = findLabelPosition({ anchorX: 100, anchorY: 100, text: "27.20", existingLabels: allBlocked });
+    const pos = findLabelPosition({
+      anchorX: 100,
+      anchorY: 100,
+      text: "27.20",
+      existingLabels: allBlocked,
+    });
     expect(pos.requiresManualReview).toBe(true);
   });
 });
@@ -1466,28 +1598,25 @@ export type LabelPlacementResult = PlacedLabel & {
 };
 
 const CANDIDATE_OFFSETS: [number, number][] = [
-  [1, 1],   // NØ (foretrukket)
-  [-1, 1],  // NV
-  [1, -1],  // SØ
+  [1, 1], // NØ (foretrukket)
+  [-1, 1], // NV
+  [1, -1], // SØ
   [-1, -1], // SV
-  [0, 1],   // N
-  [1, 0],   // Ø
-  [0, -1],  // S
-  [-1, 0],  // V
+  [0, 1], // N
+  [1, 0], // Ø
+  [0, -1], // S
+  [-1, 0], // V
 ];
 
 function overlaps(a: PlacedLabel, b: PlacedLabel): boolean {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 export function findLabelPosition(input: LabelPlacementInput): LabelPlacementResult {
   const {
-    anchorX, anchorY, text,
+    anchorX,
+    anchorY,
+    text,
     existingLabels,
     charWidthPx = 5.5,
     fontHeightPx = 8,
@@ -1545,11 +1674,12 @@ git commit -m "feat(drawing): deterministisk label-placement engine med kollisio
 ## Fase 3 — SVG renderer v2 (Niveau 1+2+3: alle lag)
 
 **Forudsætning:** Fase 1 og 2 er gennemført. `bun test src` er grøn.  
-**Kontekst:**  
-- `src/domain/drawing/drawing-model.ts` definerer `DrawingLayerKind`, `DrawingModel`, `DrawingFeature`  
-- `src/lib/drawing/render-svg.ts` renderer `DrawingModel` til SVG  
+**Kontekst:**
+
+- `src/domain/drawing/drawing-model.ts` definerer `DrawingLayerKind`, `DrawingModel`, `DrawingFeature`
+- `src/lib/drawing/render-svg.ts` renderer `DrawingModel` til SVG
 - `src/lib/drawing/drawing-model-builder.ts` konverterer `BeliggenhedsplanInput` → `DrawingModel`  
-**Output:** Komplet SVG med mål-linjer, koter, byggelinjer, kloak, skraveringer og komplet titleblok.
+  **Output:** Komplet SVG med mål-linjer, koter, byggelinjer, kloak, skraveringer og komplet titleblok.
 
 ---
 
@@ -1558,6 +1688,7 @@ git commit -m "feat(drawing): deterministisk label-placement engine med kollisio
 **Læs inden start:** `src/domain/drawing/drawing-model.ts`
 
 **Filer:**
+
 - Modificer: `src/domain/drawing/drawing-model.ts`
 
 - [ ] **Step 1: Tilføj nye lag-typer til DrawingLayerKind**
@@ -1613,6 +1744,7 @@ git commit -m "feat(drawing): udvid DrawingLayerKind med dimension_lines, terrai
 `src/lib/drawing/label-placement.ts` (fra Task 10)
 
 **Filer:**
+
 - Modificer: `src/lib/drawing/drawing-model-builder.ts`
 
 Builderen skal nu generere SVG-elementer for alle nye lag.
@@ -1628,9 +1760,14 @@ it("indeholder BR18-byggelinje hvis constraints har br18_setback", () => {
     features: [
       ...model.features,
       {
-        id: "br18-1", kind: "setback_lines",
-        svgElement: '<polygon points="10,10 90,10 90,60 10,60" fill="none" stroke="red" stroke-width="0.5"/>',
-        label: "Byggelinje 2,5 m fra skel", labelX: 50, labelY: 10, zIndex: 20,
+        id: "br18-1",
+        kind: "setback_lines",
+        svgElement:
+          '<polygon points="10,10 90,10 90,60 10,60" fill="none" stroke="red" stroke-width="0.5"/>',
+        label: "Byggelinje 2,5 m fra skel",
+        labelX: 50,
+        labelY: 10,
+        zIndex: 20,
       },
     ],
   };
@@ -1659,12 +1796,18 @@ import { PAGE_SIZES, computeViewport } from "@/domain/drawing/drawing-model";
 import { buildDimensionLines } from "./dimension-lines";
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function coordsToSvgPoints(
   coords: [number, number][],
-  minX: number, maxY: number, scale: number,
+  minX: number,
+  maxY: number,
+  scale: number,
 ): string {
   return coords.map(([x, y]) => `${(x - minX) * scale},${(maxY - y) * scale}`).join(" ");
 }
@@ -1673,7 +1816,9 @@ function polygonFeature(
   id: string,
   kind: DrawingFeature["kind"],
   coords: [number, number][],
-  minX: number, maxY: number, scale: number,
+  minX: number,
+  maxY: number,
+  scale: number,
   style: string,
   label: string | null = null,
   zIndex = 10,
@@ -1682,7 +1827,8 @@ function polygonFeature(
   const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
   const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
   return {
-    id, kind,
+    id,
+    kind,
     svgElement: `<polygon points="${pts}" ${style}/>`,
     label,
     labelX: (cx - minX) * scale,
@@ -1700,8 +1846,10 @@ export function buildDrawingModel(
   const ys = coords.map((c) => c[1]);
   const pad = 20;
   const bbox: [number, number, number, number] = [
-    Math.min(...xs) - pad, Math.min(...ys) - pad,
-    Math.max(...xs) + pad, Math.max(...ys) + pad,
+    Math.min(...xs) - pad,
+    Math.min(...ys) - pad,
+    Math.max(...xs) + pad,
+    Math.max(...ys) + pad,
   ];
   const [minX, minY, maxX, maxY] = bbox;
   const page = PAGE_SIZES[plan.metadata.paperSize];
@@ -1717,45 +1865,69 @@ export function buildDrawingModel(
   const features: DrawingFeature[] = [];
 
   // Parcelpolygon
-  features.push(polygonFeature(
-    "parcel", "parcel_boundary",
-    plan.parcel.polygon25832.coordinates[0] as [number, number][],
-    minX, maxY, scale,
-    'fill="none" stroke="#000" stroke-width="1.5"',
-    plan.parcel.matrikelnummer, 30,
-  ));
+  features.push(
+    polygonFeature(
+      "parcel",
+      "parcel_boundary",
+      plan.parcel.polygon25832.coordinates[0] as [number, number][],
+      minX,
+      maxY,
+      scale,
+      'fill="none" stroke="#000" stroke-width="1.5"',
+      plan.parcel.matrikelnummer,
+      30,
+    ),
+  );
 
   // Nabomatrikler
   plan.parcel.neighborParcels.forEach((np, i) => {
     if (!np.polygon25832) return;
-    features.push(polygonFeature(
-      `neighbor-${i}`, "neighbor_parcels",
-      np.polygon25832.coordinates[0] as [number, number][],
-      minX, maxY, scale,
-      'fill="none" stroke="#888" stroke-width="0.8" stroke-dasharray="3,2"',
-      np.matrikelnummer, 5,
-    ));
+    features.push(
+      polygonFeature(
+        `neighbor-${i}`,
+        "neighbor_parcels",
+        np.polygon25832.coordinates[0] as [number, number][],
+        minX,
+        maxY,
+        scale,
+        'fill="none" stroke="#888" stroke-width="0.8" stroke-dasharray="3,2"',
+        np.matrikelnummer,
+        5,
+      ),
+    );
   });
 
   // Eksisterende bygninger
   plan.existing.buildings.forEach((b, i) => {
-    features.push(polygonFeature(
-      `existing-${i}`, "existing_buildings",
-      b.footprint25832.coordinates[0] as [number, number][],
-      minX, maxY, scale,
-      'fill="#e8e8e8" stroke="#555" stroke-width="0.8"',
-      null, 15,
-    ));
+    features.push(
+      polygonFeature(
+        `existing-${i}`,
+        "existing_buildings",
+        b.footprint25832.coordinates[0] as [number, number][],
+        minX,
+        maxY,
+        scale,
+        'fill="#e8e8e8" stroke="#555" stroke-width="0.8"',
+        null,
+        15,
+      ),
+    );
   });
 
   // Foreslået bygning
-  features.push(polygonFeature(
-    "proposed", "proposed_buildings",
-    plan.proposed.footprint25832.coordinates[0] as [number, number][],
-    minX, maxY, scale,
-    'fill="#d4e8ff" stroke="#00f" stroke-width="1"',
-    null, 20,
-  ));
+  features.push(
+    polygonFeature(
+      "proposed",
+      "proposed_buildings",
+      plan.proposed.footprint25832.coordinates[0] as [number, number][],
+      minX,
+      maxY,
+      scale,
+      'fill="#d4e8ff" stroke="#00f" stroke-width="1"',
+      null,
+      20,
+    ),
+  );
 
   // Byggelinjer (constraints)
   plan.constraints.forEach((c, i) => {
@@ -1765,12 +1937,18 @@ export function buildDrawingModel(
     if (c.geometry25832.type === "Polygon") {
       const pts = coordsToSvgPoints(
         c.geometry25832.coordinates[0] as [number, number][],
-        minX, maxY, scale,
+        minX,
+        maxY,
+        scale,
       );
       features.push({
-        id: `constraint-${i}`, kind: "setback_lines",
+        id: `constraint-${i}`,
+        kind: "setback_lines",
         svgElement: `<polygon points="${pts}" fill="none" stroke="${stroke}" stroke-width="0.6" ${dash}/>`,
-        label: c.label, labelX: null, labelY: null, zIndex: 25,
+        label: c.label,
+        labelX: null,
+        labelY: null,
+        zIndex: 25,
       });
     }
   });
@@ -1785,9 +1963,13 @@ export function buildDrawingModel(
     const mx = (x1 + x2) / 2;
     const my = (y1 + y2) / 2;
     features.push({
-      id: `dim-${i}`, kind: "dimension_lines",
+      id: `dim-${i}`,
+      kind: "dimension_lines",
       svgElement: `<g><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#00f" stroke-width="0.4"/><text x="${mx}" y="${my - 3}" text-anchor="middle" font-family="Arial" font-size="6" fill="#00f">${dl.labelM.toFixed(2)}</text></g>`,
-      label: null, labelX: null, labelY: null, zIndex: 35,
+      label: null,
+      labelX: null,
+      labelY: null,
+      zIndex: 35,
     });
   });
 
@@ -1797,9 +1979,13 @@ export function buildDrawingModel(
       const px = (tp.x - minX) * scale;
       const py = (maxY - tp.y) * scale;
       features.push({
-        id: `kote-${i}`, kind: "terrain_labels",
+        id: `kote-${i}`,
+        kind: "terrain_labels",
         svgElement: `<g><circle cx="${px}" cy="${py}" r="1.5" fill="#555"/><text x="${px + 4}" y="${py - 2}" font-family="Arial" font-size="6" fill="#333">${tp.z.toFixed(2)}</text></g>`,
-        label: String(tp.z), labelX: px, labelY: py, zIndex: 40,
+        label: String(tp.z),
+        labelX: px,
+        labelY: py,
+        zIndex: 40,
       });
     });
   }
@@ -1814,13 +2000,20 @@ export function buildDrawingModel(
   ].filter(Boolean) as string[];
 
   if (annotLines.length > 0) {
-    const annotSvg = annotLines.map((line, i) =>
-      `<text x="4" y="${drawHeightPx - 20 + i * 10}" font-family="Arial" font-size="5" fill="#333">${esc(line)}</text>`
-    ).join("\n");
+    const annotSvg = annotLines
+      .map(
+        (line, i) =>
+          `<text x="4" y="${drawHeightPx - 20 + i * 10}" font-family="Arial" font-size="5" fill="#333">${esc(line)}</text>`,
+      )
+      .join("\n");
     features.push({
-      id: "mandatory-annotations", kind: "mandatory_annotations",
+      id: "mandatory-annotations",
+      kind: "mandatory_annotations",
       svgElement: `<g>${annotSvg}</g>`,
-      label: null, labelX: null, labelY: null, zIndex: 50,
+      label: null,
+      labelX: null,
+      labelY: null,
+      zIndex: 50,
     });
   }
 
@@ -1834,12 +2027,18 @@ export function buildDrawingModel(
     calculationBasis: "BR18 §452",
   };
 
-  const revisions = plan.metadata.revisions.length > 0
-    ? plan.metadata.revisions
-    : [{ nr: "A", description: "Udgivelse", date: plan.metadata.date, by: "" }];
+  const revisions =
+    plan.metadata.revisions.length > 0
+      ? plan.metadata.revisions
+      : [{ nr: "A", description: "Udgivelse", date: plan.metadata.date, by: "" }];
 
   return {
-    page: { size: plan.metadata.paperSize, orientation: "landscape", scale: plan.metadata.scale, ...page },
+    page: {
+      size: plan.metadata.paperSize,
+      orientation: "landscape",
+      scale: plan.metadata.scale,
+      ...page,
+    },
     viewport: computeViewport(bbox, plan.metadata.scale),
     features,
     titleBlock: {
@@ -1859,14 +2058,28 @@ export function buildDrawingModel(
         ...(plan.metadata.buildingCode ? [`Opføres efter: ${plan.metadata.buildingCode}`] : []),
         ...(plan.metadata.bygherre ? [`Bygherre: ${plan.metadata.bygherre}`] : []),
         ...(plan.metadata.sagNr ? [`Sagsnr.: ${plan.metadata.sagNr}`] : []),
-        ...(readiness.reviewRequiredBy.length > 0 ? [`Review: ${readiness.reviewRequiredBy.join(", ")}`] : []),
+        ...(readiness.reviewRequiredBy.length > 0
+          ? [`Review: ${readiness.reviewRequiredBy.join(", ")}`]
+          : []),
       ],
     },
     legend: [
-      { symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>', label: "Parcel" },
-      { symbol: '<rect width="12" height="8" fill="#d4e8ff" stroke="#00f" stroke-width="1"/>', label: "Nyt byggeri" },
-      { symbol: '<rect width="12" height="8" fill="#e8e8e8" stroke="#555" stroke-width="0.8"/>', label: "Eksist. bygning" },
-      { symbol: '<line x1="0" y1="4" x2="12" y2="4" stroke="#c00" stroke-width="0.6"/>', label: "Byggelinje BR18" },
+      {
+        symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>',
+        label: "Parcel",
+      },
+      {
+        symbol: '<rect width="12" height="8" fill="#d4e8ff" stroke="#00f" stroke-width="1"/>',
+        label: "Nyt byggeri",
+      },
+      {
+        symbol: '<rect width="12" height="8" fill="#e8e8e8" stroke="#555" stroke-width="0.8"/>',
+        label: "Eksist. bygning",
+      },
+      {
+        symbol: '<line x1="0" y1="4" x2="12" y2="4" stroke="#c00" stroke-width="0.6"/>',
+        label: "Byggelinje BR18",
+      },
     ],
     northArrowRotationDeg: 0,
     readinessStatus: readiness.status,
@@ -1900,6 +2113,7 @@ git commit -m "feat(drawing): DrawingModelBuilder v2 — nabomatrikler, byggelin
 **Læs inden start:** `src/lib/drawing/render-svg.ts` + `src/lib/drawing/render-svg.test.ts`
 
 **Filer:**
+
 - Modificer: `src/lib/drawing/render-svg.ts`
 - Modificer: `src/lib/drawing/render-svg.test.ts`
 
@@ -1935,37 +2149,49 @@ bun test src/lib/drawing/render-svg.test.ts
 Erstat titelblokkens `titleSvg`-sektion i `renderSvg` (hold resten uændret):
 
 ```typescript
-  const { titleBlock: tb } = model;
-  const tx = drawW;
-  const lineH = 9;
-  let lineY = 14;
+const { titleBlock: tb } = model;
+const tx = drawW;
+const lineH = 9;
+let lineY = 14;
 
-  function tbLine(text: string, size = 7, bold = false): string {
-    const weight = bold ? ' font-weight="bold"' : "";
-    const svg = `<text x="${tx + 5}" y="${lineY}" font-family="Arial" font-size="${size}" fill="#222"${weight}>${esc(text)}</text>`;
-    lineY += lineH;
-    return svg;
-  }
+function tbLine(text: string, size = 7, bold = false): string {
+  const weight = bold ? ' font-weight="bold"' : "";
+  const svg = `<text x="${tx + 5}" y="${lineY}" font-family="Arial" font-size="${size}" fill="#222"${weight}>${esc(text)}</text>`;
+  lineY += lineH;
+  return svg;
+}
 
-  const titleSvg = `
+const titleSvg = `
     <rect x="${tx}" y="0" width="${titleBlockW}" height="${h}" fill="#f9f9f9" stroke="#bbb" stroke-width="0.5"/>
     ${tbLine(tb.title, 9, true)}
     ${tbLine(tb.address)}
     ${tbLine(tb.matrikel)}
     <line x1="${tx}" y1="${lineY}" x2="${tx + titleBlockW}" y2="${lineY}" stroke="#bbb" stroke-width="0.3"/>
-    ${(() => { lineY += 4; return ""; })()}
+    ${(() => {
+      lineY += 4;
+      return "";
+    })()}
     ${tb.sourceList.map((s) => tbLine(s, 6)).join("\n")}
     <line x1="${tx}" y1="${lineY}" x2="${tx + titleBlockW}" y2="${lineY}" stroke="#bbb" stroke-width="0.3"/>
-    ${(() => { lineY += 4; return ""; })()}
+    ${(() => {
+      lineY += 4;
+      return "";
+    })()}
     ${tb.bygherre ? tbLine(`Bygherre: ${tb.bygherre}`, 6) : ""}
     ${tb.sagNr ? tbLine(`Sagsnr.: ${tb.sagNr}`, 6) : ""}
     <line x1="${tx}" y1="${lineY}" x2="${tx + titleBlockW}" y2="${lineY}" stroke="#bbb" stroke-width="0.3"/>
-    ${(() => { lineY += 4; return ""; })()}
+    ${(() => {
+      lineY += 4;
+      return "";
+    })()}
     ${tbLine(`Dato: ${tb.date}`, 6)}
     ${tbLine(`Mål: ${tb.scale}  Ark: ${tb.paperSize}`, 6)}
     ${tbLine(`Rev.: ${tb.revision}`, 6)}
     <line x1="${tx}" y1="${lineY}" x2="${tx + titleBlockW}" y2="${lineY}" stroke="#bbb" stroke-width="0.3"/>
-    ${(() => { lineY += 4; return ""; })()}
+    ${(() => {
+      lineY += 4;
+      return "";
+    })()}
     ${tb.disclaimer ? `<text x="${tx + 5}" y="${lineY}" font-family="Arial" font-size="6" fill="#c00" font-weight="bold">${esc(tb.disclaimer)}</text>` : ""}
   `;
 ```
@@ -1973,9 +2199,9 @@ Erstat titelblokkens `titleSvg`-sektion i `renderSvg` (hold resten uændret):
 Tilføj skalastav øverst i `<g clip-path>` sektionen (efter `featuresSvg`):
 
 ```typescript
-  const scaleBarM = model.page.scale === 250 ? 10 : 20;
-  const scaleBarPx = (scaleBarM / model.viewport.metersPerMm) * PX_PER_MM;
-  const scaleBarSvg = `<g transform="translate(10,${h - 20})">
+const scaleBarM = model.page.scale === 250 ? 10 : 20;
+const scaleBarPx = (scaleBarM / model.viewport.metersPerMm) * PX_PER_MM;
+const scaleBarSvg = `<g transform="translate(10,${h - 20})">
     <rect x="0" y="0" width="${scaleBarPx / 2}" height="4" fill="#000"/>
     <rect x="${scaleBarPx / 2}" y="0" width="${scaleBarPx / 2}" height="4" fill="#fff" stroke="#000" stroke-width="0.5"/>
     <text x="0" y="10" font-family="Arial" font-size="5">0</text>
@@ -2040,12 +2266,14 @@ Forventet: Ingen fejl.
 - [ ] **Aktivér live data (manuelt trin)**
 
 Sæt i `.env.local`:
+
 ```
 GEODANMARK_MOCK=false
 MAT_NEIGHBOR_PARCELS_MOCK=false
 ```
 
 Kør smoke-test mod en reel adresse (fx Hasselvej 48, Gentofte) og verificer at:
+
 - Parcelpolygon hentes
 - Nabomatrikler returneres
 - Nabobygninger returneres med geometri

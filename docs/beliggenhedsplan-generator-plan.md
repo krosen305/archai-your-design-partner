@@ -30,18 +30,18 @@ Output skal ikke genereres som AI-billede. Selve tegningen skal vaere determinis
 
 Dette er baseret paa den aktuelle kode, ikke kun integrationsdokumentet.
 
-| Omraade | Status i kode | Relevant kode | Vurdering |
-| --- | --- | --- | --- |
-| Parcelpolygon | MAT WFS henter `Jordstykke_Gaeldende` og beregner areal, centroid og bbox | `src/integrations/mat/geometry.ts`, `src/lib/map-proxy.ts` | Godt fundament, men output gemmer ikke nok tegningslag som skel-segmenter, vejskel og kildekvalitet |
-| Raa parcelgeometri | Caches i `address_analysis.jordstykke_polygon` | `src/integrations/cache/client.ts` | Brugbar, men CRS skal gemmes eksplicit sammen med geometrien |
-| Kortpreview | MAT WMS og skaermkort tiles | `src/lib/map-proxy.ts`, `src/hooks/useParcelData.ts` | Kun visuel baggrund; maa ikke bruges som geometrisk sandhed |
-| Designplacering | `DesignPlacement` har footprint, centroid, rotation, hoejde, afstand og overlap | `src/types/project-state.ts`, `src/integrations/supabase/repositories/design-iterations.repository.ts` | Rigtigt domaenebegreb, men korteditoren udfylder ikke fuld geometri i dag |
-| Korteditor | Viser parcel og et kvadrat-footprint ud fra areal | `src/components/cockpit/MatrikelMap.tsx` | Prototype. Mangler aegte footprint, polygonafstande, overlap og tegningsdata |
-| Skelafstand | Rule engine kan bruge `minDistanceToBoundaryM` | `src/lib/rule-engine/input-assembler.ts`, `src/lib/rule-engine/rules/calculations.ts` | Godt endpoint i regelmotoren, men beregningen er ikke myndighedsgrade endnu |
-| Terraen/DHM | DHM client kan hente GeoTIFF og udlede kotepunkter | `src/integrations/sdfi/dhm-client.ts` | Teknisk model findes, men live er feature-flagget/mock som default |
-| GeoDanmark | Service findes for nabobygninger og vej | `src/integrations/geodanmark/client.ts` | `IS_MOCK=true`; returnerer ikke brugbare bygnings- eller vejgeometrier endnu |
-| Plandata | Henter zone, delomraade, byggefelt og kloakopland som status | `src/integrations/plandata/client.ts` | Mangler at returnere tegnbare geometrier for byggefelt/kloakopland |
-| Servitutter | Mock/semiautomatisk model | `src/integrations/tinglysning/client.ts`, `src/lib/analysis/servitut-step.ts` | Mangler geometri og juridisk kildekvalitet for byggelinjer/vejret |
+| Omraade            | Status i kode                                                                   | Relevant kode                                                                                          | Vurdering                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Parcelpolygon      | MAT WFS henter `Jordstykke_Gaeldende` og beregner areal, centroid og bbox       | `src/integrations/mat/geometry.ts`, `src/lib/map-proxy.ts`                                             | Godt fundament, men output gemmer ikke nok tegningslag som skel-segmenter, vejskel og kildekvalitet |
+| Raa parcelgeometri | Caches i `address_analysis.jordstykke_polygon`                                  | `src/integrations/cache/client.ts`                                                                     | Brugbar, men CRS skal gemmes eksplicit sammen med geometrien                                        |
+| Kortpreview        | MAT WMS og skaermkort tiles                                                     | `src/lib/map-proxy.ts`, `src/hooks/useParcelData.ts`                                                   | Kun visuel baggrund; maa ikke bruges som geometrisk sandhed                                         |
+| Designplacering    | `DesignPlacement` har footprint, centroid, rotation, hoejde, afstand og overlap | `src/types/project-state.ts`, `src/integrations/supabase/repositories/design-iterations.repository.ts` | Rigtigt domaenebegreb, men korteditoren udfylder ikke fuld geometri i dag                           |
+| Korteditor         | Viser parcel og et kvadrat-footprint ud fra areal                               | `src/components/cockpit/MatrikelMap.tsx`                                                               | Prototype. Mangler aegte footprint, polygonafstande, overlap og tegningsdata                        |
+| Skelafstand        | Rule engine kan bruge `minDistanceToBoundaryM`                                  | `src/lib/rule-engine/input-assembler.ts`, `src/lib/rule-engine/rules/calculations.ts`                  | Godt endpoint i regelmotoren, men beregningen er ikke myndighedsgrade endnu                         |
+| Terraen/DHM        | DHM client kan hente GeoTIFF og udlede kotepunkter                              | `src/integrations/sdfi/dhm-client.ts`                                                                  | Teknisk model findes, men live er feature-flagget/mock som default                                  |
+| GeoDanmark         | Service findes for nabobygninger og vej                                         | `src/integrations/geodanmark/client.ts`                                                                | `IS_MOCK=true`; returnerer ikke brugbare bygnings- eller vejgeometrier endnu                        |
+| Plandata           | Henter zone, delomraade, byggefelt og kloakopland som status                    | `src/integrations/plandata/client.ts`                                                                  | Mangler at returnere tegnbare geometrier for byggefelt/kloakopland                                  |
+| Servitutter        | Mock/semiautomatisk model                                                       | `src/integrations/tinglysning/client.ts`, `src/lib/analysis/servitut-step.ts`                          | Mangler geometri og juridisk kildekvalitet for byggelinjer/vejret                                   |
 
 Vigtig teknisk observation: `MatrikelMap` konstruerer i dag et kvadrat ud fra `buildingArea` og centerpunkt. Det er ikke en myndighedsegnet bygningspolygon. Derudover opdateres centroid ved flytning, men ikke det fulde `footprintGeojson`, beregnet skelafstand eller overlap.
 
@@ -77,171 +77,171 @@ Alle lag skal have kilde, friskhed, confidence og om data er `confirmed`, `estim
 
 ### 4.1 Parcel, Skel Og Matrikel
 
-| Datapunkt | Type | Obligatorisk for myndighedstegning | Mulig kilde | Status i ArchAI |
-| --- | --- | --- | --- | --- |
-| `parcel.id_lokalId` | string | Ja | MAT | Delvist live via BBR/MAT |
-| `parcel.bfeNr` | string | Ja | EBR | Live |
-| `parcel.matrikelnummer` | string | Ja | DAR/MAT | Live |
-| `parcel.ejerlavskode` | number | Ja | DAR/MAT | Live |
-| `parcel.ejerlavsnavn` | string | Ja | MAT/DAR | Delvist/mangler som tegningsfelt |
-| `parcel.polygon25832` | Polygon/MultiPolygon | Ja | MAT WFS eller landinspektoer | Live via MAT WFS |
-| `parcel.areaRegisteredM2` | number | Ja | MAT | Live |
-| `parcel.areaGeometryM2` | number | Ja | Beregnet fra polygon | Live beregnet |
-| `parcel.areaDiscrepancyM2` | number | Ja | Beregnet | Live beregnet |
-| `parcel.boundarySegments[]` | segmenter med start/slut/type | Ja | Afledt fra polygon + vejdata | Mangler |
-| `parcel.roadBoundarySegments[]` | segmenter | Ja hvis vejskel vises | MAT + GeoDanmark vej | Mangler |
-| `parcel.neighborBoundarySegments[]` | segmenter | Ja | Afledt | Mangler |
-| `parcel.boundaryPointMarkers[]` | punkter | Ja hvis opmaalt | Landinspektoer/upload | Mangler |
-| `parcel.boundaryUncertainty` | enum | Ja | Afledt/landinspektoer | Mangler |
-| `parcel.neighborParcels[]` | matrikelnummer + polygon/labelpunkt | Ja | MAT WFS bbox | Mangler |
-| `parcel.labelPoint25832` | point | Ja | Beregnet | Mangler |
+| Datapunkt                           | Type                                | Obligatorisk for myndighedstegning | Mulig kilde                  | Status i ArchAI                  |
+| ----------------------------------- | ----------------------------------- | ---------------------------------- | ---------------------------- | -------------------------------- |
+| `parcel.id_lokalId`                 | string                              | Ja                                 | MAT                          | Delvist live via BBR/MAT         |
+| `parcel.bfeNr`                      | string                              | Ja                                 | EBR                          | Live                             |
+| `parcel.matrikelnummer`             | string                              | Ja                                 | DAR/MAT                      | Live                             |
+| `parcel.ejerlavskode`               | number                              | Ja                                 | DAR/MAT                      | Live                             |
+| `parcel.ejerlavsnavn`               | string                              | Ja                                 | MAT/DAR                      | Delvist/mangler som tegningsfelt |
+| `parcel.polygon25832`               | Polygon/MultiPolygon                | Ja                                 | MAT WFS eller landinspektoer | Live via MAT WFS                 |
+| `parcel.areaRegisteredM2`           | number                              | Ja                                 | MAT                          | Live                             |
+| `parcel.areaGeometryM2`             | number                              | Ja                                 | Beregnet fra polygon         | Live beregnet                    |
+| `parcel.areaDiscrepancyM2`          | number                              | Ja                                 | Beregnet                     | Live beregnet                    |
+| `parcel.boundarySegments[]`         | segmenter med start/slut/type       | Ja                                 | Afledt fra polygon + vejdata | Mangler                          |
+| `parcel.roadBoundarySegments[]`     | segmenter                           | Ja hvis vejskel vises              | MAT + GeoDanmark vej         | Mangler                          |
+| `parcel.neighborBoundarySegments[]` | segmenter                           | Ja                                 | Afledt                       | Mangler                          |
+| `parcel.boundaryPointMarkers[]`     | punkter                             | Ja hvis opmaalt                    | Landinspektoer/upload        | Mangler                          |
+| `parcel.boundaryUncertainty`        | enum                                | Ja                                 | Afledt/landinspektoer        | Mangler                          |
+| `parcel.neighborParcels[]`          | matrikelnummer + polygon/labelpunkt | Ja                                 | MAT WFS bbox                 | Mangler                          |
+| `parcel.labelPoint25832`            | point                               | Ja                                 | Beregnet                     | Mangler                          |
 
 Krav: MAT parcelpolygon kan bruges til automatisk kladde, men hvis skel er usikkert, eller byggeri ligger taet paa skel/byggelinje, skal survey/landinspektoer kunne overstyre.
 
 ### 4.2 Vej, Vejskel Og Vejmidte
 
-| Datapunkt | Type | Obligatorisk | Mulig kilde | Status |
-| --- | --- | --- | --- | --- |
-| `road.name` | string | Ja | DAR/GeoDanmark | Adresse har vejnavn, vejgeometri mangler |
-| `road.centerline25832` | LineString | Ja hvis byggelinje fra vejmidte | GeoDanmark Vejmidte / survey | GeoDanmark mock |
-| `road.roadBoundary25832` | LineString | Ja hvis afstand fra vejskel | MAT + vejskelklassifikation | Mangler |
-| `road.drivewayPolygon25832` | Polygon | Ja hvis overkoersel vises | Survey/GeoDanmark/manual | Mangler |
-| `road.drivewayWidthM` | number | Ja hvis overkoersel vises | Beregnet/opmaalt | Mangler |
-| `road.fixedObjects[]` | lysmast, kantsten, skilte | Ikke altid, men ofte nyttigt | Survey/GeoDanmark/manual | Mangler |
+| Datapunkt                   | Type                      | Obligatorisk                    | Mulig kilde                  | Status                                   |
+| --------------------------- | ------------------------- | ------------------------------- | ---------------------------- | ---------------------------------------- |
+| `road.name`                 | string                    | Ja                              | DAR/GeoDanmark               | Adresse har vejnavn, vejgeometri mangler |
+| `road.centerline25832`      | LineString                | Ja hvis byggelinje fra vejmidte | GeoDanmark Vejmidte / survey | GeoDanmark mock                          |
+| `road.roadBoundary25832`    | LineString                | Ja hvis afstand fra vejskel     | MAT + vejskelklassifikation  | Mangler                                  |
+| `road.drivewayPolygon25832` | Polygon                   | Ja hvis overkoersel vises       | Survey/GeoDanmark/manual     | Mangler                                  |
+| `road.drivewayWidthM`       | number                    | Ja hvis overkoersel vises       | Beregnet/opmaalt             | Mangler                                  |
+| `road.fixedObjects[]`       | lysmast, kantsten, skilte | Ikke altid, men ofte nyttigt    | Survey/GeoDanmark/manual     | Mangler                                  |
 
 Bilag 8/9 viser blandt andet `Byledet`, overkoersel og lysmast. Den type objekter kan sjaeldent udledes sikkert fra BBR/MAT alene.
 
 ### 4.3 Terraen, Koter Og DVR90
 
-| Datapunkt | Type | Obligatorisk | Mulig kilde | Status |
-| --- | --- | --- | --- | --- |
-| `terrain.verticalDatum` | `"DVR90"` | Ja naar koter vises | Survey/DHM metadata | Mangler som eksplicit felt |
-| `terrain.points[]` | `{ x, y, z, label, source }` | Ja | Landinspektoer eller DHM | DHM model findes, survey mangler |
-| `terrain.roadMidPoints[]` | kote ved vejmidte | Ja hvis koter maales fra vej | Survey | Mangler |
-| `terrain.boundaryPoints[]` | kote ved skel | Ja for myndighedsnaer plan | Survey/DHM | Mangler |
-| `terrain.buildingCornerPoints[]` | kote ved husets hjoerner | Ja | Survey/generator | Mangler |
-| `terrain.proposedTerrainAroundBuildingM` | number/points | Ja ved sokkel/terraenangivelse | Projektering | Mangler |
-| `terrain.slopePercent` | number | Nej, men nyttigt | DHM | Findes som model |
-| `terrain.lowPointM` | number | Nej, men nyttigt | DHM | Findes som model |
-| `terrain.contours[]` | LineString[] | Valgfri | DHM/survey | Mangler |
+| Datapunkt                                | Type                         | Obligatorisk                   | Mulig kilde              | Status                           |
+| ---------------------------------------- | ---------------------------- | ------------------------------ | ------------------------ | -------------------------------- |
+| `terrain.verticalDatum`                  | `"DVR90"`                    | Ja naar koter vises            | Survey/DHM metadata      | Mangler som eksplicit felt       |
+| `terrain.points[]`                       | `{ x, y, z, label, source }` | Ja                             | Landinspektoer eller DHM | DHM model findes, survey mangler |
+| `terrain.roadMidPoints[]`                | kote ved vejmidte            | Ja hvis koter maales fra vej   | Survey                   | Mangler                          |
+| `terrain.boundaryPoints[]`               | kote ved skel                | Ja for myndighedsnaer plan     | Survey/DHM               | Mangler                          |
+| `terrain.buildingCornerPoints[]`         | kote ved husets hjoerner     | Ja                             | Survey/generator         | Mangler                          |
+| `terrain.proposedTerrainAroundBuildingM` | number/points                | Ja ved sokkel/terraenangivelse | Projektering             | Mangler                          |
+| `terrain.slopePercent`                   | number                       | Nej, men nyttigt               | DHM                      | Findes som model                 |
+| `terrain.lowPointM`                      | number                       | Nej, men nyttigt               | DHM                      | Findes som model                 |
+| `terrain.contours[]`                     | LineString[]                 | Valgfri                        | DHM/survey               | Mangler                          |
 
 Myndighedsniveau kraever typisk ikke bare en generel DHM-risiko. Det kraever faktiske koteangivelser paa relevante punkter, isaer hvis der er skraanende terraen, sokkelkote, kaelder, regnvand eller jordvarme.
 
 ### 4.4 Eksisterende Bygninger Og Objekter
 
-| Datapunkt | Type | Obligatorisk | Mulig kilde | Status |
-| --- | --- | --- | --- | --- |
-| `existing.buildings[].footprint25832` | Polygon | Ja hvis eksisterende bebyggelse vises | GeoDanmark/BBR geometri/survey | Mangler |
-| `existing.buildings[].bbrId` | string | Ja hvis BBR-koblet | BBR | BBR IDs findes |
-| `existing.buildings[].usageCode` | string | Ja | BBR | Live |
-| `existing.buildings[].areaM2` | number | Ja | BBR/geometri | BBR areal live, geometri mangler |
-| `existing.buildings[].sokkelKoteM` | number | Hvis vist | Survey | Mangler |
-| `existing.secondaryStructures[]` | skur, garage, carport | Ja hvis relevante | GeoDanmark/survey/manual | Mangler |
-| `existing.fences[]` | LineString + type | Nej, men bilag viser det | Survey/manual | Mangler |
-| `existing.hedges[]` | LineString | Nej, men bilag viser det | Survey/manual | Mangler |
-| `existing.pavedAreas[]` | Polygon | Valgfri | Survey/manual | Mangler |
-| `existing.notes[]` | tekstnoter | Ja ved usikre forhold | Survey/manual | Mangler |
+| Datapunkt                             | Type                  | Obligatorisk                          | Mulig kilde                    | Status                           |
+| ------------------------------------- | --------------------- | ------------------------------------- | ------------------------------ | -------------------------------- |
+| `existing.buildings[].footprint25832` | Polygon               | Ja hvis eksisterende bebyggelse vises | GeoDanmark/BBR geometri/survey | Mangler                          |
+| `existing.buildings[].bbrId`          | string                | Ja hvis BBR-koblet                    | BBR                            | BBR IDs findes                   |
+| `existing.buildings[].usageCode`      | string                | Ja                                    | BBR                            | Live                             |
+| `existing.buildings[].areaM2`         | number                | Ja                                    | BBR/geometri                   | BBR areal live, geometri mangler |
+| `existing.buildings[].sokkelKoteM`    | number                | Hvis vist                             | Survey                         | Mangler                          |
+| `existing.secondaryStructures[]`      | skur, garage, carport | Ja hvis relevante                     | GeoDanmark/survey/manual       | Mangler                          |
+| `existing.fences[]`                   | LineString + type     | Nej, men bilag viser det              | Survey/manual                  | Mangler                          |
+| `existing.hedges[]`                   | LineString            | Nej, men bilag viser det              | Survey/manual                  | Mangler                          |
+| `existing.pavedAreas[]`               | Polygon               | Valgfri                               | Survey/manual                  | Mangler                          |
+| `existing.notes[]`                    | tekstnoter            | Ja ved usikre forhold                 | Survey/manual                  | Mangler                          |
 
 BBR giver arealer og anvendelse, men ikke nok geometri til tegningen. GeoDanmark skal levere bygningspolygoner, eller brugeren skal uploade/saette dem.
 
 ### 4.5 Nyt Byggeri
 
-| Datapunkt | Type | Obligatorisk | Mulig kilde | Status |
-| --- | --- | --- | --- | --- |
-| `proposed.primaryBuilding.footprint25832` | Polygon | Ja | Designgenerator/korteditor/CAD | Mangler som korrekt persistet geometri |
-| `proposed.primaryBuilding.footprintWgs84` | Polygon | Ja til UI | Afledt | Delvist i model |
-| `proposed.primaryBuilding.rotationDeg` | number | Ja | Korteditor/design | Findes |
-| `proposed.primaryBuilding.footprintAreaM2` | number | Ja | Geometri | Findes i model, ikke altid beregnet |
-| `proposed.primaryBuilding.floorAreaM2` | number | Ja | Byggeoenske/design | Delvist |
-| `proposed.primaryBuilding.storeys` | number | Ja | Byggeoenske/design | Findes |
-| `proposed.primaryBuilding.heightM` | number | Ja ved hoejdekrav | Design/snit | Delvist/heuristik |
-| `proposed.primaryBuilding.sokkelKoteM` | number | Ja for bilag 8/9-niveau | Projektering/survey | Mangler |
-| `proposed.primaryBuilding.finishedFloorKoteM` | number | Ja | Projektering/survey | Mangler |
-| `proposed.primaryBuilding.terrainOffsetM` | number | Ja hvis angivet | Projektering | Mangler |
-| `proposed.primaryBuilding.dimensions[]` | maal-linjer | Ja | Geometri | Mangler |
-| `proposed.secondaryBuildings[]` | fremtidig carport/garage | Hvis vist | Bruger/design | Mangler |
-| `proposed.buildingLabels[]` | labelpunkter og tekst | Ja | Afledt | Mangler |
+| Datapunkt                                     | Type                     | Obligatorisk            | Mulig kilde                    | Status                                 |
+| --------------------------------------------- | ------------------------ | ----------------------- | ------------------------------ | -------------------------------------- |
+| `proposed.primaryBuilding.footprint25832`     | Polygon                  | Ja                      | Designgenerator/korteditor/CAD | Mangler som korrekt persistet geometri |
+| `proposed.primaryBuilding.footprintWgs84`     | Polygon                  | Ja til UI               | Afledt                         | Delvist i model                        |
+| `proposed.primaryBuilding.rotationDeg`        | number                   | Ja                      | Korteditor/design              | Findes                                 |
+| `proposed.primaryBuilding.footprintAreaM2`    | number                   | Ja                      | Geometri                       | Findes i model, ikke altid beregnet    |
+| `proposed.primaryBuilding.floorAreaM2`        | number                   | Ja                      | Byggeoenske/design             | Delvist                                |
+| `proposed.primaryBuilding.storeys`            | number                   | Ja                      | Byggeoenske/design             | Findes                                 |
+| `proposed.primaryBuilding.heightM`            | number                   | Ja ved hoejdekrav       | Design/snit                    | Delvist/heuristik                      |
+| `proposed.primaryBuilding.sokkelKoteM`        | number                   | Ja for bilag 8/9-niveau | Projektering/survey            | Mangler                                |
+| `proposed.primaryBuilding.finishedFloorKoteM` | number                   | Ja                      | Projektering/survey            | Mangler                                |
+| `proposed.primaryBuilding.terrainOffsetM`     | number                   | Ja hvis angivet         | Projektering                   | Mangler                                |
+| `proposed.primaryBuilding.dimensions[]`       | maal-linjer              | Ja                      | Geometri                       | Mangler                                |
+| `proposed.secondaryBuildings[]`               | fremtidig carport/garage | Hvis vist               | Bruger/design                  | Mangler                                |
+| `proposed.buildingLabels[]`                   | labelpunkter og tekst    | Ja                      | Afledt                         | Mangler                                |
 
 Nuvaerende `MatrikelMap` skal aendres fra kvadratisk proxy til aegte footprint-model. Footprint kan komme fra parametisk design, uploadet CAD/DXF eller manuel polygon-editor.
 
 ### 4.6 Afstande, Maal Og Kontrolgeometri
 
-| Datapunkt | Type | Obligatorisk | Kilde | Status |
-| --- | --- | --- | --- | --- |
-| `measurements.distanceToBoundary[]` | linje + meter + target | Ja | Beregnet | Delvist som enkelt min-afstand |
-| `measurements.distanceToRoadBoundary[]` | linje + meter | Ja hvis vejskel relevant | Beregnet | Mangler |
-| `measurements.distanceToRoadCenterline[]` | linje + meter | Ja ved vejmidte-deklaration | Beregnet | Mangler |
-| `measurements.distanceToNeighborBuildings[]` | linje + meter | Ja ved brand/skel/nabo | GeoDanmark/survey | Mangler |
-| `measurements.buildingDimensions[]` | maal-linjer paa bygning | Ja | Geometri | Mangler |
-| `measurements.parcelDimensions[]` | skel-laengder | Ofte ja | MAT/survey | Mangler |
-| `measurements.setbackViolations[]` | typed violations | Ja hvis konflikt | Beregnet | Delvist i rule engine |
+| Datapunkt                                    | Type                    | Obligatorisk                | Kilde             | Status                         |
+| -------------------------------------------- | ----------------------- | --------------------------- | ----------------- | ------------------------------ |
+| `measurements.distanceToBoundary[]`          | linje + meter + target  | Ja                          | Beregnet          | Delvist som enkelt min-afstand |
+| `measurements.distanceToRoadBoundary[]`      | linje + meter           | Ja hvis vejskel relevant    | Beregnet          | Mangler                        |
+| `measurements.distanceToRoadCenterline[]`    | linje + meter           | Ja ved vejmidte-deklaration | Beregnet          | Mangler                        |
+| `measurements.distanceToNeighborBuildings[]` | linje + meter           | Ja ved brand/skel/nabo      | GeoDanmark/survey | Mangler                        |
+| `measurements.buildingDimensions[]`          | maal-linjer paa bygning | Ja                          | Geometri          | Mangler                        |
+| `measurements.parcelDimensions[]`            | skel-laengder           | Ofte ja                     | MAT/survey        | Mangler                        |
+| `measurements.setbackViolations[]`           | typed violations        | Ja hvis konflikt            | Beregnet          | Delvist i rule engine          |
 
 En myndighedstegning skal kunne vise mere end "min skelafstand = 2.8 m". Den skal kunne placere selve maal-linjen paa tegningen.
 
 ### 4.7 Byggelinjer Og Juridiske Linjer
 
-| Datapunkt | Type | Obligatorisk | Kilde | Status |
-| --- | --- | --- | --- | --- |
-| `constraints.br18SetbackLines[]` | LineString/Polygon buffer | Ja | Afledt fra skel | Mangler |
-| `constraints.localplanBuildingLines[]` | geometri + regeltekst | Ja hvis lokalplan har krav | Plandata/lokalplan PDF/manual | Delvist som fritekst |
-| `constraints.roadBuildingLine[]` | buffer fra vejskel | Ja ved vejskelkrav | Vejskel + regel | Mangler |
-| `constraints.roadCenterlineBuildingLine[]` | buffer fra vejmidte | Ja ved deklaration | Vejmidte + servitut | Mangler |
-| `constraints.servitutLines[]` | geometri + dokumentId | Ja hvis servitut relevant | Tingbog/upload/manual | Mangler |
-| `constraints.buildingFieldPolygon[]` | Polygon | Ja hvis byggefelt findes | Plandata | Status findes, geometri mangler |
-| `constraints.constraintLabels[]` | tekst + placering | Ja | Afledt | Mangler |
+| Datapunkt                                  | Type                      | Obligatorisk               | Kilde                         | Status                          |
+| ------------------------------------------ | ------------------------- | -------------------------- | ----------------------------- | ------------------------------- |
+| `constraints.br18SetbackLines[]`           | LineString/Polygon buffer | Ja                         | Afledt fra skel               | Mangler                         |
+| `constraints.localplanBuildingLines[]`     | geometri + regeltekst     | Ja hvis lokalplan har krav | Plandata/lokalplan PDF/manual | Delvist som fritekst            |
+| `constraints.roadBuildingLine[]`           | buffer fra vejskel        | Ja ved vejskelkrav         | Vejskel + regel               | Mangler                         |
+| `constraints.roadCenterlineBuildingLine[]` | buffer fra vejmidte       | Ja ved deklaration         | Vejmidte + servitut           | Mangler                         |
+| `constraints.servitutLines[]`              | geometri + dokumentId     | Ja hvis servitut relevant  | Tingbog/upload/manual         | Mangler                         |
+| `constraints.buildingFieldPolygon[]`       | Polygon                   | Ja hvis byggefelt findes   | Plandata                      | Status findes, geometri mangler |
+| `constraints.constraintLabels[]`           | tekst + placering         | Ja                         | Afledt                        | Mangler                         |
 
 Plandata og lokalplan-PDF-udtraek er ikke nok. Tegningsgeneratoren skal have konkrete linjer/polygoner, ikke kun tekst om krav.
 
 ### 4.8 Forsyning, Kloak Og Ledninger
 
-| Datapunkt | Type | Obligatorisk | Kilde | Status |
-| --- | --- | --- | --- | --- |
-| `utilities.waterConnectionPoint` | point | Ja hvis vist | Forsyning/survey/manual | Mangler |
-| `utilities.sewerConnectionPoint` | point | Ja | Kloaktegning/survey/manual | Mangler |
-| `utilities.electricConnectionPoint` | point | Ja hvis vist | Forsyning/manual | Mangler |
-| `utilities.gasConnectionPoint` | point | Hvis relevant | Forsyning/manual | Mangler |
-| `utilities.rainwaterLines[]` | LineString | Ja hvis kloakplan vises | Kloakprojekt | Mangler |
-| `utilities.wastewaterLines[]` | LineString | Ja | Kloakprojekt | Mangler |
-| `utilities.drainageLines[]` | LineString | Hvis relevant | Kloakprojekt | Mangler |
-| `utilities.wells[]` | point + type + diameter + kote | Ja hvis vist | Kloakprojekt/survey | Mangler |
-| `utilities.cleanout[]` | point | Hvis relevant | Kloakprojekt | Mangler |
-| `utilities.ratBarrier` | point | Hvis relevant | Kloakprojekt | Mangler |
-| `utilities.lineStyles` | enum/signatur | Ja | Tegningsstandard | Mangler |
+| Datapunkt                           | Type                           | Obligatorisk            | Kilde                      | Status  |
+| ----------------------------------- | ------------------------------ | ----------------------- | -------------------------- | ------- |
+| `utilities.waterConnectionPoint`    | point                          | Ja hvis vist            | Forsyning/survey/manual    | Mangler |
+| `utilities.sewerConnectionPoint`    | point                          | Ja                      | Kloaktegning/survey/manual | Mangler |
+| `utilities.electricConnectionPoint` | point                          | Ja hvis vist            | Forsyning/manual           | Mangler |
+| `utilities.gasConnectionPoint`      | point                          | Hvis relevant           | Forsyning/manual           | Mangler |
+| `utilities.rainwaterLines[]`        | LineString                     | Ja hvis kloakplan vises | Kloakprojekt               | Mangler |
+| `utilities.wastewaterLines[]`       | LineString                     | Ja                      | Kloakprojekt               | Mangler |
+| `utilities.drainageLines[]`         | LineString                     | Hvis relevant           | Kloakprojekt               | Mangler |
+| `utilities.wells[]`                 | point + type + diameter + kote | Ja hvis vist            | Kloakprojekt/survey        | Mangler |
+| `utilities.cleanout[]`              | point                          | Hvis relevant           | Kloakprojekt               | Mangler |
+| `utilities.ratBarrier`              | point                          | Hvis relevant           | Kloakprojekt               | Mangler |
+| `utilities.lineStyles`              | enum/signatur                  | Ja                      | Tegningsstandard           | Mangler |
 
 Offentlige registre kan give kloakopland/status, men sjaeldent stikledningernes praecise placering. For bilag 8/9-niveau skal disse enten tegnes manuelt, uploades fra kloakprojekt eller genereres som forslag med tydelig reviewstatus.
 
 ### 4.9 Ubebyggede Arealer Og Disponering
 
-| Datapunkt | Type | Obligatorisk | Kilde | Status |
-| --- | --- | --- | --- | --- |
-| `siteUse.parkingSpaces[]` | Polygon + count | Ja hvis vist | Design/manual | Mangler |
-| `siteUse.wasteSortingArea` | Polygon/point | Ja hvis vist | Design/manual | Mangler |
-| `siteUse.drivewayArea` | Polygon | Ja hvis vist | Design/manual/survey | Mangler |
-| `siteUse.heatPumpOutdoorUnit` | point | Hvis relevant | Design/manual | Mangler |
-| `siteUse.geothermalField` | Polygon | Ja ved jordvarme | Varmepumpeleverandoer/design | Mangler |
-| `siteUse.geothermalKeepClearArea` | Polygon + note | Ja ved jordvarme | Design/manual | Mangler |
-| `siteUse.terraces[]` | Polygon | Hvis vist | Design | Mangler |
-| `siteUse.futureStructures[]` | Polygon + status | Hvis vist | Bruger/design | Mangler |
+| Datapunkt                         | Type             | Obligatorisk     | Kilde                        | Status  |
+| --------------------------------- | ---------------- | ---------------- | ---------------------------- | ------- |
+| `siteUse.parkingSpaces[]`         | Polygon + count  | Ja hvis vist     | Design/manual                | Mangler |
+| `siteUse.wasteSortingArea`        | Polygon/point    | Ja hvis vist     | Design/manual                | Mangler |
+| `siteUse.drivewayArea`            | Polygon          | Ja hvis vist     | Design/manual/survey         | Mangler |
+| `siteUse.heatPumpOutdoorUnit`     | point            | Hvis relevant    | Design/manual                | Mangler |
+| `siteUse.geothermalField`         | Polygon          | Ja ved jordvarme | Varmepumpeleverandoer/design | Mangler |
+| `siteUse.geothermalKeepClearArea` | Polygon + note   | Ja ved jordvarme | Design/manual                | Mangler |
+| `siteUse.terraces[]`              | Polygon          | Hvis vist        | Design                       | Mangler |
+| `siteUse.futureStructures[]`      | Polygon + status | Hvis vist        | Bruger/design                | Mangler |
 
 Bilag 8/9 viser jordvarmefelt, parkering og affaldssortering. Det er design-/projekteringsdata, ikke registerdata.
 
 ### 4.10 Tegningsmetadata
 
-| Datapunkt | Type | Obligatorisk | Kilde | Status |
-| --- | --- | --- | --- | --- |
-| `drawing.title` | string | Ja | System | Mangler |
-| `drawing.address` | string | Ja | DAR | Live |
-| `drawing.matrikel` | string | Ja | DAR/MAT | Live |
-| `drawing.bygherre` | string | Ja | Project repository (`projects.owner_name` eller tilsvarende felt) | Mangler |
-| `drawing.sagNr` | string | Ja | Project repository (`projects.id` eller ekstern sagsnr) | Mangler/delvist |
-| `drawing.revision` | string | Ja | System | Mangler |
-| `drawing.date` | date | Ja | System | Mangler |
-| `drawing.scale` | enum/number | Ja | Renderer | Mangler |
-| `drawing.paperSize` | enum | Ja | Renderer | Mangler |
-| `drawing.northArrow` | geometry/symbol | Ja | Renderer | Mangler |
-| `drawing.legendItems[]` | symbol + label | Ja | Renderer | Mangler |
-| `drawing.sourceList[]` | kilde + dato + confidence | Ja | SourceQuality | Mangler |
-| `drawing.disclaimer` | string | Ja ved ikke-survey | DecisionEngine | Mangler |
+| Datapunkt               | Type                      | Obligatorisk       | Kilde                                                             | Status          |
+| ----------------------- | ------------------------- | ------------------ | ----------------------------------------------------------------- | --------------- |
+| `drawing.title`         | string                    | Ja                 | System                                                            | Mangler         |
+| `drawing.address`       | string                    | Ja                 | DAR                                                               | Live            |
+| `drawing.matrikel`      | string                    | Ja                 | DAR/MAT                                                           | Live            |
+| `drawing.bygherre`      | string                    | Ja                 | Project repository (`projects.owner_name` eller tilsvarende felt) | Mangler         |
+| `drawing.sagNr`         | string                    | Ja                 | Project repository (`projects.id` eller ekstern sagsnr)           | Mangler/delvist |
+| `drawing.revision`      | string                    | Ja                 | System                                                            | Mangler         |
+| `drawing.date`          | date                      | Ja                 | System                                                            | Mangler         |
+| `drawing.scale`         | enum/number               | Ja                 | Renderer                                                          | Mangler         |
+| `drawing.paperSize`     | enum                      | Ja                 | Renderer                                                          | Mangler         |
+| `drawing.northArrow`    | geometry/symbol           | Ja                 | Renderer                                                          | Mangler         |
+| `drawing.legendItems[]` | symbol + label            | Ja                 | Renderer                                                          | Mangler         |
+| `drawing.sourceList[]`  | kilde + dato + confidence | Ja                 | SourceQuality                                                     | Mangler         |
+| `drawing.disclaimer`    | string                    | Ja ved ikke-survey | DecisionEngine                                                    | Mangler         |
 
 ---
 
@@ -249,15 +249,15 @@ Bilag 8/9 viser jordvarmefelt, parkering og affaldssortering. Det er design-/pro
 
 For hver geometri og hvert tal skal generatoren kende kilde og prioritet.
 
-| Prioritet | Kilde | Maa bruges til myndighedsnaer tegning | Kommentar |
-| --- | --- | --- | --- |
-| 1 | Landinspektoer/survey upload | Ja | Hoejeste autoritet for skel, koter og faste objekter |
-| 2 | Uploadet CAD/DXF/GeoJSON fra raadgiver | Ja efter validering | Skal CRS-valideres |
-| 3 | Officielle vektordata fra MAT/GeoDanmark/Plandata | Ja til kladde/review | Ikke altid nok ved taet placering |
-| 4 | Projekteringsdata fra ArchAI/designmodel | Ja for foreslaaet byggeri | Skal vaere struktureret og reviewet |
-| 5 | Manuel brugerinput | Kun med review | Skal markeres |
-| 6 | WMS/WMTS/rasterkort | Nej som geometri | Kun baggrund/visuel reference |
-| 7 | AI-billede | Nej | Maa ikke bruges til maalfast tegning |
+| Prioritet | Kilde                                             | Maa bruges til myndighedsnaer tegning | Kommentar                                            |
+| --------- | ------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- |
+| 1         | Landinspektoer/survey upload                      | Ja                                    | Hoejeste autoritet for skel, koter og faste objekter |
+| 2         | Uploadet CAD/DXF/GeoJSON fra raadgiver            | Ja efter validering                   | Skal CRS-valideres                                   |
+| 3         | Officielle vektordata fra MAT/GeoDanmark/Plandata | Ja til kladde/review                  | Ikke altid nok ved taet placering                    |
+| 4         | Projekteringsdata fra ArchAI/designmodel          | Ja for foreslaaet byggeri             | Skal vaere struktureret og reviewet                  |
+| 5         | Manuel brugerinput                                | Kun med review                        | Skal markeres                                        |
+| 6         | WMS/WMTS/rasterkort                               | Nej som geometri                      | Kun baggrund/visuel reference                        |
+| 7         | AI-billede                                        | Nej                                   | Maa ikke bruges til maalfast tegning                 |
 
 ---
 
@@ -281,7 +281,9 @@ type DrawingReadinessDecision = {
     affectedLayer: string;
   }>;
   missingDataPoints: string[];
-  reviewRequiredBy: Array<"landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed">;
+  reviewRequiredBy: Array<
+    "landinspektoer" | "arkitekt" | "ingenioer" | "kloakmester" | "myndighed"
+  >;
 };
 ```
 
@@ -530,14 +532,14 @@ Konkrete adapters der implementerer portene:
 
 Alle datapunkter der krydser en systemgraense skal valideres med Zod ved indgangspunktet (CLAUDE.md Rule 1). For tegningssystemet galder:
 
-| Graense | Zod-schema | Adapter |
-| --- | --- | --- |
-| MAT WFS response → ParcelLayer | `ParcelLayerSchema` i `beliggenhedsplan.schemas.ts` | `geodanmark/drawing-layers.ts` |
-| GeoDanmark GeoJSON → ExistingFeaturesLayer | `ExistingFeaturesLayerSchema` | `geodanmark/drawing-layers.ts` |
-| Survey upload (CSV/GeoJSON) → SurveyLayer | `SurveyLayerSchema` | `survey/upload-decoder.ts` |
-| Plandata WFS → ConstraintLayer[] | `ConstraintLayerSchema` | `plandata/drawing-layers.ts` |
-| Server function input → ProjectId | inline Zod i server function | `createServerFn` handler |
-| `drawing_sources` JSONB → typed payload | `DrawingSourcePayloadSchema` | drawing repository |
+| Graense                                    | Zod-schema                                          | Adapter                        |
+| ------------------------------------------ | --------------------------------------------------- | ------------------------------ |
+| MAT WFS response → ParcelLayer             | `ParcelLayerSchema` i `beliggenhedsplan.schemas.ts` | `geodanmark/drawing-layers.ts` |
+| GeoDanmark GeoJSON → ExistingFeaturesLayer | `ExistingFeaturesLayerSchema`                       | `geodanmark/drawing-layers.ts` |
+| Survey upload (CSV/GeoJSON) → SurveyLayer  | `SurveyLayerSchema`                                 | `survey/upload-decoder.ts`     |
+| Plandata WFS → ConstraintLayer[]           | `ConstraintLayerSchema`                             | `plandata/drawing-layers.ts`   |
+| Server function input → ProjectId          | inline Zod i server function                        | `createServerFn` handler       |
+| `drawing_sources` JSONB → typed payload    | `DrawingSourcePayloadSchema`                        | drawing repository             |
 
 Alle geometrier i EPSG:25832 skal have `crs: "EPSG:25832"` som eksplicit felt i Zod-skemaet, saa en runtime fejl opstaar hvis koordinater kommer i forkert projektion.
 
@@ -734,6 +736,7 @@ Foelgende boer ikke kun ligge i JSONB compliance archive.
 3. Zod-validering ved boundary sikrer at indholdet er korrekt struktureret GeoJSON, og `crs`-feltet haandhaeves i skemaet.
 
 Konsekvenser der skal accepteres:
+
 - Spatial queries (fx "find alle projekter med byggeri indenfor 5 m af skel") kan ikke goeres effektivt uden PostGIS.
 - Geometri maa ikke bruges som authoritative compliance-kilde — kun som rendering-input.
 

@@ -18,8 +18,10 @@ Generere en deterministisk SVG → PDF beliggenhedsplan der kan godkendes af en 
 ## 2. De tre niveauer
 
 ### Niveau 1 — AUTO_DRAFT
+
 **Input:** Adresse + matrikel (alt fra offentlige registre, ingen upload).  
 **Datakrav:**
+
 - MAT WFS parcelpolygon i EPSG:25832
 - Nabomatrikler via MAT WFS bbox-query (aktiveres fra IS_MOCK)
 - Nabobygningspolygoner via GeoDanmark `gdk:Bygning` (aktiveres fra IS_MOCK)
@@ -33,8 +35,10 @@ Generere en deterministisk SVG → PDF beliggenhedsplan der kan godkendes af en 
 ---
 
 ### Niveau 2 — AUTO_REVIEW
+
 **Input:** Niveau 1 + survey CSV/GeoJSON (landinspektør) + arkitekt-footprint DXF/GeoJSON.  
 **Datakrav:**
+
 - Opmålte DVR90-koter som navngivne punkter
 - Skelpunkter der afløser MAT-polygon som autoritativ kilde
 - Rigtig bygningspolygon i EPSG:25832
@@ -48,8 +52,10 @@ Generere en deterministisk SVG → PDF beliggenhedsplan der kan godkendes af en 
 ---
 
 ### Niveau 3 — FINAL
+
 **Input:** Niveau 2 + kloakdata + disponeringsarealer fra app-editor.  
 **Datakrav:**
+
 - Regnvand/spildevand linjegeometri
 - Brønde med DK-koter og dimensioner
 - Disponeringsarealer: parkering, affald, jordvarme, carport
@@ -72,7 +78,7 @@ Alle steder der sætter `type: "road_building_line"` opdateres til den korrekte 
 
 ```typescript
 // Erstat "road_building_line" med to præcise typer:
-type: 
+type:
   | "br18_setback"                   // 2,5 m buffer fra skel (beregnet)
   | "localplan_building_line"         // byggelinje jf. lokalplan (geometri fra Plandata)
   | "road_boundary_setback"           // fra vejskel/vejkant (BR18 eller lokalplan)
@@ -96,18 +102,18 @@ dimensions: DimensionLine[]         // mål-linjer til renderer
 
 ```typescript
 type DimensionLine = {
-  fromPoint: GeoJsonPoint25832
-  toPoint: GeoJsonPoint25832
-  labelM: number                    // fx 15.23
-  side: "north" | "south" | "east" | "west" | "auto"
-}
+  fromPoint: GeoJsonPoint25832;
+  toPoint: GeoJsonPoint25832;
+  labelM: number; // fx 15.23
+  side: "north" | "south" | "east" | "west" | "auto";
+};
 ```
 
 ### 3.3 SurveyLayer — landinspektørattestering
 
 ```typescript
-surveyorName: string | null         // "Landinspektør Navn"
-surveyorLicenseNr: string | null    // autorisationsnummer
+surveyorName: string | null; // "Landinspektør Navn"
+surveyorLicenseNr: string | null; // autorisationsnummer
 // surveyDate: string allerede der ✅
 ```
 
@@ -115,20 +121,20 @@ surveyorLicenseNr: string | null    // autorisationsnummer
 
 ```typescript
 // Tilføj til eksisterende SiteUseLayer:
-widthM: number | null               // overkarsel-bredde
-isExisting: boolean                 // "Eksisterende overkørsel bevares"
-permitRequired: boolean | null      // kræver vejmyndighed-tilladelse
-legalBasis: "br18_notification" | "br18_permit_required" | null  // fremtidige strukturer
-note: string | null                 // fritekst til tegning
+widthM: number | null; // overkarsel-bredde
+isExisting: boolean; // "Eksisterende overkørsel bevares"
+permitRequired: boolean | null; // kræver vejmyndighed-tilladelse
+legalBasis: "br18_notification" | "br18_permit_required" | null; // fremtidige strukturer
+note: string | null; // fritekst til tegning
 ```
 
 ### 3.5 UtilityLayer — brønddimensioner
 
 ```typescript
 // Tilføj til eksisterende UtilityLayer:
-dkKoteM: number | null              // DK = dækkote (top af brønddæksel)
-diameterMm: number | null           // fx 315
-lineStyle: "solid" | "dashed" | "dotted" | null  // spildevand=solid, regnvand=dashed
+dkKoteM: number | null; // DK = dækkote (top af brønddæksel)
+diameterMm: number | null; // fx 315
+lineStyle: "solid" | "dashed" | "dotted" | null; // spildevand=solid, regnvand=dashed
 ```
 
 ### 3.6 DrawingMetadata — komplet titleblok
@@ -170,10 +176,10 @@ Nye felt på `BeliggenhedsplanInput`:
 
 ```typescript
 mandatoryAnnotations: {
-  koteDatum: string | null           // "Alle koter er faktiske DVR90 i meter målt fra midte vej"
-  terrainSurveyedBy: string | null   // "Terræn/grund indmålt af landinspektør" (kun ved survey)
-  sewerResponsibility: string | null // "Arbejdet udføres af Aut. Kloakmester" (kun ved kloak)
-  ratBarrierNote: string | null      // "Rottespærre placeres i parcelbrand..."
+  koteDatum: string | null; // "Alle koter er faktiske DVR90 i meter målt fra midte vej"
+  terrainSurveyedBy: string | null; // "Terræn/grund indmålt af landinspektør" (kun ved survey)
+  sewerResponsibility: string | null; // "Arbejdet udføres af Aut. Kloakmester" (kun ved kloak)
+  ratBarrierNote: string | null; // "Rottespærre placeres i parcelbrand..."
 }
 ```
 
@@ -188,7 +194,7 @@ Disse udfyldes automatisk af `assembleBeliggenhedsplan.service.ts` baseret på h
 ```typescript
 // src/domain/drawing/ports.ts — tilføj:
 interface FootprintImportPort {
-  decode(raw: unknown, filename: string): Promise<GeoJsonPolygon25832>
+  decode(raw: unknown, filename: string): Promise<GeoJsonPolygon25832>;
 }
 ```
 
@@ -199,7 +205,7 @@ Understøtter: DXF, GeoJSON, CSV med koordinatpar.
 
 ```typescript
 interface UtilityInputPort {
-  decode(raw: unknown): Promise<UtilityLayer[]>
+  decode(raw: unknown): Promise<UtilityLayer[]>;
 }
 ```
 
@@ -209,6 +215,7 @@ Format: Simpelt GeoJSON med `featureType`-property (`rainwater_pipe`, `wastewate
 ### 4.3 DrawingGeometrySourcePort — udvides
 
 Tilføj til eksisterende interface:
+
 ```typescript
 fetchNeighborParcels(ownJordstykkeId: string, bbox25832: BBox25832): Promise<NeighborParcel[]>
 fetchRoadName(addressId: string): Promise<{ name: string | null }>
@@ -220,21 +227,22 @@ fetchRoadName(addressId: string): Promise<{ name: string | null }>
 
 Følgende lag tilføjes til `DrawingLayerKind` og implementeres i renderer:
 
-| Lag | Beskrivelse | Nøglekrav |
-|---|---|---|
-| `dimension_lines` | Mål-linjer med pile og tal | Ortogonale, auto-side-valg |
-| `terrain_labels` | DVR90-koter som navngivne punkter | Label-placement collision detection |
-| `building_setback_lines` | Tegnede byggelinjer (rød) | Linjesignatur + label med regelreference |
-| `utility_lines` | Regnvand (stiplet) / spildevand (hel) | Korrekte linjetyper per standard |
-| `utility_wells` | Brønde som cirkel-symbol + DK-kote | ∅-annotation |
-| `hatch_areas` | Skraveringer: jordvarme, carport, osv. | Diagonal hatching |
-| `road_label` | Vejnavn langs vejskel | Roteret tekst langs skel-segment |
-| `scale_bar` | Skalastav | Auto-beregnet fra `metersPerMm` |
-| `mandatory_annotations` | Juridiske noter som tekstblok | Fast placering nederst venstre |
+| Lag                      | Beskrivelse                            | Nøglekrav                                |
+| ------------------------ | -------------------------------------- | ---------------------------------------- |
+| `dimension_lines`        | Mål-linjer med pile og tal             | Ortogonale, auto-side-valg               |
+| `terrain_labels`         | DVR90-koter som navngivne punkter      | Label-placement collision detection      |
+| `building_setback_lines` | Tegnede byggelinjer (rød)              | Linjesignatur + label med regelreference |
+| `utility_lines`          | Regnvand (stiplet) / spildevand (hel)  | Korrekte linjetyper per standard         |
+| `utility_wells`          | Brønde som cirkel-symbol + DK-kote     | ∅-annotation                             |
+| `hatch_areas`            | Skraveringer: jordvarme, carport, osv. | Diagonal hatching                        |
+| `road_label`             | Vejnavn langs vejskel                  | Roteret tekst langs skel-segment         |
+| `scale_bar`              | Skalastav                              | Auto-beregnet fra `metersPerMm`          |
+| `mandatory_annotations`  | Juridiske noter som tekstblok          | Fast placering nederst venstre           |
 
 ### Label-placement engine
 
 Deterministisk — ingen random:
+
 1. Kandidatpositioner: N, S, Ø, V, NØ, NV, SØ, SV af punkt
 2. Scorer mod: tegningskant, andre labels, bygningspolygon, titleblok
 3. Laveste score vinder
@@ -248,12 +256,14 @@ Deterministisk — ingen random:
 To services der er IS_MOCK=true aktiveres som del af denne spec:
 
 ### GeoDanmark `gdk:Bygning` og `gdk:Vejmidte`
+
 - Kør `GetCapabilities` og verificer typenavn
 - Sæt `FEATURE_FLAGS.geodanmarkMock = false`
 - Tilføj `geometry` (Polygon/MultiPolygon) til `NeighborBuilding`-typen
 - Opdater `GeoDanmarkNeighborService` til at returnere bygningspolygoner
 
 ### MAT naboparceller
+
 - Verificer live-respons mod kendt adresse (Hasselvej 48)
 - Sæt `FEATURE_FLAGS.matNeighborParcelsMock = false`
 - Output bruges direkte som `parcel.neighborParcels[]`
@@ -265,12 +275,13 @@ To services der er IS_MOCK=true aktiveres som del af denne spec:
 Tilføj til `DrawingReadinessInput`:
 
 ```typescript
-hasRoadCenterlineGeometry: boolean      // vejmidte til deklarationsbyggelinje
-hasSurveyorAttestation: boolean         // landinspektørnavn + autorisationsnr.
-hasAllMandatoryAnnotations: boolean     // alle lovpligtige noter er udfyldt
+hasRoadCenterlineGeometry: boolean; // vejmidte til deklarationsbyggelinje
+hasSurveyorAttestation: boolean; // landinspektørnavn + autorisationsnr.
+hasAllMandatoryAnnotations: boolean; // alle lovpligtige noter er udfyldt
 ```
 
 Nye regler:
+
 - `SURVEY_REQUIRED` hvis `hasRoadCenterlineGeometry = false` og der findes en `road_centerline_deklaration`-byggelinje
 - `SURVEY_REQUIRED` hvis niveau 3 kræves og `hasSurveyorAttestation = false`
 
@@ -315,12 +326,14 @@ Titleblokken (højre side af tegningen) vises med følgende sektioner:
 ## 9. Hvad LLM bruges til (og ikke til)
 
 **Må bruges:**
+
 - Foreslå `mandatoryAnnotations`-tekster baseret på hvilke lag der er aktive
 - Klassificere servituttekst til `road_centerline_deklaration` vs. `road_boundary_setback`
 - Foreslå `note`-tekster på `siteUse`-elementer
 - Forklare readiness-status til brugeren
 
 **Må ikke bruges:**
+
 - Placere koordinater, afstande, koter eller geometri
 - Generere tegningen som billede
 - Gætte byggelinjeafstande
@@ -331,14 +344,17 @@ Titleblokken (højre side af tegningen) vises med følgende sektioner:
 ## 10. Teststrategi
 
 ### Tier 1 — domain
+
 - `decision-engine.ts`: nye readiness-input-felter og regler
 - `geometry-engine.ts`: dimension-line beregning, byggelinje-buffer for vejmidte
 
 ### Tier 2 — services
+
 - `assembleBeliggenhedsplan.service.ts`: mandatoryAnnotations udfyldes korrekt pr. niveau
 - Fake port-implementations for survey, footprint-import og utility-input
 
 ### Tier 3 — SVG strukturelle tests
+
 - Niveau 1 SVG: indeholder parcel, nabomatrikler, BR18-linjer, "FORELØBIG"
 - Niveau 2 SVG: indeholder koter-labels, mål-linjer, sokkelkote
 - Niveau 3 SVG: indeholder brøndsymboler, jordvarme-skravering, komplet titleblok

@@ -14,8 +14,10 @@ import type {
   RuleEngineTerrainData,
   RuleEngineTinglysningResult,
 } from "@/domain/contracts/rule-engine.types";
+import { getSession } from "@/lib/auth";
 import { useProject } from "@/lib/project-store";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch } from "@/lib/project-sync";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 import { computePartialUpdate } from "@/lib/reactive-compliance";
 import type { Byggeoenske } from "@/types/project-state";
 
@@ -33,7 +35,7 @@ export type ReactiveContext = {
  *  1. Opdaterer Zustand-store øjeblikkeligt (UI reaktiv)
  *  2. Kører `computePartialUpdate` client-side (ingen API-kald) — opdaterer complianceMetrics + flags
  *  3. Beregner boligoenskeValidering (etager/areal) mod plangrænser
- *  4. Debouncer `syncPatch` med 500 ms
+ *  4. Debouncer persistence via project save workflow med 500 ms
  */
 export function useCockpitByggeoensker(reactiveContext: ReactiveContext): {
   patch: (partial: Partial<Byggeoenske>) => void;
@@ -111,8 +113,18 @@ export function useCockpitByggeoensker(reactiveContext: ReactiveContext): {
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      const next = { ...useProject.getState().byggeoenske };
-      syncPatch({ byggeoenske: next });
+      const currentState = useProject.getState();
+      const next = { ...currentState.byggeoenske };
+      void runProjectSaveWorkflow(
+        {
+          patch: { byggeoenske: next },
+          projectId: currentState.currentProjectId,
+        },
+        {
+          getSession,
+          saveProjectPatch,
+        },
+      );
     }, 500);
   };
 

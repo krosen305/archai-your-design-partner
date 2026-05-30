@@ -41,12 +41,24 @@ function TeknikPage() {
   const [bygherre, setBygherre] = useState<string>("");
   const [sokkelKoteM, setSokkelKoteM] = useState<string>("");
   const [heightM, setHeightM] = useState<string>("");
+  const [buildingWidthM, setBuildingWidthM] = useState<string>("");
+  const [buildingDepthM, setBuildingDepthM] = useState<string>("");
+  const [rotationDeg, setRotationDeg] = useState<string>("0");
 
   const backTo = address?.adresseid ? `/projekt/${address.adresseid}/cockpit` : "/projekt/start";
 
   const matrikelId = bbrData?.jordstykke_lokal_id ?? null;
   const canGenerate =
     !!currentProjectId && !!address?.adresseid && !!address?.kommunekode && !!matrikelId;
+
+  const hasFootprint = !!designPlacement?.footprintGeojson;
+  const centroid = address?.koordinater ?? null;
+  const canGenerateWithDimensions =
+    canGenerate &&
+    !hasFootprint &&
+    !!centroid &&
+    buildingWidthM !== "" &&
+    parseFloat(buildingWidthM) > 0;
 
   const missingFields: string[] = [];
   if (!currentProjectId) missingFields.push("Projekt ikke gemt");
@@ -72,6 +84,13 @@ function TeknikPage() {
           bygherre: bygherre.trim() || null,
           sokkelKoteM: sokkelKoteM !== "" ? parseFloat(sokkelKoteM) : null,
           heightM: heightM !== "" ? parseFloat(heightM) : null,
+          centroidLng: !hasFootprint && centroid ? centroid.lng : null,
+          centroidLat: !hasFootprint && centroid ? centroid.lat : null,
+          buildingWidthM:
+            !hasFootprint && buildingWidthM !== "" ? parseFloat(buildingWidthM) : null,
+          buildingDepthM:
+            !hasFootprint && buildingDepthM !== "" ? parseFloat(buildingDepthM) : null,
+          rotationDeg: rotationDeg !== "" ? parseFloat(rotationDeg) : null,
         },
       });
       setResult(res);
@@ -107,6 +126,72 @@ function TeknikPage() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {canGenerate && !hasFootprint && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+            <p className="text-sm font-medium text-blue-800">
+              Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en centreret standardplacering
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1">
+                  Bredde (m) *
+                </label>
+                <input
+                  type="number"
+                  value={buildingWidthM}
+                  onChange={(e) => setBuildingWidthM(e.target.value)}
+                  placeholder="f.eks. 12"
+                  min={1}
+                  max={60}
+                  step={0.5}
+                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1">
+                  Dybde (m)
+                </label>
+                <input
+                  type="number"
+                  value={buildingDepthM}
+                  onChange={(e) => setBuildingDepthM(e.target.value)}
+                  placeholder="= bredde hvis tom"
+                  min={1}
+                  max={60}
+                  step={0.5}
+                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1">
+                  Rotation (°)
+                </label>
+                <input
+                  type="number"
+                  value={rotationDeg}
+                  onChange={(e) => setRotationDeg(e.target.value)}
+                  placeholder="0"
+                  min={0}
+                  max={360}
+                  step={5}
+                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {canGenerate && hasFootprint && (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+            <p className="text-sm text-green-800">
+              Fodprint fra designværktøjet anvendes ({(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)} m²)
+            </p>
           </div>
         )}
 
@@ -159,7 +244,7 @@ function TeknikPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={handleGenerate}
-            disabled={!canGenerate || loading}
+            disabled={(!canGenerate || loading) || (!hasFootprint && !canGenerateWithDimensions)}
             className="px-5 py-2.5 rounded-lg bg-stone-900 text-white text-sm font-medium
                        hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed
                        transition-colors"

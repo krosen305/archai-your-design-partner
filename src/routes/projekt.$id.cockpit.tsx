@@ -18,8 +18,8 @@ import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
 import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
 import { useCockpitRestore } from "@/hooks/useCockpitRestore";
 import { useCockpitAnalysis } from "@/hooks/useCockpitAnalysis";
+import type { AnalysisSnapshot } from "@/lib/project-restore-facade";
 import { cn } from "@/lib/utils";
-import type { AnalysisSnapshot } from "@/hooks/useCockpitAnalysis";
 
 // ---------------------------------------------------------------------------
 // Route

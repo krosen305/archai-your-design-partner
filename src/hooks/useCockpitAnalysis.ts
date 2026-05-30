@@ -2,50 +2,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useProject } from "@/lib/project-store";
-import { deriveComplianceFlags } from "@/lib/compliance-flags";
-import { syncPatch } from "@/lib/project-sync";
-import { calculateComplianceMetrics } from "@/lib/compliance-engine";
+import { saveProjectPatch } from "@/lib/project-sync";
 import { fetchCompliance, runByggeanalyse } from "@/lib/cockpit.functions";
-import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
-import { neighborContextFactsFromNeighborData } from "@/lib/neighbor-context-facts";
+import { runCockpitComplianceWorkflow } from "@/lib/cockpit-compliance-workflow";
+import { runCockpitByggeanalyseWorkflow } from "@/lib/cockpit-byggeanalyse-workflow";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
+import { routeMatchesAddress } from "@/hooks/cockpit-restore-utils";
+import { EMPTY_ANALYSIS_SNAPSHOT, type AnalysisSnapshot } from "@/lib/project-restore-facade";
+import { buildComplianceApplication } from "@/lib/cockpit-analysis-facade";
 import { logger } from "@/lib/logger";
-import type { FjernvarmeResultat, NeighborBuildingData } from "@/domain/contracts/analysis.types";
-import type {
-  RuleEngineDkJordResultat,
-  RuleEngineFbbResult,
-  RuleEngineGeusRiskData,
-  RuleEngineLokalplan,
-  RuleEngineNaturbeskyttelsesResultat,
-  RuleEngineTerrainData,
-  RuleEngineTinglysningResult,
-} from "@/domain/contracts/rule-engine.types";
-import { routeMatchesAddress } from "./useCockpitRestore";
-
-export type AnalysisSnapshot = {
-  lokalplaner: RuleEngineLokalplan[];
-  geusRisk: RuleEngineGeusRiskData | null;
-  servitutter: RuleEngineTinglysningResult | null;
-  terrain: RuleEngineTerrainData | null;
-  fjernvarme: FjernvarmeResultat | null;
-  naboer: NeighborBuildingData | null;
-  fbbData: RuleEngineFbbResult | null;
-  naturbeskyttelse: RuleEngineNaturbeskyttelsesResultat | null;
-  dkjord: RuleEngineDkJordResultat | null;
-};
 
 type Status = "loading" | "done" | "error";
-
-const EMPTY_SNAPSHOT: AnalysisSnapshot = {
-  lokalplaner: [],
-  geusRisk: null,
-  servitutter: null,
-  terrain: null,
-  fjernvarme: null,
-  naboer: null,
-  fbbData: null,
-  naturbeskyttelse: null,
-  dkjord: null,
-};
 
 export function useCockpitAnalysis(params: {
   adresseId: string;
@@ -95,7 +62,7 @@ export function useCockpitAnalysis(params: {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const [analysisSnapshot, setAnalysisSnapshot] = useState<AnalysisSnapshot>({
-    ...EMPTY_SNAPSHOT,
+    ...EMPTY_ANALYSIS_SNAPSHOT,
     lokalplaner: routeMatchesAddress(useProject.getState().address, adresseId)
       ? useProject.getState().lokalplaner
       : [],
@@ -119,31 +86,44 @@ export function useCockpitAnalysis(params: {
     setIsRecomputing(true);
     try {
       const { getSession } = await import("@/lib/auth");
-      const session = await getSession();
-      if (!session) {
-        setIsRecomputing(false);
+      const state = useProject.getState();
+      const workflowResult = await runCockpitByggeanalyseWorkflow(
+        {
+          projectId: state.currentProjectId,
+          byggeoenske: state.byggeoenske,
+        },
+        {
+          getSession,
+          runByggeanalyse,
+        },
+      );
+
+      if (workflowResult.status === "auth_error") {
         return;
       }
-      const state = useProject.getState();
-      if (!state.currentProjectId) {
+
+      if (workflowResult.status === "no_project") {
         logger.warn("[Cockpit] manuel AI-analyse afbrudt: intet currentProjectId");
         return;
       }
-      const gatedResult = await runByggeanalyse({
-        data: {
-          projectId: state.currentProjectId,
-          accessToken: session.access_token,
-          byggeoenske: state.byggeoenske,
-        },
-      });
-      if (gatedResult.status === "ok") {
-        const { status: _status, ...analyse } = gatedResult;
-        setByggeanalyseResultat(analyse);
-        syncPatch({ byggeanalyseResultat: analyse });
-      } else if (gatedResult.status === "blocked") {
-        logger.warn("[Cockpit] Byggeanalyse blokeret af Hard Stop:", gatedResult.hardStopReason);
+
+      if (workflowResult.status === "ok") {
+        setByggeanalyseResultat(workflowResult.analyse);
+        const analyse = workflowResult.analyse;
+        void runProjectSaveWorkflow(
+          {
+            patch: { byggeanalyseResultat: analyse },
+            projectId: state.currentProjectId,
+          },
+          {
+            getSession,
+            saveProjectPatch,
+          },
+        );
+      } else if (workflowResult.status === "blocked") {
+        logger.warn("[Cockpit] Byggeanalyse blokeret af Hard Stop:", workflowResult.hardStopReason);
       } else {
-        logger.warn("[Cockpit] Byggeanalyse mangler data:", gatedResult.reason);
+        logger.warn("[Cockpit] Byggeanalyse mangler data:", workflowResult.reason);
       }
     } catch (e) {
       logger.warn("[Cockpit] manuel AI-analyse fejlede:", e);
@@ -177,141 +157,85 @@ export function useCockpitAnalysis(params: {
 
     (async () => {
       const { getSession, isGuest } = await import("@/lib/auth");
-      const session = await getSession();
+      const workflowResult = await runCockpitComplianceWorkflow(
+        {
+          address: currentAddress,
+          projectId: useProject.getState().currentProjectId,
+        },
+        {
+          fetchCompliance,
+          getSession,
+          isGuest,
+        },
+      );
 
-      if (!session) {
-        const guest = isGuest();
-        setFetchError(
-          guest
-            ? "Start fra adresse-trinnet som gæst for at hente grunddata."
-            : "Login krævet - log ind for at hente analyse.",
-        );
+      if (workflowResult.status === "missing_project") {
+        // Stale tab: cockpit-URL'en peger på en adresse uden et aktivt
+        // projektkontekst. Send brugeren tilbage til adresse-trinnet i stedet
+        // for at brænde en orphan-analyse.
+        navigate({ to: "/projekt/adresse" });
+        return;
+      }
+      if (workflowResult.status !== "ok") {
+        setFetchError(workflowResult.message);
         setStatus("error");
         return;
       }
 
-      fetchCompliance({
-        data: {
-          addressId: currentAddress.adresseid,
-          adgangsadresseid: currentAddress.adgangsadresseid,
-          ejerlavskode: currentAddress.ejerlavskode ?? null,
-          matrikelnummer: currentAddress.matrikelnummer ?? null,
-          koordinater: currentAddress.koordinater ?? null,
-          grundareal: currentAddress.grundareal ?? null,
-          projectId: useProject.getState().currentProjectId,
-          token: session.access_token,
-        },
-      })
+      Promise.resolve(workflowResult.result)
         .then(async (result) => {
+          const application = buildComplianceApplication({
+            result,
+            currentAddress: useProject.getState().address,
+            currentByggeanalyseResultat: byggeanalyseResultat,
+          });
+
           setBbrData(result.bbr);
           setLokalplaner(result.lokalplaner);
           setLokalplanExtract(result.lokalplanExtract);
           setKommuneplanramme(result.kommuneplanramme);
           setVurderingData(result.vurderingData ?? null);
-          setSnapshotPatch({
-            lokalplaner: result.lokalplaner,
-            geusRisk: result.geusRisk ?? null,
-            servitutter: result.servitutter ?? null,
-            terrain: result.terrain ?? null,
-            fjernvarme: result.fjernvarme ?? null,
-            naboer: result.naboer ?? null,
-            fbbData: result.fbbData ?? null,
-            naturbeskyttelse: result.naturbeskyttelse ?? null,
-            dkjord: result.dkjord ?? null,
-          });
-          const flags = deriveComplianceFlags(
-            result.bbr,
-            result.kommuneplanramme,
-            result.naturbeskyttelse,
-            result.dkjord,
-            result.geusRisk,
-          );
-          setComplianceFlags(flags);
-          setComplianceMetrics(calculateComplianceMetrics(result.bbr, result.kommuneplanramme));
+          setSnapshotPatch(application.snapshotPatch);
+          setComplianceFlags(application.complianceFlags);
+          setComplianceMetrics(application.complianceMetrics);
 
           // Sync typed store fields immediately so UI reflects current analysis without reload.
-          // syncPatch persists these to Supabase typed columns; useCockpitRestore reads them back
-          // on next load — but the in-memory store must also be updated for the current session.
-          const saveVal = result.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;
-          const isFredetVal = result.fbbData?.fbb_er_fredet ?? result.bbr?.fredet ?? null;
-          setHeritageSaveValue(saveVal);
-          setIsFredet(isFredetVal);
-          setGrundareal(result.bbr?.grundareal ?? null);
-          setBebyggetAreal(result.bbr?.bebygget_areal ?? null);
-          setBfeNr(result.vurderingData?.bfeNr ?? null);
-          const neighborFacts = neighborContextFactsFromNeighborData(
-            result.naboer,
-            result.serviceStates?.naboer ?? null,
-          );
-          setNeighborContextFacts(neighborFacts);
-          const { hardStop, hardStopReason } = evaluateHardStop({
-            saveValue: saveVal,
-            isFredet: isFredetVal,
-            strandbeskyttelse: result.bbr?.mat_strandbeskyttelse ?? null,
-            fredskov: result.bbr?.mat_fredskov ?? null,
-            klitfredning: result.bbr?.mat_klitfredning ?? null,
-          });
-          setHardStop(hardStop, hardStopReason ?? null);
+          // Persist happens separately via the project save workflow, but the in-memory store
+          // must also be updated for the current session.
+          setHeritageSaveValue(application.heritageSaveValue);
+          setIsFredet(application.isFredet);
+          setGrundareal(application.grundarealM2);
+          setBebyggetAreal(application.bebyggetArealM2);
+          setBfeNr(application.bfeNr);
+          setNeighborContextFacts(application.neighborFacts);
+          setHardStop(application.hardStop, application.hardStopReason);
 
-          // Persistér beriget adresse (P0/P1 #1): adgangsadresseid, ejerlavskode,
-          // matrikelnummer og grundareal blev udfyldt af DAR/MAT enrichment serverside.
-          // Merger ind i den eksisterende address så typed kolonner og store er på linje.
-          const currentAddress = useProject.getState().address;
-          const mergedAddress =
-            currentAddress && result.addressPatch
-              ? { ...currentAddress, ...result.addressPatch }
-              : currentAddress;
-          if (mergedAddress && result.addressPatch) {
-            setAddress(mergedAddress);
+          // Persist enriched address fields from server-side DAR/MAT enrichment so typed columns
+          // and store stay aligned in the current session.
+          if (application.mergedAddress && result.addressPatch) {
+            setAddress(application.mergedAddress);
           }
 
           setComplianceDone(true);
-          setPhase("hus-dna", "complete");
-          setPhase("match", "complete");
-          syncPatch({
-            ...(mergedAddress && result.addressPatch ? { address: mergedAddress } : {}),
-            bbrData: result.bbr,
-            complianceFlags: flags,
-            lokalplaner: result.lokalplaner,
-            kommuneplanramme: result.kommuneplanramme,
-            plandataContext: result.plandataContext,
-            arealdataContext: result.arealdataContext,
-            naturbeskyttelse: result.naturbeskyttelse,
-            dkjord: result.dkjord,
-            geusRisk: result.geusRisk,
-            servitutter: result.servitutter,
-            terrain: result.terrain,
-            naboer: result.naboer,
-            fjernvarme: result.fjernvarme,
-            fbbData: result.fbbData,
-            byggeanalyseResultat: byggeanalyseResultat,
-            vurderingData: result.vurderingData,
-            tjekditnetCoverage: result.tjekditnetCoverage,
-            energimaerke: result.energimaerke,
-            complianceDone: true,
-            currentStep: "byggeanalyse",
-            analysisRunId: result.analysisRunId,
-          });
-          if (result.serviceStates) {
-            useProject.setState({ serviceStates: result.serviceStates });
+          setPhase("sandkassen", application.phaseUpdates.sandkassen);
+          setPhase("matriklen", application.phaseUpdates.matriklen);
+          setPhase("maskinrummet", application.phaseUpdates.maskinrummet);
+          void runProjectSaveWorkflow(
+            {
+              patch: application.syncPatch,
+              projectId: useProject.getState().currentProjectId,
+            },
+            {
+              getSession,
+              saveProjectPatch,
+            },
+          );
+          if (application.serviceStates) {
+            useProject.setState({ serviceStates: application.serviceStates });
           }
-          const nowIso = new Date().toISOString();
           const store = useProject.getState();
-          store.setDataLastFetchedAt(nowIso);
-          store.setDataStatusBulk({
-            bbr: result.bbr ? "fresh" : "missing",
-            lokalplaner: result.lokalplaner.length > 0 ? "fresh" : "missing",
-            kommuneplanramme: result.kommuneplanramme ? "fresh" : "missing",
-            fbb: result.fbbData ? "fresh" : "missing",
-            naturbeskyttelse: result.naturbeskyttelse ? "fresh" : "missing",
-            arealdata: result.arealdataContext ? "fresh" : "missing",
-            geusRisk: result.geusRisk ? "fresh" : "missing",
-            servitutter: result.servitutter ? "fresh" : "missing",
-            terrain: result.terrain ? "fresh" : "missing",
-            fjernvarme: result.fjernvarme ? "fresh" : "missing",
-            naboer: neighborFacts ? "fresh" : "missing",
-            vurdering: result.vurderingData ? "fresh" : "missing",
-          });
+          store.setDataLastFetchedAt(application.fetchedAt);
+          store.setDataStatusBulk(application.dataStatus);
           setStatus("done");
         })
         .catch((e: unknown) => {
@@ -320,7 +244,7 @@ export function useCockpitAnalysis(params: {
           setFetchError(
             msg.startsWith("ArchAI: manglende")
               ? msg
-              : "Analyse kunne ikke gennemføres. Prøv igen.",
+              : "Analyse kunne ikke gennemfores. Proev igen.",
           );
           setStatus("error");
         });

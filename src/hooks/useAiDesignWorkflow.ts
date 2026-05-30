@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { getSession } from "@/lib/auth";
 import { useProject } from "@/lib/project-store";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch } from "@/lib/project-sync";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 import { logger } from "@/lib/logger";
 import {
   isRemoteImageUrl,
@@ -110,9 +111,19 @@ export function useAiDesignWorkflow(): AiDesignWorkflowState & AiDesignWorkflowA
   }, [billedanalyse]);
 
   const commitByggeoenskePatch = (patch: Partial<Byggeoenske>) => {
-    const next = { ...useProject.getState().byggeoenske, ...patch };
+    const state = useProject.getState();
+    const next = { ...state.byggeoenske, ...patch };
     setByggeoenske(patch);
-    void syncPatch({ byggeoenske: next });
+    void runProjectSaveWorkflow(
+      {
+        patch: { byggeoenske: next },
+        projectId: state.currentProjectId,
+      },
+      {
+        getSession,
+        saveProjectPatch,
+      },
+    );
   };
 
   const handleFiles = async (files: FileList | null) => {
@@ -225,8 +236,18 @@ export function useAiDesignWorkflow(): AiDesignWorkflowState & AiDesignWorkflowA
 
   const handleGem = () => {
     if (!analyse || analyse.konflikter.length > 0) return;
+    const projectId = useProject.getState().currentProjectId;
     setBilledanalyse(analyse);
-    void syncPatch({ billedanalyse: analyse });
+    void runProjectSaveWorkflow(
+      {
+        patch: { billedanalyse: analyse },
+        projectId,
+      },
+      {
+        getSession,
+        saveProjectPatch,
+      },
+    );
     setAnalyseState("saved");
   };
 

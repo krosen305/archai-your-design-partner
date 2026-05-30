@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { getSession } from "@/lib/auth";
 import { useProject } from "@/lib/project-store";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch } from "@/lib/project-sync";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 import type { DesignPlacement } from "@/types/project-state";
 
 function buildPlacement(
@@ -41,7 +43,7 @@ export function usePlacementSync(
   updateCentroid: (centroid: { lat: number; lng: number }) => void;
   resetPlacement: (initialCenter: [number, number] | null) => void;
 } {
-  const { setDesignPlacement } = useProject();
+  const { setDesignPlacement, currentProjectId } = useProject();
   const [rotationDeg, setRotationDeg] = useState(designPlacement?.rotationDeg ?? 0);
 
   useEffect(() => {
@@ -51,7 +53,16 @@ export function usePlacementSync(
   const persistPlacement = (patch: Partial<DesignPlacement>) => {
     const next = buildPlacement(designPlacement, patch);
     setDesignPlacement(next);
-    void syncPatch({ designPlacement: next });
+    void runProjectSaveWorkflow(
+      {
+        patch: { designPlacement: next },
+        projectId: currentProjectId,
+      },
+      {
+        getSession,
+        saveProjectPatch,
+      },
+    );
   };
 
   const updateRotation = (deg: number) => {

@@ -3,18 +3,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { useState, useEffect, useCallback } from "react";
 import { z } from "zod";
 import type { AnalysisEventRow, AnalysisRunView } from "@/lib/debug-analysis";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const getAnalysisRunsSchema = z.object({
   addressId: z.string().nullable(),
   projectId: z.string().nullable(),
-  token: z.string().min(1),
 });
 
 const getAnalysisRuns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => getAnalysisRunsSchema.parse(d))
-  .handler(async ({ data }): Promise<AnalysisRunView[]> => {
+  .handler(async ({ data, context }): Promise<AnalysisRunView[]> => {
     const { loadDebugAnalysisRuns } = await import("@/lib/debug-analysis");
-    return loadDebugAnalysisRuns(data);
+    return loadDebugAnalysisRuns({ ...data, userId: context.userId });
   });
 
 export const Route = createFileRoute("/debug/analyse")({
@@ -32,6 +33,61 @@ function formatRunDate(iso: string): string {
   return `${date} ${time}`;
 }
 
+function formatPrettyTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("da-DK", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const time = d.toLocaleTimeString("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const ms = String(d.getMilliseconds()).padStart(3, "0");
+  return `${date} ${time}.${ms}`;
+}
+
+function toObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getEndpointLabel(metadata: unknown, service: string): string {
+  const meta = toObject(metadata);
+  const endpointPath = readString(meta?.endpointPath);
+  if (endpointPath) return endpointPath;
+
+  const endpoint = readString(meta?.endpoint);
+  if (endpoint) {
+    try {
+      return new URL(endpoint).pathname || endpoint;
+    } catch {
+      return endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    }
+  }
+
+  return service;
+}
+
+function formatMetadataValue(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
+}
+
 function DebugAnalysePage() {
   const [addressId, setAddressId] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -44,15 +100,10 @@ function DebugAnalysePage() {
     setLoading(true);
     setError(null);
     try {
-      const { getSession } = await import("@/lib/auth");
-      const session = await getSession();
-      if (!session) throw new Error("Ingen session");
-
       const result = await getAnalysisRuns({
         data: {
           addressId: addressId || null,
           projectId: projectId || null,
-          token: session.access_token,
         },
       });
       setRuns(result);
@@ -183,32 +234,68 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
       : event.status === "error"
         ? "text-danger"
         : "text-muted-foreground";
+  const endpointLabel = getEndpointLabel(event.metadata, event.service);
 
   return (
-    <div
-      className="grid grid-cols-[80px_100px_1fr] gap-2 py-1 text-xs"
-      data-testid="debug-event-row"
-    >
+    <div className="grid grid-cols-[80px_1fr] gap-3 py-2 text-xs" data-testid="debug-event-row">
       <span className={`font-mono ${statusColor}`}>{event.status.toUpperCase()}</span>
-      <span className="truncate text-muted-foreground font-mono">{event.service}</span>
-      <div className="space-y-0.5">
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-foreground">{endpointLabel}</span>
+          <span className="font-mono text-muted-foreground/80">
+            {formatPrettyTimestamp(event.created_at)}
+          </span>
+          {event.status === "error" && (
+            <span className="rounded border border-danger/40 px-1 font-mono text-danger">
+              {event.http_status != null ? `HTTP ${event.http_status}` : "HTTP n/a"}
+            </span>
+          )}
+        </div>
         <div className="text-foreground">{event.operation}</div>
         {event.input_summary && (
-          <div className="text-muted-foreground">in: {event.input_summary}</div>
+          <div className="break-words whitespace-pre-wrap text-muted-foreground">
+            input: {event.input_summary}
+          </div>
         )}
+        {renderGraphqlVariables(event.metadata)}
         {event.output_summary && (
-          <div className="text-muted-foreground">out: {event.output_summary}</div>
+          <div className="break-words whitespace-pre-wrap text-muted-foreground">
+            out: {event.output_summary}
+          </div>
         )}
         {event.decision_summary && (
-          <div className="text-yellow-400">decision: {event.decision_summary}</div>
+          <div className="break-words whitespace-pre-wrap text-yellow-400">
+            decision: {event.decision_summary}
+          </div>
         )}
-        {event.error_message && <div className="text-danger">error: {event.error_message}</div>}
+        {event.error_message && (
+          <div className="break-words whitespace-pre-wrap text-danger">
+            error: {event.error_message}
+          </div>
+        )}
         <div className="text-muted-foreground/50">
           {event.phase && `${event.phase} | `}
           {event.duration_ms != null && `${event.duration_ms}ms`}
           {event.cache_hit === true && " | cache-hit"}
+          {event.http_status != null && event.status !== "error" && ` | HTTP ${event.http_status}`}
         </div>
       </div>
+    </div>
+  );
+}
+
+function renderGraphqlVariables(metadata: unknown) {
+  const meta = toObject(metadata);
+  const variables = meta?.variables;
+  const text = formatMetadataValue(variables);
+  if (!text) return null;
+
+  return (
+    <div className="space-y-1">
+      <div className="text-muted-foreground">vars:</div>
+      <pre className="overflow-x-auto rounded border border-border bg-background/40 p-2 font-mono text-[11px] leading-5 text-foreground">
+        {text}
+      </pre>
     </div>
   );
 }

@@ -15,20 +15,22 @@
 ## File Structure
 
 ### Created
-| File | Purpose |
-|------|---------|
-| `src/integrations/tjekditnet/client.ts` | TjekditnetService + typed result |
-| `src/integrations/tjekditnet/client.test.ts` | Unit tests (parse, no-hit, error) |
+
+| File                                                        | Purpose                                 |
+| ----------------------------------------------------------- | --------------------------------------- |
+| `src/integrations/tjekditnet/client.ts`                     | TjekditnetService + typed result        |
+| `src/integrations/tjekditnet/client.test.ts`                | Unit tests (parse, no-hit, error)       |
 | `supabase/migrations/20260524170000_arch247_tjekditnet.sql` | New typed columns on `site_constraints` |
 
 ### Modified
-| File | Change |
-|------|--------|
-| `src/integrations/supabase/repositories/site-constraints.derivation.ts` | Map Tjekditnet coverage to typed columns |
-| `src/integrations/supabase/repositories/building-tasks.derivation.ts` | Extend `ComplianceTriggers`; add `KORTLAEG_FORSYNINGER` task |
-| `src/types/project-state.ts` | Add `"tjekditnet"` to `DataSourceKind`; add label and stale days |
-| `src/lib/analysis/geo-risk-step.ts` (or new `forsyning-step.ts`) | Call TjekditnetService |
-| `src/lib/analysis-orchestrator.ts` (**protected**) | Wire new step into parallel execution |
+
+| File                                                                    | Change                                                           |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `src/integrations/supabase/repositories/site-constraints.derivation.ts` | Map Tjekditnet coverage to typed columns                         |
+| `src/integrations/supabase/repositories/building-tasks.derivation.ts`   | Extend `ComplianceTriggers`; add `KORTLAEG_FORSYNINGER` task     |
+| `src/types/project-state.ts`                                            | Add `"tjekditnet"` to `DataSourceKind`; add label and stale days |
+| `src/lib/analysis/geo-risk-step.ts` (or new `forsyning-step.ts`)        | Call TjekditnetService                                           |
+| `src/lib/analysis-orchestrator.ts` (**protected**)                      | Wire new step into parallel execution                            |
 
 ---
 
@@ -41,6 +43,7 @@ The issue links to: `https://tjekditnet.dk/sites/default/files/2025-06/API-funkt
 - [ ] **Step 1.1: Fetch and read the PDF**
 
 Use WebFetch or download the PDF. Document:
+
 1. Base URL of the API (e.g. `https://api.tjekditnet.dk/...` or similar)
 2. How to look up by address: adgangsadresseid UUID? adressenavn+postnr? coordinates?
 3. Response schema: which technology keys exist, are speeds provided, is it flat JSON?
@@ -67,9 +70,11 @@ git commit --allow-empty -m "chore(arch-247): tjekditnet API documented — [API
 ## Task 2: Create TjekditnetService
 
 **Files:**
+
 - Create: `src/integrations/tjekditnet/client.ts`
 
 **Assumptions from discovery (update `[DISCOVERY]` placeholders based on Task 1):**
+
 - API base: `[DISCOVERY: e.g. https://api.tjekditnet.dk/v1]`
 - Input: `adgangsadresseid` UUID query param (update if different)
 - Response: JSON with technology keys as top-level properties
@@ -130,7 +135,9 @@ const tjekditnetResponseSchema = z.object({
 
 type TjekditnetRawResponse = z.infer<typeof tjekditnetResponseSchema>;
 
-function parseResponse(raw: TjekditnetRawResponse): Omit<TjekditnetCoverageData, "adresse_match_type" | "kilde"> {
+function parseResponse(
+  raw: TjekditnetRawResponse,
+): Omit<TjekditnetCoverageData, "adresse_match_type" | "kilde"> {
   return {
     fiber_tilgaengelig: raw.fiber ?? null,
     kabel_tilgaengelig: raw.kabel ?? null,
@@ -210,6 +217,7 @@ export class TjekditnetService {
 ```
 
 **Important:** After discovery (Task 1), update:
+
 1. `TJEKDITNET_BASE` URL
 2. `tjekditnetResponseSchema` field names to match the real response
 3. URL construction if input key is not `adgangsadresseid`
@@ -231,6 +239,7 @@ git commit -m "feat(tjekditnet): add TjekditnetService with tri-state coverage t
 ## Task 3: Write unit tests for TjekditnetService
 
 **Files:**
+
 - Create: `src/integrations/tjekditnet/client.test.ts`
 
 - [ ] **Step 3.1: Write tests**
@@ -279,11 +288,12 @@ const NO_COVERAGE_RESPONSE = {
 
 describe("TjekditnetService.getCoverage", () => {
   it("returns confirmed ok result with fiber coverage parsed", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response(JSON.stringify(FIBER_RESPONSE), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    globalThis.fetch = mock(
+      async () =>
+        new Response(JSON.stringify(FIBER_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
     ) as unknown as typeof fetch;
 
     const result = await TjekditnetService.getCoverage("test-uuid-123");
@@ -296,8 +306,8 @@ describe("TjekditnetService.getCoverage", () => {
   });
 
   it("returns ok with no_hit when API returns 404", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response("Not Found", { status: 404 }),
+    globalThis.fetch = mock(
+      async () => new Response("Not Found", { status: 404 }),
     ) as unknown as typeof fetch;
 
     const result = await TjekditnetService.getCoverage("unknown-uuid");
@@ -309,8 +319,8 @@ describe("TjekditnetService.getCoverage", () => {
   });
 
   it("returns error result on HTTP 500 — does NOT map to false", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response("Server Error", { status: 500 }),
+    globalThis.fetch = mock(
+      async () => new Response("Server Error", { status: 500 }),
     ) as unknown as typeof fetch;
 
     const result = await TjekditnetService.getCoverage("test-uuid");
@@ -333,11 +343,12 @@ describe("TjekditnetService.getCoverage", () => {
   });
 
   it("returns no-coverage result with all-false fields", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response(JSON.stringify(NO_COVERAGE_RESPONSE), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    globalThis.fetch = mock(
+      async () =>
+        new Response(JSON.stringify(NO_COVERAGE_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
     ) as unknown as typeof fetch;
 
     const result = await TjekditnetService.getCoverage("test-uuid");
@@ -366,6 +377,7 @@ git commit -m "test(tjekditnet): add unit tests for getCoverage (parse, no-hit, 
 ## Task 4: Database migration for Tjekditnet coverage columns
 
 **Files:**
+
 - Create: `supabase/migrations/20260524170000_arch247_tjekditnet.sql`
 
 - [ ] **Step 4.1: Create migration file**
@@ -426,6 +438,7 @@ git commit -m "feat(db): add Tjekditnet typed coverage columns to site_constrain
 ## Task 5: Map Tjekditnet data to site_constraints + building task
 
 **Files:**
+
 - Modify: `src/integrations/supabase/repositories/site-constraints.derivation.ts`
 - Modify: `src/integrations/supabase/repositories/building-tasks.derivation.ts`
 - Modify: `src/types/project-state.ts`
@@ -435,11 +448,13 @@ git commit -m "feat(db): add Tjekditnet typed coverage columns to site_constrain
 In `DataSourceKind`, add `"tjekditnet"` to the union.
 
 In `DATA_SOURCE_LABELS`, add:
+
 ```typescript
   tjekditnet: "Bredbåndsdækning (Tjekditnet)",
 ```
 
 In `STALE_DAYS`, add (find the pattern in the file):
+
 ```typescript
   tjekditnet: 90,
 ```
@@ -453,6 +468,7 @@ Find the `ProjectPatch` type (in `src/integrations/supabase/project-persistence.
 ```
 
 Add import:
+
 ```typescript
 import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
 ```
@@ -468,19 +484,19 @@ import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
 Add a new block inside `deriveSiteConstraintsPatch`:
 
 ```typescript
-  if (patch.tjekditnetCoverage !== undefined) {
-    hasConstraintField = true;
-    const cov = patch.tjekditnetCoverage;
-    sitePatch.tjekditnet_fiber_tilgaengelig = cov?.fiber_tilgaengelig ?? null;
-    sitePatch.tjekditnet_kabel_tilgaengelig = cov?.kabel_tilgaengelig ?? null;
-    sitePatch.tjekditnet_xdsl_tilgaengelig = cov?.xdsl_tilgaengelig ?? null;
-    sitePatch.tjekditnet_fast_traadloes_tilgaengelig = cov?.fast_traadloes_tilgaengelig ?? null;
-    sitePatch.tjekditnet_max_fast_download_mbit = cov?.max_fast_download_mbit ?? null;
-    sitePatch.tjekditnet_max_fast_upload_mbit = cov?.max_fast_upload_mbit ?? null;
-    sitePatch.tjekditnet_mobil_4g_tilgaengelig = cov?.mobil_4g_tilgaengelig ?? null;
-    sitePatch.tjekditnet_mobil_5g_tilgaengelig = cov?.mobil_5g_tilgaengelig ?? null;
-    sitePatch.tjekditnet_adresse_match_type = cov?.adresse_match_type ?? null;
-  }
+if (patch.tjekditnetCoverage !== undefined) {
+  hasConstraintField = true;
+  const cov = patch.tjekditnetCoverage;
+  sitePatch.tjekditnet_fiber_tilgaengelig = cov?.fiber_tilgaengelig ?? null;
+  sitePatch.tjekditnet_kabel_tilgaengelig = cov?.kabel_tilgaengelig ?? null;
+  sitePatch.tjekditnet_xdsl_tilgaengelig = cov?.xdsl_tilgaengelig ?? null;
+  sitePatch.tjekditnet_fast_traadloes_tilgaengelig = cov?.fast_traadloes_tilgaengelig ?? null;
+  sitePatch.tjekditnet_max_fast_download_mbit = cov?.max_fast_download_mbit ?? null;
+  sitePatch.tjekditnet_max_fast_upload_mbit = cov?.max_fast_upload_mbit ?? null;
+  sitePatch.tjekditnet_mobil_4g_tilgaengelig = cov?.mobil_4g_tilgaengelig ?? null;
+  sitePatch.tjekditnet_mobil_5g_tilgaengelig = cov?.mobil_5g_tilgaengelig ?? null;
+  sitePatch.tjekditnet_adresse_match_type = cov?.adresse_match_type ?? null;
+}
 ```
 
 - [ ] **Step 5.4: Add `tjekditnetNoFixedBroadband` trigger and building task**
@@ -488,7 +504,7 @@ Add a new block inside `deriveSiteConstraintsPatch`:
 In `building-tasks.derivation.ts`, add to `ComplianceTriggers`:
 
 ```typescript
-  tjekditnetNoFixedBroadband: boolean | null;
+tjekditnetNoFixedBroadband: boolean | null;
 ```
 
 (`true` = confirmed no fixed coverage at all; `false` = some coverage; `null` = unknown/API error)
@@ -496,30 +512,30 @@ In `building-tasks.derivation.ts`, add to `ComplianceTriggers`:
 Add task generator in `deriveAutoTasks` before `return tasks;`:
 
 ```typescript
-  // ARCH-247: Tjekditnet — ingen fast bredbåndsdækning
-  if (t.tjekditnetNoFixedBroadband === true) {
-    tasks.push({
-      project_id: t.projectId,
-      task_key: BUILDING_TASK_KEYS.KORTLAEG_FORSYNINGER,
-      title: "Bredbåndsdækning mangler — forsyningsforhold skal kortlægges",
-      description:
-        "Tjekditnet registrerer ingen tilgængelig fast bredbåndsdækning (fiber, kabel eller xDSL) " +
-        "på adressen. Mobildata alene er normalt ikke tilstrækkeligt til fjernarbejde. " +
-        "Undersøg muligheder for fiberfremføring med kommunen eller lokalt forsyningsselskab, " +
-        "inden boligformål og pris vurderes.",
-      phase: "matriklen",
-      status: "pending",
-      priority: 3,
-      is_auto_generated: true,
-      blocked_by_constraint: "tjekditnet_fiber_tilgaengelig",
-      metadata: {
-        kilde: "Tjekditnet",
-        fiber: false,
-        kabel: false,
-        xdsl: false,
-      },
-    });
-  }
+// ARCH-247: Tjekditnet — ingen fast bredbåndsdækning
+if (t.tjekditnetNoFixedBroadband === true) {
+  tasks.push({
+    project_id: t.projectId,
+    task_key: BUILDING_TASK_KEYS.KORTLAEG_FORSYNINGER,
+    title: "Bredbåndsdækning mangler — forsyningsforhold skal kortlægges",
+    description:
+      "Tjekditnet registrerer ingen tilgængelig fast bredbåndsdækning (fiber, kabel eller xDSL) " +
+      "på adressen. Mobildata alene er normalt ikke tilstrækkeligt til fjernarbejde. " +
+      "Undersøg muligheder for fiberfremføring med kommunen eller lokalt forsyningsselskab, " +
+      "inden boligformål og pris vurderes.",
+    phase: "matriklen",
+    status: "pending",
+    priority: 3,
+    is_auto_generated: true,
+    blocked_by_constraint: "tjekditnet_fiber_tilgaengelig",
+    metadata: {
+      kilde: "Tjekditnet",
+      fiber: false,
+      kabel: false,
+      xdsl: false,
+    },
+  });
+}
 ```
 
 Compute `tjekditnetNoFixedBroadband` in the orchestration layer when building the triggers:
@@ -558,6 +574,7 @@ git commit -m "feat(tjekditnet): wire coverage into site_constraints, Compliance
 ## Task 6: Wire TjekditnetService into analysis pipeline
 
 **Files:**
+
 - Modify (or create): `src/lib/analysis/geo-risk-step.ts`
 - Modify (**protected**): `src/lib/analysis-orchestrator.ts`
 
@@ -606,7 +623,7 @@ Choose Option B. It keeps the protected orchestrator change to a single parallel
 Add to the `ComplianceResult` type:
 
 ```typescript
-  tjekditnetCoverage: TjekditnetCoverageData | null; // ARCH-247
+tjekditnetCoverage: TjekditnetCoverageData | null; // ARCH-247
 ```
 
 - [ ] **Step 6.3: Call `runForsyningStep` in the orchestrator**
@@ -667,6 +684,7 @@ Expected: All pass
 - [ ] **Step 7.3: Verify 3 test addresses manually (live)**
 
 Pick 3 addresses with different expected coverage profiles:
+
 1. Urbanized address (e.g. Copenhagen inner city) — expect fiber=true
 2. Rural address (e.g. Lolland landzone) — expect fiber=false or no_hit
 3. Unknown address UUID — expect no_hit or error

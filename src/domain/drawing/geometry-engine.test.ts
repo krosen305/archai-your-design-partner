@@ -6,6 +6,7 @@ import {
   splitPolygonIntoBoundarySegments,
   polygonOverlapAreaM2,
   distanceToBoundarySegments,
+  buildSetbackAnnotations,
 } from "./geometry-engine";
 import type { GeoJsonPolygon25832 } from "./beliggenhedsplan.types";
 
@@ -96,5 +97,42 @@ describe("distanceToBoundarySegments", () => {
     const result = distanceToBoundarySegments(building4x4, parcel20x20);
     expect(result).toHaveLength(4);
     expect(result.every((r) => r.distanceM >= 0)).toBe(true);
+  });
+});
+
+// Fixtures for buildSetbackAnnotations — simple unit-coordinate space (no real UTM needed)
+const parcelSimple: GeoJsonPolygon25832 = {
+  type: "Polygon",
+  crs: "EPSG:25832",
+  coordinates: [[[0, 0], [20, 0], [20, 20], [0, 20], [0, 0]]],
+};
+
+// Building centered 5m inside all boundaries
+const buildingSimple: GeoJsonPolygon25832 = {
+  type: "Polygon",
+  crs: "EPSG:25832",
+  coordinates: [[[5, 5], [15, 5], [15, 15], [5, 15], [5, 5]]],
+};
+
+describe("buildSetbackAnnotations", () => {
+  it("returnerer én annotation per bygningskant", () => {
+    const anns = buildSetbackAnnotations(buildingSimple, parcelSimple);
+    // ring has 5 coords (closing coord = first), so 4 edges
+    expect(anns.length).toBe(4);
+  });
+
+  it("afstand fra centreret 10x10 bygning i 20x20 parcel er 5m", () => {
+    const anns = buildSetbackAnnotations(buildingSimple, parcelSimple);
+    for (const ann of anns) {
+      expect(ann.distanceM).toBeCloseTo(5, 0);
+    }
+  });
+
+  it("buildingPt er midtpunkt af bygningskant", () => {
+    const anns = buildSetbackAnnotations(buildingSimple, parcelSimple);
+    // South edge: (5,5)→(15,5), midpoint = (10,5)
+    const south = anns.find((a) => Math.abs(a.buildingPt[1] - 5) < 0.1);
+    expect(south).toBeDefined();
+    expect(south!.buildingPt[0]).toBeCloseTo(10, 0);
   });
 });

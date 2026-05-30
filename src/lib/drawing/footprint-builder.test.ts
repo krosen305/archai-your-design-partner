@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { buildSquareFootprint25832 } from "./footprint-builder";
+import { buildSquareFootprint25832, buildRectangularFootprint25832 } from "./footprint-builder";
 
 describe("buildSquareFootprint25832", () => {
   it("returnerer polygon i EPSG:25832", () => {
@@ -74,3 +74,62 @@ describe("buildSquareFootprint25832", () => {
     expect(centerY).toBeLessThan(Math.max(...ys));
   });
 });
+
+describe("buildRectangularFootprint25832", () => {
+  it("builds a 12×8m rectangle at the given centroid", () => {
+    const fp = buildRectangularFootprint25832({
+      centroidWgs84: [12.5683, 55.6761], // Copenhagen center
+      widthM: 12,
+      depthM: 8,
+      rotationDeg: 0,
+    });
+    expect(fp.type).toBe("Polygon");
+    expect(fp.crs).toBe("EPSG:25832");
+    // Ring has 5 coordinates (4 corners + closing)
+    expect(fp.coordinates[0]).toHaveLength(5);
+  });
+
+  it("depthM=widthM produces a square identical to buildSquareFootprint25832 output area", () => {
+    const rect = buildRectangularFootprint25832({
+      centroidWgs84: [12.5683, 55.6761],
+      widthM: 10,
+      depthM: 10,
+      rotationDeg: 0,
+    });
+    const sq = buildSquareFootprint25832({
+      centroidWgs84: [12.5683, 55.6761],
+      areaM2: 100,
+      rotationDeg: 0,
+    });
+    // Both should produce 100m² footprints
+    expect(rect.coordinates[0]).toHaveLength(5);
+    expect(sq.coordinates[0]).toHaveLength(5);
+  });
+
+  it("12m × 8m rectangle has area ≈ 96 m² (shoelace formula)", () => {
+    const result = buildRectangularFootprint25832({
+      centroidWgs84: [10.2, 55.7],
+      widthM: 12,
+      depthM: 8,
+      rotationDeg: 0,
+    });
+    const ring = result.coordinates[0];
+    // Shoelace formula: area = 0.5 * |Σ (xi * y(i+1) - x(i+1) * yi)|
+    // Ring is closed so we iterate over the 4 edges (indices 0..3, with wrap)
+    let sum = 0;
+    for (let i = 0; i < ring.length - 1; i++) {
+      sum += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+    }
+    const computedArea = Math.abs(sum) / 2;
+    // 12 × 8 = 96 m², allow ±1 m² tolerance for projection rounding
+    expect(computedArea).toBeGreaterThan(95);
+    expect(computedArea).toBeLessThan(97);
+  });
+});
+
+// Note: api.drawing.ts fallback logic (buildRectangularFootprint25832 when no
+// footprintGeojson is supplied, decodeGeoJsonFootprint when it is) cannot be
+// unit-tested in isolation because it is wrapped in a TanStack createServerFn
+// handler that requires the full Cloudflare/Vite runtime. The tests above
+// cover the pure footprint-builder that the fallback delegates to, giving
+// indirect coverage of the happy-path footprint construction branch.

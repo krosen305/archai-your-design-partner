@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { MapPin } from "lucide-react";
+import { getSession } from "@/lib/auth";
 import { useProject } from "@/lib/project-store";
 import { PageTransition } from "@/components/wizard-ui";
 import { searchAddresses } from "@/lib/adresse.functions";
-import { syncPatch } from "@/lib/project-sync";
+import { saveProjectPatch, serverCreateProject } from "@/lib/project-sync";
+import { runProjectSaveWorkflow } from "@/lib/project-save-workflow";
 import { kommunenavnFraKode } from "@/lib/kommuner";
+import { logger } from "@/lib/logger";
 import type { GsearchSuggestion } from "@/integrations/gsearch/client";
 import type { Address } from "@/types/project-state";
 
@@ -15,10 +18,12 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const { setAddress, setBbrData, setComplianceDone } = useProject();
+  const { setAddress, setBbrData, setComplianceDone, setCurrentProjectId, currentProjectId } =
+    useProject();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<GsearchSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [continuing, setContinuing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Address | null>(null);
   const [open, setOpen] = useState(false);
@@ -72,12 +77,44 @@ function AddressStep() {
     setSuggestions([]);
   }
 
-  function handleContinue() {
-    if (!selected) return;
+  async function handleContinue() {
+    if (!selected || continuing) return;
+    setContinuing(true);
     setBbrData(null);
     setComplianceDone(false);
+
+    // Sørg for at vi har et projectId før vi navigerer til cockpit. Uden et
+    // projekt fyrer cockpit'et en orphan-analyse med project_id=null (eller
+    // redirecter via stale-tab guard). Ved at oprette projektet eksplicit her
+    // sikrer vi at den legitime "ny adresse"-sti altid har projektkontekst.
+    let projectId = currentProjectId;
+    if (!projectId) {
+      try {
+        const session = await getSession();
+        if (session?.access_token) {
+          projectId = await serverCreateProject({
+            data: { accessToken: session.access_token },
+          });
+          setCurrentProjectId(projectId);
+        }
+      } catch (e) {
+        logger.warn("[Adresse] kunne ikke oprette projekt:", (e as Error).message);
+        // Fail-open: lad cockpit's stale-tab guard tage over hvis vi ikke
+        // har et projekt — så ryger brugeren bare tilbage hertil.
+      }
+    }
+
     setAddress(selected);
-    syncPatch({ address: selected, complianceDone: false, currentStep: "boligoenske" });
+    void runProjectSaveWorkflow(
+      {
+        patch: { address: selected, complianceDone: false, currentStep: "boligoenske" },
+        projectId,
+      },
+      {
+        getSession,
+        saveProjectPatch,
+      },
+    );
     navigate({ to: `/projekt/${selected.adresseid}/cockpit` as never });
   }
 
@@ -144,12 +181,14 @@ function AddressStep() {
 
         <button
           type="button"
-          disabled={!selected}
-          onClick={handleContinue}
+          disabled={!selected || continuing}
+          onClick={() => {
+            void handleContinue();
+          }}
           data-testid="continue-btn"
           className="w-full inline-flex items-center justify-center rounded-md bg-accent px-6 py-3 font-mono text-sm text-accent-foreground transition-all hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          Fortsæt →
+          {continuing ? "Opretter projekt…" : "Fortsæt →"}
         </button>
       </div>
     </PageTransition>

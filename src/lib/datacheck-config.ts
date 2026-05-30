@@ -16,7 +16,8 @@ export type DataPointEntry = {
   updatedAt: string;
 };
 
-export type Phase = "skitse" | "myndighed" | "udbud";
+export type DataPointPhase = "skitse" | "myndighed" | "udbud";
+export type ReadinessPhase = "maskinrummet" | "myndighed";
 
 export type DataPointDef = {
   id: string;
@@ -25,7 +26,7 @@ export type DataPointDef = {
   label: string;
   description: string;
   kritisk: boolean;
-  phase: Phase;
+  phase: DataPointPhase;
 };
 
 export type RiskFlag = {
@@ -36,7 +37,7 @@ export type RiskFlag = {
 };
 
 export type ReadinessScore = {
-  phase: Phase;
+  phase: ReadinessPhase;
   label: string;
   done: number;
   total: number;
@@ -653,10 +654,13 @@ export const SECTIONS: { nr: number; label: string }[] = [
 // Readiness score
 // ---------------------------------------------------------------------------
 
-export const PHASE_LABELS: Record<Phase, string> = {
-  skitse: "Skitsefase",
-  myndighed: "Myndighedsfase",
-  udbud: "Udbudsfase",
+export function mapDataPointPhaseToReadinessPhase(phase: DataPointPhase): ReadinessPhase {
+  return phase === "skitse" ? "maskinrummet" : "myndighed";
+}
+
+export const PHASE_LABELS: Record<ReadinessPhase, string> = {
+  maskinrummet: "Maskinrummet",
+  myndighed: "Myndighed",
 };
 
 // ---------------------------------------------------------------------------
