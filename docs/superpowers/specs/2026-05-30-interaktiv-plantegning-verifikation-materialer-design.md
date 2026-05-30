@@ -1661,6 +1661,94 @@ Mitigation:
 4. Skal project-local assemblies kunne redigeres af brugeren i v1, eller kun vælges fra presets?
 5. Skal eksport til myndighedspakke kræve `TECHNICAL_REVIEW` eller kan `CONCEPT_DRAFT` eksporteres med tydeligt stempel?
 
+### 23.3 Lukkede Beslutninger Før P0 (Phase 0 Decisions)
+
+Følgende fem beslutninger lukkes her, fordi de er billige at afgøre nu og dyre at
+opdage under implementering. De er normative for P0, medmindre architecture review
+eksplicit omgør dem.
+
+#### 23.3.1 Geometri-Algoritme Og -Bibliotek
+
+`src/domain/floor-plan/` og `src/domain/geometry/` bruger **egen pure 2D-geometri i
+`LOCAL_METER`**, ikke JSTS.
+
+- Rumdetektion sker som **planar subdivision på vægge-centerline-grafen** (half-edge /
+  cykeldetektion), ikke som boolean polygon-ops.
+- Areal beregnes med shoelace, perimeter som segmentsum, point-in-polygon som ray
+  casting. Alt deterministisk pure TypeScript.
+- JSTS forbliver **kun** i `src/domain/drawing/` til EPSG:25832 site-geometri
+  (jf. [geometry-engine.ts](../../../src/domain/drawing/geometry-engine.ts)). Floor-plan
+  importerer ikke JSTS i hot path (drag/live validation, 0 tokens, <50 ms-target).
+- Ikke-ortogonal geometri markeres `review_required` (jf. §8.1) frem for at trække en
+  tung robust-geometri-afhængighed ind i v1.
+
+**Begrundelse:** half-edge cykeldetektion på ortogonale vægge er det rigtige værktøj til
+rumudledning; JSTS' styrke (robuste boolean-ops på vilkårlige polygoner i 25832) løser
+ikke editor-problemet og er for tung til hot path.
+
+#### 23.3.2 Snapshot Er Canonical, Commands Er Audit
+
+- `floor_plan_iterations.floor_plan_json` (valideret snapshot) er **eneste source of
+  truth** ved restore. `floor_plan_commands` er en **append-only audit/replay-log** og
+  bruges ikke som genskabelseskilde i v1.
+- Undo/redo er en **in-memory snapshot-stak i editoren**, ikke replay af persisterede
+  commands. Ved konflikt mellem snapshot og command-log vinder snapshot.
+- Hver accepteret command persisteres efter deterministic apply sammen med den nye
+  snapshot i samme logiske skrivning, så `model_hash` altid matcher seneste command.
+
+**Begrundelse:** to sandheder (snapshot + replay) er en kendt kilde til divergens.
+Event-sourcing-replay som autoritativ restore er ude af scope for v1.
+
+#### 23.3.3 Kanonisk Serialisering Og Hash
+
+Reproducerbar `model_hash` / `inputHash` (jf. §10.6, §12, §21) kræver en fastlagt
+kanonisk serialisering. P0 leverer en domain-helper `canonicalFloorPlanJson()`:
+
+- objekt-nøgler sorteres leksikografisk
+- alle tal afrundes til **3 decimaler (1 mm)** og `-0` normaliseres til `0`
+- array-rækkefølge **bevares** (koordinat-/vertex-arrays må ikke omsorteres); engines
+  holder entity-arrays (vægge, rum, åbninger) sorteret efter `id`, så hash er
+  insertion-order-invariant uden at ødelægge geometri
+- hash = SHA-256 over den kanoniske JSON-streng (via `crypto.subtle`, portabelt til
+  Cloudflare Workers og Bun)
+
+Samme helper bruges til både `model_hash` (model) og `inputHash` (verification input).
+Ingen ad hoc-afrunding må indgå i hash-stien.
+
+**Begrundelse:** acceptkriteriet "verification snapshot reproducerbar fra samme input
+hash" (§21) er ikke opnåeligt uden dette.
+
+#### 23.3.4 Delt Geometri-Flade Og Footprint-Transform-Ejer
+
+`src/domain/geometry/` er den fælles lavere-niveau-flade og ejer:
+
+- `geometry-2d.types.ts`: `Point2D`, `Line2D`, `Polygon2D`, `Segment2D`.
+- `local-transform.ts`: `LOCAL_METER` ↔ `EPSG:25832` via `FloorPlanTransform`
+  (rotation om `origin25832` + translation). Round-trip skal være deterministisk.
+- `polygon-ops.ts`: shoelace-areal, perimeter, point-in-polygon, segment-afstand.
+
+Cross-domain footprint-checken (`FP-GEO-003`) ejes af **`verify-floor-plan.service.ts`**:
+servicen transformerer floor-plan udvendige vægge til EPSG:25832 GeoJSON via
+`local-transform.ts` og kalder derefter eksisterende
+[geometry-engine.ts](../../../src/domain/drawing/geometry-engine.ts)
+(`polygonOverlapAreaM2` / `distanceToNearestBoundaryM`). Hverken `domain/drawing` eller
+`domain/floor-plan` importerer hinanden — servicen orkestrerer (jf. §24.5).
+
+`ElementSourceMeta` justeres til samme form som eksisterende
+`LayerSourceMeta` (`source`, `confidence`, `fetchedAt`, `requiresReview`) for konsistens.
+
+#### 23.3.5 Iteration-Kardinalitet Og Active-Invariant
+
+- `floor_plan_iterations` er **N:1 til `design_iterations`**: én design-iteration kan have
+  flere plantegningsversioner. `design_iteration_id` er **nullable** — generering kræver
+  ikke en eksisterende design-iteration.
+- **Præcis én aktiv plantegning pr. projekt** i v1, håndhævet med et partial unique index:
+  `UNIQUE (project_id) WHERE is_active`. Aktivering af en ny version deaktiverer den
+  forrige i samme transaktion.
+
+**Begrundelse:** uden index-håndhævet invariant kan to versioner stå som `is_active`, og
+UI/verification/API kan ikke entydigt vælge den aktive model.
+
 ---
 
 ## 24. Architecture Compliance Amendments
