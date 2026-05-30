@@ -27,6 +27,8 @@ type AssembleInput = {
   addressId: string;
   proposedFootprint25832: GeoJsonPolygon25832;
   projectId: string;
+  sokkelKoteM: number | null;
+  heightM: number | null;
   metadata: DrawingMetadata;
   geometrySource: DrawingGeometrySourcePort;
   survey: SurveyLayer | null;
@@ -73,6 +75,8 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     geometrySource,
     survey,
     metadata,
+    sokkelKoteM,
+    heightM,
   } = input;
 
   const parcel = await geometrySource.fetchParcelLayers(matrikelId);
@@ -158,9 +162,9 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
       rotationDeg: 0,
       footprintAreaM2,
       storeys: 1,
-      heightM: null,
-      sokkelKoteM: null,
-      finishedFloorKoteM: null,
+      heightM: heightM,
+      sokkelKoteM: sokkelKoteM,
+      finishedFloorKoteM: sokkelKoteM !== null ? sokkelKoteM + 0.15 : null,
       terrainOffsetM: null,
       dimensions: [],
       source: generatedSourceMeta(),
