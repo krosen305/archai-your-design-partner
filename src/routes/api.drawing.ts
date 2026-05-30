@@ -59,15 +59,7 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
       proposedFootprint25832 = {
         type: "Polygon",
         crs: "EPSG:25832",
-        coordinates: [
-          [
-            [0, 0],
-            [10, 0],
-            [10, 10],
-            [0, 10],
-            [0, 0],
-          ],
-        ],
+        coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]],
       };
     }
 
