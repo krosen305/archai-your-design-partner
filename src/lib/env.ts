@@ -69,7 +69,7 @@ export function validateEnv(): void {
   const missingOptional = OPTIONAL_ENV_VARS.filter((key) => !env[key]);
   if (missingOptional.length > 0) {
     logger.warn(
-      "[ArchAI] Valgfrie miljovariabler mangler - AI-funktioner bruger mock-data:\n" +
+      "[ArchAI] Valgfrie miljovariabler mangler - visse integrationer kører med defaults eller er deaktiveret:\n" +
         missingOptional.map((k) => `  - ${k}`).join("\n"),
     );
   }
