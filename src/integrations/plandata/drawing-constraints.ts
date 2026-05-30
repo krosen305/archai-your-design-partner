@@ -68,10 +68,19 @@ export function byggefeltWgs84ToConstraintLayers(
 
   for (const f of features) {
     const geom = f.geometry;
+    // MultiPolygon og andre geometrityper springes over — Plandata byggefelter er altid Polygon
     if (!geom || geom.type !== "Polygon") continue;
 
-    const rawCoords = geom.coordinates as number[][][];
-    const rings = rawCoords.map(convertWgs84RingToUtm32);
+    const rawCoords = geom.coordinates;
+    if (
+      !Array.isArray(rawCoords) ||
+      !Array.isArray(rawCoords[0]) ||
+      !Array.isArray(rawCoords[0][0])
+    ) {
+      continue;
+    }
+    const typedRings = rawCoords as number[][][];
+    const rings = typedRings.map(convertWgs84RingToUtm32);
 
     const polygon25832: GeoJsonPolygon25832 = {
       type: "Polygon",
