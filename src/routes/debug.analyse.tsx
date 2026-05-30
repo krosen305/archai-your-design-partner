@@ -33,8 +33,21 @@ function formatRunDate(iso: string): string {
   return `${date} ${time}`;
 }
 
-function formatExactTimestamp(iso: string): string {
-  return new Date(iso).toISOString();
+function formatPrettyTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("da-DK", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const time = d.toLocaleTimeString("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const ms = String(d.getMilliseconds()).padStart(3, "0");
+  return `${date} ${time}.${ms}`;
 }
 
 function toObject(value: unknown): Record<string, unknown> | null {
@@ -61,6 +74,18 @@ function getEndpointLabel(metadata: unknown, service: string): string {
   }
 
   return service;
+}
+
+function formatMetadataValue(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
 }
 
 function DebugAnalysePage() {
@@ -218,7 +243,7 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-foreground">{endpointLabel}</span>
           <span className="font-mono text-muted-foreground/80">
-            {formatExactTimestamp(event.created_at)}
+            {formatPrettyTimestamp(event.created_at)}
           </span>
           {event.status === "error" && (
             <span className="rounded border border-danger/40 px-1 font-mono text-danger">
@@ -232,6 +257,7 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
             input: {event.input_summary}
           </div>
         )}
+        {renderGraphqlVariables(event.metadata)}
         {event.output_summary && (
           <div className="break-words whitespace-pre-wrap text-muted-foreground">
             out: {event.output_summary}
@@ -254,6 +280,22 @@ function EventRow({ event }: { event: AnalysisEventRow }) {
           {event.http_status != null && event.status !== "error" && ` | HTTP ${event.http_status}`}
         </div>
       </div>
+    </div>
+  );
+}
+
+function renderGraphqlVariables(metadata: unknown) {
+  const meta = toObject(metadata);
+  const variables = meta?.variables;
+  const text = formatMetadataValue(variables);
+  if (!text) return null;
+
+  return (
+    <div className="space-y-1">
+      <div className="text-muted-foreground">vars:</div>
+      <pre className="overflow-x-auto rounded border border-border bg-background/40 p-2 font-mono text-[11px] leading-5 text-foreground">
+        {text}
+      </pre>
     </div>
   );
 }

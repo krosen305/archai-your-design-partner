@@ -47,7 +47,6 @@ export async function datafordelerGraphqlFetch<T>(
 
   const module = operation.split("_")[0].toLowerCase() + "/client";
   const service = `Datafordeler ${operation.split("_")[0]}`;
-  const querySummary = summarizeGraphqlQuery(query);
   const endpointPath = url.pathname;
 
   // Datafordeler GraphQL er sporadisk flaky: identisk query svinger 20ms → 7000ms
@@ -78,8 +77,10 @@ export async function datafordelerGraphqlFetch<T>(
       metadata: {
         ...(options?.metadata ?? {}),
         endpointPath,
+        queryName: operation,
+        variables,
       },
-      inputSummary: querySummary,
+      inputSummary: `query=${operation}`,
     },
   );
 
