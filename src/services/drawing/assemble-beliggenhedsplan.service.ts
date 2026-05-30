@@ -19,6 +19,7 @@ import {
   generateBuffer25832,
 } from "@/domain/drawing/geometry-engine";
 import { generatedSourceMeta } from "@/domain/drawing/source-quality";
+import { utm32ToWgs84 } from "@/lib/geometry-utils";
 
 type AssembleInput = {
   matrikelId: string;
@@ -26,6 +27,8 @@ type AssembleInput = {
   addressId: string;
   proposedFootprint25832: GeoJsonPolygon25832;
   projectId: string;
+  sokkelKoteM: number | null;
+  heightM: number | null;
   metadata: DrawingMetadata;
   geometrySource: DrawingGeometrySourcePort;
   survey: SurveyLayer | null;
@@ -72,6 +75,8 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     geometrySource,
     survey,
     metadata,
+    sokkelKoteM,
+    heightM,
   } = input;
 
   const parcel = await geometrySource.fetchParcelLayers(matrikelId);
@@ -116,11 +121,15 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     Math.max(...ys),
   ];
 
-  const [existing, constraints, neighborParcels, roadNameResult] = await Promise.all([
+  const centroidCoords = parcel.labelPoint25832.coordinates;
+  const { lat: centroidLat, lng: centroidLng } = utm32ToWgs84(centroidCoords[0], centroidCoords[1]);
+
+  const [existing, constraints, neighborParcels, roadNameResult, dhmTerrain] = await Promise.all([
     geometrySource.fetchNeighborBuildings(bbox),
     geometrySource.fetchPlandataLayers(kommunekode, bbox),
     geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
     geometrySource.fetchRoadName(addressId),
+    geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
   ]);
 
   const br18Constraint = buildBr18Constraint(parcelWithSegments.polygon25832);
@@ -153,9 +162,9 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
       rotationDeg: 0,
       footprintAreaM2,
       storeys: 1,
-      heightM: null,
-      sokkelKoteM: null,
-      finishedFloorKoteM: null,
+      heightM: heightM,
+      sokkelKoteM: sokkelKoteM,
+      finishedFloorKoteM: sokkelKoteM !== null ? sokkelKoteM + 0.15 : null,
       terrainOffsetM: null,
       dimensions: [],
       source: generatedSourceMeta(),
@@ -163,7 +172,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     constraints: allConstraints,
     utilities: [],
     siteUse: [],
-    terrain: null,
+    terrain: dhmTerrain,
     metadata,
     mandatoryAnnotations: buildMandatoryAnnotations(survey !== null, false),
   };
@@ -178,7 +187,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     minDistanceToSetbackLineM: minDistanceToBoundaryM,
     setbackRequirementM: 2.5,
     hasOpmaalteKoter: (survey?.terrainPoints.length ?? 0) > 0,
-    hasDhmKoter: false,
+    hasDhmKoter: dhmTerrain !== null,
     hasExistingBuildingGeometry: existing.buildings.length > 0,
     missingDataPoints: [],
     hasRoadCenterlineGeometry: true,

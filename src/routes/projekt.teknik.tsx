@@ -38,6 +38,9 @@ function TeknikPage() {
   const [result, setResult] = useState<ExportResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bygherre, setBygherre] = useState<string>("");
+  const [sokkelKoteM, setSokkelKoteM] = useState<string>("");
+  const [heightM, setHeightM] = useState<string>("");
 
   const backTo = address?.adresseid ? `/projekt/${address.adresseid}/cockpit` : "/projekt/start";
 
@@ -66,6 +69,9 @@ function TeknikPage() {
           addressId: address!.adresseid,
           addressText: address!.adresse ?? null,
           footprintGeojson: designPlacement?.footprintGeojson ?? null,
+          bygherre: bygherre.trim() || null,
+          sokkelKoteM: sokkelKoteM !== "" ? parseFloat(sokkelKoteM) : null,
+          heightM: heightM !== "" ? parseFloat(heightM) : null,
         },
       });
       setResult(res);
@@ -103,6 +109,52 @@ function TeknikPage() {
             </ul>
           </div>
         )}
+
+        <div className="rounded-xl border border-stone-200 bg-white p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-stone-700">Tegningsdata</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1">Bygherre</label>
+              <input
+                type="text"
+                value={bygherre}
+                onChange={(e) => setBygherre(e.target.value)}
+                placeholder="Navn på bygherre"
+                maxLength={200}
+                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-stone-300"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                Sokkelkote DVR90 (m)
+              </label>
+              <input
+                type="number"
+                value={sokkelKoteM}
+                onChange={(e) => setSokkelKoteM(e.target.value)}
+                placeholder="f.eks. 18.50"
+                step="0.01"
+                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-stone-300"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                Bygningshøjde (m)
+              </label>
+              <input
+                type="number"
+                value={heightM}
+                onChange={(e) => setHeightM(e.target.value)}
+                placeholder="f.eks. 8.50"
+                step="0.01"
+                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-stone-300"
+              />
+            </div>
+          </div>
+        </div>
 
         <div className="flex items-center gap-4">
           <button

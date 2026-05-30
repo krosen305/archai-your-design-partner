@@ -226,6 +226,21 @@ export function buildDrawingModel(
     });
   }
 
+  // Nordpil — fast SVG position øverst til venstre i tegnefeltet
+  features.push({
+    id: "north-arrow",
+    kind: "north_arrow",
+    svgElement: `<g transform="translate(24,24) rotate(0)">
+    <polygon points="0,-14 5,4 0,0 -5,4" fill="#222" stroke="none"/>
+    <polygon points="0,14 5,-4 0,0 -5,-4" fill="#fff" stroke="#222" stroke-width="0.5"/>
+    <text x="0" y="-18" text-anchor="middle" font-family="Arial" font-size="7" font-weight="bold" fill="#222">N</text>
+  </g>`,
+    label: "N",
+    labelX: 24,
+    labelY: 10,
+    zIndex: 60,
+  });
+
   const areaTable = plan.metadata.areaTable ?? {
     grundarealM2: plan.parcel.areaRegisteredM2,
     groundFloorM2: plan.proposed.footprintAreaM2,

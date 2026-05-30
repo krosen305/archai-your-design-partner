@@ -25,6 +25,9 @@ const ExportBeliggenhedsplanInputSchema = z.object({
   addressId: z.string().min(1),
   addressText: z.string().optional().nullable(),
   footprintGeojson: GeoJsonPolygonSchema.optional().nullable(),
+  bygherre: z.string().max(200).optional().nullable(),
+  sokkelKoteM: z.number().min(-10).max(100).optional().nullable(),
+  heightM: z.number().min(0).max(30).optional().nullable(),
 });
 
 type ExportInput = z.infer<typeof ExportBeliggenhedsplanInputSchema>;
@@ -46,9 +49,9 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
       await import("@/integrations/supabase/repositories/drawing.repository");
     const { decodeGeoJsonFootprint } =
       await import("@/integrations/import/geojson-footprint-decoder");
+    const { getProjectDrawingData } =
+      await import("@/integrations/supabase/repositories/projects.repository");
 
-    // Brug footprint fra UI hvis tilgængeligt; ellers fallback til 10×10m placeholder.
-    // Footprint fra kortediteren er EPSG:25832 (se MatrikelMap.tsx + buildSquareFootprint25832).
     let proposedFootprint25832: GeoJsonPolygon25832;
     if (data.footprintGeojson) {
       proposedFootprint25832 = decodeGeoJsonFootprint(data.footprintGeojson);
@@ -68,24 +71,42 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
       };
     }
 
+    const projectData = await getProjectDrawingData(data.projectId);
+    const grundarealM2 = projectData?.grundarealM2 ?? null;
+    const bebyggetArealM2 = projectData?.bebyggetArealM2 ?? null;
+    const bfeNr = projectData?.bfeNr ?? null;
+
     const assembled = await assembleBeliggenhedsplan({
       matrikelId: data.matrikelId,
       kommunekode: data.kommunekode,
       addressId: data.addressId,
       proposedFootprint25832,
       projectId: data.projectId,
+      sokkelKoteM: data.sokkelKoteM ?? null,
+      heightM: data.heightM ?? null,
       metadata: {
         title: "Beliggenhedsplan",
         address: data.addressText ?? data.addressId,
         matrikel: data.matrikelId,
-        bygherre: null,
+        bygherre: data.bygherre ?? null,
         sagNr: data.projectId,
+        bfeNr,
         revisions: [],
-        bfeNr: null,
-        buildingCode: null,
+        buildingCode: "BR18",
         draughtsman: null,
         responsibleFirm: null,
-        areaTable: null,
+        areaTable:
+          grundarealM2 !== null && bebyggetArealM2 !== null
+            ? {
+                grundarealM2,
+                groundFloorM2: bebyggetArealM2,
+                firstFloorM2: null,
+                doubleHeightDeductionM2: 0,
+                totalResidentialM2: bebyggetArealM2,
+                coveragePercent: Math.round((bebyggetArealM2 / grundarealM2) * 1000) / 10,
+                calculationBasis: "BR18 §452",
+              }
+            : null,
         date: new Date().toISOString().slice(0, 10),
         scale: 250 as const,
         paperSize: "A3" as const,

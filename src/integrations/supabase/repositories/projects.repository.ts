@@ -214,6 +214,28 @@ export async function loadProject(
   };
 }
 
+export type ProjectDrawingData = {
+  grundarealM2: number | null;
+  bebyggetArealM2: number | null;
+  bfeNr: string | null;
+};
+
+export async function getProjectDrawingData(projectId: string): Promise<ProjectDrawingData | null> {
+  const { data, error } = await supabaseAdmin
+    .from("projects")
+    .select("grundareal_m2, bebygget_areal_m2, bfe_nr")
+    .eq("id", projectId)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    grundarealM2: data.grundareal_m2 ?? null,
+    bebyggetArealM2: data.bebygget_areal_m2 ?? null,
+    bfeNr: data.bfe_nr ?? null,
+  };
+}
+
 export async function deleteProjectRow(id: string, userId: string): Promise<void> {
   const { error } = await supabaseAdmin
     .from("projects")

@@ -21,7 +21,8 @@ export type DrawingLayerKind =
   | "hatch_areas"
   | "road_label"
   | "scale_bar"
-  | "mandatory_annotations";
+  | "mandatory_annotations"
+  | "north_arrow";
 
 export type DrawingFeature = {
   id: string;
