@@ -13,6 +13,23 @@ import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
 import type { FloorPlanVerificationResult } from "@/services/floor-plan/verify-floor-plan.service";
 import type { ApplyFloorPlanCommandResult } from "@/services/floor-plan/apply-floor-plan-command.service";
 import type { ExportFloorPlanResult } from "@/services/floor-plan/export-floor-plan.service";
+import type { GenerateFloorPlanResult } from "@/services/floor-plan/generate-floor-plan.service";
+
+const roomTypeSchema = z.enum([
+  "entrance",
+  "hall",
+  "living",
+  "kitchen",
+  "bedroom",
+  "bathroom",
+  "utility",
+  "office",
+  "storage",
+  "technical",
+  "stair",
+  "garage",
+  "other",
+]);
 
 // --- Schemas ---------------------------------------------------------------
 
@@ -42,6 +59,15 @@ const exportFloorPlanInput = z.object({
   token: z.string().min(1),
 });
 
+const generateFloorPlanInput = z.object({
+  projectId: z.string().uuid(),
+  designIterationId: z.string().uuid().nullable().default(null),
+  targetAreaM2: z.number().positive(),
+  rooms: z.array(z.object({ name: z.string().min(1), roomType: roomTypeSchema })).min(1),
+  footprint: z.object({ widthM: z.number().positive(), depthM: z.number().positive() }).optional(),
+  token: z.string().min(1),
+});
+
 // --- Handlers --------------------------------------------------------------
 
 export const loadActiveFloorPlanFn = createServerFn({ method: "POST" })
@@ -60,6 +86,39 @@ export const loadActiveFloorPlanFn = createServerFn({ method: "POST" })
       });
     },
   );
+
+export const generateFloorPlanFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => generateFloorPlanInput.parse(data))
+  .handler(async ({ data }): Promise<GenerateFloorPlanResult> => {
+    return withAuth(data.token, async (userId) => {
+      const { verifyProjectOwnership, getProjectHardStop } =
+        await import("@/integrations/supabase/repositories/projects.repository");
+      const { buildOwnerPrincipal } = await import("@/services/floor-plan/principal");
+      const { generateFloorPlan } =
+        await import("@/services/floor-plan/generate-floor-plan.service");
+      const { FloorPlanRepository } =
+        await import("@/integrations/supabase/repositories/floor-plan.repository");
+
+      const principal = buildOwnerPrincipal(
+        userId,
+        await verifyProjectOwnership(data.projectId, userId),
+      );
+      return generateFloorPlan(
+        {
+          projectId: data.projectId,
+          designIterationId: data.designIterationId,
+          targetAreaM2: data.targetAreaM2,
+          rooms: data.rooms,
+          footprint: data.footprint,
+        },
+        principal,
+        {
+          hardStop: { check: (projectId) => getProjectHardStop(projectId) },
+          write: new FloorPlanRepository(),
+        },
+      );
+    });
+  });
 
 export const verifyFloorPlanFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => verifyFloorPlanInput.parse(data))
