@@ -72,7 +72,7 @@ export const PAGE_SIZES = {
 
 export function computeViewport(
   bbox25832: [number, number, number, number],
-  scale: 250 | 500,
+  metersPerMm: number,
 ): DrawingModel["viewport"] {
-  return { bbox25832, metersPerMm: scale / 1000 };
+  return { bbox25832, metersPerMm };
 }

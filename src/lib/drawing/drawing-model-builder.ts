@@ -78,6 +78,10 @@ export function buildDrawingModel(
   const scaleY = drawHeightPx / (bboxMaxY - bboxMinY);
   const scale = Math.min(scaleX, scaleY) * 0.9;
 
+  // Actual scale: PX_PER_MM / (px per UTM-meter) = meters per mm of paper
+  const actualMetersPerMm = PX_PER_MM / scale;
+  const actualScaleRounded = Math.round(actualMetersPerMm * 1000);
+
   const features: DrawingFeature[] = [];
 
   // Parcelpolygon
@@ -287,7 +291,7 @@ export function buildDrawingModel(
       scale: plan.metadata.scale,
       ...page,
     },
-    viewport: computeViewport([bboxMinX, bboxMinY, bboxMaxX, bboxMaxY], plan.metadata.scale),
+    viewport: computeViewport([bboxMinX, bboxMinY, bboxMaxX, bboxMaxY], actualMetersPerMm),
     features,
     titleBlock: {
       title: plan.metadata.title,
@@ -295,7 +299,7 @@ export function buildDrawingModel(
       matrikel: plan.metadata.matrikel,
       bygherre: plan.metadata.bygherre,
       sagNr: plan.metadata.sagNr,
-      scale: `1:${plan.metadata.scale}`,
+      scale: `1:${actualScaleRounded}`,
       paperSize: plan.metadata.paperSize,
       date: plan.metadata.date,
       revision: revisions[0]?.nr ?? "A",
