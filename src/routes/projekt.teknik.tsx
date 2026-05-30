@@ -114,9 +114,7 @@ function TeknikPage() {
           <h2 className="text-sm font-semibold text-stone-700">Tegningsdata</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
-                Bygherre
-              </label>
+              <label className="block text-xs font-medium text-stone-600 mb-1">Bygherre</label>
               <input
                 type="text"
                 value={bygherre}
