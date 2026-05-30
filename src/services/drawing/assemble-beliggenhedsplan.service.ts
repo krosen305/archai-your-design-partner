@@ -19,6 +19,7 @@ import {
   generateBuffer25832,
 } from "@/domain/drawing/geometry-engine";
 import { generatedSourceMeta } from "@/domain/drawing/source-quality";
+import { utm32ToWgs84 } from "@/lib/geometry-utils";
 
 type AssembleInput = {
   matrikelId: string;
@@ -116,11 +117,15 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     Math.max(...ys),
   ];
 
-  const [existing, constraints, neighborParcels, roadNameResult] = await Promise.all([
+  const centroidCoords = parcel.labelPoint25832.coordinates;
+  const { lat: centroidLat, lng: centroidLng } = utm32ToWgs84(centroidCoords[0], centroidCoords[1]);
+
+  const [existing, constraints, neighborParcels, roadNameResult, dhmTerrain] = await Promise.all([
     geometrySource.fetchNeighborBuildings(bbox),
     geometrySource.fetchPlandataLayers(kommunekode, bbox),
     geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
     geometrySource.fetchRoadName(addressId),
+    geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
   ]);
 
   const br18Constraint = buildBr18Constraint(parcelWithSegments.polygon25832);
@@ -163,7 +168,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     constraints: allConstraints,
     utilities: [],
     siteUse: [],
-    terrain: null,
+    terrain: dhmTerrain,
     metadata,
     mandatoryAnnotations: buildMandatoryAnnotations(survey !== null, false),
   };
@@ -178,7 +183,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     minDistanceToSetbackLineM: minDistanceToBoundaryM,
     setbackRequirementM: 2.5,
     hasOpmaalteKoter: (survey?.terrainPoints.length ?? 0) > 0,
-    hasDhmKoter: false,
+    hasDhmKoter: dhmTerrain !== null,
     hasExistingBuildingGeometry: existing.buildings.length > 0,
     missingDataPoints: [],
     hasRoadCenterlineGeometry: true,

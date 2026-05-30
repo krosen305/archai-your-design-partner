@@ -53,6 +53,7 @@ const fakeSource: DrawingGeometrySourcePort = {
   fetchPlandataLayers: async () => [],
   fetchNeighborParcels: async () => [],
   fetchRoadName: async () => ({ name: "Testvej" }),
+  fetchDhmKoter: async () => null,
 };
 
 const fakeFootprint: GeoJsonPolygon25832 = {

@@ -203,4 +203,42 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
       return { name: null };
     }
   }
+
+  async fetchDhmKoter(
+    bbox25832: BBox25832,
+    centroidLat: number,
+    centroidLng: number,
+  ): Promise<import("@/domain/drawing/beliggenhedsplan.types").TerrainLayer | null> {
+    const { DhmService } = await import("@/integrations/sdfi/dhm-client");
+    const bboxParam = {
+      minX: bbox25832[0],
+      minY: bbox25832[1],
+      maxX: bbox25832[2],
+      maxY: bbox25832[3],
+    };
+    const result = await DhmService.getTerrainData(bboxParam, centroidLat, centroidLng);
+    if (result.status === "error" || !result.data) return null;
+
+    const now = new Date().toISOString();
+    const td = result.data;
+
+    return {
+      verticalDatum: "DVR90",
+      points: td.kotepunkter.map((pt) => ({
+        x: pt.x,
+        y: pt.y,
+        z: pt.z,
+        label: pt.z.toFixed(2),
+        source: "registry" as const,
+      })),
+      slopePercent: td.slopePercent,
+      lowPointM: td.lowPointM,
+      source: {
+        source: "registry",
+        confidence: "medium",
+        fetchedAt: now,
+        requiresReview: false,
+      },
+    };
+  }
 }
