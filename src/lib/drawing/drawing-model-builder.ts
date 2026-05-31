@@ -4,9 +4,7 @@ import type { DrawingReadinessDecision } from "@/domain/drawing/decision-engine"
 import type { DrawingModel, DrawingFeature } from "@/domain/drawing/drawing-model";
 import { PAGE_SIZES, computeViewport } from "@/domain/drawing/drawing-model";
 import { buildDimensionLines } from "./dimension-lines";
-import {
-  buildSetbackAnnotations,
-} from "@/domain/drawing/geometry-engine";
+import { buildSetbackAnnotations } from "@/domain/drawing/geometry-engine";
 
 function esc(s: string): string {
   return s

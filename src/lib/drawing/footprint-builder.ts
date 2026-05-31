@@ -47,10 +47,7 @@ export type RectangularFootprintParams = {
 export function buildRectangularFootprint25832(
   params: RectangularFootprintParams,
 ): GeoJsonPolygon25832 {
-  const [cx, cy] = proj4("WGS84", "EPSG:25832", [
-    params.centroidWgs84[0],
-    params.centroidWgs84[1],
-  ]);
+  const [cx, cy] = proj4("WGS84", "EPSG:25832", [params.centroidWgs84[0], params.centroidWgs84[1]]);
   const halfW = params.widthM / 2;
   const halfD = params.depthM / 2;
   const angle = (params.rotationDeg * Math.PI) / 180;

@@ -104,14 +104,30 @@ describe("distanceToBoundarySegments", () => {
 const parcelSimple: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [[[0, 0], [20, 0], [20, 20], [0, 20], [0, 0]]],
+  coordinates: [
+    [
+      [0, 0],
+      [20, 0],
+      [20, 20],
+      [0, 20],
+      [0, 0],
+    ],
+  ],
 };
 
 // Building centered 5m inside all boundaries
 const buildingSimple: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [[[5, 5], [15, 5], [15, 15], [5, 15], [5, 5]]],
+  coordinates: [
+    [
+      [5, 5],
+      [15, 5],
+      [15, 15],
+      [5, 15],
+      [5, 5],
+    ],
+  ],
 };
 
 describe("buildSetbackAnnotations", () => {

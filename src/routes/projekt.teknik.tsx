@@ -132,13 +132,12 @@ function TeknikPage() {
         {canGenerate && !hasFootprint && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
             <p className="text-sm font-medium text-blue-800">
-              Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en centreret standardplacering
+              Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en
+              centreret standardplacering
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">
-                  Bredde (m) *
-                </label>
+                <label className="block text-xs font-medium text-blue-700 mb-1">Bredde (m) *</label>
                 <input
                   type="number"
                   value={buildingWidthM}
@@ -152,9 +151,7 @@ function TeknikPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">
-                  Dybde (m)
-                </label>
+                <label className="block text-xs font-medium text-blue-700 mb-1">Dybde (m)</label>
                 <input
                   type="number"
                   value={buildingDepthM}
@@ -168,9 +165,7 @@ function TeknikPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">
-                  Rotation (°)
-                </label>
+                <label className="block text-xs font-medium text-blue-700 mb-1">Rotation (°)</label>
                 <input
                   type="number"
                   value={rotationDeg}
@@ -190,7 +185,8 @@ function TeknikPage() {
         {canGenerate && hasFootprint && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-3">
             <p className="text-sm text-green-800">
-              Fodprint fra designværktøjet anvendes ({(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)} m²)
+              Fodprint fra designværktøjet anvendes (
+              {(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)} m²)
             </p>
           </div>
         )}
@@ -244,7 +240,7 @@ function TeknikPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={handleGenerate}
-            disabled={(!canGenerate || loading) || (!hasFootprint && !canGenerateWithDimensions)}
+            disabled={!canGenerate || loading || (!hasFootprint && !canGenerateWithDimensions)}
             className="px-5 py-2.5 rounded-lg bg-stone-900 text-white text-sm font-medium
                        hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed
                        transition-colors"
