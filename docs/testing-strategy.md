@@ -53,13 +53,14 @@ cases — for proving the app works end-to-end for a real user.
 
 Current accepted specs:
 
-- `address-flow.spec.ts` — guest navigation to address page
-- `cockpit-data.spec.ts` — mock address → cockpit data display
-- `hard-stop-gate.spec.ts` — hard-stop project shows banner before AI design
+- `cockpit-data.spec.ts` — authenticated address flow → cockpit shell
+- `floor-plan-editor.spec.ts` — authenticated project → interactive floor-plan editor
 - `production-smoke.spec.ts` — production build renders project start
 
 Playwright runs against `bun run build && bun run preview` in CI. It is
 slow. Do not add Playwright specs for things unit tests can cover.
+Specs that require a real user skip unless `PLAYWRIGHT_TEST_EMAIL` and
+`PLAYWRIGHT_TEST_PASSWORD` are present in the environment.
 
 Run: `bunx playwright test`
 
