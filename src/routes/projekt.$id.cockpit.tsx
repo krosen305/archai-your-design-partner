@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { XCircle } from "lucide-react";
+import { ArrowRight, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useProject } from "@/lib/project-store";
 import { CockpitStatusBar } from "@/components/cockpit/CockpitStatusBar";
@@ -154,7 +154,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     [navigate, adresseId, searchProjectId],
   );
 
-  const { address, bbrData, complianceMetrics, vurderingData } = useProject();
+  const { address, bbrData, complianceMetrics, vurderingData, currentProjectId } = useProject();
 
   const setSnapshotPatchRef = useRef<((p: Partial<AnalysisSnapshot>) => void) | null>(null);
 
@@ -195,6 +195,23 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
           <>
             <CockpitStatusBar onRefreshAll={triggerRefresh} isRefreshing={false} />
             <HardStopBanner />
+
+            <div className="mb-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  navigate({
+                    to: "/projekt/$id/plantegning",
+                    params: { id: adresseId },
+                    search: { projectId: currentProjectId ?? searchProjectId },
+                  })
+                }
+                className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-mono text-[11px] tracking-[0.15em] text-accent-foreground transition-colors hover:bg-accent/90"
+              >
+                ÅBN PLANTEGNING
+                <ArrowRight className="size-3.5" />
+              </button>
+            </div>
 
             <div className="flex gap-1 mb-6 border-b border-border/40">
               {(
