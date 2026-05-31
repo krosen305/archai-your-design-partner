@@ -72,7 +72,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-950">
+    <div className="floor-plan-theme min-h-screen bg-stone-100 text-stone-950">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-white px-5 py-3">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon" asChild aria-label="Tilbage">
