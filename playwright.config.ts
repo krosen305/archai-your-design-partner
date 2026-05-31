@@ -41,7 +41,9 @@ export default defineConfig({
       : "bun run dev -- --host 127.0.0.1 --port 8080",
     url: "http://127.0.0.1:8080",
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    // In CI the webServer runs `bun run build && bun run preview`; the production
+    // build of this map/geo-heavy app needs more than 120s to be ready.
+    timeout: 300_000,
   },
 
   projects: [
