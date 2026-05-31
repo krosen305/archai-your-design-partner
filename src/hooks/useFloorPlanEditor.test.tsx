@@ -12,14 +12,19 @@ const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 let activeDocument: FloorPlanDocument | null = null;
 let activeIterationId = "22222222-2222-4222-8222-222222222222";
 let iterationCounter = 2;
+let malformedActiveResponse = false;
 
 mock.module("@/lib/auth", () => ({
   getSession: async () => ({ access_token: "test-token" }),
 }));
 
 mock.module("@/lib/floor-plan/floor-plan.functions", () => ({
-  loadActiveFloorPlanFn: async () =>
-    activeDocument ? { iterationId: activeIterationId, document: activeDocument } : null,
+  loadActiveFloorPlanFn: async () => {
+    // Simulate an unexpected truthy-but-document-less response (e.g. an error
+    // payload that did not throw) to exercise the loadActive guard.
+    if (malformedActiveResponse) return { iterationId: activeIterationId } as never;
+    return activeDocument ? { iterationId: activeIterationId, document: activeDocument } : null;
+  },
   generateFloorPlanFn: async ({
     data,
   }: {
@@ -74,6 +79,21 @@ describe("useFloorPlanEditor", () => {
     activeDocument = null;
     activeIterationId = "22222222-2222-4222-8222-222222222222";
     iterationCounter = 2;
+    malformedActiveResponse = false;
+  });
+
+  test("crasher ikke når load-handleren returnerer et uventet svar uden document", async () => {
+    malformedActiveResponse = true;
+    const { useFloorPlanEditor } = await import("./useFloorPlanEditor");
+
+    const { result } = renderHook(() => useFloorPlanEditor({ projectId: PROJECT_ID }));
+
+    await waitFor(() => {
+      expect(result.current.busyState).toBe("idle");
+    });
+    // Degraderer til tom tilstand i stedet for at crashe editoren.
+    expect(result.current.document).toBeNull();
+    expect(result.current.activeLevelId).toBeNull();
   });
 
   test("loader aktiv plantegning fra server-handleren", async () => {

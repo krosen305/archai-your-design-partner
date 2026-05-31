@@ -132,7 +132,10 @@ export function useFloorPlanEditor({
       }
 
       const active = await loadActiveFloorPlanFn({ data: { projectId, token } });
-      if (active) {
+      // Guard against an unexpected/malformed response (e.g. a non-null error
+      // payload): only adopt it when it actually carries a document, otherwise
+      // fall back to the empty state instead of crashing the editor.
+      if (active?.document) {
         applyLoadedPlan(active);
       } else {
         setDocument(null);
@@ -189,8 +192,8 @@ export function useFloorPlanEditor({
         });
 
         if (!result.generated) {
-          setBlockers(result.blockers);
-          setError(result.blockers[0] ?? "Plantegningen blev ikke genereret.");
+          setBlockers(result.blockers ?? []);
+          setError(result.blockers?.[0] ?? "Plantegningen blev ikke genereret.");
           return false;
         }
 
