@@ -18,6 +18,7 @@ import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
 import { Route as DebugAnalyseRouteImport } from './routes/debug.analyse'
 import { Route as ApiMapTilesRouteImport } from './routes/api.map-tiles'
 import { Route as ApiDrawingRouteImport } from './routes/api.drawing'
+import { Route as ProjektIdPlantegningRouteImport } from './routes/projekt.$id.plantegning'
 import { Route as ProjektIdCockpitRouteImport } from './routes/projekt.$id.cockpit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -65,6 +66,11 @@ const ApiDrawingRoute = ApiDrawingRouteImport.update({
   path: '/api/drawing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjektIdPlantegningRoute = ProjektIdPlantegningRouteImport.update({
+  id: '/projekt/$id/plantegning',
+  path: '/projekt/$id/plantegning',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
   id: '/projekt/$id/cockpit',
   path: '/projekt/$id/cockpit',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
   '/projekt/$id/cockpit': typeof ProjektIdCockpitRoute
+  '/projekt/$id/plantegning': typeof ProjektIdPlantegningRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
   '/projekt/$id/cockpit': typeof ProjektIdCockpitRoute
+  '/projekt/$id/plantegning': typeof ProjektIdPlantegningRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/projekt/teknik': typeof ProjektTeknikRoute
   '/projekt/udbud': typeof ProjektUdbudRoute
   '/projekt/$id/cockpit': typeof ProjektIdCockpitRoute
+  '/projekt/$id/plantegning': typeof ProjektIdPlantegningRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/projekt/teknik'
     | '/projekt/udbud'
     | '/projekt/$id/cockpit'
+    | '/projekt/$id/plantegning'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/projekt/teknik'
     | '/projekt/udbud'
     | '/projekt/$id/cockpit'
+    | '/projekt/$id/plantegning'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/projekt/teknik'
     | '/projekt/udbud'
     | '/projekt/$id/cockpit'
+    | '/projekt/$id/plantegning'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   ProjektTeknikRoute: typeof ProjektTeknikRoute
   ProjektUdbudRoute: typeof ProjektUdbudRoute
   ProjektIdCockpitRoute: typeof ProjektIdCockpitRoute
+  ProjektIdPlantegningRoute: typeof ProjektIdPlantegningRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDrawingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projekt/$id/plantegning': {
+      id: '/projekt/$id/plantegning'
+      path: '/projekt/$id/plantegning'
+      fullPath: '/projekt/$id/plantegning'
+      preLoaderRoute: typeof ProjektIdPlantegningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projekt/$id/cockpit': {
       id: '/projekt/$id/cockpit'
       path: '/projekt/$id/cockpit'
@@ -246,6 +266,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjektTeknikRoute: ProjektTeknikRoute,
   ProjektUdbudRoute: ProjektUdbudRoute,
   ProjektIdCockpitRoute: ProjektIdCockpitRoute,
+  ProjektIdPlantegningRoute: ProjektIdPlantegningRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
