@@ -7,6 +7,11 @@ saveTextLockfile = true
 root = "src"
 # Preload react-test-setup for React component tests (happy-dom + jest-dom matchers)
 # Only .test.tsx files that import react-test-setup directly will activate this.
-# The preload flag is NOT set globally here because it would break pure-unit tests
-# that do not need a DOM (e.g. rule-engine, decoders). Instead, each React test
-# imports react-test-setup explicitly at the top.
+# react-test-setup (happy-dom + jest-dom) is NOT preloaded globally because it
+# would break pure-unit tests that do not need a DOM. Each React test imports it
+# explicitly at the top.
+#
+# test-preload is fetch-only (no DOM) and IS preloaded globally: it restores
+# globalThis.fetch after every test so a fetch mock in one file cannot leak into
+# another — order-dependent pollution that surfaced under CI's Linux file ordering.
+preload = ["./src/testing/test-preload.ts"]
