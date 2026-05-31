@@ -316,7 +316,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
               <span>{totalNetArea.toFixed(1)} m² netto</span>
               <span>{editor.localFindings.length} live finding(s)</span>
             </div>
-            <div className="font-mono">
+            <div className="font-mono" data-testid="floor-plan-version">
               {editor.floorPlanIterationId
                 ? editor.floorPlanIterationId.slice(0, 8)
                 : "ingen version"}
