@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 
 const getAddressDetails = mock(async (_addressId: string) => ({
   adresse: "Hasselvej 48, 2830 Virum",
@@ -9,6 +9,15 @@ mock.module("@/integrations/dar/client", () => ({
     getAddressDetails,
   },
 }));
+
+// bun's mock.module is global and persists across files. Without restoring it,
+// this DarService stub leaked into later-loaded files (dar/dar.test.ts and
+// datafordeler/regression.test.ts) under CI's file ordering and made them fail
+// (postnr/grundareal undefined). Restore after this file's tests — matching the
+// mock.restore() cleanup the other integration tests already use.
+afterAll(() => {
+  mock.restore();
+});
 
 describe("GeoDanmarkDrawingLayersAdapter.fetchRoadName", () => {
   beforeEach(() => {
