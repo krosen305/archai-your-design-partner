@@ -1,7 +1,10 @@
 // src/lib/drawing/drawing-model-builder.test.ts
 import { describe, it, expect } from "bun:test";
 import { buildDrawingModel } from "./drawing-model-builder";
-import type { BeliggenhedsplanInput, GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
+import type {
+  BeliggenhedsplanInput,
+  GeoJsonPolygon25832,
+} from "@/domain/drawing/beliggenhedsplan.types";
 import type { DrawingReadinessDecision } from "@/domain/drawing/decision-engine";
 
 const parcelPolygon: GeoJsonPolygon25832 = {

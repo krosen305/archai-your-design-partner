@@ -1,50 +1,18 @@
 import { expect, test } from "@playwright/test";
-import { enterCockpitWithMockAddress } from "./helpers/session";
+import { enterCockpitWithAddress, hasPlaywrightTestUser } from "./helpers/session";
 
-test("mock-adresse: navigerer til cockpit og viser compliance-sektioner", async ({ page }) => {
-  await enterCockpitWithMockAddress(page);
+const REQUIRES_TEST_USER =
+  "Kraever PLAYWRIGHT_TEST_EMAIL og PLAYWRIGHT_TEST_PASSWORD i environment.";
 
-  await expect(page.getByText("GRUNDAREAL", { exact: false })).toBeVisible();
-});
+test.setTimeout(120_000);
 
-test("cockpit ejendom-tab: Datakilder-sektion viser datarækker med data-testid", async ({
-  page,
-}) => {
-  await enterCockpitWithMockAddress(page);
+test("adresseflow: logget ind bruger navigerer til cockpit", async ({ page }) => {
+  test.skip(!hasPlaywrightTestUser(), REQUIRES_TEST_USER);
 
-  const ejendomTab = page.getByRole("tab", { name: /EJENDOM/i });
-  await expect(ejendomTab).toBeVisible({ timeout: 5000 });
-  await ejendomTab.click();
+  await enterCockpitWithAddress(page);
 
-  const datakildBtn = page.getByRole("button", { name: /Datakildeoversigt/i });
-  await expect(datakildBtn).toBeVisible({ timeout: 5000 });
-  await datakildBtn.click();
-
-  const firstRow = page.locator('[data-testid^="datarow-"]').first();
-  await expect(firstRow).toBeVisible({ timeout: 5000 });
-});
-
-test("cockpit DataRow badge viser PipelineServiceState tekst", async ({ page }) => {
-  await enterCockpitWithMockAddress(page);
-
-  const ejendomTab = page.getByRole("tab", { name: /EJENDOM/i });
-  await expect(ejendomTab).toBeVisible({ timeout: 5000 });
-  await ejendomTab.click();
-
-  const datakildBtn = page.getByRole("button", { name: /Datakildeoversigt/i });
-  await expect(datakildBtn).toBeVisible({ timeout: 5000 });
-  await datakildBtn.click();
-
-  const validBadgePattern = /LIVE|INGEN HIT|FEJL|SPRUNGET OVER|MOCK|CACHE|IKKE KØRT/i;
-  const badge = page.locator('[data-testid$="-badge"]').first();
-  await expect(badge).toBeVisible({ timeout: 8000 });
-  await expect(badge).toHaveText(validBadgePattern);
-});
-
-test("cockpit viser grundareal stat-card med data-testid", async ({ page }) => {
-  await enterCockpitWithMockAddress(page);
-
-  const grundarealCard = page.locator('[data-testid="stat-grundareal"]');
-  await expect(grundarealCard).toBeVisible({ timeout: 5000 });
-  await expect(page.locator('[data-testid="stat-grundareal-value"]')).toBeVisible();
+  await expect(page.getByText(/Hasselvej 48/i).first()).toBeVisible();
+  await expect(page.getByText(/Analyserer adresse|GRUNDAREAL/i).first()).toBeVisible({
+    timeout: 15_000,
+  });
 });

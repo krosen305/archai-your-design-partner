@@ -124,6 +124,18 @@ export async function updateProject(
   }
 }
 
+export async function getProjectHardStop(
+  projectId: string,
+): Promise<{ blocked: boolean; reason: string | null }> {
+  const { data, error } = await supabaseAdmin
+    .from("projects")
+    .select("hard_stop, hard_stop_reason")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (error || !data) return { blocked: false, reason: null };
+  return { blocked: data.hard_stop === true, reason: data.hard_stop_reason ?? null };
+}
+
 export async function verifyProjectOwnership(id: string, userId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("projects")

@@ -65,9 +65,7 @@ export const exportBeliggenhedsplanFn = createServerFn({ method: "POST" })
       data.centroidLat != null &&
       data.buildingWidthM != null
     ) {
-      const { buildRectangularFootprint25832 } = await import(
-        "@/lib/drawing/footprint-builder"
-      );
+      const { buildRectangularFootprint25832 } = await import("@/lib/drawing/footprint-builder");
       proposedFootprint25832 = buildRectangularFootprint25832({
         centroidWgs84: [data.centroidLng, data.centroidLat],
         widthM: data.buildingWidthM,

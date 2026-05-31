@@ -1,4 +1,26 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+
+function loadDotEnvLocal() {
+  const envPath = resolve(process.cwd(), ".env.local");
+  if (!existsSync(envPath)) return;
+
+  for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(trimmed);
+    if (!match) continue;
+
+    const [, key, rawValue] = match;
+    if (process.env[key] !== undefined) continue;
+
+    process.env[key] = rawValue.replace(/^(['"])(.*)\1$/, "$2");
+  }
+}
+
+loadDotEnvLocal();
 
 export default defineConfig({
   testDir: "./tests",
@@ -19,7 +41,9 @@ export default defineConfig({
       : "bun run dev -- --host 127.0.0.1 --port 8080",
     url: "http://127.0.0.1:8080",
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    // In CI the webServer runs `bun run build && bun run preview`; the production
+    // build of this map/geo-heavy app needs more than 120s to be ready.
+    timeout: 300_000,
   },
 
   projects: [

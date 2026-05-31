@@ -24,7 +24,15 @@ const fakeParcel: ParcelLayer = {
   polygon25832: {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [[[720000, 6170000], [720030, 6170000], [720030, 6170030], [720000, 6170030], [720000, 6170000]]],
+    coordinates: [
+      [
+        [720000, 6170000],
+        [720030, 6170000],
+        [720030, 6170030],
+        [720000, 6170030],
+        [720000, 6170000],
+      ],
+    ],
   },
   areaRegisteredM2: 900,
   areaGeometryM2: 900,
@@ -36,7 +44,15 @@ const fakeParcel: ParcelLayer = {
       polygon25832: {
         type: "Polygon",
         crs: "EPSG:25832",
-        coordinates: [[[720030, 6170000], [720060, 6170000], [720060, 6170030], [720030, 6170030], [720030, 6170000]]],
+        coordinates: [
+          [
+            [720030, 6170000],
+            [720060, 6170000],
+            [720060, 6170030],
+            [720030, 6170030],
+            [720030, 6170000],
+          ],
+        ],
       },
       labelPoint25832: { type: "Point", crs: "EPSG:25832", coordinates: [720045, 6170015] },
     },
@@ -67,14 +83,23 @@ const fakeSource: DrawingGeometrySourcePort = {
   fetchPlandataLayers: async (_kommunekode: string, _bbox: BBox25832) => [],
   fetchNeighborParcels: async (_jordstykkeId: string, _bbox: BBox25832) => [],
   fetchRoadName: async (_addressId: string) => ({ name: "Testvej" }),
-  fetchDhmKoter: async (_bbox: BBox25832, _centroidLat: number, _centroidLng: number) => fakeTerrain,
+  fetchDhmKoter: async (_bbox: BBox25832, _centroidLat: number, _centroidLng: number) =>
+    fakeTerrain,
 };
 
 // Bygning centreret i parcellen med 8m til alle skel
 const centeredFootprint: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [[[720008, 6170008], [720022, 6170008], [720022, 6170022], [720008, 6170022], [720008, 6170008]]],
+  coordinates: [
+    [
+      [720008, 6170008],
+      [720022, 6170008],
+      [720022, 6170022],
+      [720008, 6170022],
+      [720008, 6170008],
+    ],
+  ],
 };
 
 const baseMeta = {
@@ -155,7 +180,15 @@ describe("beliggenhedsplan SVG — lovpligtige elementer", () => {
           footprint25832: {
             type: "Polygon",
             crs: "EPSG:25832",
-            coordinates: [[[720001, 6170001], [720006, 6170001], [720006, 6170006], [720001, 6170006], [720001, 6170001]]],
+            coordinates: [
+              [
+                [720001, 6170001],
+                [720006, 6170001],
+                [720006, 6170006],
+                [720001, 6170006],
+                [720001, 6170001],
+              ],
+            ],
           },
           usageCode: "120",
           areaM2: 25,
