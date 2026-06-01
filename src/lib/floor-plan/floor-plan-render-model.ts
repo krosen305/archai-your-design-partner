@@ -8,6 +8,7 @@
 import { lineLengthM, polygonCentroid } from "@/domain/geometry/polygon-ops";
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
+import { computeDimensions } from "@/domain/floor-plan/dimension-engine";
 import { buildWallPoché, resolveWallJoins, wallPocheRect } from "./wall-poche";
 import { getSymbol } from "./symbols/symbol-registry";
 import type { SymbolKind } from "./symbols/symbol-registry";
@@ -68,6 +69,30 @@ export type RenderSymbol = {
 
 export type RenderViewBox = { minX: number; minY: number; width: number; height: number };
 
+/**
+ * One rendered dimension segment (witness lines + chain line + label) in
+ * SVG/PDF screen coordinates (LOCAL_METER — scaled by renderer).
+ */
+export type RenderDimensionSegment = {
+  /** Witness-line anchor on the building face (from-side). */
+  from: Point2D;
+  /** Witness-line anchor on the building face (to-side). */
+  to: Point2D;
+  /** Chain-line from-point (at the offset distance from the face). */
+  chainFrom: Point2D;
+  /** Chain-line to-point (at the offset distance from the face). */
+  chainTo: Point2D;
+  /** Human-readable label text, e.g. "3.84 m". */
+  labelText: string;
+  /** Midpoint of the chain line — where the label should be centered. */
+  labelPt: Point2D;
+};
+
+export type RenderDimensionChain = {
+  segments: RenderDimensionSegment[];
+  side: string;
+};
+
 export type FloorPlanRenderModel = {
   levelId: string;
   levelName: string;
@@ -84,6 +109,10 @@ export type FloorPlanRenderModel = {
   fixtures: RenderFixture[];
   /** Furniture items rendered as symbol paths (LOCAL_METER, centered on position). */
   furniture: RenderSymbol[];
+  /** Exterior facade dimension chains (stacked strings per side). */
+  dimensionChains: RenderDimensionChain[];
+  /** Interior room-dimension segments (width + depth per room). */
+  interiorDimensions: RenderDimensionSegment[];
 };
 
 const MARGIN_M = 1;
@@ -228,6 +257,39 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     };
   });
 
+  // Compute dimension chains via domain engine and project into render model.
+  const floorDimensions = computeDimensions(level);
+  const dimensionChains: RenderDimensionChain[] = floorDimensions.exteriorChains.map((chain) => ({
+    side: chain.side,
+    segments: chain.segments.map((seg) => {
+      const chainFrom = seg.from.extensionEnd;
+      const chainTo = seg.to.extensionEnd;
+      return {
+        from: seg.from.worldPt,
+        to: seg.to.worldPt,
+        chainFrom,
+        chainTo,
+        labelText: seg.labelText,
+        labelPt: { x: (chainFrom.x + chainTo.x) / 2, y: (chainFrom.y + chainTo.y) / 2 },
+      };
+    }),
+  }));
+
+  const interiorDimensions: RenderDimensionSegment[] = floorDimensions.interiorDimensions.map(
+    (seg) => {
+      const chainFrom = seg.from.extensionEnd;
+      const chainTo = seg.to.extensionEnd;
+      return {
+        from: seg.from.worldPt,
+        to: seg.to.worldPt,
+        chainFrom,
+        chainTo,
+        labelText: seg.labelText,
+        labelPt: { x: (chainFrom.x + chainTo.x) / 2, y: (chainFrom.y + chainTo.y) / 2 },
+      };
+    },
+  );
+
   return {
     levelId: level.id,
     levelName: level.name,
@@ -240,6 +302,8 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     openings,
     fixtures,
     furniture,
+    dimensionChains,
+    interiorDimensions,
   };
 }
 

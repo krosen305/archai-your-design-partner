@@ -101,6 +101,8 @@ const model: FloorPlanRenderModel = {
       labelPoint: { x: 1, y: 1 },
     },
   ],
+  dimensionChains: [],
+  interiorDimensions: [],
 };
 
 describe("renderFloorPlanSvg", () => {

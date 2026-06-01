@@ -139,6 +139,62 @@ export function renderFloorPlanSvg(
     ];
   });
 
+  // Dimension chains: exterior facade strings
+  const dimensionEls = (model.dimensionChains ?? []).flatMap((chain) =>
+    chain.segments.flatMap((seg) => {
+      const f = px(seg.from);
+      const t = px(seg.to);
+      const cf = px(seg.chainFrom);
+      const ct = px(seg.chainTo);
+      const mid = { x: (cf.x + ct.x) / 2, y: (cf.y + ct.y) / 2 };
+      const arrowSize = fmt(4);
+
+      // Chain direction vector (normalised, in SVG pixel space)
+      const dx = ct.x - cf.x;
+      const dy = ct.y - cf.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const ux = len > 1e-9 ? dx / len : 1;
+      const uy = len > 1e-9 ? dy / len : 0;
+      // Perpendicular (into chain from start)
+      const px_ = -uy;
+      const py_ = ux;
+
+      // Arrowhead at chain-from end (pointing in chain direction)
+      const af1 = `${fmt(cf.x + ux * Number(arrowSize))},${fmt(cf.y + uy * Number(arrowSize))}`;
+      const af2 = `${fmt(cf.x + px_ * Number(arrowSize) * 0.4)},${fmt(cf.y + py_ * Number(arrowSize) * 0.4)}`;
+      const af3 = `${fmt(cf.x - px_ * Number(arrowSize) * 0.4)},${fmt(cf.y - py_ * Number(arrowSize) * 0.4)}`;
+
+      // Arrowhead at chain-to end (pointing against chain direction)
+      const at1 = `${fmt(ct.x - ux * Number(arrowSize))},${fmt(ct.y - uy * Number(arrowSize))}`;
+      const at2 = `${fmt(ct.x + px_ * Number(arrowSize) * 0.4)},${fmt(ct.y + py_ * Number(arrowSize) * 0.4)}`;
+      const at3 = `${fmt(ct.x - px_ * Number(arrowSize) * 0.4)},${fmt(ct.y - py_ * Number(arrowSize) * 0.4)}`;
+
+      return [
+        // Witness lines (face → chain line)
+        `<line x1="${fmt(f.x)}" y1="${fmt(f.y)}" x2="${fmt(cf.x)}" y2="${fmt(cf.y)}" stroke="#333" stroke-width="0.5" />`,
+        `<line x1="${fmt(t.x)}" y1="${fmt(t.y)}" x2="${fmt(ct.x)}" y2="${fmt(ct.y)}" stroke="#333" stroke-width="0.5" />`,
+        // Chain line
+        `<line x1="${fmt(cf.x)}" y1="${fmt(cf.y)}" x2="${fmt(ct.x)}" y2="${fmt(ct.y)}" stroke="#333" stroke-width="0.5" />`,
+        // Arrowheads
+        `<polygon points="${af1} ${af2} ${af3}" fill="#333" />`,
+        `<polygon points="${at1} ${at2} ${at3}" fill="#333" />`,
+        // Label
+        `<text x="${fmt(mid.x)}" y="${fmt(mid.y - 3)}" text-anchor="middle" font-size="9" fill="#333">${esc(seg.labelText)}</text>`,
+      ];
+    }),
+  );
+
+  // Interior dimensions
+  const interiorDimEls = (model.interiorDimensions ?? []).flatMap((seg) => {
+    const cf = px(seg.chainFrom);
+    const ct = px(seg.chainTo);
+    const mid = { x: (cf.x + ct.x) / 2, y: (cf.y + ct.y) / 2 };
+    return [
+      `<line x1="${fmt(cf.x)}" y1="${fmt(cf.y)}" x2="${fmt(ct.x)}" y2="${fmt(ct.y)}" stroke="#555" stroke-width="0.5" stroke-dasharray="3,2" />`,
+      `<text x="${fmt(mid.x)}" y="${fmt(mid.y - 3)}" text-anchor="middle" font-size="8" fill="#555">${esc(seg.labelText)}</text>`,
+    ];
+  });
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`,
     `<g data-level-id="${attr(model.levelId)}">`,
@@ -148,6 +204,8 @@ export function renderFloorPlanSvg(
     ...openingEls,
     ...fixtureEls,
     ...furnitureEls,
+    ...dimensionEls,
+    ...interiorDimEls,
     `</g>`,
     `</svg>`,
   ].join("\n");
