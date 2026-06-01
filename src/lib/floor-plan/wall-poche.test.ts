@@ -4,7 +4,7 @@
 // Tests verify: rectangle correctness, 90° corner geometry, opening gap width.
 
 import { describe, expect, test } from "bun:test";
-import { wallPocheRect, buildWallPoché, subtractOpeningGap } from "./wall-poche";
+import { wallPocheRect, buildWallPoché, subtractOpeningGap, resolveWallJoins } from "./wall-poche";
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 
 // ---------------------------------------------------------------------------
@@ -219,5 +219,115 @@ describe("buildWallPoché — wall with one door opening", () => {
   test("degenerate zero-length wall returns empty array", () => {
     const p: Point2D = { x: 1, y: 1 };
     expect(buildWallPoché(p, p, 0.2, [])).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveWallJoins — corner and T-junction union
+// ---------------------------------------------------------------------------
+
+describe("resolveWallJoins — 90° corner: two walls sharing an endpoint", () => {
+  // South wall: (0,0)→(2,0), 0.2m thick → poche x=[0,2], y=[-0.1,+0.1], area=0.4 m²
+  // East wall:  (2,0)→(2,2), 0.2m thick → poche x=[1.9,2.1], y=[0,2], area=0.4 m²
+  //
+  // Both walls share endpoint (2,0).
+  //
+  // Geometric overlap (intersection of the two poche rects):
+  //   x=[1.9,2.0], y=[0.0,+0.1]  →  0.1 × 0.1 = 0.01 m²
+  //
+  // Union area = 0.4 + 0.4 − 0.01 = 0.79 m²
+  const t = 0.2;
+  const southStart: Point2D = { x: 0, y: 0 };
+  const southEnd: Point2D = { x: 2, y: 0 };
+  const eastStart: Point2D = { x: 2, y: 0 };
+  const eastEnd: Point2D = { x: 2, y: 2 };
+
+  const southPoche = wallPocheRect(southStart, southEnd, t);
+  const eastPoche = wallPocheRect(eastStart, eastEnd, t);
+
+  const joined = resolveWallJoins([
+    { poche: [southPoche], start: southStart, end: southEnd },
+    { poche: [eastPoche], start: eastStart, end: eastEnd },
+  ]);
+
+  test("result is non-empty", () => {
+    expect(joined.length).toBeGreaterThan(0);
+  });
+
+  test("union area eliminates corner overlap (0.79 m² not 0.80 m²)", () => {
+    const unionArea = totalArea(joined);
+    // Overlap = 0.1 × 0.1 = 0.01 m²; union = 0.4 + 0.4 − 0.01 = 0.79 m²
+    expect(unionArea).toBeCloseTo(0.79, 4);
+  });
+
+  test("union area is less than naive sum (overlap is removed)", () => {
+    const naiveSum = polyArea(southPoche) + polyArea(eastPoche); // 0.80 m²
+    const unionArea = totalArea(joined);
+    expect(unionArea).toBeLessThan(naiveSum - 0.001);
+  });
+});
+
+describe("resolveWallJoins — T-junction: three walls all meeting at (2,2)", () => {
+  // A proper T-junction where all three walls share the common endpoint (2,2):
+  //   West-left wall:  (0,2)→(2,2), 0.2m thick → area = 2 × 0.2 = 0.4 m²
+  //   West-right wall: (2,2)→(4,2), 0.2m thick → area = 2 × 0.2 = 0.4 m²
+  //   South stem:      (2,0)→(2,2), 0.2m thick → area = 2 × 0.2 = 0.4 m²
+  //
+  // Poche rectangles:
+  //   wLeft:  x=[0,2],   y=[1.9,2.1]
+  //   wRight: x=[2,4],   y=[1.9,2.1]
+  //   stem:   x=[1.9,2.1], y=[0,2]
+  //
+  // All three share endpoint (2,2) → union-find connects them.
+  //
+  // Three-way overlap at the join corner:
+  //   wLeft ∩ stem: x=[1.9,2.0], y=[1.9,2.0] = 0.1×0.1 = 0.01 m²
+  //   wRight ∩ stem: x=[2.0,2.1], y=[1.9,2.0] = 0.1×0.1 = 0.01 m²
+  //   (wLeft and wRight share only the line x=2, y=[1.9,2.1] — zero area overlap)
+  //
+  // Union area = 0.4+0.4+0.4 − 0.01 − 0.01 = 1.18 m²
+  const t = 0.2;
+  const wLeftStart: Point2D = { x: 0, y: 2 };
+  const wLeftEnd: Point2D = { x: 2, y: 2 };
+  const wRightStart: Point2D = { x: 2, y: 2 };
+  const wRightEnd: Point2D = { x: 4, y: 2 };
+  const stemStart: Point2D = { x: 2, y: 0 };
+  const stemEnd: Point2D = { x: 2, y: 2 };
+
+  const wLeftPoche = wallPocheRect(wLeftStart, wLeftEnd, t);
+  const wRightPoche = wallPocheRect(wRightStart, wRightEnd, t);
+  const stemPoche = wallPocheRect(stemStart, stemEnd, t);
+
+  const joined = resolveWallJoins([
+    { poche: [wLeftPoche], start: wLeftStart, end: wLeftEnd },
+    { poche: [wRightPoche], start: wRightStart, end: wRightEnd },
+    { poche: [stemPoche], start: stemStart, end: stemEnd },
+  ]);
+
+  test("result is non-empty", () => {
+    expect(joined.length).toBeGreaterThan(0);
+  });
+
+  test("T-junction union area is less than naive sum (overlap removed)", () => {
+    const naiveSum = polyArea(wLeftPoche) + polyArea(wRightPoche) + polyArea(stemPoche); // 1.2 m²
+    const unionArea = totalArea(joined);
+    // Two corner overlaps removed (0.01 + 0.01 = 0.02 m²) → union ≈ 1.18 m²
+    expect(unionArea).toBeLessThan(naiveSum - 0.001);
+    expect(unionArea).toBeGreaterThan(naiveSum - 0.1); // not more than 0.1 removed
+  });
+
+  test("T-junction union area ≈ 1.18 m² (naive 1.2 minus two overlaps of 0.01 each)", () => {
+    const unionArea = totalArea(joined);
+    expect(unionArea).toBeCloseTo(1.18, 3);
+  });
+
+  test("isolated wall (not sharing any endpoint) passes through unchanged", () => {
+    const isoStart: Point2D = { x: 10, y: 10 };
+    const isoEnd: Point2D = { x: 14, y: 10 };
+    const isoPoche = wallPocheRect(isoStart, isoEnd, t);
+
+    const result = resolveWallJoins([{ poche: [isoPoche], start: isoStart, end: isoEnd }]);
+    // Single isolated wall: union of one polygon = that polygon
+    expect(totalArea(result)).toBeCloseTo(polyArea(isoPoche), 6);
   });
 });

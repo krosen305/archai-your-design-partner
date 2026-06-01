@@ -8,7 +8,7 @@
 import { lineLengthM, polygonCentroid } from "@/domain/geometry/polygon-ops";
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
-import { buildWallPoché } from "./wall-poche";
+import { buildWallPoché, resolveWallJoins } from "./wall-poche";
 
 export type RenderWall = {
   id: string;
@@ -80,11 +80,11 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     openingsByWallId.set(op.wallId, list);
   }
 
-  const walls: RenderWall[] = level.walls.map((wall) => {
+  // Build per-wall poche and gap metadata in a first pass, then resolve
+  // corner/T-junction joins via boolean union (WS1 spec requirement).
+  const rawWallData = level.walls.map((wall) => {
     const wallOpenings = openingsByWallId.get(wall.id) ?? [];
     const { start, end } = wall.centerline;
-
-    // Compute gap metadata for callers who need start/end points of each gap
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const len = Math.sqrt(dx * dx + dy * dy);
@@ -102,18 +102,40 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
             };
           })
         : [];
-
     return {
-      id: wall.id,
+      wall,
       start,
       end,
-      thicknessM: wall.thicknessM,
-      structural:
-        wall.structuralRole === "bearing" || wall.structuralRole === "requires_engineer_review",
-      pochePolygon: buildWallPoché(start, end, wall.thicknessM, wallOpenings),
+      poche: buildWallPoché(start, end, wall.thicknessM, wallOpenings),
       gaps,
     };
   });
+
+  // Resolve corner and T-junction overlaps: union poche polygons of adjacent
+  // walls (walls sharing an endpoint within tolerance) so there is no double-
+  // counted area at joins. resolveWallJoins groups walls by connected component
+  // and returns a flat list of merged polygons. We need per-wall attribution,
+  // so we run it component-by-component and assign results to each wall in the
+  // component.
+  const joinInputs = rawWallData.map((d) => ({
+    poche: d.poche,
+    start: d.start,
+    end: d.end,
+  }));
+  // Build per-component merged poche: map from wall index → merged polygons
+  const mergedPocheByIndex = resolveMergedPochePerWall(joinInputs);
+
+  const walls: RenderWall[] = rawWallData.map((d, i) => ({
+    id: d.wall.id,
+    start: d.start,
+    end: d.end,
+    thicknessM: d.wall.thicknessM,
+    structural:
+      d.wall.structuralRole === "bearing" ||
+      d.wall.structuralRole === "requires_engineer_review",
+    pochePolygon: mergedPocheByIndex.get(i) ?? d.poche,
+    gaps: d.gaps,
+  }));
 
   const rooms: RenderRoom[] = level.rooms.map((room) => ({
     id: room.id,
@@ -162,6 +184,79 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     openings,
     fixtures,
   };
+}
+
+/**
+ * Run `resolveWallJoins` per connected component of walls and return a map
+ * from wall index → merged poche polygons for that component.
+ *
+ * Each wall in a connected component gets the same merged polygon set — the
+ * union of all poche polygons in the component, with corner/T-junction overlaps
+ * removed.  Isolated walls (not connected to any other wall) keep their
+ * original poche unchanged.
+ */
+function resolveMergedPochePerWall(
+  joinInputs: Array<{ poche: Point2D[][]; start: Point2D; end: Point2D }>,
+): Map<number, Point2D[][]> {
+  const result = new Map<number, Point2D[][]>();
+  const n = joinInputs.length;
+  if (n === 0) return result;
+
+  // Union-find
+  const parent = Array.from({ length: n }, (_, i) => i);
+  function find(i: number): number {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]!]!;
+      i = parent[i]!;
+    }
+    return i;
+  }
+  function unite(i: number, j: number): void {
+    const ri = find(i);
+    const rj = find(j);
+    if (ri !== rj) parent[ri] = rj;
+  }
+
+  const TOL = 0.001;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const wi = joinInputs[i]!;
+      const wj = joinInputs[j]!;
+      const close = (a: Point2D, b: Point2D): boolean => {
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        return dx * dx + dy * dy < TOL * TOL;
+      };
+      if (
+        close(wi.start, wj.start) ||
+        close(wi.start, wj.end) ||
+        close(wi.end, wj.start) ||
+        close(wi.end, wj.end)
+      ) {
+        unite(i, j);
+      }
+    }
+  }
+
+  // Group by component root
+  const components = new Map<number, number[]>();
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    const group = components.get(root) ?? [];
+    group.push(i);
+    components.set(root, group);
+  }
+
+  for (const indices of components.values()) {
+    // Build WallJoinInput for just this component
+    const componentInputs = indices.map((i) => joinInputs[i]!);
+    const merged = resolveWallJoins(componentInputs);
+    for (const i of indices) {
+      result.set(i, merged);
+    }
+  }
+
+  return result;
 }
 
 function computeViewBox(points: Point2D[]): RenderViewBox {

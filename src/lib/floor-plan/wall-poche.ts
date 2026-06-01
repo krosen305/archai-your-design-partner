@@ -168,6 +168,82 @@ export function subtractOpeningGap(pochePolys: Point2D[][], gap: OpeningGap): Po
 }
 
 // ---------------------------------------------------------------------------
+// Wall-join resolution: union all poché polygons to eliminate join overlaps
+// ---------------------------------------------------------------------------
+
+/** Tolerance (m) within which two endpoints are considered identical. */
+const JOIN_TOL = 0.001;
+
+export type WallJoinInput = {
+  poche: Point2D[][];
+  start: Point2D;
+  end: Point2D;
+};
+
+/**
+ * Union all poché polygons from adjacent walls (corners and T-junctions) so
+ * that overlapping regions at joins are eliminated.
+ *
+ * Strategy: walls that share an endpoint (within JOIN_TOL) are treated as
+ * connected and their poche polygons are unioned together.  For T-junctions,
+ * where one wall's endpoint meets the body of another wall, the poche polygons
+ * physically overlap even though no exact endpoint pair matches — these are
+ * handled by also unioning any pair of walls whose poche rectangles are
+ * geometrically adjacent (their endpoint lies within the other wall's poche
+ * bounds).  In practice it is simpler and correct to union ALL input polygons
+ * into a single geometry; jsts union of non-overlapping polygons is a no-op
+ * for the non-overlapping parts and correctly removes only the actual overlaps.
+ *
+ * Returns the final merged polygon pieces for the entire set of walls as a
+ * flat array.  Isolated walls (no overlap with any other wall) are returned
+ * unchanged.
+ */
+export function resolveWallJoins(walls: WallJoinInput[]): Point2D[][] {
+  if (walls.length === 0) return [];
+
+  // Collect all poche polygons
+  const allPolys: Point2D[][] = walls.flatMap((w) => w.poche);
+
+  if (allPolys.length === 0) return [];
+
+  // Union all polygons.  jsts union of two disjoint polygons returns a
+  // MultiPolygon holding both unchanged — so this is safe for disconnected
+  // wall sets too.
+  let merged: JstsGeometry | null = null;
+  const fallback: Point2D[][] = [];
+
+  for (const poly of allPolys) {
+    if (poly.length < 3) {
+      fallback.push(poly); // degenerate — keep as-is
+      continue;
+    }
+    try {
+      const geom: JstsGeometry = jstsPolygon(poly);
+      merged = merged === null ? geom : merged.union(geom);
+    } catch {
+      // If union fails for this polygon, add it to fallback output
+      fallback.push(poly);
+    }
+  }
+
+  if (merged === null || merged.isEmpty()) {
+    return allPolys; // full fallback
+  }
+
+  return [...fromJstsGeometry(merged, allPolys), ...fallback];
+}
+
+/**
+ * Returns true when two points are within JOIN_TOL of each other.
+ * Exported for use in render-model helpers.
+ */
+export function wallEndpointsClose(a: Point2D, b: Point2D): boolean {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy < JOIN_TOL * JOIN_TOL;
+}
+
+// ---------------------------------------------------------------------------
 // Combined: poché rectangles with all opening gaps applied
 // ---------------------------------------------------------------------------
 
