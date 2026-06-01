@@ -10,6 +10,7 @@ import type {
   ElementSourceMetaSchema,
   FinishAssemblySchema,
   FixtureSchema,
+  FurnitureSchema,
   FloorLevelSchema,
   FloorPlanConstraintSchema,
   FloorPlanDocumentSchema,
@@ -32,6 +33,7 @@ export type Wall = z.infer<typeof WallSchema>;
 export type RoomZone = z.infer<typeof RoomZoneSchema>;
 export type Opening = z.infer<typeof OpeningSchema>;
 export type Fixture = z.infer<typeof FixtureSchema>;
+export type Furniture = z.infer<typeof FurnitureSchema>;
 export type Stair = z.infer<typeof StairSchema>;
 export type PlanAnnotation = z.infer<typeof PlanAnnotationSchema>;
 export type FloorLevel = z.infer<typeof FloorLevelSchema>;

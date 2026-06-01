@@ -9,6 +9,8 @@ import { lineLengthM, polygonCentroid } from "@/domain/geometry/polygon-ops";
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
 import { buildWallPoché, resolveWallJoins, wallPocheRect } from "./wall-poche";
+import { getSymbol } from "./symbols/symbol-registry";
+import type { SymbolKind } from "./symbols/symbol-registry";
 
 export type RenderWall = {
   id: string;
@@ -52,6 +54,14 @@ export type RenderFixture = {
   labelPoint: Point2D;
 };
 
+export type RenderSymbol = {
+  id: string;
+  kind: string;
+  /** SVG path `d` strings already scaled and translated into SVG user units. */
+  paths: string[];
+  labelPoint: Point2D;
+};
+
 export type RenderViewBox = { minX: number; minY: number; width: number; height: number };
 
 export type FloorPlanRenderModel = {
@@ -68,6 +78,8 @@ export type FloorPlanRenderModel = {
   rooms: RenderRoom[];
   openings: RenderOpening[];
   fixtures: RenderFixture[];
+  /** Furniture items rendered as symbol paths (LOCAL_METER, centered on position). */
+  furniture: RenderSymbol[];
 };
 
 const MARGIN_M = 1;
@@ -185,6 +197,36 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     labelPoint: fixture.position,
   }));
 
+  // Furniture: resolve symbol paths and translate them to world coordinates.
+  // The symbol paths are in LOCAL_METER centered on (0,0); we translate each
+  // path's coordinates to the furniture's world position here so the SVG
+  // renderer only needs a scale transform (no per-symbol translate in SVG).
+  const furniture: RenderSymbol[] = (level.furniture ?? []).map((item) => {
+    const kindStr = item.furnitureKind as SymbolKind;
+    let symbol;
+    try {
+      symbol = getSymbol(kindStr, item.widthM, item.depthM);
+    } catch {
+      // Unknown kind — emit an empty symbol rather than crashing the renderer
+      symbol = {
+        kind: kindStr,
+        paths: [],
+        defaultWidthM: item.widthM,
+        defaultHeightM: item.depthM,
+      };
+    }
+    // Translate each path from (0,0)-centered to world position
+    const translatedPaths = symbol.paths.map((d) =>
+      translatePath(d, item.position.x, item.position.y),
+    );
+    return {
+      id: item.id,
+      kind: item.furnitureKind,
+      paths: translatedPaths,
+      labelPoint: item.position,
+    };
+  });
+
   return {
     levelId: level.id,
     levelName: level.name,
@@ -196,7 +238,42 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     rooms,
     openings,
     fixtures,
+    furniture,
   };
+}
+
+/**
+ * Translate all absolute coordinates in an SVG path `d` string by (dx, dy).
+ * Only handles M, L, A, Z commands with absolute coordinates (uppercase),
+ * which is the only form emitted by the symbol builders.
+ */
+function translatePath(d: string, dx: number, dy: number): string {
+  if (dx === 0 && dy === 0) return d;
+  // Replace each coordinate pair following M, L, or A commands.
+  // A command: rx ry x-rotation large-arc-flag sweep-flag x y
+  // We only translate the final x,y pair in A.
+  return d
+    .replace(
+      /([MLma])\s*([-\d.e+]+),([-\d.e+]+)/g,
+      (_match: string, cmd: string, xs: string, ys: string) => {
+        const x = parseFloat(xs) + dx;
+        const y = parseFloat(ys) + dy;
+        return `${cmd}${round6(x)},${round6(y)}`;
+      },
+    )
+    .replace(
+      // A arc end-point: "A rx,ry x-rot laf sf x,y"
+      /A([-\d.\s,e+]+?)([-\d.e+]+),([-\d.e+]+)(?=\s|$)/g,
+      (_match: string, params: string, xs: string, ys: string) => {
+        const x = parseFloat(xs) + dx;
+        const y = parseFloat(ys) + dy;
+        return `A${params}${round6(x)},${round6(y)}`;
+      },
+    );
+}
+
+function round6(n: number): number {
+  return Math.round(n * 1e6) / 1e6;
 }
 
 function computeViewBox(points: Point2D[]): RenderViewBox {

@@ -128,6 +128,28 @@ export const FixtureSchema = z.object({
   source: ElementSourceMetaSchema,
 });
 
+// --- Furniture (spec §9.7 extension — WS2 symbol library) -----------------
+
+export const FurnitureSchema = z.object({
+  id: z.string().min(1),
+  levelId: z.string().min(1),
+  roomId: z.string().nullable(),
+  furnitureKind: z.enum([
+    "single_bed",
+    "double_bed",
+    "sofa",
+    "armchair",
+    "dining_table",
+    "chair",
+    "wardrobe_shelf",
+  ]),
+  position: Point2DSchema,
+  rotationDeg: z.number(),
+  widthM: z.number().positive(),
+  depthM: z.number().positive(),
+  source: ElementSourceMetaSchema,
+});
+
 // --- Stair (spec §9.3 references stairs) -----------------------------------
 
 export const StairSchema = z.object({
@@ -161,6 +183,7 @@ export const FloorLevelSchema = z.object({
   rooms: z.array(RoomZoneSchema),
   openings: z.array(OpeningSchema),
   fixtures: z.array(FixtureSchema),
+  furniture: z.array(FurnitureSchema).default([]),
   stairs: z.array(StairSchema),
   annotations: z.array(PlanAnnotationSchema),
 });

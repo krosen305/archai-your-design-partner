@@ -3,9 +3,13 @@
 // Stateless SVG renderer over a FloorPlanRenderModel. Same model feeds editor
 // preview, SVG and (later) PDF (spec §7.1, FR-DRAW-005). LOCAL_METER is mapped
 // to SVG user units with a y-flip (architectural y-up -> SVG y-down).
+//
+// Symbols (furniture, door arcs, window lines) are rendered via <path> elements
+// rather than generic <circle> or <polygon> placeholders.
 
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 import type { FloorPlanRenderModel } from "./floor-plan-render-model";
+import { getSymbol } from "./symbols/symbol-registry";
 
 export type RenderSvgOptions = {
   /** SVG user units per meter. */
@@ -61,15 +65,67 @@ export function renderFloorPlanSvg(
     ];
   });
 
-  const openingEls = model.openings.map((op) => {
+  const openingEls = model.openings.flatMap((op) => {
     const c = px(op.center);
+    const cx = fmt(c.x);
+    const cy = fmt(c.y);
+
+    // Resolve symbol paths for the opening kind
+    let symbolPaths: string[] = [];
+    try {
+      if (op.kind === "door") {
+        symbolPaths = getSymbol("door_left", op.widthM).paths;
+      } else if (op.kind === "sliding_door") {
+        symbolPaths = getSymbol("sliding_door", op.widthM).paths;
+      } else if (op.kind === "window") {
+        symbolPaths = getSymbol("window", op.widthM).paths;
+      } else if (op.kind === "garage_door") {
+        symbolPaths = getSymbol("garage_door", op.widthM).paths;
+      }
+    } catch {
+      symbolPaths = [];
+    }
+
+    if (symbolPaths.length > 0) {
+      // Transform: translate to center, scale from LOCAL_METER to SVG units,
+      // apply wall rotation, and apply y-flip.
+      // SVG transform: translate(cx,cy) rotate(angleDeg) scale(scale, -scale)
+      const transformAttr = `translate(${cx},${cy}) rotate(${fmt(-op.angleDeg)}) scale(${fmt(scale)},${fmt(-scale)})`;
+      const pathEls = symbolPaths.map(
+        (d) => `<path fill="none" stroke="#0a6" stroke-width="1.5" d="${attr(d)}" />`,
+      );
+      return [
+        `<g data-opening-id="${attr(op.id)}" data-opening-kind="${attr(op.kind)}" transform="${transformAttr}">`,
+        ...pathEls,
+        `</g>`,
+      ];
+    }
+
+    // Fallback for unrecognised opening kinds: draw a small circle
     const r = fmt(Math.max((op.widthM * scale) / 2, 3));
-    return `<circle data-opening-id="${attr(op.id)}" data-opening-kind="${attr(op.kind)}" cx="${fmt(c.x)}" cy="${fmt(c.y)}" r="${r}" fill="#ffffff" stroke="#0a6" stroke-width="2" />`;
+    return [
+      `<circle data-opening-id="${attr(op.id)}" data-opening-kind="${attr(op.kind)}" cx="${cx}" cy="${cy}" r="${r}" fill="#ffffff" stroke="#0a6" stroke-width="2" />`,
+    ];
   });
 
   const fixtureEls = model.fixtures.map((fx) => {
     const pts = fx.points.map((p) => pointStr(px(p))).join(" ");
     return `<polygon data-fixture-id="${attr(fx.id)}" data-fixture-kind="${attr(fx.kind)}" points="${pts}" fill="none" stroke="#666" stroke-width="1.5" />`;
+  });
+
+  // Furniture: paths already translated to world coordinates in the render model.
+  // Apply y-flip scale only (no translate — coordinates already in world space).
+  const furnitureEls = (model.furniture ?? []).flatMap((item) => {
+    if (item.paths.length === 0) return [];
+    const pathEls = item.paths.map(
+      (d) =>
+        `<path fill="none" stroke="#888" stroke-width="1" d="${attr(scalePath(d, scale, minX, maxY))}" />`,
+    );
+    return [
+      `<g data-furniture-id="${attr(item.id)}" data-furniture-kind="${attr(item.kind)}">`,
+      ...pathEls,
+      `</g>`,
+    ];
   });
 
   return [
@@ -80,9 +136,41 @@ export function renderFloorPlanSvg(
     ...wallFallbackEls,
     ...openingEls,
     ...fixtureEls,
+    ...furnitureEls,
     `</g>`,
     `</svg>`,
   ].join("\n");
+}
+
+/**
+ * Apply the LOCAL_METER → SVG pixel transformation to an absolute-coordinate
+ * path string. This is the same transform as `px()`: x' = (x - minX) * scale,
+ * y' = (maxY - y) * scale.
+ * Only handles M, L, A (absolute uppercase) commands — matching what the symbol
+ * builders emit.
+ */
+function scalePath(d: string, scale: number, minX: number, maxY: number): string {
+  return d
+    .replace(
+      /([ML])([-\d.e+]+),([-\d.e+]+)/g,
+      (_m: string, cmd: string, xs: string, ys: string) => {
+        const x = (parseFloat(xs) - minX) * scale;
+        const y = (maxY - parseFloat(ys)) * scale;
+        return `${cmd}${fmtN(x)},${fmtN(y)}`;
+      },
+    )
+    .replace(
+      /A((?:[-\d.\s,e+]+?\s+){4})([-\d.e+]+),([-\d.e+]+)/g,
+      (_m: string, params: string, xs: string, ys: string) => {
+        const x = (parseFloat(xs) - minX) * scale;
+        const y = (maxY - parseFloat(ys)) * scale;
+        return `A${params}${fmtN(x)},${fmtN(y)}`;
+      },
+    );
+}
+
+function fmtN(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 function pointStr(p: { x: number; y: number }): string {
