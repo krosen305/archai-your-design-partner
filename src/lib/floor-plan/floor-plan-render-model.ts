@@ -8,6 +8,7 @@
 import { lineLengthM, polygonCentroid } from "@/domain/geometry/polygon-ops";
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
+import { buildWallPoché } from "./wall-poche";
 
 export type RenderWall = {
   id: string;
@@ -15,6 +16,17 @@ export type RenderWall = {
   end: Point2D;
   thicknessM: number;
   structural: boolean;
+  /**
+   * One or more closed poché polygons (LOCAL_METER, CCW winding, no repeated
+   * last point). Includes boolean-subtracted gaps for any openings on this wall.
+   * A single wall with an opening in the middle produces two polygons.
+   * Empty array when the wall is degenerate (zero length).
+   */
+  pochePolygon: Point2D[][];
+  /**
+   * Openings that contributed a gap to `pochePolygon`, for reference.
+   */
+  gaps: Array<{ start: Point2D; end: Point2D; width: number }>;
 };
 
 export type RenderRoom = {
@@ -60,14 +72,48 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
 
   const wallsById = new Map(level.walls.map((wall) => [wall.id, wall]));
 
-  const walls: RenderWall[] = level.walls.map((wall) => ({
-    id: wall.id,
-    start: wall.centerline.start,
-    end: wall.centerline.end,
-    thicknessM: wall.thicknessM,
-    structural:
-      wall.structuralRole === "bearing" || wall.structuralRole === "requires_engineer_review",
-  }));
+  // Group openings by wall so we can pass them to the poché builder
+  const openingsByWallId = new Map<string, Array<{ offsetAlongWallM: number; widthM: number }>>();
+  for (const op of level.openings) {
+    const list = openingsByWallId.get(op.wallId) ?? [];
+    list.push({ offsetAlongWallM: op.offsetAlongWallM, widthM: op.widthM });
+    openingsByWallId.set(op.wallId, list);
+  }
+
+  const walls: RenderWall[] = level.walls.map((wall) => {
+    const wallOpenings = openingsByWallId.get(wall.id) ?? [];
+    const { start, end } = wall.centerline;
+
+    // Compute gap metadata for callers who need start/end points of each gap
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const gaps =
+      len > 1e-9
+        ? wallOpenings.map((op) => {
+            const ux = dx / len;
+            const uy = dy / len;
+            const cx = start.x + ux * op.offsetAlongWallM;
+            const cy = start.y + uy * op.offsetAlongWallM;
+            return {
+              start: { x: cx - (ux * op.widthM) / 2, y: cy - (uy * op.widthM) / 2 },
+              end: { x: cx + (ux * op.widthM) / 2, y: cy + (uy * op.widthM) / 2 },
+              width: op.widthM,
+            };
+          })
+        : [];
+
+    return {
+      id: wall.id,
+      start,
+      end,
+      thicknessM: wall.thicknessM,
+      structural:
+        wall.structuralRole === "bearing" || wall.structuralRole === "requires_engineer_review",
+      pochePolygon: buildWallPoché(start, end, wall.thicknessM, wallOpenings),
+      gaps,
+    };
+  });
 
   const rooms: RenderRoom[] = level.rooms.map((room) => ({
     id: room.id,

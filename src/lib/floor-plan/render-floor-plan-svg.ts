@@ -35,12 +35,29 @@ export function renderFloorPlanSvg(
     ].join("\n");
   });
 
-  const wallEls = model.walls.map((wall) => {
-    const a = px(wall.start);
-    const b = px(wall.end);
-    const strokeWidth = fmt(Math.max(wall.thicknessM * scale, 2));
-    const stroke = wall.structural ? "#1a1a1a" : "#333333";
-    return `<line data-wall-id="${attr(wall.id)}" x1="${fmt(a.x)}" y1="${fmt(a.y)}" x2="${fmt(b.x)}" y2="${fmt(b.y)}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="square" />`;
+  const wallEls = model.walls.flatMap((wall) => {
+    const fill = wall.structural ? "#1a1a1a" : "#333333";
+    const validPolys = wall.pochePolygon.filter((poly) => poly.length >= 3);
+
+    // Fallback to a thin stroke line when all poché polygons are degenerate
+    if (validPolys.length === 0) {
+      const a = px(wall.start);
+      const b = px(wall.end);
+      const strokeWidth = fmt(Math.max(wall.thicknessM * scale, 2));
+      return [
+        `<line data-wall-id="${attr(wall.id)}" x1="${fmt(a.x)}" y1="${fmt(a.y)}" x2="${fmt(b.x)}" y2="${fmt(b.y)}" stroke="${fill}" stroke-width="${strokeWidth}" stroke-linecap="square" />`,
+      ];
+    }
+
+    // One <polygon> element per poché piece (typically one; two when a gap is in the middle)
+    return validPolys.map((poly, idx) => {
+      const pts = poly.map((p) => pointStr(px(p))).join(" ");
+      const idAttr =
+        idx === 0
+          ? `data-wall-id="${attr(wall.id)}"`
+          : `data-wall-id="${attr(wall.id)}" data-wall-piece="${idx}"`;
+      return `<polygon ${idAttr} points="${pts}" fill="${fill}" stroke="none" />`;
+    });
   });
 
   const openingEls = model.openings.map((op) => {
