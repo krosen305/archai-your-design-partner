@@ -4,11 +4,8 @@
 // LOCAL_METER centered on (0,0). Y-axis is architectural (up = positive).
 // The SVG renderer applies scale(s,-s) so orientation is correct on screen.
 
-export type SymbolPaths = {
-  paths: string[];
-  defaultWidthM: number;
-  defaultHeightM: number;
-};
+import type { SymbolPaths } from "./symbol-types";
+export type { SymbolPaths };
 
 /**
  * Single bed: 900×2000 rectangle with one oval pillow at head end.

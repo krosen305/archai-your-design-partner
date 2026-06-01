@@ -130,19 +130,28 @@ export const FixtureSchema = z.object({
 
 // --- Furniture (spec §9.7 extension — WS2 symbol library) -----------------
 
+/**
+ * Canonical list of supported furniture kinds. Exported so adapters (e.g.
+ * symbol-registry) can import this single source of truth without the domain
+ * core importing from adapter layers.
+ */
+export const FURNITURE_KINDS = [
+  "single_bed",
+  "double_bed",
+  "sofa",
+  "armchair",
+  "dining_table",
+  "chair",
+  "wardrobe_shelf",
+] as const;
+
+export type FurnitureKind = (typeof FURNITURE_KINDS)[number];
+
 export const FurnitureSchema = z.object({
   id: z.string().min(1),
   levelId: z.string().min(1),
   roomId: z.string().nullable(),
-  furnitureKind: z.enum([
-    "single_bed",
-    "double_bed",
-    "sofa",
-    "armchair",
-    "dining_table",
-    "chair",
-    "wardrobe_shelf",
-  ]),
+  furnitureKind: z.enum(FURNITURE_KINDS),
   position: Point2DSchema,
   rotationDeg: z.number(),
   widthM: z.number().positive(),

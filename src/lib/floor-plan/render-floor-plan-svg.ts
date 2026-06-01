@@ -113,16 +113,27 @@ export function renderFloorPlanSvg(
     return `<polygon data-fixture-id="${attr(fx.id)}" data-fixture-kind="${attr(fx.kind)}" points="${pts}" fill="none" stroke="#666" stroke-width="1.5" />`;
   });
 
-  // Furniture: paths already translated to world coordinates in the render model.
-  // Apply y-flip scale only (no translate — coordinates already in world space).
+  // Furniture: paths are in LOCAL_METER centered on (0,0).
+  // Apply translate(cx,cy) rotate(-rotationDeg) scale(scale,-scale) so that:
+  //   - the symbol is placed at its world position,
+  //   - rotation is applied before the y-flip (negated because y-flip inverts direction),
+  //   - scale converts LOCAL_METER to SVG user units and flips the y-axis.
+  // stroke-width is in the symbol's pre-scale space so 1.5/scale gives ~1.5px on screen.
   const furnitureEls = (model.furniture ?? []).flatMap((item) => {
     if (item.paths.length === 0) return [];
+    const cx = fmt((item.centerX - minX) * scale);
+    const cy = fmt((maxY - item.centerY) * scale);
+    const rot = fmt(-item.rotationDeg);
+    const sw = fmt(1.5 / scale);
+    const transformAttr =
+      rot !== 0
+        ? `translate(${cx},${cy}) rotate(${rot}) scale(${fmt(scale)},${fmt(-scale)})`
+        : `translate(${cx},${cy}) scale(${fmt(scale)},${fmt(-scale)})`;
     const pathEls = item.paths.map(
-      (d) =>
-        `<path fill="none" stroke="#888" stroke-width="1" d="${attr(scalePath(d, scale, minX, maxY))}" />`,
+      (d) => `<path fill="none" stroke="#888" stroke-width="${sw}" d="${attr(d)}" />`,
     );
     return [
-      `<g data-furniture-id="${attr(item.id)}" data-furniture-kind="${attr(item.kind)}">`,
+      `<g data-furniture-id="${attr(item.id)}" data-furniture-kind="${attr(item.kind)}" transform="${transformAttr}">`,
       ...pathEls,
       `</g>`,
     ];
@@ -140,37 +151,6 @@ export function renderFloorPlanSvg(
     `</g>`,
     `</svg>`,
   ].join("\n");
-}
-
-/**
- * Apply the LOCAL_METER → SVG pixel transformation to an absolute-coordinate
- * path string. This is the same transform as `px()`: x' = (x - minX) * scale,
- * y' = (maxY - y) * scale.
- * Only handles M, L, A (absolute uppercase) commands — matching what the symbol
- * builders emit.
- */
-function scalePath(d: string, scale: number, minX: number, maxY: number): string {
-  return d
-    .replace(
-      /([ML])([-\d.e+]+),([-\d.e+]+)/g,
-      (_m: string, cmd: string, xs: string, ys: string) => {
-        const x = (parseFloat(xs) - minX) * scale;
-        const y = (maxY - parseFloat(ys)) * scale;
-        return `${cmd}${fmtN(x)},${fmtN(y)}`;
-      },
-    )
-    .replace(
-      /A((?:[-\d.\s,e+]+?\s+){4})([-\d.e+]+),([-\d.e+]+)/g,
-      (_m: string, params: string, xs: string, ys: string) => {
-        const x = (parseFloat(xs) - minX) * scale;
-        const y = (maxY - parseFloat(ys)) * scale;
-        return `A${params}${fmtN(x)},${fmtN(y)}`;
-      },
-    );
-}
-
-function fmtN(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 function pointStr(p: { x: number; y: number }): string {

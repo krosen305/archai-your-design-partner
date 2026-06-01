@@ -3,11 +3,8 @@
 // Parametric SVG path definitions for kitchen elements. All coordinates in
 // LOCAL_METER centered on (0,0).
 
-export type SymbolPaths = {
-  paths: string[];
-  defaultWidthM: number;
-  defaultHeightM: number;
-};
+import type { SymbolPaths } from "./symbol-types";
+export type { SymbolPaths };
 
 /**
  * Kitchen worktop unit: rectangle (counter top). 600mm depth, variable width.

@@ -4,11 +4,8 @@
 // LOCAL_METER centered on (0,0). The SVG renderer applies transform="translate(cx,cy) scale(s,-s)"
 // per symbol group so y-axis flipping is handled externally.
 
-export type SymbolPaths = {
-  paths: string[];
-  defaultWidthM: number;
-  defaultHeightM: number;
-};
+import type { SymbolPaths } from "./symbol-types";
+export type { SymbolPaths };
 
 /**
  * Toilet symbol: rectangular cistern + D-shaped seat pan.

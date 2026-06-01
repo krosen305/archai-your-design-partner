@@ -4,11 +4,8 @@
 // All coordinates in LOCAL_METER centered on (0,0). Width is the clear
 // opening dimension. Height/depth is the wall thickness or leaf thickness.
 
-export type SymbolPaths = {
-  paths: string[];
-  defaultWidthM: number;
-  defaultHeightM: number;
-};
+import type { SymbolPaths } from "./symbol-types";
+export type { SymbolPaths };
 
 /**
  * Door symbol: door leaf (thin rectangle) + quarter-circle swing arc.

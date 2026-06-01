@@ -22,6 +22,11 @@ import {
   wardrobeShelfPaths,
 } from "./furniture-symbols";
 import { doorPaths, slidingDoorPaths, windowPaths, garageDoorPaths } from "./opening-symbols";
+import { FURNITURE_KINDS } from "@/domain/floor-plan/floor-plan.schemas";
+
+// Re-export FURNITURE_KINDS and FurnitureKind so consumers can import from one place.
+export { FURNITURE_KINDS } from "@/domain/floor-plan/floor-plan.schemas";
+export type { FurnitureKind } from "@/domain/floor-plan/floor-plan.schemas";
 
 // --- Kind union type ---------------------------------------------------------
 
@@ -36,14 +41,8 @@ export type SymbolKind =
   | "kitchen_island"
   | "kitchen_sink"
   | "appliance"
-  // Furniture
-  | "single_bed"
-  | "double_bed"
-  | "sofa"
-  | "armchair"
-  | "dining_table"
-  | "chair"
-  | "wardrobe_shelf"
+  // Furniture (from FURNITURE_KINDS canonical list)
+  | (typeof FURNITURE_KINDS)[number]
   // Openings
   | "door"
   | "door_left"
