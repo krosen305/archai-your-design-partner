@@ -176,23 +176,16 @@ const JOIN_TOL = 0.001;
 
 export type WallJoinInput = {
   poche: Point2D[][];
-  start: Point2D;
-  end: Point2D;
 };
 
 /**
- * Union all poché polygons from adjacent walls (corners and T-junctions) so
- * that overlapping regions at joins are eliminated.
+ * Union all poché polygons from all input walls so that overlapping regions
+ * at joins are eliminated.
  *
- * Strategy: walls that share an endpoint (within JOIN_TOL) are treated as
- * connected and their poche polygons are unioned together.  For T-junctions,
- * where one wall's endpoint meets the body of another wall, the poche polygons
- * physically overlap even though no exact endpoint pair matches — these are
- * handled by also unioning any pair of walls whose poche rectangles are
- * geometrically adjacent (their endpoint lies within the other wall's poche
- * bounds).  In practice it is simpler and correct to union ALL input polygons
- * into a single geometry; jsts union of non-overlapping polygons is a no-op
- * for the non-overlapping parts and correctly removes only the actual overlaps.
+ * Strategy: all input polygons are unioned together in a single operation.
+ * jsts union of non-overlapping polygons is a no-op for the non-overlapping
+ * parts and correctly removes only the actual overlaps. This handles corners,
+ * T-junctions, and any other geometric adjacencies automatically.
  *
  * Returns the final merged polygon pieces for the entire set of walls as a
  * flat array.  Isolated walls (no overlap with any other wall) are returned
@@ -235,9 +228,9 @@ export function resolveWallJoins(walls: WallJoinInput[]): Point2D[][] {
 
 /**
  * Returns true when two points are within JOIN_TOL of each other.
- * Exported for use in render-model helpers.
+ * Internal helper — not currently used but kept for potential future use.
  */
-export function wallEndpointsClose(a: Point2D, b: Point2D): boolean {
+function wallEndpointsClose(a: Point2D, b: Point2D): boolean {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return dx * dx + dy * dy < JOIN_TOL * JOIN_TOL;

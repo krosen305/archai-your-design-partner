@@ -135,8 +135,6 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
   // FloorPlanRenderModel.wallPoche and drawn ONCE by the SVG renderer.
   const joinInputs = rawWallData.map((d) => ({
     poche: d.pocheForUnion,
-    start: d.start,
-    end: d.end,
   }));
   const wallPoche: Point2D[][] = resolveWallJoins(joinInputs);
 
