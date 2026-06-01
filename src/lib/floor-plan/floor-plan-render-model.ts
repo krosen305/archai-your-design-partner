@@ -12,6 +12,8 @@ import { computeDimensions } from "@/domain/floor-plan/dimension-engine";
 import { buildWallPoché, resolveWallJoins, wallPocheRect } from "./wall-poche";
 import { getSymbol } from "./symbols/symbol-registry";
 import type { SymbolKind } from "./symbols/symbol-registry";
+import { buildHatchPaths } from "./hatch-patterns";
+import type { HatchPattern } from "./hatch-patterns";
 
 export type RenderWall = {
   id: string;
@@ -67,6 +69,36 @@ export type RenderSymbol = {
   rotationDeg: number;
 };
 
+export type RenderZone = {
+  id: string;
+  kind: string;
+  name: string;
+  areaM2: number;
+  points: Point2D[];
+  labelPoint: Point2D;
+  /** SVG path `d` strings for hatch lines (LOCAL_METER). */
+  hatchPaths: string[];
+  heated: boolean;
+};
+
+/**
+ * Layer visibility flags. All default to `true`. Consumers (editor, PDF export)
+ * can disable individual layers without re-building the render model.
+ */
+export type RenderLayers = {
+  showDimensions: boolean;
+  showFurniture: boolean;
+  showZones: boolean;
+  showHatch: boolean;
+};
+
+export const DEFAULT_RENDER_LAYERS: RenderLayers = {
+  showDimensions: true,
+  showFurniture: true,
+  showZones: true,
+  showHatch: true,
+};
+
 export type RenderViewBox = { minX: number; minY: number; width: number; height: number };
 
 /**
@@ -109,6 +141,10 @@ export type FloorPlanRenderModel = {
   fixtures: RenderFixture[];
   /** Furniture items rendered as symbol paths (LOCAL_METER, centered on position). */
   furniture: RenderSymbol[];
+  /** Unheated/covered zone polygons with hatch patterns (drawn under rooms). */
+  zones: RenderZone[];
+  /** Layer visibility flags — all default to true. */
+  layers: RenderLayers;
   /** Exterior facade dimension chains (stacked strings per side). */
   dimensionChains: RenderDimensionChain[];
   /** Interior room-dimension segments (width + depth per room). */
@@ -230,6 +266,28 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     labelPoint: fixture.position,
   }));
 
+  // Zones: unheated/covered areas drawn under rooms with hatch patterns.
+  const zoneHatchMap: Record<string, HatchPattern> = {
+    terrace: "diagonal",
+    carport: "cross_hatch",
+    covered_entrance: "diagonal",
+    balcony: "diagonal",
+  };
+
+  const zones: RenderZone[] = (level.zones ?? []).map((zone) => ({
+    id: zone.id,
+    kind: zone.zoneKind,
+    name: zone.name,
+    areaM2: zone.areaM2,
+    points: zone.polygon.vertices,
+    labelPoint: polygonCentroid(zone.polygon),
+    hatchPaths: buildHatchPaths({
+      polygon: zone.polygon.vertices,
+      pattern: (zoneHatchMap[zone.zoneKind] as HatchPattern | undefined) ?? "none",
+    }),
+    heated: zone.heated,
+  }));
+
   // Furniture: resolve symbol paths in LOCAL_METER centered on (0,0).
   // The SVG renderer applies a <g transform="translate(cx,cy) rotate(r) scale(s,-s)">
   // per symbol so paths never need to be pre-translated here.
@@ -302,6 +360,8 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     openings,
     fixtures,
     furniture,
+    zones,
+    layers: DEFAULT_RENDER_LAYERS,
     dimensionChains,
     interiorDimensions,
   };

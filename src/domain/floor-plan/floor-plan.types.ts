@@ -25,6 +25,7 @@ import type {
   StairSchema,
   WallAssemblySchema,
   WallSchema,
+  ZoneSchema,
 } from "./floor-plan.schemas";
 
 export type ElementSourceMeta = z.infer<typeof ElementSourceMetaSchema>;
@@ -34,6 +35,7 @@ export type RoomZone = z.infer<typeof RoomZoneSchema>;
 export type Opening = z.infer<typeof OpeningSchema>;
 export type Fixture = z.infer<typeof FixtureSchema>;
 export type Furniture = z.infer<typeof FurnitureSchema>;
+export type Zone = z.infer<typeof ZoneSchema>;
 export type Stair = z.infer<typeof StairSchema>;
 export type PlanAnnotation = z.infer<typeof PlanAnnotationSchema>;
 export type FloorLevel = z.infer<typeof FloorLevelSchema>;

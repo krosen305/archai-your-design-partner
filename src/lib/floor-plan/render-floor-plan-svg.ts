@@ -29,6 +29,34 @@ export function renderFloorPlanSvg(
   const w = fmt(width * scale);
   const h = fmt(height * scale);
 
+  // Layer flags — use defaults if the model predates the layers field
+  const layers = model.layers ?? {
+    showDimensions: true,
+    showFurniture: true,
+    showZones: true,
+    showHatch: true,
+  };
+
+  // Zones: drawn first (under rooms) with dashed outline and hatch lines
+  const zoneEls = layers.showZones
+    ? (model.zones ?? []).flatMap((zone) => {
+        const pts = zone.points.map((p) => pointStr(px(p))).join(" ");
+        const label = px(zone.labelPoint);
+        const hatchEls = layers.showHatch
+          ? zone.hatchPaths.map((d) => {
+              const svgD = transformHatchPath(d, { minX, maxY, scale });
+              return `<path d="${svgD}" stroke="#888" stroke-width="0.5" fill="none" />`;
+            })
+          : [];
+        return [
+          `<polygon data-zone-id="${attr(zone.id)}" data-zone-kind="${attr(zone.kind)}" points="${pts}" fill="rgba(200,200,200,0.15)" stroke="#888" stroke-width="1" stroke-dasharray="5,3" />`,
+          ...hatchEls,
+          `<text data-zone-label="${attr(zone.id)}" x="${fmt(label.x)}" y="${fmt(label.y)}" text-anchor="middle" font-size="10" fill="#888">${esc(zone.name)}</text>`,
+          `<text data-zone-area="${attr(zone.id)}" x="${fmt(label.x)}" y="${fmt(label.y + 12)}" text-anchor="middle" font-size="9" fill="#999">${esc((Math.round(zone.areaM2 * 10) / 10).toFixed(1))} m²</text>`,
+        ];
+      })
+    : [];
+
   const roomEls = model.rooms.map((room) => {
     const pts = room.points.map((p) => pointStr(px(p))).join(" ");
     const label = px(room.labelPoint);
@@ -199,6 +227,7 @@ export function renderFloorPlanSvg(
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`,
     `<g data-level-id="${attr(model.levelId)}">`,
+    ...zoneEls,
     ...roomEls,
     ...wallPocheEls,
     ...wallFallbackEls,
@@ -214,6 +243,26 @@ export function renderFloorPlanSvg(
 
 function pointStr(p: { x: number; y: number }): string {
   return `${Math.round(p.x * 100) / 100},${Math.round(p.y * 100) / 100}`;
+}
+
+/**
+ * Transform hatch path `d` strings from LOCAL_METER to SVG pixel coordinates.
+ * Hatch paths are emitted as "M x,y L x,y" by buildHatchPaths in LOCAL_METER.
+ * The same minX/maxY/scale transform used for polygon points is applied here.
+ */
+function transformHatchPath(
+  d: string,
+  opts: { minX: number; maxY: number; scale: number },
+): string {
+  const { minX, maxY, scale } = opts;
+  return d.replace(
+    /([ML])\s*([\d.-]+)\s*,\s*([\d.-]+)/g,
+    (_, cmd: string, xStr: string, yStr: string) => {
+      const sx = Math.round((parseFloat(xStr) - minX) * scale * 100) / 100;
+      const sy = Math.round((maxY - parseFloat(yStr)) * scale * 100) / 100;
+      return `${cmd}${sx},${sy}`;
+    },
+  );
 }
 
 function formatArea(areaM2: number): string {

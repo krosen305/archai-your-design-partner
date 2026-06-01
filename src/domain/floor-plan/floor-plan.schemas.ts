@@ -128,6 +128,35 @@ export const FixtureSchema = z.object({
   source: ElementSourceMetaSchema,
 });
 
+// --- Zone (WS4 — uopvarmede/overdækkede arealer) ---------------------------
+
+/**
+ * Canonical list of zone kinds for unheated/covered areas outside the primary
+ * building envelope. Exported so adapters can import this single source of truth.
+ */
+export const ZONE_KINDS = [
+  "terrace",
+  "carport",
+  "covered_entrance",
+  "balcony",
+  "pool",
+  "parking",
+] as const;
+
+export type ZoneKind = (typeof ZONE_KINDS)[number];
+
+export const ZoneSchema = z.object({
+  id: z.string().min(1),
+  levelId: z.string().min(1),
+  zoneKind: z.enum(ZONE_KINDS),
+  polygon: Polygon2DSchema,
+  name: z.string(),
+  areaM2: z.number().nonnegative(),
+  /** false = uopvarmet (tæller ikke som BBR bebygget areal på samme måde) */
+  heated: z.boolean(),
+  source: ElementSourceMetaSchema,
+});
+
 // --- Furniture (spec §9.7 extension — WS2 symbol library) -----------------
 
 /**
@@ -193,6 +222,7 @@ export const FloorLevelSchema = z.object({
   openings: z.array(OpeningSchema),
   fixtures: z.array(FixtureSchema),
   furniture: z.array(FurnitureSchema).default([]),
+  zones: z.array(ZoneSchema).default([]),
   stairs: z.array(StairSchema),
   annotations: z.array(PlanAnnotationSchema),
 });
