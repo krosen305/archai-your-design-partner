@@ -329,6 +329,7 @@ function buildInteriorDimensions(level: FloorLevel, minSeg: number): DimensionSe
 
     // Width segment: horizontal at the middle Y
     if (widthM >= minSeg) {
+      // Interior: witness has no extension offset, unlike exterior chains
       const wFrom: WitnessPoint = {
         worldPt: { x: roomBbox.minX, y: midY },
         extensionEnd: { x: roomBbox.minX, y: midY },

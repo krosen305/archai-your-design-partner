@@ -148,6 +148,7 @@ export function renderFloorPlanSvg(
       const ct = px(seg.chainTo);
       const mid = { x: (cf.x + ct.x) / 2, y: (cf.y + ct.y) / 2 };
       const arrowSize = fmt(4);
+      const ARROWHEAD_WIDTH_RATIO = 0.4;
 
       // Chain direction vector (normalised, in SVG pixel space)
       const dx = ct.x - cf.x;
@@ -160,14 +161,14 @@ export function renderFloorPlanSvg(
       const py_ = ux;
 
       // Arrowhead at chain-from end (pointing in chain direction)
-      const af1 = `${fmt(cf.x + ux * Number(arrowSize))},${fmt(cf.y + uy * Number(arrowSize))}`;
-      const af2 = `${fmt(cf.x + px_ * Number(arrowSize) * 0.4)},${fmt(cf.y + py_ * Number(arrowSize) * 0.4)}`;
-      const af3 = `${fmt(cf.x - px_ * Number(arrowSize) * 0.4)},${fmt(cf.y - py_ * Number(arrowSize) * 0.4)}`;
+      const af1 = `${fmt(cf.x + ux * arrowSize)},${fmt(cf.y + uy * arrowSize)}`;
+      const af2 = `${fmt(cf.x + px_ * arrowSize * ARROWHEAD_WIDTH_RATIO)},${fmt(cf.y + py_ * arrowSize * ARROWHEAD_WIDTH_RATIO)}`;
+      const af3 = `${fmt(cf.x - px_ * arrowSize * ARROWHEAD_WIDTH_RATIO)},${fmt(cf.y - py_ * arrowSize * ARROWHEAD_WIDTH_RATIO)}`;
 
       // Arrowhead at chain-to end (pointing against chain direction)
-      const at1 = `${fmt(ct.x - ux * Number(arrowSize))},${fmt(ct.y - uy * Number(arrowSize))}`;
-      const at2 = `${fmt(ct.x + px_ * Number(arrowSize) * 0.4)},${fmt(ct.y + py_ * Number(arrowSize) * 0.4)}`;
-      const at3 = `${fmt(ct.x - px_ * Number(arrowSize) * 0.4)},${fmt(ct.y - py_ * Number(arrowSize) * 0.4)}`;
+      const at1 = `${fmt(ct.x - ux * arrowSize)},${fmt(ct.y - uy * arrowSize)}`;
+      const at2 = `${fmt(ct.x + px_ * arrowSize * ARROWHEAD_WIDTH_RATIO)},${fmt(ct.y + py_ * arrowSize * ARROWHEAD_WIDTH_RATIO)}`;
+      const at3 = `${fmt(ct.x - px_ * arrowSize * ARROWHEAD_WIDTH_RATIO)},${fmt(ct.y - py_ * arrowSize * ARROWHEAD_WIDTH_RATIO)}`;
 
       return [
         // Witness lines (face → chain line)
