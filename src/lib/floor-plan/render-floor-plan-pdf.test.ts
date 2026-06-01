@@ -7,9 +7,26 @@ const model: FloorPlanRenderModel = {
   levelName: "Stueplan",
   viewBox: { minX: -1, minY: -1, width: 6, height: 5 },
   walls: [
-    { id: "w_s", start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, thicknessM: 0.12, structural: false },
-    { id: "w_e", start: { x: 4, y: 0 }, end: { x: 4, y: 3 }, thicknessM: 0.12, structural: true },
+    {
+      id: "w_s",
+      start: { x: 0, y: 0 },
+      end: { x: 4, y: 0 },
+      thicknessM: 0.12,
+      structural: false,
+      pochePolygon: [],
+      gaps: [],
+    },
+    {
+      id: "w_e",
+      start: { x: 4, y: 0 },
+      end: { x: 4, y: 3 },
+      thicknessM: 0.12,
+      structural: true,
+      pochePolygon: [],
+      gaps: [],
+    },
   ],
+  wallPoche: [],
   rooms: [
     {
       id: "room_1",

@@ -66,6 +66,13 @@ const model: FloorPlanRenderModel = {
       gaps: [],
     },
   ],
+  // Level-merged poché (all 4 wall rectangles pre-unioned for the test fixture)
+  wallPoche: [
+    pocheRect(0, 0, 4, 0, 0.12),
+    pocheRect(4, 0, 4, 3, 0.12),
+    pocheRect(4, 3, 0, 3, 0.12),
+    pocheRect(0, 3, 0, 0, 0.12),
+  ],
   rooms: [
     {
       id: "room_1",
@@ -105,12 +112,14 @@ describe("renderFloorPlanSvg", () => {
     expect(svg).toContain('viewBox="0 0');
   });
 
-  test("draws one poché polygon per wall (no <line> when poché is valid)", () => {
-    // walls in the test model all have pochePolygon with 4 vertices → <polygon>
-    const wallPolygons = svg.match(/data-wall-id=/g) ?? [];
-    expect(wallPolygons.length).toBe(4);
-    // No <line> elements expected when all walls have valid poché polygons
+  test("draws level-merged poché polygons via data-wall-poche (no per-wall duplication)", () => {
+    // wallPoche in the test model has 4 polygons → 4 data-wall-poche elements
+    const pochePolygons = svg.match(/data-wall-poche=/g) ?? [];
+    expect(pochePolygons.length).toBe(4);
+    // No <line> fallback elements expected when wallPoche is non-empty
     expect((svg.match(/<line/g) ?? []).length).toBe(0);
+    // No per-wall data-wall-id polygons in SVG (removed from rendering path)
+    expect((svg.match(/data-wall-id=/g) ?? []).length).toBe(0);
   });
 
   test("draws a polygon for the room and its stamp with name and area", () => {

@@ -35,29 +35,30 @@ export function renderFloorPlanSvg(
     ].join("\n");
   });
 
-  const wallEls = model.walls.flatMap((wall) => {
-    const fill = wall.structural ? "#1a1a1a" : "#333333";
-    const validPolys = wall.pochePolygon.filter((poly) => poly.length >= 3);
-
-    // Fallback to a thin stroke line when all poché polygons are degenerate
-    if (validPolys.length === 0) {
-      const a = px(wall.start);
-      const b = px(wall.end);
-      const strokeWidth = fmt(Math.max(wall.thicknessM * scale, 2));
-      return [
-        `<line data-wall-id="${attr(wall.id)}" x1="${fmt(a.x)}" y1="${fmt(a.y)}" x2="${fmt(b.x)}" y2="${fmt(b.y)}" stroke="${fill}" stroke-width="${strokeWidth}" stroke-linecap="square" />`,
-      ];
-    }
-
-    // One <polygon> element per poché piece (typically one; two when a gap is in the middle)
-    return validPolys.map((poly, idx) => {
+  // Draw level-merged poché ONCE to avoid double-painting overlaps at joins.
+  // wall.pochePolygon (per-wall rectangle) is NOT rendered here — it is kept
+  // on RenderWall only for hit-testing in the editor.
+  const wallPocheEls = model.wallPoche
+    .filter((poly) => poly.length >= 3)
+    .map((poly, i) => {
       const pts = poly.map((p) => pointStr(px(p))).join(" ");
-      const idAttr =
-        idx === 0
-          ? `data-wall-id="${attr(wall.id)}"`
-          : `data-wall-id="${attr(wall.id)}" data-wall-piece="${idx}"`;
-      return `<polygon ${idAttr} points="${pts}" fill="${fill}" stroke="none" />`;
+      return `<polygon data-wall-poche="${i}" points="${pts}" fill="#1a1a1a" stroke="none" />`;
     });
+
+  // Fallback: for walls whose poché could not be merged (e.g. degenerate zero-
+  // length walls), draw a thin stroke line so the wall is still visible.
+  const wallFallbackEls = model.walls.flatMap((wall) => {
+    const hasPolyInMerged = model.wallPoche.length > 0;
+    // Only emit fallback line for degenerate walls (no pochePolygon and no merged coverage).
+    const validPerWall = wall.pochePolygon.filter((poly) => poly.length >= 3);
+    if (validPerWall.length > 0 || hasPolyInMerged) return [];
+    const fill = wall.structural ? "#1a1a1a" : "#333333";
+    const a = px(wall.start);
+    const b = px(wall.end);
+    const strokeWidth = fmt(Math.max(wall.thicknessM * scale, 2));
+    return [
+      `<line data-wall-id="${attr(wall.id)}" x1="${fmt(a.x)}" y1="${fmt(a.y)}" x2="${fmt(b.x)}" y2="${fmt(b.y)}" stroke="${fill}" stroke-width="${strokeWidth}" stroke-linecap="square" />`,
+    ];
   });
 
   const openingEls = model.openings.map((op) => {
@@ -75,7 +76,8 @@ export function renderFloorPlanSvg(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`,
     `<g data-level-id="${attr(model.levelId)}">`,
     ...roomEls,
-    ...wallEls,
+    ...wallPocheEls,
+    ...wallFallbackEls,
     ...openingEls,
     ...fixtureEls,
     `</g>`,

@@ -138,6 +138,28 @@ describe("buildRenderModel", () => {
     expect(m.fixtures).toHaveLength(1);
   });
 
+  test("wallPoche is a Point2D[][] present on the render model", () => {
+    const m = buildRenderModel(doc(), "level_0");
+    expect(Array.isArray(m.wallPoche)).toBe(true);
+    // Four connected walls → merged into one or more polygons (not zero)
+    expect(m.wallPoche.length).toBeGreaterThan(0);
+    // Every entry is an array of points with x/y
+    for (const poly of m.wallPoche) {
+      expect(Array.isArray(poly)).toBe(true);
+      expect(poly.length).toBeGreaterThanOrEqual(3);
+      expect(typeof poly[0]!.x).toBe("number");
+      expect(typeof poly[0]!.y).toBe("number");
+    }
+  });
+
+  test("wallPoche is empty for a document with no walls", () => {
+    const d = doc();
+    d.levels[0]!.walls = [];
+    d.levels[0]!.openings = [];
+    const m = buildRenderModel(d, "level_0");
+    expect(m.wallPoche).toEqual([]);
+  });
+
   test("places the room stamp at the polygon centroid with name and area read from the model", () => {
     const m = buildRenderModel(doc(), "level_0");
     const room = m.rooms[0]!;
