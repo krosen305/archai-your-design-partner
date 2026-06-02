@@ -307,42 +307,7 @@ export const ruleEngineArealdataContextSchema = z
   })
   .passthrough();
 
-// ARCH-247: Tjekditnet bredbåndsdækning — restore-safe schema (passthrough)
-export const tjekditnetCoverageSchema = z
-  .object({
-    fast_traadloes_download_mbit: z.number().nullable(),
-    fast_traadloes_upload_mbit: z.number().nullable(),
-    fiber_download_mbit: z.number().nullable(),
-    fiber_upload_mbit: z.number().nullable(),
-    kabel_tv_download_mbit: z.number().nullable(),
-    kabel_tv_upload_mbit: z.number().nullable(),
-    xdsl_download_mbit: z.number().nullable(),
-    xdsl_upload_mbit: z.number().nullable(),
-    mobil_download_mbit: z.number().nullable(),
-    fiber_tilgaengelig: z.boolean().nullable(),
-    kabel_tilgaengelig: z.boolean().nullable(),
-    xdsl_tilgaengelig: z.boolean().nullable(),
-    fast_traadloes_tilgaengelig: z.boolean().nullable(),
-    mobil_tilgaengelig: z.boolean().nullable(),
-    max_fast_download_mbit: z.number().nullable(),
-    match_type: z.enum(["uuid", "no_hit", "db_error"]),
-    kilde: z.literal("tjekditnet"),
-  })
-  .passthrough();
 
-// ARCH-248: EMOData energimærke — restore-safe schema (passthrough)
-export const energimaerkeSchema = z
-  .object({
-    energimaerke_klasse: z.string().nullable(),
-    gyldig_til: z.string().nullable(),
-    er_udloebet: z.boolean().nullable(),
-    rapportdato: z.string().nullable(),
-    rapport_url: z.string().nullable(),
-    rapport_id: z.string().nullable(),
-    match_type: z.enum(["bbr_id", "no_hit", "skipped"]),
-    kilde: z.literal("emodata"),
-  })
-  .passthrough();
 
 
 
