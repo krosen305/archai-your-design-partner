@@ -8,7 +8,7 @@
 // rather than generic <circle> or <polygon> placeholders.
 
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
-import type { FloorPlanRenderModel } from "./floor-plan-render-model";
+import type { FloorPlanRenderModel, RoomCompliance } from "./floor-plan-render-model";
 import { getSymbol } from "./symbols/symbol-registry";
 
 export type RenderSvgOptions = {
@@ -35,6 +35,7 @@ export function renderFloorPlanSvg(
     showFurniture: true,
     showZones: true,
     showHatch: true,
+    showCompliance: true,
   };
 
   // Zones: drawn first (under rooms) with dashed outline and hatch lines
@@ -57,14 +58,63 @@ export function renderFloorPlanSvg(
       })
     : [];
 
+  // Build a quick lookup: roomId → RoomCompliance entry
+  const roomComplianceMap = new Map<string, RoomCompliance>();
+  if (model.complianceOverlay && (layers.showCompliance ?? true)) {
+    for (const rc of model.complianceOverlay.roomCompliance) {
+      roomComplianceMap.set(rc.roomId, rc);
+    }
+  }
+
   const roomEls = model.rooms.map((room) => {
     const pts = room.points.map((p) => pointStr(px(p))).join(" ");
     const label = px(room.labelPoint);
-    return [
+    const baseEls = [
       `<polygon data-room-id="${attr(room.id)}" points="${pts}" fill="#f4f1ea" stroke="none" />`,
       `<text data-room-label="${attr(room.id)}" x="${fmt(label.x)}" y="${fmt(label.y)}" text-anchor="middle" font-size="12">${esc(room.name)}</text>`,
       `<text data-room-area="${attr(room.id)}" x="${fmt(label.x)}" y="${fmt(label.y + 14)}" text-anchor="middle" font-size="10">${esc(formatArea(room.areaM2))}</text>`,
-    ].join("\n");
+    ];
+
+    // Compliance badges in the top-left corner of the room bounding box
+    const rc = roomComplianceMap.get(room.id);
+    if (rc && rc.findings.length > 0 && (layers.showCompliance ?? true)) {
+      // Top-left corner of the room polygon (min x, max y in architectural space → min y in SVG)
+      let minPx = Infinity;
+      let minPy = Infinity;
+      for (const p of room.points) {
+        const svgPt = px(p);
+        if (svgPt.x < minPx) minPx = svgPt.x;
+        if (svgPt.y < minPy) minPy = svgPt.y;
+      }
+      // Draw badges: blocking first, then warning, then info
+      const badgeEls: string[] = [];
+      let bx = minPx + 8;
+      const by = minPy + 8;
+      for (const finding of rc.findings) {
+        const titleText = attr(finding.shortLabel || finding.message.slice(0, 30));
+        if (finding.severity === "blocking") {
+          badgeEls.push(
+            `<circle data-badge="${attr(finding.id)}" cx="${fmt(bx)}" cy="${fmt(by)}" r="6" fill="#e53935"><title>${titleText}</title></circle>`,
+            `<text x="${fmt(bx)}" y="${fmt(by + 4)}" text-anchor="middle" font-size="5" fill="white" pointer-events="none">!</text>`,
+          );
+          bx += 15;
+        } else if (finding.severity === "review_required" || finding.severity === "warning") {
+          badgeEls.push(
+            `<circle data-badge="${attr(finding.id)}" cx="${fmt(bx)}" cy="${fmt(by)}" r="5" fill="#fb8c00"><title>${titleText}</title></circle>`,
+          );
+          bx += 13;
+        } else {
+          // info
+          badgeEls.push(
+            `<circle data-badge="${attr(finding.id)}" cx="${fmt(bx)}" cy="${fmt(by)}" r="4" fill="#1565c0"><title>${titleText}</title></circle>`,
+          );
+          bx += 11;
+        }
+      }
+      baseEls.push(...badgeEls);
+    }
+
+    return baseEls.join("\n");
   });
 
   // Draw level-merged poché ONCE to avoid double-painting overlaps at joins.
@@ -224,6 +274,30 @@ export function renderFloorPlanSvg(
     ];
   });
 
+  // Area table: shown in the top-left corner of the SVG when complianceOverlay is present.
+  const areaTableEls: string[] = [];
+  if (model.complianceOverlay && (layers.showCompliance ?? true)) {
+    const { areaSummary } = model.complianceOverlay;
+    const tableLines: string[] = [
+      `<g data-area-table="true" transform="translate(5, 5)">`,
+      `<text font-size="8" font-weight="bold" fill="#222">Arealer</text>`,
+    ];
+    let rowY = 15;
+    for (const row of areaSummary.rows) {
+      const fill = row.type === "unheated_zone" ? "#888" : "#333";
+      tableLines.push(
+        `<text y="${rowY}" font-size="7" fill="${fill}">${esc(row.label)} ${esc(row.areaFormatted)}</text>`,
+      );
+      rowY += 10;
+    }
+    // Summary line
+    tableLines.push(
+      `<text y="${rowY}" font-size="7" fill="#555">Total opvarmet: ${esc(formatArea(areaSummary.totalHeatedM2))}</text>`,
+    );
+    tableLines.push(`</g>`);
+    areaTableEls.push(...tableLines);
+  }
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`,
     `<g data-level-id="${attr(model.levelId)}">`,
@@ -236,6 +310,7 @@ export function renderFloorPlanSvg(
     ...furnitureEls,
     ...dimensionEls,
     ...interiorDimEls,
+    ...areaTableEls,
     `</g>`,
     `</svg>`,
   ].join("\n");

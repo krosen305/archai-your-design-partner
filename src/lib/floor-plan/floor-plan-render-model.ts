@@ -14,6 +14,9 @@ import { getSymbol } from "./symbols/symbol-registry";
 import type { SymbolKind } from "./symbols/symbol-registry";
 import { buildHatchPaths } from "./hatch-patterns";
 import type { HatchPattern } from "./hatch-patterns";
+import { buildComplianceOverlay } from "./compliance-overlay";
+import type { ComplianceOverlay } from "./compliance-overlay";
+import type { VerificationFinding } from "@/domain/floor-plan/verification-engine";
 
 export type RenderWall = {
   id: string;
@@ -90,6 +93,8 @@ export type RenderLayers = {
   showFurniture: boolean;
   showZones: boolean;
   showHatch: boolean;
+  /** Show compliance finding badges on rooms. Default: true. */
+  showCompliance: boolean;
 };
 
 export const DEFAULT_RENDER_LAYERS: RenderLayers = {
@@ -97,6 +102,7 @@ export const DEFAULT_RENDER_LAYERS: RenderLayers = {
   showFurniture: true,
   showZones: true,
   showHatch: true,
+  showCompliance: true,
 };
 
 export type RenderViewBox = { minX: number; minY: number; width: number; height: number };
@@ -149,11 +155,26 @@ export type FloorPlanRenderModel = {
   dimensionChains: RenderDimensionChain[];
   /** Interior room-dimension segments (width + depth per room). */
   interiorDimensions: RenderDimensionSegment[];
+  /**
+   * Compliance overlay: room-level BR18/verification findings + area summary.
+   * Only present when findings are supplied to buildRenderModel via opts.findings.
+   */
+  complianceOverlay?: ComplianceOverlay;
 };
+
+// Re-export so consumers don't need a separate import from compliance-overlay.ts
+export type { ComplianceOverlay, RoomCompliance } from "./compliance-overlay";
 
 const MARGIN_M = 1;
 
-export function buildRenderModel(doc: FloorPlanDocument, levelId: string): FloorPlanRenderModel {
+export function buildRenderModel(
+  doc: FloorPlanDocument,
+  levelId: string,
+  opts?: {
+    /** BR18/compliance findings to attach as a compliance overlay on the model. */
+    findings?: VerificationFinding[];
+  },
+): FloorPlanRenderModel {
   const level = doc.levels.find((l) => l.id === levelId);
   if (!level) throw new Error(`buildRenderModel: ukendt level "${levelId}"`);
 
@@ -348,6 +369,9 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     },
   );
 
+  const complianceOverlay =
+    opts?.findings !== undefined ? buildComplianceOverlay(level, opts.findings) : undefined;
+
   return {
     levelId: level.id,
     levelName: level.name,
@@ -364,6 +388,7 @@ export function buildRenderModel(doc: FloorPlanDocument, levelId: string): Floor
     layers: DEFAULT_RENDER_LAYERS,
     dimensionChains,
     interiorDimensions,
+    complianceOverlay,
   };
 }
 
