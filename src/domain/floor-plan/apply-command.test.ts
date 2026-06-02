@@ -237,3 +237,246 @@ describe("applyCommand - parity", () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });
+
+// ---------------------------------------------------------------------------
+// WS5 — add/delete commands
+// ---------------------------------------------------------------------------
+
+describe("applyCommand - add_wall", () => {
+  test("adds a wall to the level and recomputes rooms", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_wall",
+      levelId: "level_0",
+      start: { x: 2, y: 0 },
+      end: { x: 2, y: 3 },
+      thicknessM: 0.12,
+      wallKind: "interior",
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    const level = result.document.levels[0]!;
+    expect(level.walls).toHaveLength(5);
+    const newWall = level.walls.find((w) => w.id.startsWith("wall-"));
+    expect(newWall).toBeDefined();
+    expect(newWall!.wallKind).toBe("interior");
+    expect(newWall!.source.source).toBe("manual");
+    // changedElementIds must include the new wall id
+    expect(result.changedElementIds).toContain(newWall!.id);
+    // input document is not mutated
+    expect(baseDoc().levels[0]!.walls).toHaveLength(4);
+  });
+
+  test("rejects an add_wall that is too short (< 0.1 m)", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_wall",
+      levelId: "level_0",
+      start: { x: 0, y: 0 },
+      end: { x: 0.05, y: 0 },
+      thicknessM: 0.12,
+      wallKind: "interior",
+    });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("WALL_TOO_SHORT");
+  });
+
+  test("rejects add_wall for an unknown level", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_wall",
+      levelId: "no_such_level",
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 0 },
+      thicknessM: 0.12,
+      wallKind: "interior",
+    });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("LEVEL_NOT_FOUND");
+  });
+});
+
+describe("applyCommand - add_opening", () => {
+  test("adds a window to an existing wall", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_opening",
+      levelId: "level_0",
+      wallId: "w_n",
+      openingKind: "window",
+      offsetAlongWallM: 2,
+      widthM: 1.2,
+      heightM: 1.2,
+      swing: "none",
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    const level = result.document.levels[0]!;
+    expect(level.openings).toHaveLength(2);
+    const newOpening = level.openings.find((o) => o.id.startsWith("opening-"));
+    expect(newOpening).toBeDefined();
+    expect(newOpening!.openingKind).toBe("window");
+    expect(newOpening!.wallId).toBe("w_n");
+    expect(result.changedElementIds).toContain(newOpening!.id);
+  });
+
+  test("rejects opening that would overlap existing door", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_opening",
+      levelId: "level_0",
+      wallId: "w_s",
+      openingKind: "window",
+      offsetAlongWallM: 1, // same position as door_1
+      widthM: 0.9,
+      heightM: 1.2,
+      swing: "none",
+    });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("OPENING_OVERLAPS_ANOTHER");
+  });
+
+  test("rejects opening on an unknown wall", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_opening",
+      levelId: "level_0",
+      wallId: "w_nonexistent",
+      openingKind: "door",
+      offsetAlongWallM: 0.5,
+      widthM: 0.9,
+      heightM: 2.1,
+      swing: "left",
+    });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("WALL_NOT_FOUND");
+  });
+});
+
+describe("applyCommand - add_fixture", () => {
+  test("adds a toilet fixture to the level", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_fixture",
+      levelId: "level_0",
+      roomId: "room_1",
+      fixtureKind: "toilet",
+      position: { x: 3, y: 2.5 },
+      rotationDeg: 0,
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    const level = result.document.levels[0]!;
+    expect(level.fixtures).toHaveLength(2);
+    const newFixture = level.fixtures.find((f) => f.id.startsWith("fixture-"));
+    expect(newFixture).toBeDefined();
+    expect(newFixture!.fixtureKind).toBe("toilet");
+    expect(newFixture!.roomId).toBe("room_1");
+    expect(result.changedElementIds).toContain(newFixture!.id);
+  });
+
+  test("rejects add_fixture for an unknown level", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_fixture",
+      levelId: "ghost_level",
+      roomId: null,
+      fixtureKind: "sink",
+      position: { x: 1, y: 1 },
+      rotationDeg: 0,
+    });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("LEVEL_NOT_FOUND");
+  });
+});
+
+describe("applyCommand - add_furniture", () => {
+  test("adds a double_bed to the level", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "add_furniture",
+      levelId: "level_0",
+      roomId: "room_1",
+      furnitureKind: "double_bed",
+      position: { x: 2, y: 1.5 },
+      rotationDeg: 90,
+      widthM: 1.8,
+      depthM: 2.0,
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    const level = result.document.levels[0]!;
+    const furniture = level.furniture ?? [];
+    const newItem = furniture.find((f) => f.id.startsWith("furniture-"));
+    expect(newItem).toBeDefined();
+    expect(newItem!.furnitureKind).toBe("double_bed");
+    expect(newItem!.widthM).toBe(1.8);
+    expect(result.changedElementIds).toContain(newItem!.id);
+  });
+});
+
+describe("applyCommand - delete_wall", () => {
+  test("removes the wall and its associated openings from the level", () => {
+    const result = applyCommand(baseDoc(), { type: "delete_wall", wallId: "w_s" });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    const level = result.document.levels[0]!;
+    expect(level.walls.find((w) => w.id === "w_s")).toBeUndefined();
+    // door_1 was on w_s and must be removed too
+    expect(level.openings.find((o) => o.id === "door_1")).toBeUndefined();
+    expect(result.changedElementIds).toContain("w_s");
+    expect(result.changedElementIds).toContain("door_1");
+    // input document is not mutated
+    expect(baseDoc().levels[0]!.walls).toHaveLength(4);
+  });
+
+  test("rejects deleting a locked wall", () => {
+    const doc = baseDoc();
+    doc.levels[0]!.walls[0]!.locked = true; // w_s is locked
+    const result = applyCommand(doc, { type: "delete_wall", wallId: "w_s" });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("ELEMENT_LOCKED");
+  });
+
+  test("rejects deleting a nonexistent wall", () => {
+    const result = applyCommand(baseDoc(), { type: "delete_wall", wallId: "ghost_wall" });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("WALL_NOT_FOUND");
+  });
+});
+
+describe("applyCommand - resize_opening", () => {
+  test("updates the widthM of an existing opening", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "resize_opening",
+      openingId: "door_1",
+      widthM: 1.2,
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.document.levels[0]!.openings[0]!.widthM).toBe(1.2);
+    expect(result.changedElementIds).toContain("door_1");
+  });
+
+  test("rejects resize that would push opening past wall end", () => {
+    // door_1 is on w_s (4 m long) at offsetAlongWallM=1 with new width=3.5
+    // half = 1.75 → offset - half = 1 - 1.75 = -0.75 < 0 → rejected
+    const result = applyCommand(baseDoc(), {
+      type: "resize_opening",
+      openingId: "door_1",
+      widthM: 3.5,
+    });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("OPENING_OUTSIDE_PARENT_WALL");
+  });
+
+  test("rejects resize of an unknown opening", () => {
+    const result = applyCommand(baseDoc(), {
+      type: "resize_opening",
+      openingId: "ghost_door",
+      widthM: 0.9,
+    });
+    expect(result.accepted).toBe(false);
+    if (result.accepted) return;
+    expect(result.reasonCode).toBe("OPENING_NOT_FOUND");
+  });
+});
