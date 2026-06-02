@@ -131,7 +131,7 @@ function toPlacementColumns(
     placement_centroid_lng: placement?.centroid?.lng ?? null,
     placement_rotation_deg: placement?.rotationDeg ?? null,
     placement_min_distance_to_boundary_m: placement?.minDistanceToBoundaryM ?? null,
-    placement_outside_parcel_area_m2: placement?.outsideParcelAreaM2 ?? null,
+    placement_outside_parcel_area_m2: placement?.outsideParcelAreaM2 ?? 0,
     placement_floors: derivePlacementFloors(placement),
     placement_height_m: placement?.heightM ?? null,
     placement_source: placement?.source ?? null,
