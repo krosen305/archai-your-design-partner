@@ -39,6 +39,7 @@ export function buildHatchPaths(opts: HatchOptions): string[] {
 
   if (pattern === "none") return [];
   if (polygon.length < 3) return [];
+  if (spacingM <= 0) return [];
 
   if (pattern === "diagonal") {
     return buildAngledLines(polygon, spacingM, angleDeg);
