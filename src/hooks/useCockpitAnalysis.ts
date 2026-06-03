@@ -54,6 +54,13 @@ export function useCockpitAnalysis(params: {
     setHardStop,
     setBfeNr,
     setNeighborContextFacts,
+    setServiceStates,
+    setPlandataContext,
+    setArealdataContext,
+    setMatGeometri,
+    setTjekditnetCoverage,
+    setEnergimaerke,
+    setAnalysisRunId,
   } = useProject();
 
   const [status, setStatus] = useState<Status>(
