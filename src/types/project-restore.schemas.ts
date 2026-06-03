@@ -307,6 +307,10 @@ export const ruleEngineArealdataContextSchema = z
   })
   .passthrough();
 
+
+
+
+
 const byggeanalyseItemSchema = z.object({
   emne: z.string(),
   begrundelse: z.string(),
