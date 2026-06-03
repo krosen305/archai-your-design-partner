@@ -21,7 +21,10 @@ import {
   ruleEngineTerrainDataSchema,
   ruleEngineTinglysningResultSchema,
   vurDataSchema,
+  tjekditnetCoverageSchema,
+  energimaerkeSchema,
 } from "./project-restore.schemas";
+
 
 const tokenSchema = z.string().min(1);
 
@@ -96,7 +99,10 @@ export const projectPatchSchema = z
     fjernvarme: fjernvarmeResultatSchema.nullable().optional(),
     fbbData: ruleEngineFbbResultSchema.nullable().optional(),
     billedanalyse: billedeAnalyseResultatSchema.nullable().optional(),
+    tjekditnetCoverage: tjekditnetCoverageSchema.nullable().optional(),
+    energimaerke: energimaerkeSchema.nullable().optional(),
     complianceDone: z.boolean().optional(),
+
     currentStep: z.string().optional(),
     projectDataStatus: dataStatusMapSchema.nullable().optional(),
     analysisRunId: z.string().uuid().nullable().optional(),
