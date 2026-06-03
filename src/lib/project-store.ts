@@ -1,12 +1,15 @@
 import { create } from "zustand";
-import type { FjernvarmeResultat, VurData } from "@/domain/contracts/analysis.types";
+import type {
+  FjernvarmeResultat,
+  VurData,
+  MatParcelGeometryPayload,
+} from "@/domain/contracts/analysis.types";
 import type {
   RuleEngineBbrData,
   RuleEngineKommuneplanramme,
   RuleEngineLokalplan,
   RuleEnginePlandataContext,
   RuleEngineArealdataContext,
-  MatParcelGeometryPayload,
 } from "@/domain/contracts/rule-engine.types";
 import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
 import type { EnergyLabelData } from "@/integrations/energimaerke/client";
