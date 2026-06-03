@@ -21,7 +21,10 @@ import {
   ruleEngineTerrainDataSchema,
   ruleEngineTinglysningResultSchema,
   vurDataSchema,
+  tjekditnetCoverageSchema,
+  energimaerkeSchema,
 } from "./project-restore.schemas";
+
 
 const tokenSchema = z.string().min(1);
 
