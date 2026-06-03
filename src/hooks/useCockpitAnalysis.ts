@@ -292,6 +292,13 @@ export function useCockpitAnalysis(params: {
     setHeritageSaveValue,
     setIsFredet,
     setNeighborContextFacts,
+    setServiceStates,
+    setPlandataContext,
+    setArealdataContext,
+    setMatGeometri,
+    setTjekditnetCoverage,
+    setEnergimaerke,
+    setAnalysisRunId,
   ]);
 
   return {
