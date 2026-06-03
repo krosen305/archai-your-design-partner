@@ -277,6 +277,15 @@ export const useProject = create<State>((set) => ({
   setDataStatusBulk: (patch) => set((s) => ({ dataStatus: { ...s.dataStatus, ...patch } })),
   setDataLastFetchedAt: (dataLastFetchedAt) => set({ dataLastFetchedAt }),
 
+  setServiceStates: (serviceStates) => set({ serviceStates }),
+  setPlandataContext: (plandataContext) => set({ plandataContext }),
+  setArealdataContext: (arealdataContext) => set({ arealdataContext }),
+  setMatGeometri: (matGeometri) => set({ matGeometri }),
+  setTjekditnetCoverage: (tjekditnetCoverage) => set({ tjekditnetCoverage }),
+  setEnergimaerke: (energimaerke) => set({ energimaerke }),
+  setAnalysisRunId: (analysisRunId) => set({ analysisRunId }),
+
+
   reset: () =>
     set({
       address: null,
