@@ -14,6 +14,7 @@ import type { FloorPlanVerificationResult } from "@/services/floor-plan/verify-f
 import type { ApplyFloorPlanCommandResult } from "@/services/floor-plan/apply-floor-plan-command.service";
 import type { ExportFloorPlanResult } from "@/services/floor-plan/export-floor-plan.service";
 import type { GenerateFloorPlanResult } from "@/services/floor-plan/generate-floor-plan.service";
+import type { ParseCommandResult } from "@/integrations/ai/floor-plan-command-parser";
 
 const roomTypeSchema = z.enum([
   "entrance",
@@ -59,6 +60,15 @@ const exportFloorPlanInput = z.object({
   token: z.string().min(1),
 });
 
+const parseFloorPlanCommandInput = z.object({
+  projectId: z.string().uuid(),
+  floorPlanIterationId: z.string().uuid(),
+  levelId: z.string().min(1),
+  selectedElementIds: z.array(z.string()).default([]),
+  instruction: z.string().min(1).max(500),
+  token: z.string().min(1),
+});
+
 const generateFloorPlanInput = z.object({
   projectId: z.string().uuid(),
   designIterationId: z.string().uuid().nullable().default(null),
@@ -69,6 +79,36 @@ const generateFloorPlanInput = z.object({
 });
 
 // --- Handlers --------------------------------------------------------------
+
+export const parseFloorPlanCommandFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => parseFloorPlanCommandInput.parse(data))
+  .handler(async ({ data }): Promise<ParseCommandResult> => {
+    return withAuth(data.token, async (userId) => {
+      const { verifyProjectOwnership } =
+        await import("@/integrations/supabase/repositories/projects.repository");
+      const { buildOwnerPrincipal } = await import("@/services/floor-plan/principal");
+      const { FloorPlanRepository } =
+        await import("@/integrations/supabase/repositories/floor-plan.repository");
+      const { parseFloorPlanCommand, AnthropicFloorPlanCommandGateway } =
+        await import("@/integrations/ai/floor-plan-command-parser");
+
+      buildOwnerPrincipal(userId, await verifyProjectOwnership(data.projectId, userId));
+
+      const repo = new FloorPlanRepository();
+      const document = await repo.loadActiveDocument(data.projectId, data.floorPlanIterationId);
+      if (!document) throw new Response("Plantegning ikke fundet", { status: 404 });
+
+      return parseFloorPlanCommand(
+        {
+          document,
+          levelId: data.levelId,
+          selectedElementIds: data.selectedElementIds,
+          instruction: data.instruction,
+        },
+        new AnthropicFloorPlanCommandGateway(),
+      );
+    });
+  });
 
 export const loadActiveFloorPlanFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => loadActiveFloorPlanInput.parse(data))
