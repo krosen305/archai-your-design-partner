@@ -160,6 +160,14 @@ type State = {
   setDataStatusBulk: (patch: Partial<Record<DataSourceKind, DataSourceStatus>>) => void;
   setDataLastFetchedAt: (iso: string | null) => void;
 
+  setServiceStates: (s: Partial<Record<DataSourceKind, PipelineServiceState>>) => void;
+  setPlandataContext: (v: RuleEnginePlandataContext | null) => void;
+  setArealdataContext: (v: RuleEngineArealdataContext | null) => void;
+  setMatGeometri: (v: MatParcelGeometryPayload | null) => void;
+  setTjekditnetCoverage: (v: TjekditnetCoverageData | null) => void;
+  setEnergimaerke: (v: EnergyLabelData | null) => void;
+  setAnalysisRunId: (v: string | null) => void;
+
   reset: () => void;
 };
 
