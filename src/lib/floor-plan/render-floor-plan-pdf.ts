@@ -5,6 +5,8 @@
 // and y-up, which matches architectural LOCAL_METER, so no y-flip is needed.
 // Authority-near export carries a title block with title, status, scale and date
 // (FR-DRAW-006). The renderer never invents geometry — it reads the model.
+//
+// WS7: uses WS1-WS4 render pipeline — wallPoche polygons, zones, dimension chains.
 
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import type { PDFFont, PDFPage } from "pdf-lib";
@@ -77,6 +79,18 @@ export async function renderFloorPlanPdf(
 
   page.drawRectangle({ x: 0, y: 0, width: pageW, height: pageH, color: rgb(1, 1, 1) });
 
+  // Zones — drawn first (lowest z-order) with light grey fill and dashed border
+  for (const zone of model.zones ?? []) {
+    if (zone.points.length < 3) continue;
+    page.drawSvgPath(pathYDown(zone.points.map(map), pageH), {
+      x: 0,
+      y: 0,
+      color: rgb(0.85, 0.85, 0.85),
+      borderColor: rgb(0.55, 0.55, 0.55),
+      borderWidth: 0.5,
+    });
+  }
+
   // Rooms (fill)
   for (const room of model.rooms) {
     page.drawSvgPath(pathYDown(room.points.map(map), pageH), {
@@ -86,19 +100,32 @@ export async function renderFloorPlanPdf(
     });
   }
 
-  // Walls
-  for (const wall of model.walls) {
-    const a = map(wall.start);
-    const b = map(wall.end);
-    page.drawLine({
-      start: a,
-      end: b,
-      thickness: Math.max(wall.thicknessM * scale, 1.5),
-      color: wall.structural ? rgb(0.1, 0.1, 0.1) : rgb(0.2, 0.2, 0.2),
-    });
+  // Walls — drawn as merged poché polygons (WS1-WS4 pipeline).
+  // Falls back to centre-line strokes for any wall not covered by the merged set.
+  if (model.wallPoche && model.wallPoche.length > 0) {
+    for (const poly of model.wallPoche) {
+      if (poly.length < 3) continue;
+      page.drawSvgPath(pathYDown(poly.map(map), pageH), {
+        x: 0,
+        y: 0,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+    }
+  } else {
+    // Fallback for empty/degenerate wallPoche: draw centre-line strokes
+    for (const wall of model.walls) {
+      const a = map(wall.start);
+      const b = map(wall.end);
+      page.drawLine({
+        start: a,
+        end: b,
+        thickness: Math.max(wall.thicknessM * scale, 1.5),
+        color: wall.structural ? rgb(0.1, 0.1, 0.1) : rgb(0.2, 0.2, 0.2),
+      });
+    }
   }
 
-  // Openings
+  // Openings — circle fallback (door-arc SVG paths require pdf-lib arc support)
   for (const op of model.openings) {
     const c = map(op.center);
     page.drawCircle({
@@ -132,6 +159,24 @@ export async function renderFloorPlanPdf(
       font,
       color: rgb(0.3, 0.3, 0.3),
     });
+  }
+
+  // Dimension chains (WS4) — drawn after walls
+  for (const chain of model.dimensionChains ?? []) {
+    for (const seg of chain.segments) {
+      // Witness lines (face → chain line)
+      const from = map(seg.from);
+      const to = map(seg.to);
+      const chainFrom = map(seg.chainFrom);
+      const chainTo = map(seg.chainTo);
+      page.drawLine({ start: from, end: chainFrom, thickness: 0.5, color: rgb(0.2, 0.2, 0.2) });
+      page.drawLine({ start: to, end: chainTo, thickness: 0.5, color: rgb(0.2, 0.2, 0.2) });
+      // Chain line
+      page.drawLine({ start: chainFrom, end: chainTo, thickness: 0.5, color: rgb(0.2, 0.2, 0.2) });
+      // Label at midpoint of chain line
+      const mid = map(seg.labelPt);
+      safeText(page, seg.labelText, { x: mid.x - 10, y: mid.y, size: 6, font });
+    }
   }
 
   drawTitleBlock(page, font, fontBold, { pageW, pageH, ...options });

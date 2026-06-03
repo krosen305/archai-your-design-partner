@@ -116,6 +116,8 @@ export function generateSeedFloorPlan(brief: BuildingBrief): FloorPlanDocument {
         rooms,
         openings,
         fixtures: [],
+        furniture: [],
+        zones: [],
         stairs: [],
         annotations: [],
       },

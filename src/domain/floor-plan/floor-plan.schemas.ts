@@ -128,6 +128,66 @@ export const FixtureSchema = z.object({
   source: ElementSourceMetaSchema,
 });
 
+// --- Zone (WS4 — uopvarmede/overdækkede arealer) ---------------------------
+
+/**
+ * Canonical list of zone kinds for unheated/covered areas outside the primary
+ * building envelope. Exported so adapters can import this single source of truth.
+ */
+export const ZONE_KINDS = [
+  "terrace",
+  "carport",
+  "covered_entrance",
+  "balcony",
+  "pool",
+  "parking",
+] as const;
+
+export type ZoneKind = (typeof ZONE_KINDS)[number];
+
+export const ZoneSchema = z.object({
+  id: z.string().min(1),
+  levelId: z.string().min(1),
+  zoneKind: z.enum(ZONE_KINDS),
+  polygon: Polygon2DSchema,
+  name: z.string(),
+  areaM2: z.number().nonnegative(),
+  /** false = uopvarmet (tæller ikke som BBR bebygget areal på samme måde) */
+  heated: z.boolean(),
+  source: ElementSourceMetaSchema,
+});
+
+// --- Furniture (spec §9.7 extension — WS2 symbol library) -----------------
+
+/**
+ * Canonical list of supported furniture kinds. Exported so adapters (e.g.
+ * symbol-registry) can import this single source of truth without the domain
+ * core importing from adapter layers.
+ */
+export const FURNITURE_KINDS = [
+  "single_bed",
+  "double_bed",
+  "sofa",
+  "armchair",
+  "dining_table",
+  "chair",
+  "wardrobe_shelf",
+] as const;
+
+export type FurnitureKind = (typeof FURNITURE_KINDS)[number];
+
+export const FurnitureSchema = z.object({
+  id: z.string().min(1),
+  levelId: z.string().min(1),
+  roomId: z.string().nullable(),
+  furnitureKind: z.enum(FURNITURE_KINDS),
+  position: Point2DSchema,
+  rotationDeg: z.number(),
+  widthM: z.number().positive(),
+  depthM: z.number().positive(),
+  source: ElementSourceMetaSchema,
+});
+
 // --- Stair (spec §9.3 references stairs) -----------------------------------
 
 export const StairSchema = z.object({
@@ -161,6 +221,8 @@ export const FloorLevelSchema = z.object({
   rooms: z.array(RoomZoneSchema),
   openings: z.array(OpeningSchema),
   fixtures: z.array(FixtureSchema),
+  furniture: z.array(FurnitureSchema).default([]),
+  zones: z.array(ZoneSchema).default([]),
   stairs: z.array(StairSchema),
   annotations: z.array(PlanAnnotationSchema),
 });

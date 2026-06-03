@@ -2,15 +2,76 @@ import { describe, expect, test } from "bun:test";
 import { renderFloorPlanSvg } from "./render-floor-plan-svg";
 import type { FloorPlanRenderModel } from "./floor-plan-render-model";
 
+/** Helper: build a minimal poché rectangle for a wall used in test fixtures. */
+function pocheRect(
+  sx: number,
+  sy: number,
+  ex: number,
+  ey: number,
+  t: number,
+): Array<{ x: number; y: number }> {
+  const dx = ex - sx;
+  const dy = ey - sy;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  const half = t / 2;
+  const nx = (-dy / len) * half;
+  const ny = (dx / len) * half;
+  return [
+    { x: sx + nx, y: sy + ny },
+    { x: ex + nx, y: ey + ny },
+    { x: ex - nx, y: ey - ny },
+    { x: sx - nx, y: sy - ny },
+  ];
+}
+
 const model: FloorPlanRenderModel = {
   levelId: "level_0",
   levelName: "Stueplan",
   viewBox: { minX: -1, minY: -1, width: 6, height: 5 },
   walls: [
-    { id: "w_s", start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, thicknessM: 0.12, structural: false },
-    { id: "w_e", start: { x: 4, y: 0 }, end: { x: 4, y: 3 }, thicknessM: 0.12, structural: true },
-    { id: "w_n", start: { x: 4, y: 3 }, end: { x: 0, y: 3 }, thicknessM: 0.12, structural: false },
-    { id: "w_w", start: { x: 0, y: 3 }, end: { x: 0, y: 0 }, thicknessM: 0.12, structural: false },
+    {
+      id: "w_s",
+      start: { x: 0, y: 0 },
+      end: { x: 4, y: 0 },
+      thicknessM: 0.12,
+      structural: false,
+      pochePolygon: [pocheRect(0, 0, 4, 0, 0.12)],
+      gaps: [],
+    },
+    {
+      id: "w_e",
+      start: { x: 4, y: 0 },
+      end: { x: 4, y: 3 },
+      thicknessM: 0.12,
+      structural: true,
+      pochePolygon: [pocheRect(4, 0, 4, 3, 0.12)],
+      gaps: [],
+    },
+    {
+      id: "w_n",
+      start: { x: 4, y: 3 },
+      end: { x: 0, y: 3 },
+      thicknessM: 0.12,
+      structural: false,
+      pochePolygon: [pocheRect(4, 3, 0, 3, 0.12)],
+      gaps: [],
+    },
+    {
+      id: "w_w",
+      start: { x: 0, y: 3 },
+      end: { x: 0, y: 0 },
+      thicknessM: 0.12,
+      structural: false,
+      pochePolygon: [pocheRect(0, 3, 0, 0, 0.12)],
+      gaps: [],
+    },
+  ],
+  // Level-merged poché (all 4 wall rectangles pre-unioned for the test fixture)
+  wallPoche: [
+    pocheRect(0, 0, 4, 0, 0.12),
+    pocheRect(4, 0, 4, 3, 0.12),
+    pocheRect(4, 3, 0, 3, 0.12),
+    pocheRect(0, 3, 0, 0, 0.12),
   ],
   rooms: [
     {
@@ -40,6 +101,8 @@ const model: FloorPlanRenderModel = {
       labelPoint: { x: 1, y: 1 },
     },
   ],
+  dimensionChains: [],
+  interiorDimensions: [],
 };
 
 describe("renderFloorPlanSvg", () => {
@@ -51,8 +114,14 @@ describe("renderFloorPlanSvg", () => {
     expect(svg).toContain('viewBox="0 0');
   });
 
-  test("draws one line per wall", () => {
-    expect((svg.match(/<line/g) ?? []).length).toBe(4);
+  test("draws level-merged poché polygons via data-wall-poche (no per-wall duplication)", () => {
+    // wallPoche in the test model has 4 polygons → 4 data-wall-poche elements
+    const pochePolygons = svg.match(/data-wall-poche=/g) ?? [];
+    expect(pochePolygons.length).toBe(4);
+    // No <line> fallback elements expected when wallPoche is non-empty
+    expect((svg.match(/<line/g) ?? []).length).toBe(0);
+    // No per-wall data-wall-id polygons in SVG (removed from rendering path)
+    expect((svg.match(/data-wall-id=/g) ?? []).length).toBe(0);
   });
 
   test("draws a polygon for the room and its stamp with name and area", () => {

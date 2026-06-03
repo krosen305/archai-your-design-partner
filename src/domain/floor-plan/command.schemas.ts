@@ -5,7 +5,7 @@
 // pipeline (spec §7.2.1). Coordinates are LOCAL_METER.
 
 import { z } from "zod";
-import { Line2DSchema } from "./floor-plan.schemas";
+import { FixtureSchema, Line2DSchema, Point2DSchema, FURNITURE_KINDS } from "./floor-plan.schemas";
 
 export const FloorPlanCommandSchema = z.discriminatedUnion("type", [
   z.object({
@@ -45,6 +45,43 @@ export const FloorPlanCommandSchema = z.discriminatedUnion("type", [
     type: z.literal("merge_rooms"),
     roomIds: z.array(z.string().min(1)).min(2),
   }),
+  // WS5 — add/delete commands
+  z.object({
+    type: z.literal("add_wall"),
+    levelId: z.string().min(1),
+    start: Point2DSchema,
+    end: Point2DSchema,
+    thicknessM: z.number().positive(),
+    wallKind: z.enum(["exterior", "interior", "party", "foundation", "shaft"]),
+  }),
+  z.object({
+    type: z.literal("add_opening"),
+    levelId: z.string().min(1),
+    wallId: z.string().min(1),
+    openingKind: z.enum(["door", "window", "sliding_door", "opening", "garage_door"]),
+    offsetAlongWallM: z.number().nonnegative(),
+    widthM: z.number().positive(),
+    heightM: z.number().positive(),
+    swing: z.enum(["left", "right", "sliding", "none", "unknown"]),
+  }),
+  z.object({
+    type: z.literal("add_fixture"),
+    levelId: z.string().min(1),
+    roomId: z.string().nullable(),
+    fixtureKind: FixtureSchema.shape.fixtureKind,
+    position: Point2DSchema,
+    rotationDeg: z.number(),
+  }),
+  z.object({
+    type: z.literal("add_furniture"),
+    levelId: z.string().min(1),
+    roomId: z.string().nullable(),
+    furnitureKind: z.enum(FURNITURE_KINDS),
+    position: Point2DSchema,
+    rotationDeg: z.number(),
+    widthM: z.number().positive(),
+    depthM: z.number().positive(),
+  }),
 ]);
 
 /** Stable reason codes for rejected commands (extend as engines grow). */
@@ -60,6 +97,9 @@ export const CommandRejectionCodeSchema = z.enum([
   "BEARING_WALL_REQUIRES_REVIEW",
   "WOULD_CORRUPT_TOPOLOGY",
   "ROOM_NOT_CLOSED",
+  "LEVEL_NOT_FOUND",
+  "WALL_TOO_SHORT",
+  "DUPLICATE_ELEMENT_ID",
 ]);
 
 const LiveFindingSchema = z.object({
