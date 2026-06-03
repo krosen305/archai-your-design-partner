@@ -54,6 +54,13 @@ export function useCockpitAnalysis(params: {
     setHardStop,
     setBfeNr,
     setNeighborContextFacts,
+    setServiceStates,
+    setPlandataContext,
+    setArealdataContext,
+    setMatGeometri,
+    setTjekditnetCoverage,
+    setEnergimaerke,
+    setAnalysisRunId,
   } = useProject();
 
   const [status, setStatus] = useState<Status>(
@@ -210,8 +217,17 @@ export function useCockpitAnalysis(params: {
           setNeighborContextFacts(application.neighborFacts);
           setHardStop(application.hardStop, application.hardStopReason);
 
+          // Phase 1: hydrate the new typed compliance fields into the store
+          // so the cockpit can render datakilde-cards without re-fetching.
+          setPlandataContext(application.typedPatch.plandataContext);
+          setArealdataContext(application.typedPatch.arealdataContext);
+          setMatGeometri(application.typedPatch.matGeometri);
+          setTjekditnetCoverage(application.typedPatch.tjekditnetCoverage);
+          setEnergimaerke(application.typedPatch.energimaerke);
+          setAnalysisRunId(application.analysisRunId);
+
           // Persist enriched address fields from server-side DAR/MAT enrichment so typed columns
-          // and store stay aligned in the current session.
+          // and store stay aligned in the current session. mergedAddress carries the addressPatch.
           if (application.mergedAddress && result.addressPatch) {
             setAddress(application.mergedAddress);
           }
@@ -231,7 +247,7 @@ export function useCockpitAnalysis(params: {
             },
           );
           if (application.serviceStates) {
-            useProject.setState({ serviceStates: application.serviceStates });
+            setServiceStates(application.serviceStates);
           }
           const store = useProject.getState();
           store.setDataLastFetchedAt(application.fetchedAt);
@@ -276,6 +292,13 @@ export function useCockpitAnalysis(params: {
     setHeritageSaveValue,
     setIsFredet,
     setNeighborContextFacts,
+    setServiceStates,
+    setPlandataContext,
+    setArealdataContext,
+    setMatGeometri,
+    setTjekditnetCoverage,
+    setEnergimaerke,
+    setAnalysisRunId,
   ]);
 
   return {

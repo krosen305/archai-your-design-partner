@@ -1,10 +1,18 @@
 import { create } from "zustand";
-import type { FjernvarmeResultat, VurData } from "@/domain/contracts/analysis.types";
+import type {
+  FjernvarmeResultat,
+  VurData,
+  MatParcelGeometryPayload,
+} from "@/domain/contracts/analysis.types";
 import type {
   RuleEngineBbrData,
   RuleEngineKommuneplanramme,
   RuleEngineLokalplan,
+  RuleEnginePlandataContext,
+  RuleEngineArealdataContext,
 } from "@/domain/contracts/rule-engine.types";
+import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
+import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -98,6 +106,16 @@ type State = {
   // Pipeline-servicetilstand — hvad skete der da pipelinen senest kørte
   serviceStates: Partial<Record<DataSourceKind, PipelineServiceState>>;
 
+  // ARCH-244/245/240/247/248: nye typede datakilder fra ComplianceResult
+  plandataContext: RuleEnginePlandataContext | null;
+  arealdataContext: RuleEngineArealdataContext | null;
+  matGeometri: MatParcelGeometryPayload | null;
+  tjekditnetCoverage: TjekditnetCoverageData | null;
+  energimaerke: EnergyLabelData | null;
+
+  // Sporing af seneste analysis_run for "Datakilde-detaljer" drawer
+  analysisRunId: string | null;
+
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: RuleEngineBbrData | null) => void;
@@ -141,6 +159,14 @@ type State = {
   setDataStatus: (kind: DataSourceKind, status: DataSourceStatus) => void;
   setDataStatusBulk: (patch: Partial<Record<DataSourceKind, DataSourceStatus>>) => void;
   setDataLastFetchedAt: (iso: string | null) => void;
+
+  setServiceStates: (s: Partial<Record<DataSourceKind, PipelineServiceState>>) => void;
+  setPlandataContext: (v: RuleEnginePlandataContext | null) => void;
+  setArealdataContext: (v: RuleEngineArealdataContext | null) => void;
+  setMatGeometri: (v: MatParcelGeometryPayload | null) => void;
+  setTjekditnetCoverage: (v: TjekditnetCoverageData | null) => void;
+  setEnergimaerke: (v: EnergyLabelData | null) => void;
+  setAnalysisRunId: (v: string | null) => void;
 
   reset: () => void;
 };
@@ -208,6 +234,12 @@ export const useProject = create<State>((set) => ({
   dataStatus: { ...DEFAULT_DATA_STATUS },
   dataLastFetchedAt: null,
   serviceStates: {},
+  plandataContext: null,
+  arealdataContext: null,
+  matGeometri: null,
+  tjekditnetCoverage: null,
+  energimaerke: null,
+  analysisRunId: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -245,6 +277,15 @@ export const useProject = create<State>((set) => ({
   setDataStatusBulk: (patch) => set((s) => ({ dataStatus: { ...s.dataStatus, ...patch } })),
   setDataLastFetchedAt: (dataLastFetchedAt) => set({ dataLastFetchedAt }),
 
+  setServiceStates: (serviceStates) => set({ serviceStates }),
+  setPlandataContext: (plandataContext) => set({ plandataContext }),
+  setArealdataContext: (arealdataContext) => set({ arealdataContext }),
+  setMatGeometri: (matGeometri) => set({ matGeometri }),
+  setTjekditnetCoverage: (tjekditnetCoverage) => set({ tjekditnetCoverage }),
+  setEnergimaerke: (energimaerke) => set({ energimaerke }),
+  setAnalysisRunId: (analysisRunId) => set({ analysisRunId }),
+
+
   reset: () =>
     set({
       address: null,
@@ -279,5 +320,11 @@ export const useProject = create<State>((set) => ({
       dataStatus: { ...DEFAULT_DATA_STATUS },
       dataLastFetchedAt: null,
       serviceStates: {},
+      plandataContext: null,
+      arealdataContext: null,
+      matGeometri: null,
+      tjekditnetCoverage: null,
+      energimaerke: null,
+      analysisRunId: null,
     }),
 }));

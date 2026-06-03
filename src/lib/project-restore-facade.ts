@@ -109,6 +109,8 @@ export function hydrateProjectIntoStore(
     store.setComplianceFlags(cd.flags);
     store.setLokalplaner(cd.lokalplaner);
     if (cd.kommuneplanramme) store.setKommuneplanramme(cd.kommuneplanramme);
+    store.setPlandataContext(cd.plandataContext ?? null);
+    store.setArealdataContext(cd.arealdataContext ?? null);
     if (cd.byggeanalyseResultat) store.setByggeanalyseResultat(cd.byggeanalyseResultat);
     if (cd.vurderingData) store.setVurderingData(cd.vurderingData);
     if (project.compliance_done) store.setComplianceDone(true);
