@@ -149,12 +149,19 @@ export function buildComplianceApplication(params: {
       fbb: result.fbbData ? "fresh" : "missing",
       naturbeskyttelse: result.naturbeskyttelse ? "fresh" : "missing",
       arealdata: result.arealdataContext ? "fresh" : "missing",
+      dkjord: result.dkjord ? "fresh" : "missing",
       geusRisk: result.geusRisk ? "fresh" : "missing",
       servitutter: result.servitutter ? "fresh" : "missing",
       terrain: result.terrain ? "fresh" : "missing",
       fjernvarme: result.fjernvarme ? "fresh" : "missing",
       naboer: neighborFacts ? "fresh" : "missing",
+      matGeometri: result.matGeometri ? "fresh" : "missing",
       vurdering: result.vurderingData ? "fresh" : "missing",
+      tjekditnet: result.tjekditnetCoverage ? "fresh" : "missing",
+      energimaerke: result.energimaerke ? "fresh" : "missing",
+      // serviceStates (when present) override the value-only fallback above —
+      // they carry richer signal (error, cache_hit, mock, no_hit).
+      ...(result.serviceStates ? deriveDataStatusFromServiceStates(result.serviceStates) : {}),
     },
     phaseUpdates: {
       sandkassen: "complete",
@@ -186,5 +193,13 @@ export function buildComplianceApplication(params: {
       analysisRunId: result.analysisRunId,
     },
     serviceStates: result.serviceStates,
+    analysisRunId: result.analysisRunId ?? null,
+    typedPatch: {
+      plandataContext: result.plandataContext ?? null,
+      arealdataContext: result.arealdataContext ?? null,
+      matGeometri: result.matGeometri ?? null,
+      tjekditnetCoverage: result.tjekditnetCoverage ?? null,
+      energimaerke: result.energimaerke ?? null,
+    },
   };
 }
