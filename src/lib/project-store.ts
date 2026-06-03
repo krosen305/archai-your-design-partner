@@ -4,7 +4,12 @@ import type {
   RuleEngineBbrData,
   RuleEngineKommuneplanramme,
   RuleEngineLokalplan,
+  RuleEnginePlandataContext,
+  RuleEngineArealdataContext,
+  MatParcelGeometryPayload,
 } from "@/domain/contracts/rule-engine.types";
+import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
+import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
