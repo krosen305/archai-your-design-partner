@@ -106,6 +106,16 @@ type State = {
   // Pipeline-servicetilstand — hvad skete der da pipelinen senest kørte
   serviceStates: Partial<Record<DataSourceKind, PipelineServiceState>>;
 
+  // ARCH-244/245/240/247/248: nye typede datakilder fra ComplianceResult
+  plandataContext: RuleEnginePlandataContext | null;
+  arealdataContext: RuleEngineArealdataContext | null;
+  matGeometri: MatParcelGeometryPayload | null;
+  tjekditnetCoverage: TjekditnetCoverageData | null;
+  energimaerke: EnergyLabelData | null;
+
+  // Sporing af seneste analysis_run for "Datakilde-detaljer" drawer
+  analysisRunId: string | null;
+
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: RuleEngineBbrData | null) => void;
