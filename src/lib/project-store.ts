@@ -320,5 +320,11 @@ export const useProject = create<State>((set) => ({
       dataStatus: { ...DEFAULT_DATA_STATUS },
       dataLastFetchedAt: null,
       serviceStates: {},
+      plandataContext: null,
+      arealdataContext: null,
+      matGeometri: null,
+      tjekditnetCoverage: null,
+      energimaerke: null,
+      analysisRunId: null,
     }),
 }));
