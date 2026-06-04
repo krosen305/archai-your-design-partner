@@ -76,6 +76,8 @@ export function applyCommand(doc: FloorPlanDocument, command: FloorPlanCommand):
       return applySplitRoom(doc, command);
     case "merge_rooms":
       return applyMergeRooms(doc, command);
+    case "update_room":
+      return applyUpdateRoom(doc, command);
     default:
       return reject(
         "WOULD_CORRUPT_TOPOLOGY",
@@ -578,6 +580,39 @@ function applyMergeRooms(
     accepted: true,
     document: next,
     changedElementIds: [...removeIds, ...changedRoomIds],
+    liveFindings: liveFindingsFor(next),
+  };
+}
+
+// --- update_room -----------------------------------------------------------
+
+function applyUpdateRoom(
+  doc: FloorPlanDocument,
+  cmd: Extract<FloorPlanCommand, { type: "update_room" }>,
+): ApplyOutcome {
+  // Search all levels for the room.
+  let levelIndex = -1;
+  for (let i = 0; i < doc.levels.length; i++) {
+    if (doc.levels[i]!.rooms.some((r) => r.id === cmd.roomId)) {
+      levelIndex = i;
+      break;
+    }
+  }
+  if (levelIndex === -1) {
+    return reject("ROOM_NOT_FOUND", `Rummet "${cmd.roomId}" findes ikke.`);
+  }
+
+  const next = structuredClone(doc);
+  const room = next.levels[levelIndex]!.rooms.find((r) => r.id === cmd.roomId)!;
+
+  if (cmd.name !== undefined) room.name = cmd.name;
+  if (cmd.roomType !== undefined) room.roomType = cmd.roomType;
+  if (cmd.targetAreaM2 !== undefined) room.targetAreaM2 = cmd.targetAreaM2;
+
+  return {
+    accepted: true,
+    document: next,
+    changedElementIds: [cmd.roomId],
     liveFindings: liveFindingsFor(next),
   };
 }

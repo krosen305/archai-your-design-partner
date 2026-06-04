@@ -5,7 +5,13 @@
 // pipeline (spec §7.2.1). Coordinates are LOCAL_METER.
 
 import { z } from "zod";
-import { FixtureSchema, Line2DSchema, Point2DSchema, FURNITURE_KINDS } from "./floor-plan.schemas";
+import {
+  FixtureSchema,
+  Line2DSchema,
+  Point2DSchema,
+  FURNITURE_KINDS,
+  RoomZoneSchema,
+} from "./floor-plan.schemas";
 
 export const FloorPlanCommandSchema = z.discriminatedUnion("type", [
   z.object({
@@ -81,6 +87,13 @@ export const FloorPlanCommandSchema = z.discriminatedUnion("type", [
     rotationDeg: z.number(),
     widthM: z.number().positive(),
     depthM: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal("update_room"),
+    roomId: z.string().min(1),
+    name: z.string().optional(),
+    roomType: RoomZoneSchema.shape.roomType.optional(),
+    targetAreaM2: z.number().positive().nullable().optional(),
   }),
 ]);
 
