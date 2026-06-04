@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { generateSeedFloorPlan, type BuildingBrief } from "./seed-generator";
 import { FloorPlanDocumentSchema } from "./floor-plan.schemas";
 import { polygonAreaM2 } from "../geometry/polygon-ops";
@@ -71,5 +71,38 @@ describe("generateSeedFloorPlan", () => {
     expect(JSON.stringify(generateSeedFloorPlan(brief))).toBe(
       JSON.stringify(generateSeedFloorPlan(brief)),
     );
+  });
+});
+
+describe("generateSeedFloorPlan via layout-engine", () => {
+  it("producerer rum med varierende arealer (ikke lige brede strimler)", () => {
+    const doc = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 120,
+      rooms: [
+        { name: "Stue", roomType: "living" },
+        { name: "Køkken", roomType: "kitchen" },
+        { name: "Bad", roomType: "bathroom" },
+        { name: "Værelse", roomType: "bedroom" },
+        { name: "Entré", roomType: "entrance" },
+      ],
+    });
+    const areas = doc.levels[0]!.rooms.map((r) => r.netAreaM2).sort((a, b) => a - b);
+    // mindste rum markant mindre end største (ikke ens strimler)
+    expect(areas[0]! / areas[areas.length - 1]!).toBeLessThan(0.8);
+  });
+
+  it("bevarer rum-navne fra briefen og validerer mod skema", () => {
+    const doc = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 80,
+      rooms: [
+        { name: "Stue", roomType: "living" },
+        { name: "Bad", roomType: "bathroom" },
+      ],
+    });
+    expect(() => FloorPlanDocumentSchema.parse(doc)).not.toThrow();
+    const names = doc.levels[0]!.rooms.map((r) => r.name);
+    expect(names).toContain("Stue");
   });
 });
