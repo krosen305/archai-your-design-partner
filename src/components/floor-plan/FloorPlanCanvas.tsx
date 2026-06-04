@@ -3,6 +3,7 @@ import { Maximize2, Minus, Plus } from "lucide-react";
 import type { FloorPlanCommand } from "@/domain/floor-plan/commands";
 import type { FloorPlanDocument, FloorLevel } from "@/domain/floor-plan/floor-plan.types";
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
+import type { VerificationFinding } from "@/domain/floor-plan/verification-engine";
 import { buildRenderModel } from "@/lib/floor-plan/floor-plan-render-model";
 import { clampZoom, createEditorViewport } from "@/lib/floor-plan/editor-viewport";
 import { getSymbol } from "@/lib/floor-plan/symbols/symbol-registry";
@@ -30,6 +31,7 @@ type FloorPlanCanvasProps = {
   activeTool: FloorPlanTool;
   snapEnabled: boolean;
   statusMessage: string | null;
+  findings?: VerificationFinding[];
   onSelectElement: (selection: FloorPlanSelection | null) => void;
   onPreviewCommand: (command: FloorPlanCommand, baseDocument: FloorPlanDocument) => boolean;
   onResetPreview: (baseDocument: FloorPlanDocument) => void;
@@ -61,6 +63,7 @@ export function FloorPlanCanvas({
   activeTool,
   snapEnabled,
   statusMessage,
+  findings,
   onSelectElement,
   onPreviewCommand,
   onResetPreview,
@@ -81,7 +84,10 @@ export function FloorPlanCanvas({
 
   const level =
     document.levels.find((candidate) => candidate.id === levelId) ?? document.levels[0]!;
-  const model = useMemo(() => buildRenderModel(document, level.id), [document, level.id]);
+  const model = useMemo(
+    () => buildRenderModel(document, level.id, { findings: findings ?? [] }),
+    [document, level.id, findings],
+  );
   const viewport = useMemo(
     () => createEditorViewport(model.viewBox, sizePx, { zoom, panPx, paddingPx: 42 }),
     [model.viewBox, panPx, sizePx, zoom],
@@ -285,6 +291,58 @@ export function FloorPlanCanvas({
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#floor-plan-grid)" />
+        {/* Zones: unheated/covered areas drawn under rooms */}
+        {(model.layers?.showZones ?? true) &&
+          (model.zones ?? []).map((zone) => {
+            const label = viewport.localToScreen(zone.labelPoint);
+            return (
+              <g key={zone.id} data-zone-id={zone.id} className="pointer-events-none">
+                <polygon
+                  points={zone.points
+                    .map((point) => pointString(viewport.localToScreen(point)))
+                    .join(" ")}
+                  fill="rgba(200,200,200,0.15)"
+                  stroke="#888"
+                  strokeWidth={1}
+                  strokeDasharray="5,3"
+                />
+                {(model.layers?.showHatch ?? true) &&
+                  zone.hatchPaths.map((d, idx) => {
+                    const pts = parseHatchPath(d);
+                    if (!pts) return null;
+                    const a = viewport.localToScreen(pts[0]);
+                    const b = viewport.localToScreen(pts[1]);
+                    return (
+                      <line
+                        key={`${zone.id}-hatch-${idx}`}
+                        x1={a.x}
+                        y1={a.y}
+                        x2={b.x}
+                        y2={b.y}
+                        stroke="#888"
+                        strokeWidth={0.5}
+                      />
+                    );
+                  })}
+                <text
+                  x={label.x}
+                  y={label.y - 5}
+                  textAnchor="middle"
+                  className="fill-stone-400 text-[10px]"
+                >
+                  {zone.name}
+                </text>
+                <text
+                  x={label.x}
+                  y={label.y + 9}
+                  textAnchor="middle"
+                  className="fill-stone-400 text-[9px]"
+                >
+                  {formatArea(zone.areaM2)}
+                </text>
+              </g>
+            );
+          })}
         {model.rooms.map((room) => (
           <polygon
             key={room.id}
@@ -344,6 +402,75 @@ export function FloorPlanCanvas({
             </g>
           );
         })}
+        {/* Compliance badges: colored circles near room top-left per finding severity */}
+        {(model.layers?.showCompliance ?? true) &&
+          model.complianceOverlay?.roomCompliance.map((rc) => {
+            if (rc.findings.length === 0) return null;
+            const room = model.rooms.find((r) => r.id === rc.roomId);
+            if (!room) return null;
+            // Top-left corner in screen space: min screen x, min screen y
+            let minSx = Infinity;
+            let minSy = Infinity;
+            for (const p of room.points) {
+              const sp = viewport.localToScreen(p);
+              if (sp.x < minSx) minSx = sp.x;
+              if (sp.y < minSy) minSy = sp.y;
+            }
+            let bx = minSx + 8;
+            const by = minSy + 8;
+            return (
+              <g
+                key={`compliance-${rc.roomId}`}
+                className="pointer-events-none"
+                data-compliance-room={rc.roomId}
+              >
+                {rc.findings.map((finding) => {
+                  let circle: React.ReactNode;
+                  if (finding.severity === "blocking") {
+                    circle = (
+                      <circle
+                        key={finding.id}
+                        data-badge={finding.id}
+                        cx={roundPx(bx)}
+                        cy={roundPx(by)}
+                        r={6}
+                        fill="#e53935"
+                      />
+                    );
+                    bx += 15;
+                  } else if (
+                    finding.severity === "review_required" ||
+                    finding.severity === "warning"
+                  ) {
+                    circle = (
+                      <circle
+                        key={finding.id}
+                        data-badge={finding.id}
+                        cx={roundPx(bx)}
+                        cy={roundPx(by)}
+                        r={5}
+                        fill="#fb8c00"
+                      />
+                    );
+                    bx += 13;
+                  } else {
+                    circle = (
+                      <circle
+                        key={finding.id}
+                        data-badge={finding.id}
+                        cx={roundPx(bx)}
+                        cy={roundPx(by)}
+                        r={4}
+                        fill="#1565c0"
+                      />
+                    );
+                    bx += 11;
+                  }
+                  return circle;
+                })}
+              </g>
+            );
+          })}
         {model.wallPoche
           .filter((poly) => poly.length >= 3)
           .map((poly, i) => (
@@ -443,6 +570,26 @@ export function FloorPlanCanvas({
             </g>
           );
         })}
+        {/* Furniture symbols: paths in LOCAL_METER centered on (0,0), placed via transform */}
+        {(model.layers?.showFurniture ?? true) &&
+          (model.furniture ?? []).map((item) => {
+            if (item.paths.length === 0) return null;
+            const c = viewport.localToScreen({ x: item.centerX, y: item.centerY });
+            const s = viewport.localDistanceToScreen(1);
+            return (
+              <g
+                key={item.id}
+                data-furniture-id={item.id}
+                data-furniture-kind={item.kind}
+                transform={`translate(${roundPx(c.x)},${roundPx(c.y)}) rotate(${-item.rotationDeg}) scale(${s},${-s})`}
+                className="pointer-events-none"
+              >
+                {item.paths.map((d, idx) => (
+                  <path key={idx} d={d} fill="none" stroke="#888" strokeWidth={1.5 / s} />
+                ))}
+              </g>
+            );
+          })}
         {(model.layers?.showDimensions ?? true) && (
           <g className="pointer-events-none" data-dimensions-layer>
             {model.dimensionChains.flatMap((chain, chainIdx) =>

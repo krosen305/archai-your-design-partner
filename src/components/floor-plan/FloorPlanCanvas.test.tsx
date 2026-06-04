@@ -78,3 +78,51 @@ describe("FloorPlanCanvas målsætning", () => {
     expect(container.querySelectorAll("[data-dimension]").length).toBeGreaterThan(0);
   });
 });
+
+describe("FloorPlanCanvas møbler", () => {
+  it("renderer møbel-symboler som path-grupper når furniture findes", () => {
+    const base = doc();
+    const lvl = base.levels[0]!;
+    const withFurniture = {
+      ...base,
+      levels: [
+        {
+          ...lvl,
+          furniture: [
+            {
+              id: "f1",
+              levelId: lvl.id,
+              roomId: null,
+              furnitureKind: "sofa" as const,
+              position: { x: 2, y: 2 },
+              rotationDeg: 0,
+              widthM: 2,
+              depthM: 0.9,
+              source: {
+                source: "manual" as const,
+                confidence: "medium" as const,
+                fetchedAt: null,
+                requiresReview: false,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const { container } = render(
+      <FloorPlanCanvas
+        document={withFurniture}
+        levelId={lvl.id}
+        selectedElement={null}
+        activeTool="select"
+        snapEnabled
+        statusMessage={null}
+        onSelectElement={() => {}}
+        onPreviewCommand={() => true}
+        onResetPreview={() => {}}
+        onCommitCommand={async () => true}
+      />,
+    );
+    expect(container.querySelectorAll("g[data-furniture-id]").length).toBeGreaterThan(0);
+  });
+});
