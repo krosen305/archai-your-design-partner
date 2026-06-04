@@ -13,10 +13,7 @@ import {
   wallDragAxis,
 } from "@/lib/floor-plan/editor-hit-testing";
 import { snapDelta, snapOpeningOffset, snapPoint } from "@/lib/floor-plan/snap-engine";
-import {
-  orthoSnapEndpoint,
-  buildAddWallCommand,
-} from "@/lib/floor-plan/draw-wall-interaction";
+import { orthoSnapEndpoint, buildAddWallCommand } from "@/lib/floor-plan/draw-wall-interaction";
 import {
   buildAddOpeningCommand,
   type OpeningPlacementKind,
@@ -160,7 +157,10 @@ export function FloorPlanCanvas({
         const wall = level.walls.find((w) => w.id === picked.id);
         if (wall) {
           const offset = offsetAlongWall(wall, local);
-          void onCommitCommand(buildAddOpeningCommand(level.id, wall.id, offset, openingKind), document);
+          void onCommitCommand(
+            buildAddOpeningCommand(level.id, wall.id, offset, openingKind),
+            document,
+          );
         }
       }
       return;
@@ -268,7 +268,11 @@ export function FloorPlanCanvas({
         aria-label="Interaktiv plantegning"
         className={cn(
           "h-full min-h-[620px] w-full touch-none select-none bg-stone-100",
-          activeTool === "pan" ? "cursor-grab" : activeTool === "draw_wall" ? "cursor-crosshair" : "cursor-crosshair",
+          activeTool === "pan"
+            ? "cursor-grab"
+            : activeTool === "draw_wall"
+              ? "cursor-crosshair"
+              : "cursor-crosshair",
         )}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -402,9 +406,7 @@ export function FloorPlanCanvas({
                 <circle
                   r={0.15}
                   className={
-                    selected
-                      ? "stroke-sky-600 fill-white"
-                      : "stroke-emerald-600 fill-white"
+                    selected ? "stroke-sky-600 fill-white" : "stroke-emerald-600 fill-white"
                   }
                   strokeWidth={1.5 / s}
                 />
@@ -441,36 +443,39 @@ export function FloorPlanCanvas({
             </g>
           );
         })}
-        {activeTool === "draw_wall" && drawStart && drawCursor && (() => {
-          const startScreen = viewport.localToScreen(drawStart);
-          const endScreen = viewport.localToScreen(drawCursor);
-          const midScreen = {
-            x: (startScreen.x + endScreen.x) / 2,
-            y: (startScreen.y + endScreen.y) / 2,
-          };
-          const distanceM = Math.hypot(drawCursor.x - drawStart.x, drawCursor.y - drawStart.y);
-          return (
-            <g className="pointer-events-none" data-draw-wall-preview>
-              <line
-                x1={startScreen.x}
-                y1={startScreen.y}
-                x2={endScreen.x}
-                y2={endScreen.y}
-                strokeDasharray="6 3"
-                strokeWidth={2}
-                className="stroke-sky-500"
-              />
-              <text
-                x={midScreen.x}
-                y={midScreen.y - 6}
-                textAnchor="middle"
-                className="fill-sky-700 text-[11px] font-medium"
-              >
-                {distanceM.toFixed(2)} m
-              </text>
-            </g>
-          );
-        })()}
+        {activeTool === "draw_wall" &&
+          drawStart &&
+          drawCursor &&
+          (() => {
+            const startScreen = viewport.localToScreen(drawStart);
+            const endScreen = viewport.localToScreen(drawCursor);
+            const midScreen = {
+              x: (startScreen.x + endScreen.x) / 2,
+              y: (startScreen.y + endScreen.y) / 2,
+            };
+            const distanceM = Math.hypot(drawCursor.x - drawStart.x, drawCursor.y - drawStart.y);
+            return (
+              <g className="pointer-events-none" data-draw-wall-preview>
+                <line
+                  x1={startScreen.x}
+                  y1={startScreen.y}
+                  x2={endScreen.x}
+                  y2={endScreen.y}
+                  strokeDasharray="6 3"
+                  strokeWidth={2}
+                  className="stroke-sky-500"
+                />
+                <text
+                  x={midScreen.x}
+                  y={midScreen.y - 6}
+                  textAnchor="middle"
+                  className="fill-sky-700 text-[11px] font-medium"
+                >
+                  {distanceM.toFixed(2)} m
+                </text>
+              </g>
+            );
+          })()}
       </svg>
 
       <div className="absolute left-4 top-4 rounded-md border border-stone-200 bg-white/95 px-3 py-2 text-xs text-stone-600 shadow-sm">
