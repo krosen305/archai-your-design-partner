@@ -80,9 +80,7 @@ export function DatakildeCard({
           <div className="flex items-start gap-2">
             <AlertTriangle size={14} className="mt-0.5 shrink-0 text-danger" />
             <div className="text-xs leading-relaxed text-foreground/90">
-              <div className="font-mono tracking-[0.1em] text-danger mb-1">
-                KILDE UTILGÆNGELIG
-              </div>
+              <div className="font-mono tracking-[0.1em] text-danger mb-1">KILDE UTILGÆNGELIG</div>
               Vi kunne ikke hente {label.toLowerCase()} lige nu. Det kan skyldes et midlertidigt
               udfald hos datakilden — prøv igen om et øjeblik.
             </div>

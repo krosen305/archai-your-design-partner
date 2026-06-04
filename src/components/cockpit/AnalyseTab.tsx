@@ -816,7 +816,11 @@ function GeusRisikoSektion({ data }: { data: RuleEngineGeusRiskData }) {
 // New datakilde-sektioner (Phase 2)
 // ---------------------------------------------------------------------------
 
-function YesNoBadge({ value, trueLabel, falseLabel }: {
+function YesNoBadge({
+  value,
+  trueLabel,
+  falseLabel,
+}: {
   value: boolean | null;
   trueLabel: string;
   falseLabel?: string;
@@ -871,21 +875,32 @@ function DkJordSektion({
           </div>
           {(v1 === true || v2 === true) && (
             <p className="text-xs text-warning">
-              Jordforureningsattest og evt. § 8-tilladelse kan være påkrævet før bygge-/anlægsarbejde.
+              Jordforureningsattest og evt. § 8-tilladelse kan være påkrævet før
+              bygge-/anlægsarbejde.
             </p>
           )}
           <div className="mt-3 grid gap-2 sm:grid-cols-2 text-xs text-muted-foreground">
             {data.omraadeklassificering && (
-              <div>Områdeklassificering: <span className="text-foreground">{data.omraadeklassificering}</span></div>
+              <div>
+                Områdeklassificering:{" "}
+                <span className="text-foreground">{data.omraadeklassificering}</span>
+              </div>
             )}
             {data.nuancering && (
-              <div>Nuancering: <span className="text-foreground">{data.nuancering}</span></div>
+              <div>
+                Nuancering: <span className="text-foreground">{data.nuancering}</span>
+              </div>
             )}
             {data.olietank?.driftsstatus && (
-              <div>Olietank-status: <span className="text-foreground">{data.olietank.driftsstatus}</span></div>
+              <div>
+                Olietank-status:{" "}
+                <span className="text-foreground">{data.olietank.driftsstatus}</span>
+              </div>
             )}
             {data.lokalitetsId && (
-              <div>Lokalitet: <span className="font-mono text-foreground">{data.lokalitetsId}</span></div>
+              <div>
+                Lokalitet: <span className="font-mono text-foreground">{data.lokalitetsId}</span>
+              </div>
             )}
           </div>
         </>
@@ -931,16 +946,26 @@ function PlandataSektion({
           </div>
           <div className="grid gap-2 sm:grid-cols-2 text-xs text-muted-foreground">
             {data.futureZoneType && data.futureZoneType !== data.zoneType && (
-              <div>Fremtidig zone: <span className="text-foreground">{data.futureZoneType}</span></div>
+              <div>
+                Fremtidig zone: <span className="text-foreground">{data.futureZoneType}</span>
+              </div>
             )}
             {data.wastewaterPlanStatus && (
-              <div>Spildevandsplan: <span className="text-foreground">{data.wastewaterPlanStatus}</span></div>
+              <div>
+                Spildevandsplan:{" "}
+                <span className="text-foreground">{data.wastewaterPlanStatus}</span>
+              </div>
             )}
             {data.sewerAreaType && (
-              <div>Kloakopland: <span className="text-foreground">{data.sewerAreaType}</span></div>
+              <div>
+                Kloakopland: <span className="text-foreground">{data.sewerAreaType}</span>
+              </div>
             )}
             {data.lokalplanDelomraadeId && (
-              <div>Delområde: <span className="font-mono text-foreground">{data.lokalplanDelomraadeId}</span></div>
+              <div>
+                Delområde:{" "}
+                <span className="font-mono text-foreground">{data.lokalplanDelomraadeId}</span>
+              </div>
             )}
           </div>
         </>
@@ -1037,7 +1062,9 @@ function MatGeometriSektion({
             <div>
               <div className="text-[11px] font-mono text-muted-foreground mb-1">REGISTRERET</div>
               <div className="text-sm font-mono text-foreground tabular-nums">
-                {data.registreretArealM2 !== null ? `${Math.round(data.registreretArealM2)} m²` : "—"}
+                {data.registreretArealM2 !== null
+                  ? `${Math.round(data.registreretArealM2)} m²`
+                  : "—"}
               </div>
             </div>
             <div>
@@ -1045,17 +1072,22 @@ function MatGeometriSektion({
               <div
                 className={`text-sm font-mono tabular-nums ${stortAfvigelse ? "text-warning" : "text-foreground"}`}
               >
-                {diskrepans !== null ? `${diskrepans > 0 ? "+" : ""}${Math.round(diskrepans)} m²` : "—"}
+                {diskrepans !== null
+                  ? `${diskrepans > 0 ? "+" : ""}${Math.round(diskrepans)} m²`
+                  : "—"}
               </div>
             </div>
           </div>
           {stortAfvigelse && (
             <p className="text-xs text-warning mt-3">
-              Polygon og registreret areal afviger med &gt; 25 m² — verificér matrikelkort før beregning.
+              Polygon og registreret areal afviger med &gt; 25 m² — verificér matrikelkort før
+              beregning.
             </p>
           )}
           {!data.hasCanonicalPolygon && (
-            <p className="text-xs text-muted-foreground mt-2">Ingen kanonisk polygon — geometri kan være ufuldstændig.</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Ingen kanonisk polygon — geometri kan være ufuldstændig.
+            </p>
           )}
         </>
       )}
@@ -1073,7 +1105,11 @@ function TjekditnetSektion({
   const teknologier = data
     ? [
         { label: "Fiber", mbit: data.fiber_download_mbit, available: data.fiber_tilgaengelig },
-        { label: "Kabel-TV", mbit: data.kabel_tv_download_mbit, available: data.kabel_tilgaengelig },
+        {
+          label: "Kabel-TV",
+          mbit: data.kabel_tv_download_mbit,
+          available: data.kabel_tilgaengelig,
+        },
         { label: "xDSL", mbit: data.xdsl_download_mbit, available: data.xdsl_tilgaengelig },
         {
           label: "Fast trådløst",
@@ -1154,7 +1190,9 @@ function EnergimaerkeSektion({
       emptyMessage="Intet energimærke registreret for bygningen."
     >
       {data && data.match_type === "no_hit" ? (
-        <p className="text-sm text-muted-foreground">Ingen registreret energimærke for bygningen.</p>
+        <p className="text-sm text-muted-foreground">
+          Ingen registreret energimærke for bygningen.
+        </p>
       ) : data && data.match_type === "skipped" ? (
         <p className="text-sm text-muted-foreground">
           EMOData-opslag sprunget over (manglende adgang) — kan tilføjes senere.
@@ -1202,6 +1240,5 @@ function EnergimaerkeSektion({
     </DatakildeCard>
   );
 }
-
 
 export { LoadingView, ErrorView, AnalyseTab };
