@@ -5,6 +5,7 @@ import type { FloorPlanDocument, FloorLevel } from "@/domain/floor-plan/floor-pl
 import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 import { buildRenderModel } from "@/lib/floor-plan/floor-plan-render-model";
 import { clampZoom, createEditorViewport } from "@/lib/floor-plan/editor-viewport";
+import { getSymbol } from "@/lib/floor-plan/symbols/symbol-registry";
 import {
   findRoomAtPoint,
   offsetAlongWall,
@@ -302,26 +303,46 @@ export function FloorPlanCanvas({
               />
             );
           })()}
-        {model.openings.map((opening) => {
-          const center = viewport.localToScreen(opening.center);
-          const selected = selectedElement?.kind === "opening" && selectedElement.id === opening.id;
+        {model.openings.map((op) => {
+          const c = viewport.localToScreen(op.center);
+          const s = viewport.localDistanceToScreen(1);
+          let paths: string[] = [];
+          try {
+            if (op.kind === "door") paths = getSymbol("door_left", op.widthM).paths;
+            else if (op.kind === "sliding_door") paths = getSymbol("sliding_door", op.widthM).paths;
+            else if (op.kind === "window") paths = getSymbol("window", op.widthM).paths;
+            else if (op.kind === "garage_door") paths = getSymbol("garage_door", op.widthM).paths;
+          } catch {
+            paths = [];
+          }
+          const selected = selectedElement?.kind === "opening" && selectedElement.id === op.id;
           return (
-            <g key={opening.id} data-opening-id={opening.id}>
-              <circle
-                cx={center.x}
-                cy={center.y}
-                r={Math.max(viewport.localDistanceToScreen(opening.widthM / 2), 6)}
-                className={cn("fill-white stroke-emerald-600", selected && "stroke-sky-600")}
-                strokeWidth={selected ? 3 : 2}
-              />
-              <text
-                x={center.x}
-                y={center.y + 3}
-                textAnchor="middle"
-                className="pointer-events-none fill-emerald-700 text-[9px] font-semibold uppercase"
-              >
-                {opening.kind === "window" ? "V" : "D"}
-              </text>
+            <g
+              key={op.id}
+              data-opening-id={op.id}
+              transform={`translate(${c.x},${c.y}) rotate(${-op.angleDeg}) scale(${s},${-s})`}
+            >
+              {paths.length > 0 ? (
+                paths.map((dStr, i) => (
+                  <path
+                    key={i}
+                    d={dStr}
+                    fill="none"
+                    strokeWidth={1.5 / s}
+                    className={selected ? "stroke-sky-600" : "stroke-emerald-600"}
+                  />
+                ))
+              ) : (
+                <circle
+                  r={0.15}
+                  className={
+                    selected
+                      ? "stroke-sky-600 fill-white"
+                      : "stroke-emerald-600 fill-white"
+                  }
+                  strokeWidth={1.5 / s}
+                />
+              )}
             </g>
           );
         })}

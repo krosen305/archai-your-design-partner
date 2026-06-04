@@ -33,3 +33,27 @@ describe("FloorPlanCanvas poché", () => {
     expect(container.querySelectorAll("line[data-wall-id]").length).toBe(0);
   });
 });
+
+describe("FloorPlanCanvas åbninger", () => {
+  it("renderer åbninger som symbol-path-grupper, ikke cirkel+bogstav", () => {
+    const d = doc(); // helper already defined in this test file (generateSeedFloorPlan)
+    const { container } = render(
+      <FloorPlanCanvas
+        document={d}
+        levelId={d.levels[0]!.id}
+        selectedElement={null}
+        activeTool="select"
+        snapEnabled
+        statusMessage={null}
+        onSelectElement={() => {}}
+        onPreviewCommand={() => true}
+        onResetPreview={() => {}}
+        onCommitCommand={async () => true}
+      />,
+    );
+    expect(container.querySelectorAll("g[data-opening-id]").length).toBeGreaterThan(0);
+    const texts = [...container.querySelectorAll("text")].map((t) => t.textContent);
+    expect(texts).not.toContain("D");
+    expect(texts).not.toContain("V");
+  });
+});
