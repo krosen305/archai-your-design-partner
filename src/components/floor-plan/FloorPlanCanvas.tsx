@@ -253,31 +253,35 @@ export function FloorPlanCanvas({
             </g>
           );
         })}
-        {model.walls.map((wall) => {
-          const start = viewport.localToScreen(wall.start);
-          const end = viewport.localToScreen(wall.end);
-          const selected = selectedElement?.kind === "wall" && selectedElement.id === wall.id;
-          return (
-            <line
-              key={wall.id}
-              data-wall-id={wall.id}
-              x1={start.x}
-              y1={start.y}
-              x2={end.x}
-              y2={end.y}
-              className={cn(
-                "stroke-stone-900 transition-colors",
-                wall.structural && "stroke-stone-950",
-                selected && "stroke-sky-600",
-              )}
-              strokeWidth={Math.max(
-                viewport.localDistanceToScreen(wall.thicknessM),
-                selected ? 7 : 4,
-              )}
-              strokeLinecap="square"
+        {model.wallPoche
+          .filter((poly) => poly.length >= 3)
+          .map((poly, i) => (
+            <polygon
+              key={`poche-${i}`}
+              data-wall-poche={i}
+              points={poly.map((p) => pointString(viewport.localToScreen(p))).join(" ")}
+              className="fill-stone-900"
             />
-          );
-        })}
+          ))}
+        {selectedElement?.kind === "wall" &&
+          (() => {
+            const wall = model.walls.find((w) => w.id === selectedElement.id);
+            if (!wall) return null;
+            const start = viewport.localToScreen(wall.start);
+            const end = viewport.localToScreen(wall.end);
+            return (
+              <line
+                key={`selected-wall-highlight-${wall.id}`}
+                x1={start.x}
+                y1={start.y}
+                x2={end.x}
+                y2={end.y}
+                className="stroke-sky-600"
+                strokeWidth={Math.max(viewport.localDistanceToScreen(wall.thicknessM), 7)}
+                strokeLinecap="square"
+              />
+            );
+          })()}
         {model.openings.map((opening) => {
           const center = viewport.localToScreen(opening.center);
           const selected = selectedElement?.kind === "opening" && selectedElement.id === opening.id;
