@@ -342,6 +342,36 @@ function AnalyseTab({
         </Card>
       ),
     },
+    dkjord && {
+      id: "dkjord",
+      label: "JORDFORURENING",
+      content: <DkJordSektion data={dkjord} />,
+    },
+    plandataContext && {
+      id: "plandata",
+      label: "PLANDATA-KONTEKST",
+      content: <PlandataSektion data={plandataContext} />,
+    },
+    arealdataContext && {
+      id: "arealdata",
+      label: "AREALDATA & MILJØ",
+      content: <ArealdataSektion data={arealdataContext} />,
+    },
+    matGeometri && {
+      id: "matGeometri",
+      label: "PARCELGEOMETRI",
+      content: <MatGeometriSektion data={matGeometri} />,
+    },
+    tjekditnetCoverage && {
+      id: "tjekditnet",
+      label: "BREDBÅNDSDÆKNING",
+      content: <TjekditnetSektion data={tjekditnetCoverage} />,
+    },
+    energimaerke && {
+      id: "energimaerke",
+      label: "ENERGIMÆRKE",
+      content: <EnergimaerkeSektion data={energimaerke} />,
+    },
   ].filter(Boolean) as DetailsSection[];
 
   // Mode-styret hierarki: i køb-mode er højre kolonne (feedback) den primære;
