@@ -347,35 +347,35 @@ function AnalyseTab({
         </Card>
       ),
     },
-    dkjord && {
+    {
       id: "dkjord",
       label: "JORDFORURENING",
-      content: <DkJordSektion data={dkjord} />,
+      content: <DkJordSektion data={dkjord} onRetry={onRunAnalyse} />,
     },
-    plandataContext && {
+    {
       id: "plandata",
       label: "PLANDATA-KONTEKST",
-      content: <PlandataSektion data={plandataContext} />,
+      content: <PlandataSektion data={plandataContext} onRetry={onRunAnalyse} />,
     },
-    arealdataContext && {
+    {
       id: "arealdata",
       label: "AREALDATA & MILJØ",
-      content: <ArealdataSektion data={arealdataContext} />,
+      content: <ArealdataSektion data={arealdataContext} onRetry={onRunAnalyse} />,
     },
-    matGeometri && {
+    {
       id: "matGeometri",
       label: "PARCELGEOMETRI",
-      content: <MatGeometriSektion data={matGeometri} />,
+      content: <MatGeometriSektion data={matGeometri} onRetry={onRunAnalyse} />,
     },
-    tjekditnetCoverage && {
+    {
       id: "tjekditnet",
       label: "BREDBÅNDSDÆKNING",
-      content: <TjekditnetSektion data={tjekditnetCoverage} />,
+      content: <TjekditnetSektion data={tjekditnetCoverage} onRetry={onRunAnalyse} />,
     },
-    energimaerke && {
+    {
       id: "energimaerke",
       label: "ENERGIMÆRKE",
-      content: <EnergimaerkeSektion data={energimaerke} />,
+      content: <EnergimaerkeSektion data={energimaerke} onRetry={onRunAnalyse} />,
     },
   ].filter(Boolean) as DetailsSection[];
 
