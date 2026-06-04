@@ -57,3 +57,24 @@ describe("FloorPlanCanvas åbninger", () => {
     expect(texts).not.toContain("V");
   });
 });
+
+describe("FloorPlanCanvas målsætning", () => {
+  it("renderer mål-labels (dimension chains)", () => {
+    const d = doc();
+    const { container } = render(
+      <FloorPlanCanvas
+        document={d}
+        levelId={d.levels[0]!.id}
+        selectedElement={null}
+        activeTool="select"
+        snapEnabled
+        statusMessage={null}
+        onSelectElement={() => {}}
+        onPreviewCommand={() => true}
+        onResetPreview={() => {}}
+        onCommitCommand={async () => true}
+      />,
+    );
+    expect(container.querySelectorAll("[data-dimension]").length).toBeGreaterThan(0);
+  });
+});

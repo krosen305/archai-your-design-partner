@@ -443,6 +443,88 @@ export function FloorPlanCanvas({
             </g>
           );
         })}
+        {(model.layers?.showDimensions ?? true) && (
+          <g className="pointer-events-none" data-dimensions-layer>
+            {model.dimensionChains.flatMap((chain, chainIdx) =>
+              chain.segments.map((seg, segIdx) => {
+                const f = viewport.localToScreen(seg.from);
+                const t = viewport.localToScreen(seg.to);
+                const cf = viewport.localToScreen(seg.chainFrom);
+                const ct = viewport.localToScreen(seg.chainTo);
+                const mid = { x: (cf.x + ct.x) / 2, y: (cf.y + ct.y) / 2 };
+                return (
+                  <g key={`dim-${chainIdx}-${segIdx}`}>
+                    {/* Witness lines: face → chain line */}
+                    <line
+                      x1={roundPx(f.x)}
+                      y1={roundPx(f.y)}
+                      x2={roundPx(cf.x)}
+                      y2={roundPx(cf.y)}
+                      className="stroke-stone-400"
+                      strokeWidth={0.5}
+                    />
+                    <line
+                      x1={roundPx(t.x)}
+                      y1={roundPx(t.y)}
+                      x2={roundPx(ct.x)}
+                      y2={roundPx(ct.y)}
+                      className="stroke-stone-400"
+                      strokeWidth={0.5}
+                    />
+                    {/* Chain line */}
+                    <line
+                      x1={roundPx(cf.x)}
+                      y1={roundPx(cf.y)}
+                      x2={roundPx(ct.x)}
+                      y2={roundPx(ct.y)}
+                      className="stroke-stone-400"
+                      strokeWidth={0.5}
+                    />
+                    {/* Label */}
+                    <text
+                      data-dimension
+                      x={roundPx(mid.x)}
+                      y={roundPx(mid.y - 3)}
+                      textAnchor="middle"
+                      className="fill-stone-500 text-[9px]"
+                    >
+                      {seg.labelText}
+                    </text>
+                  </g>
+                );
+              }),
+            )}
+            {model.interiorDimensions.map((seg, idx) => {
+              const cf = viewport.localToScreen(seg.chainFrom);
+              const ct = viewport.localToScreen(seg.chainTo);
+              const mid = { x: (cf.x + ct.x) / 2, y: (cf.y + ct.y) / 2 };
+              return (
+                <g key={`interior-${idx}`}>
+                  {/* Dashed chain line */}
+                  <line
+                    x1={roundPx(cf.x)}
+                    y1={roundPx(cf.y)}
+                    x2={roundPx(ct.x)}
+                    y2={roundPx(ct.y)}
+                    className="stroke-stone-400"
+                    strokeWidth={0.5}
+                    strokeDasharray="3 2"
+                  />
+                  {/* Label */}
+                  <text
+                    data-dimension
+                    x={roundPx(mid.x)}
+                    y={roundPx(mid.y - 3)}
+                    textAnchor="middle"
+                    className="fill-stone-500 text-[8px]"
+                  >
+                    {seg.labelText}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        )}
         {activeTool === "draw_wall" &&
           drawStart &&
           drawCursor &&
