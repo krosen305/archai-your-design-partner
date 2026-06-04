@@ -17,6 +17,10 @@ import {
   orthoSnapEndpoint,
   buildAddWallCommand,
 } from "@/lib/floor-plan/draw-wall-interaction";
+import {
+  buildAddOpeningCommand,
+  type OpeningPlacementKind,
+} from "@/lib/floor-plan/add-opening-interaction";
 import type { FloorPlanSelection } from "@/hooks/useFloorPlanEditor";
 import type { FloorPlanTool } from "./FloorPlanToolbar";
 import { Button } from "@/components/ui/button";
@@ -74,6 +78,9 @@ export function FloorPlanCanvas({
   // draw_wall tool state
   const [drawStart, setDrawStart] = useState<Point2D | null>(null);
   const [drawCursor, setDrawCursor] = useState<Point2D | null>(null);
+
+  // add_opening tool state
+  const [openingKind, setOpeningKind] = useState<OpeningPlacementKind>("door");
 
   const level =
     document.levels.find((candidate) => candidate.id === levelId) ?? document.levels[0]!;
@@ -142,6 +149,19 @@ export function FloorPlanCanvas({
         void onCommitCommand(buildAddWallCommand(level.id, drawStart, end), document);
         setDrawStart(null);
         setDrawCursor(null);
+      }
+      return;
+    }
+
+    if (activeTool === "add_opening") {
+      const local = localFromEvent(event);
+      const picked = pickFloorPlanElement(level, local);
+      if (picked?.kind === "wall") {
+        const wall = level.walls.find((w) => w.id === picked.id);
+        if (wall) {
+          const offset = offsetAlongWall(wall, local);
+          void onCommitCommand(buildAddOpeningCommand(level.id, wall.id, offset, openingKind), document);
+        }
       }
       return;
     }
@@ -496,6 +516,40 @@ export function FloorPlanCanvas({
           <Plus />
         </Button>
       </div>
+
+      {activeTool === "add_opening" && (
+        <div
+          className="absolute left-4 bottom-14 flex gap-1 rounded-md border border-stone-200 bg-white/95 p-1 shadow-sm"
+          data-opening-kind-selector
+        >
+          <button
+            type="button"
+            aria-pressed={openingKind === "door"}
+            onClick={() => setOpeningKind("door")}
+            className={cn(
+              "rounded px-3 py-1 text-xs font-medium transition-colors",
+              openingKind === "door"
+                ? "bg-stone-800 text-white"
+                : "text-stone-600 hover:bg-stone-100",
+            )}
+          >
+            Dør
+          </button>
+          <button
+            type="button"
+            aria-pressed={openingKind === "window"}
+            onClick={() => setOpeningKind("window")}
+            className={cn(
+              "rounded px-3 py-1 text-xs font-medium transition-colors",
+              openingKind === "window"
+                ? "bg-stone-800 text-white"
+                : "text-stone-600 hover:bg-stone-100",
+            )}
+          >
+            Vindue
+          </button>
+        </div>
+      )}
     </section>
   );
 }
