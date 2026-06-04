@@ -175,6 +175,10 @@ export const FURNITURE_KINDS = [
   "dining_table",
   "chair",
   "wardrobe_shelf",
+  "vehicle",
+  "plant",
+  "outdoor_lounge",
+  "wardrobe_walkin",
 ] as const;
 
 export type FurnitureKind = (typeof FURNITURE_KINDS)[number];
