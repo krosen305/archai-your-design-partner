@@ -39,6 +39,24 @@ verdensklasse-værktøj. Fire konkrete brugerobservationer:
 4. Der er ingen målangivelser på vægge — umuligt at tegne fx et køkken ind uden
    at kende målene.
 
+### 1.1 Kvalitetsmål (referencetegning)
+
+Brugeren har sat barren ved en professionel dansk arkitekt-plantegning. Den
+består af **to lag oven på hinanden**:
+
+- **Myndighedslag:** poché-vægge i varierende tykkelse, stablede kædemål i flere
+  niveauer, nordpil, målestok, arealer, koter og lofthøjder.
+- **Præsentationslag:** fuld møblering, hvidevare-/installationslabels
+  (Kogeplade, OPVM, Køl/Frys, VM, VP Air 9, Vinorage), "Opluk. felt"-callouts på
+  oplukkelige vinduer, "Gulvniveau +40 cm"-niveauspring, retningsbestemt
+  gulvskravering pr. rum, biler i vognport, beplantning og terrasse-møbler, samt
+  forfinet håndtegnet stregføring.
+
+Myndigheden kræver kun det første lag. Referencens "rigtige" udtryk kommer
+primært fra **annotations-laget** og symbol-/hatch-rigdommen — derfor er de
+førsteklasses borgere i denne spec (WS-A floor-hatch, WS-F annotations,
+symbol-udvidelse), ikke eftertanke.
+
 ## 2. Kernediagnose
 
 Problemerne er **ikke** fire manglende features. De har én fælles rod:
@@ -116,10 +134,14 @@ React-elementer, så den beholder selektion/hover/drag men ser ud som PDF'en:
   labels).
 - Tegn `furniture`/`fixtures` som symboler.
 - Tegn `zones` med hatch og `complianceOverlay`-badges + arealskema.
+- **Gulv-finish-hatch pr. rum:** retningsbestemt strøretning/finish-skravering
+  pr. rum (ikke kun zoner), drevet af rummets `floorFinishAssemblyId`. Udvider
+  `buildHatchPaths` til rum-polygoner med pr.-rum retning.
 - Bevar hit-testing mod `pochePolygon` (per-væg rektangel) for præcis selektion.
 - Slet den naive line/cirkel/firkant-tegnekode.
 
-**Resultat:** løser problem 3 (symboler) og 4 (mål).
+**Resultat:** løser problem 3 (symboler) og 4 (mål) + gulvskravering som i
+referencen.
 
 ### WS-B — Redigering: tilføj / slet / del rum
 
@@ -139,7 +161,7 @@ kommando-vokabular:
 
 **Resultat:** løser problem 1 (fjern rum intuitivt) og 2 (vægge i begge akser).
 
-### WS-C — Layout-motor (erstatter strimler)
+### WS-C — Layout-motor + symbol-bredde + tegne-ergonomi
 
 Erstat strimmel-logikken i seed-generatoren med en deterministisk
 rum-dispositions-motor:
@@ -150,7 +172,30 @@ rum-dispositions-motor:
 - Vinduer placeret mod facader pr. dagslysrelevant rum.
 - 0 AI-tokens, deterministisk, validerer mod topologi-motoren som i dag.
 
-**Resultat:** løser "strimler" + urealistiske proportioner.
+**Symbol-udvidelse** (referencens præsentationslag). Symbol-registret dækker
+allerede interiør (senge, sofa, spisebord, køkken, sanitet, døre/vinduer). Tilføj
+de manglende kinds:
+
+- `vehicle` (bil i vognport/carport),
+- `plant` / landskab,
+- `outdoor_lounge` / havemøbler,
+- `wardrobe_walkin` (walk-in detalje).
+
+Ren præsentation (biler/planter/havemøbler) er valgfrit lag — ikke
+myndighedskrav — men hører til referencens niveau.
+
+**Tegne-ergonomi til artikulerede bygningskroppe.** Referencen har ~30+
+vægsegmenter med indhak og tilbyggede masser (carport, udhus, overdækket
+indgang). Generatoren producerer aldrig dette; brugeren tegner det. Editoren skal
+derfor gøre det let:
+
+- Sammenhængende polylinje-vægtegning (klik-klik-klik, dobbeltklik for at lukke).
+- Snap til ortogonalt + eksisterende hjørner/væglinjer.
+- Tilbyggede uopvarmede masser (carport/udhus/overdækket) som zoner med egen
+  poché/hatch.
+
+**Resultat:** løser "strimler" + urealistiske proportioner, og gør referencens
+artikulerede form opnåelig for en bruger.
 
 ### WS-D — Live BR18-validering
 
@@ -170,6 +215,28 @@ tegner.
 - Verificér WYSIWYG-paritet: skærm og PDF projicerer samme render-model.
 
 **Resultat:** leverancen er et målfast myndighedsdokument.
+
+### WS-F — Annotations-lag (det der får tegningen til at læse som "rigtig")
+
+Det største enkeltgab mod referencen. Et typet annotations-lag på render-modellen,
+renderet i både editor og PDF:
+
+- **Installations-/hvidevarelabels:** tekst-tags på fixtures/inventar
+  (Kogeplade, OPVM, Køl/Frys, VM, VP Air 9, Vinorage, Teknik, Bænk, Dørhul).
+  Drevet af `fixture`/`furniture`-felter, ikke fri tekst i UI.
+- **Oplukkelige vinduer:** "Opluk. felt"-callout på åbninger markeret som
+  oplukkelige (nyt felt på `Opening`, fx `operable: boolean`).
+- **Kote- og lofthøjde-callouts pr. rum:** "Lofthøjde ca. 3,22" og "Gulvniveau
+  +40 cm". Data findes allerede (`elevationM`, `floorToFloorHeightM` på level;
+  tilføj evt. `ceilingHeightM`/`floorOffsetM` pr. rum). Render som callout.
+- **Fri annotation:** den eksisterende `PlanAnnotation`-type wires til render +
+  en simpel tekst-placering i editoren.
+
+Alle annotationer er strukturerede domænedata (Zod-valideret), ikke
+free-text-parsing (Rule 1/2). UI placerer; domænet ejer indholdet.
+
+**Resultat:** plantegningen får referencens informationsrigdom — det lag der
+adskiller "skitse" fra "arkitekt-tegning".
 
 ## 6. Geometri-grænse (ortogonalt nu)
 
@@ -196,14 +263,17 @@ tegner.
 - X-krydsnings-topologi: faces detekteres korrekt ved krydsende skillevægge.
 - Hver ny kommandos `applyCommand` + afvisningskoder
   (`BEARING_WALL_REQUIRES_REVIEW`, `WOULD_CORRUPT_TOPOLOGY`, …).
-- Render-model: nye felter projiceres korrekt (testes som data, ikke pixels).
+- Render-model: nye felter projiceres korrekt (testes som data, ikke pixels) —
+  inkl. gulv-finish-hatch pr. rum (WS-A) og annotations-laget (WS-F).
+- Annotations: labels/callouts udledes deterministisk fra domænedata, ikke fra
+  fri tekst; nye symbol-kinds returnerer paths.
 
 **Tier 2 — service:**
 - Verify-loop pr. kommando returnerer findings.
 - Hard-Stop-gate blokerer generering før optimistisk output.
 
 **Tier 3 — Playwright (én journey):**
-- Generér plan → tegn væg → placér dør → se mål → eksportér PDF.
+- Generér plan → tegn væg → placér dør → annotér rum → se mål → eksportér PDF.
 
 **Testes ikke:** pixels/visuelt udseende, trivielle React-renders, alle
 permutationer.
@@ -217,7 +287,16 @@ permutationer.
   4. mål vises og kan redigeres (type-to-set).
 - WYSIWYG-paritet mellem editor og PDF verificeret.
 - Layout-motor producerer realistiske dispositioner (ingen strimler).
+- Gulv-finish-hatch pr. rum renderet i editor og PDF.
+- Annotations-lag (installations-/hvidevarelabels, "Opluk. felt",
+  kote-/lofthøjde-callouts) renderet fra domænedata.
+- Udvidede symboler (bil/plante/havemøbler) tilgængelige som valgfrit
+  præsentationslag.
 - Live BR18-findings vises under redigering.
+- **Kvalitetsmål:** en bruger kan på et realistisk hus producere en plantegning
+  der nærmer sig referencetegningens niveau (~8/10) — myndighedslaget komplet,
+  præsentationslaget muligt. Den håndtegnede æstetik og arkitekt-dispositionen
+  er bevidst ikke garanteret af værktøjet (afhænger af bruger).
 - `bunx tsc --noEmit`, `bun test`, `bunx eslint .`, `bun run build` grønne.
 - Ingen nye `any`/uchecked casts, ingen nye direkte Supabase-kald i UI, ingen nye
   importcyklusser.
@@ -230,3 +309,8 @@ permutationer.
 - Frie (ikke-ortogonale) vægvinkler.
 - AI-genereret layout (deterministisk generator er valgt).
 - 3D / lodret højdedata.
+- Håndtegnet/skitse-æstetik (stregvægt-stilisering) som forfinet kunstnerisk
+  udtryk — funktionel arkitektonisk stregføring er i scope, kunstnerisk
+  efterligning er ikke.
+- Garanti for arkitektonisk dispositionskvalitet — værktøjet muliggør den;
+  resultatet afhænger af brugerens designvalg.
