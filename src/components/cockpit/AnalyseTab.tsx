@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { DataSourceStatus } from "@/components/cockpit/DataSourceStatus";
+import { DatakildeCard } from "@/components/cockpit/DatakildeCard";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/wizard-ui";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
