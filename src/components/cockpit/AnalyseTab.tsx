@@ -42,15 +42,20 @@ import type {
   VurData,
 } from "@/domain/contracts/analysis.types";
 import type {
+  RuleEngineArealdataContext,
   RuleEngineBbrData,
   RuleEngineDkJordResultat,
   RuleEngineFbbResult,
   RuleEngineGeusRiskData,
   RuleEngineLokalplan,
   RuleEngineNaturbeskyttelsesResultat,
+  RuleEnginePlandataContext,
   RuleEngineTerrainData,
   RuleEngineTinglysningResult,
 } from "@/domain/contracts/rule-engine.types";
+import type { MatParcelGeometryPayload } from "@/domain/contracts/analysis.types";
+import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
+import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 
