@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, Minus, Plus } from "lucide-react";
 import type { FloorPlanCommand } from "@/domain/floor-plan/commands";
 import type { FloorPlanDocument, FloorLevel } from "@/domain/floor-plan/floor-plan.types";
@@ -13,6 +13,10 @@ import {
   wallDragAxis,
 } from "@/lib/floor-plan/editor-hit-testing";
 import { snapDelta, snapOpeningOffset, snapPoint } from "@/lib/floor-plan/snap-engine";
+import {
+  orthoSnapEndpoint,
+  buildAddWallCommand,
+} from "@/lib/floor-plan/draw-wall-interaction";
 import type { FloorPlanSelection } from "@/hooks/useFloorPlanEditor";
 import type { FloorPlanTool } from "./FloorPlanToolbar";
 import { Button } from "@/components/ui/button";
@@ -67,6 +71,10 @@ export function FloorPlanCanvas({
   const [zoom, setZoom] = useState(1);
   const [panPx, setPanPx] = useState<Point2D>({ x: 0, y: 0 });
 
+  // draw_wall tool state
+  const [drawStart, setDrawStart] = useState<Point2D | null>(null);
+  const [drawCursor, setDrawCursor] = useState<Point2D | null>(null);
+
   const level =
     document.levels.find((candidate) => candidate.id === levelId) ?? document.levels[0]!;
   const model = useMemo(() => buildRenderModel(document, level.id), [document, level.id]);
@@ -92,6 +100,24 @@ export function FloorPlanCanvas({
     return () => observer.disconnect();
   }, []);
 
+  // Cancel draw_wall on Escape
+  const cancelDrawWall = useCallback(() => {
+    setDrawStart(null);
+    setDrawCursor(null);
+  }, []);
+
+  useEffect(() => {
+    if (activeTool !== "draw_wall") {
+      cancelDrawWall();
+      return;
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") cancelDrawWall();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeTool, cancelDrawWall]);
+
   function localFromEvent(event: React.PointerEvent<SVGSVGElement>): Point2D {
     const rect = event.currentTarget.getBoundingClientRect();
     return viewport.screenToLocal({ x: event.clientX - rect.left, y: event.clientY - rect.top });
@@ -105,6 +131,20 @@ export function FloorPlanCanvas({
   function handlePointerDown(event: React.PointerEvent<SVGSVGElement>) {
     const local = localFromEvent(event);
     const screen = screenFromEvent(event);
+
+    if (activeTool === "draw_wall") {
+      const snapped = snapPoint(local, level).point;
+      if (!drawStart) {
+        setDrawStart(snapped);
+        setDrawCursor(snapped);
+      } else {
+        const end = orthoSnapEndpoint(drawStart, snapped);
+        void onCommitCommand(buildAddWallCommand(level.id, drawStart, end), document);
+        setDrawStart(null);
+        setDrawCursor(null);
+      }
+      return;
+    }
 
     if (activeTool === "pan" || event.button === 1) {
       dragRef.current = {
@@ -141,6 +181,12 @@ export function FloorPlanCanvas({
   }
 
   function handlePointerMove(event: React.PointerEvent<SVGSVGElement>) {
+    if (activeTool === "draw_wall" && drawStart) {
+      const local = localFromEvent(event);
+      setDrawCursor(orthoSnapEndpoint(drawStart, local));
+      return;
+    }
+
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -202,7 +248,7 @@ export function FloorPlanCanvas({
         aria-label="Interaktiv plantegning"
         className={cn(
           "h-full min-h-[620px] w-full touch-none select-none bg-stone-100",
-          activeTool === "pan" ? "cursor-grab" : "cursor-crosshair",
+          activeTool === "pan" ? "cursor-grab" : activeTool === "draw_wall" ? "cursor-crosshair" : "cursor-crosshair",
         )}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -375,6 +421,36 @@ export function FloorPlanCanvas({
             </g>
           );
         })}
+        {activeTool === "draw_wall" && drawStart && drawCursor && (() => {
+          const startScreen = viewport.localToScreen(drawStart);
+          const endScreen = viewport.localToScreen(drawCursor);
+          const midScreen = {
+            x: (startScreen.x + endScreen.x) / 2,
+            y: (startScreen.y + endScreen.y) / 2,
+          };
+          const distanceM = Math.hypot(drawCursor.x - drawStart.x, drawCursor.y - drawStart.y);
+          return (
+            <g className="pointer-events-none" data-draw-wall-preview>
+              <line
+                x1={startScreen.x}
+                y1={startScreen.y}
+                x2={endScreen.x}
+                y2={endScreen.y}
+                strokeDasharray="6 3"
+                strokeWidth={2}
+                className="stroke-sky-500"
+              />
+              <text
+                x={midScreen.x}
+                y={midScreen.y - 6}
+                textAnchor="middle"
+                className="fill-sky-700 text-[11px] font-medium"
+              >
+                {distanceM.toFixed(2)} m
+              </text>
+            </g>
+          );
+        })()}
       </svg>
 
       <div className="absolute left-4 top-4 rounded-md border border-stone-200 bg-white/95 px-3 py-2 text-xs text-stone-600 shadow-sm">
