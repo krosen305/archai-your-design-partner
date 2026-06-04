@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import {
   FloorPlanDocumentSchema,
   OpeningSchema,
@@ -121,6 +121,34 @@ describe("OpeningSchema", () => {
     expect(OpeningSchema.safeParse({ ...validOpening, offsetAlongWallM: -0.5 }).success).toBe(
       false,
     );
+  });
+});
+
+describe("annotations-felter", () => {
+  it("Opening har operable med default false", () => {
+    const base = {
+      id: "o1", levelId: "l0", wallId: "w1", openingKind: "window",
+      offsetAlongWallM: 1, widthM: 1.2, heightM: 1.4, sillHeightM: 0.9,
+      swing: "none", productTypeId: null, locked: false,
+      source: { source: "manual", confidence: "medium", fetchedAt: null, requiresReview: false },
+    };
+    expect(OpeningSchema.parse(base).operable).toBe(false);
+    expect(OpeningSchema.parse({ ...base, operable: true }).operable).toBe(true);
+  });
+
+  it("RoomZone har ceilingHeightM og floorOffsetM (nullable, default null)", () => {
+    const base = {
+      id: "r1", levelId: "l0", name: "Stue", roomType: "living",
+      polygon: { vertices: [{x:0,y:0},{x:1,y:0},{x:1,y:1}] },
+      netAreaM2: 1, minAreaM2: null, targetAreaM2: null,
+      floorFinishAssemblyId: null, ceilingFinishAssemblyId: null,
+      wallFinishAssemblyByWallId: {}, ventilationNeed: "natural",
+      wetRoomZone: false, daylightRelevant: true,
+      source: { source: "manual", confidence: "medium", fetchedAt: null, requiresReview: false },
+    };
+    const parsed = RoomZoneSchema.parse(base);
+    expect(parsed.ceilingHeightM).toBeNull();
+    expect(parsed.floorOffsetM).toBeNull();
   });
 });
 

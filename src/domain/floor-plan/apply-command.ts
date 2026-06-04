@@ -340,6 +340,7 @@ function applyAddOpening(
     heightM: cmd.heightM,
     sillHeightM: null,
     swing: cmd.swing,
+    operable: false,
     productTypeId: null,
     locked: false,
     source: DEFAULT_MANUAL_SOURCE,
@@ -653,6 +654,8 @@ function newRoomFrom(level: FloorLevel, id: string, polygon: Polygon2D, areaM2: 
     ventilationNeed: "unknown",
     wetRoomZone: false,
     daylightRelevant: false,
+    ceilingHeightM: null,
+    floorOffsetM: null,
     source: {
       source: "generated",
       confidence: "low",

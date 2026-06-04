@@ -76,6 +76,8 @@ export function generateSeedFloorPlan(brief: BuildingBrief): FloorPlanDocument {
       ventilationNeed: spec.roomType === "bathroom" ? "wet_room" : "natural",
       wetRoomZone: spec.roomType === "bathroom",
       daylightRelevant: spec.roomType !== "technical" && spec.roomType !== "storage",
+      ceilingHeightM: null,
+      floorOffsetM: null,
       source: GENERATED,
     };
   });
@@ -222,6 +224,7 @@ function opening(
     heightM,
     sillHeightM,
     swing: openingKind === "door" ? "left" : "none",
+    operable: false,
     productTypeId: null,
     locked: false,
     source: GENERATED,
