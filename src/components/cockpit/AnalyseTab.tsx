@@ -12,7 +12,15 @@ import {
   Sparkles,
   Flame,
   Home as HomeIcon,
+  Wifi,
+  Zap,
+  TreePine,
+  Droplets,
+  Layers,
+  Square,
 } from "lucide-react";
+import { useProject } from "@/lib/project-store";
+import { DataSourceStatus } from "@/components/cockpit/DataSourceStatus";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/wizard-ui";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
@@ -34,15 +42,20 @@ import type {
   VurData,
 } from "@/domain/contracts/analysis.types";
 import type {
+  RuleEngineArealdataContext,
   RuleEngineBbrData,
   RuleEngineDkJordResultat,
   RuleEngineFbbResult,
   RuleEngineGeusRiskData,
   RuleEngineLokalplan,
   RuleEngineNaturbeskyttelsesResultat,
+  RuleEnginePlandataContext,
   RuleEngineTerrainData,
   RuleEngineTinglysningResult,
 } from "@/domain/contracts/rule-engine.types";
+import type { MatParcelGeometryPayload } from "@/domain/contracts/analysis.types";
+import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
+import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 import type { ByggeanalyseResultat } from "@/integrations/ai/byggeanalyse";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 
@@ -183,6 +196,12 @@ function AnalyseTab({
   const drawerOpen = drawerSection !== null;
   const openDrawer = useCallback((id?: string) => setDrawerSection(id ?? "lokalplaner"), []);
   const closeDrawer = useCallback(() => setDrawerSection(null), []);
+
+  const tjekditnetCoverage = useProject((s) => s.tjekditnetCoverage);
+  const energimaerke = useProject((s) => s.energimaerke);
+  const plandataContext = useProject((s) => s.plandataContext);
+  const arealdataContext = useProject((s) => s.arealdataContext);
+  const matGeometri = useProject((s) => s.matGeometri);
 
   const reactiveContext = useMemo(
     () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord }),
@@ -327,6 +346,36 @@ function AnalyseTab({
           </div>
         </Card>
       ),
+    },
+    dkjord && {
+      id: "dkjord",
+      label: "JORDFORURENING",
+      content: <DkJordSektion data={dkjord} />,
+    },
+    plandataContext && {
+      id: "plandata",
+      label: "PLANDATA-KONTEKST",
+      content: <PlandataSektion data={plandataContext} />,
+    },
+    arealdataContext && {
+      id: "arealdata",
+      label: "AREALDATA & MILJØ",
+      content: <ArealdataSektion data={arealdataContext} />,
+    },
+    matGeometri && {
+      id: "matGeometri",
+      label: "PARCELGEOMETRI",
+      content: <MatGeometriSektion data={matGeometri} />,
+    },
+    tjekditnetCoverage && {
+      id: "tjekditnet",
+      label: "BREDBÅNDSDÆKNING",
+      content: <TjekditnetSektion data={tjekditnetCoverage} />,
+    },
+    energimaerke && {
+      id: "energimaerke",
+      label: "ENERGIMÆRKE",
+      content: <EnergimaerkeSektion data={energimaerke} />,
     },
   ].filter(Boolean) as DetailsSection[];
 
@@ -758,6 +807,331 @@ function GeusRisikoSektion({ data }: { data: RuleEngineGeusRiskData }) {
           </div>
         )}
       </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// New datakilde-sektioner (Phase 2)
+// ---------------------------------------------------------------------------
+
+function SektionHeader({
+  icon: Icon,
+  label,
+  kind,
+}: {
+  icon: typeof Wifi;
+  label: string;
+  kind: Parameters<typeof DataSourceStatus>[0]["kind"];
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
+        <Icon size={12} className="text-accent" />
+        {label}
+      </div>
+      <DataSourceStatus kind={kind} showLabel={false} />
+    </div>
+  );
+}
+
+function YesNoBadge({ value, trueLabel, falseLabel }: {
+  value: boolean | null;
+  trueLabel: string;
+  falseLabel?: string;
+}) {
+  if (value === null) {
+    return (
+      <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-2 py-0.5 text-muted-foreground border-border bg-[#1a1a1a]">
+        UKENDT
+      </span>
+    );
+  }
+  if (value) {
+    return (
+      <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-2 py-0.5 text-warning border-warning/40 bg-warning/10">
+        {trueLabel}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-2 py-0.5 text-success border-success/40 bg-success/10">
+      {falseLabel ?? "OK"}
+    </span>
+  );
+}
+
+function DkJordSektion({ data }: { data: RuleEngineDkJordResultat }) {
+  const v1 = data.v1Kortlagt;
+  const v2 = data.v2Kortlagt;
+  const olietank = data.olietank?.eksisterer;
+  return (
+    <Card className="mb-4">
+      <SektionHeader icon={Droplets} label="JORDFORURENING (DKJORD)" kind="dkjord" />
+      <div className="flex flex-wrap gap-2 mb-3">
+        <YesNoBadge value={v1} trueLabel="V1 KORTLAGT" falseLabel="IKKE V1" />
+        <YesNoBadge value={v2} trueLabel="V2 KORTLAGT" falseLabel="IKKE V2" />
+        {olietank !== null && olietank !== undefined && (
+          <YesNoBadge value={olietank} trueLabel="OLIETANK" falseLabel="INGEN OLIETANK" />
+        )}
+      </div>
+      {(v1 === true || v2 === true) && (
+        <p className="text-xs text-warning">
+          Jordforureningsattest og evt. § 8-tilladelse kan være påkrævet før bygge-/anlægsarbejde.
+        </p>
+      )}
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 text-xs text-muted-foreground">
+        {data.omraadeklassificering && (
+          <div>Områdeklassificering: <span className="text-foreground">{data.omraadeklassificering}</span></div>
+        )}
+        {data.nuancering && (
+          <div>Nuancering: <span className="text-foreground">{data.nuancering}</span></div>
+        )}
+        {data.olietank?.driftsstatus && (
+          <div>Olietank-status: <span className="text-foreground">{data.olietank.driftsstatus}</span></div>
+        )}
+        {data.lokalitetsId && (
+          <div>Lokalitet: <span className="font-mono text-foreground">{data.lokalitetsId}</span></div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function PlandataSektion({ data }: { data: RuleEnginePlandataContext }) {
+  const zoneLabel = data.zoneType ? data.zoneType.toUpperCase() : "UKENDT";
+  return (
+    <Card className="mb-4">
+      <SektionHeader icon={Layers} label="PLANDATA-KONTEKST" kind="kommuneplanramme" />
+      <div className="flex flex-wrap gap-2 mb-3">
+        <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-foreground border-border bg-[#1a1a1a]">
+          ZONE: {zoneLabel}
+        </span>
+        {data.landzonePermitRequired === true && (
+          <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-warning border-warning/40 bg-warning/10">
+            LANDZONETILLADELSE
+          </span>
+        )}
+        {data.lokalplanByggefeltPresent && (
+          <YesNoBadge
+            value={data.withinBuildingField === false}
+            trueLabel="UDEN FOR BYGGEFELT"
+            falseLabel="INDEN FOR BYGGEFELT"
+          />
+        )}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 text-xs text-muted-foreground">
+        {data.futureZoneType && data.futureZoneType !== data.zoneType && (
+          <div>Fremtidig zone: <span className="text-foreground">{data.futureZoneType}</span></div>
+        )}
+        {data.wastewaterPlanStatus && (
+          <div>Spildevandsplan: <span className="text-foreground">{data.wastewaterPlanStatus}</span></div>
+        )}
+        {data.sewerAreaType && (
+          <div>Kloakopland: <span className="text-foreground">{data.sewerAreaType}</span></div>
+        )}
+        {data.lokalplanDelomraadeId && (
+          <div>Delområde: <span className="font-mono text-foreground">{data.lokalplanDelomraadeId}</span></div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function ArealdataSektion({ data }: { data: RuleEngineArealdataContext }) {
+  const flags: Array<{ label: string; value: boolean | null }> = [
+    { label: "§3-natur", value: data.paragraph3Nature },
+    { label: "Natura 2000", value: data.natura2000 },
+    { label: "Beskyttet dige", value: data.protectedDige },
+    { label: "Fortidsminde", value: data.fortidsminde },
+    { label: "Fortidsminde-buffer", value: data.fortidsmindeBuffer },
+    { label: "BNBO", value: data.bnbo },
+    { label: "OSD (drikkevand)", value: data.osd },
+    { label: "Råstofområde", value: data.rawMaterialArea },
+  ];
+  const aktive = flags.filter((f) => f.value === true);
+  return (
+    <Card className="mb-4">
+      <SektionHeader icon={TreePine} label="AREALDATA & MILJØ" kind="arealdata" />
+      {aktive.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Ingen registrerede miljø-/naturoverlap.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {aktive.map((f) => (
+            <span
+              key={f.label}
+              className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-warning border-warning/40 bg-warning/10"
+            >
+              {f.label.toUpperCase()}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 grid grid-cols-2 gap-1 text-[11px] text-muted-foreground sm:grid-cols-4">
+        {flags
+          .filter((f) => f.value === false || f.value === null)
+          .map((f) => (
+            <div key={f.label} className="font-mono">
+              {f.label}: {f.value === false ? "nej" : "?"}
+            </div>
+          ))}
+      </div>
+    </Card>
+  );
+}
+
+function MatGeometriSektion({ data }: { data: MatParcelGeometryPayload }) {
+  const diskrepans = data.areaDiscrepancyM2;
+  const stortAfvigelse = diskrepans !== null && Math.abs(diskrepans) > 25;
+  return (
+    <Card className="mb-4">
+      <SektionHeader icon={Square} label="PARCELGEOMETRI (MAT)" kind="matGeometri" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">POLYGON-AREAL</div>
+          <div className="text-sm font-mono text-foreground tabular-nums">
+            {data.polygonAreaM2 !== null ? `${Math.round(data.polygonAreaM2)} m²` : "—"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">REGISTRERET</div>
+          <div className="text-sm font-mono text-foreground tabular-nums">
+            {data.registreretArealM2 !== null ? `${Math.round(data.registreretArealM2)} m²` : "—"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono text-muted-foreground mb-1">DIFFERENCE</div>
+          <div
+            className={`text-sm font-mono tabular-nums ${stortAfvigelse ? "text-warning" : "text-foreground"}`}
+          >
+            {diskrepans !== null ? `${diskrepans > 0 ? "+" : ""}${Math.round(diskrepans)} m²` : "—"}
+          </div>
+        </div>
+      </div>
+      {stortAfvigelse && (
+        <p className="text-xs text-warning mt-3">
+          Polygon og registreret areal afviger med &gt; 25 m² — verificér matrikelkort før beregning.
+        </p>
+      )}
+      {!data.hasCanonicalPolygon && (
+        <p className="text-xs text-muted-foreground mt-2">Ingen kanonisk polygon — geometri kan være ufuldstændig.</p>
+      )}
+    </Card>
+  );
+}
+
+function TjekditnetSektion({ data }: { data: TjekditnetCoverageData }) {
+  const teknologier: Array<{ label: string; mbit: number | null; available: boolean | null }> = [
+    { label: "Fiber", mbit: data.fiber_download_mbit, available: data.fiber_tilgaengelig },
+    { label: "Kabel-TV", mbit: data.kabel_tv_download_mbit, available: data.kabel_tilgaengelig },
+    { label: "xDSL", mbit: data.xdsl_download_mbit, available: data.xdsl_tilgaengelig },
+    {
+      label: "Fast trådløst",
+      mbit: data.fast_traadloes_download_mbit,
+      available: data.fast_traadloes_tilgaengelig,
+    },
+    { label: "Mobil", mbit: data.mobil_download_mbit, available: data.mobil_tilgaengelig },
+  ];
+  const maxFast = data.max_fast_download_mbit;
+  return (
+    <Card className="mb-4">
+      <SektionHeader icon={Wifi} label="BREDBÅNDSDÆKNING" kind="tjekditnet" />
+      {data.match_type === "no_hit" ? (
+        <p className="text-sm text-muted-foreground">
+          Ingen dækningsdata for denne adresse i tjekditnet-bulk.
+        </p>
+      ) : (
+        <>
+          <div className="mb-3">
+            <div className="text-[11px] font-mono text-muted-foreground mb-1">
+              BEDSTE FASTE DOWNLOAD
+            </div>
+            <div className="text-lg font-mono text-foreground tabular-nums">
+              {maxFast !== null ? `${maxFast} Mbit/s` : "—"}
+            </div>
+          </div>
+          <div className="space-y-2">
+            {teknologier.map((t) => (
+              <div
+                key={t.label}
+                className="flex items-center justify-between border-t border-border/40 pt-2 text-sm"
+              >
+                <span className="text-foreground">{t.label}</span>
+                <span
+                  className={`font-mono tabular-nums ${
+                    t.available ? "text-success" : "text-muted-foreground"
+                  }`}
+                >
+                  {t.mbit !== null && t.mbit > 0 ? `${t.mbit} Mbit/s` : "ikke tilgængeligt"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function EnergimaerkeSektion({ data }: { data: EnergyLabelData }) {
+  const klasse = data.energimaerke_klasse;
+  const udloebet = data.er_udloebet;
+  const klasseColor = !klasse
+    ? "text-muted-foreground border-border bg-[#1a1a1a]"
+    : klasse.startsWith("A")
+      ? "text-success border-success/40 bg-success/10"
+      : ["B", "C"].includes(klasse)
+        ? "text-foreground border-border bg-[#1a1a1a]"
+        : "text-warning border-warning/40 bg-warning/10";
+  return (
+    <Card className="mb-4">
+      <SektionHeader icon={Zap} label="ENERGIMÆRKE (EMODATA)" kind="energimaerke" />
+      {data.match_type === "no_hit" ? (
+        <p className="text-sm text-muted-foreground">Ingen registreret energimærke for bygningen.</p>
+      ) : data.match_type === "skipped" ? (
+        <p className="text-sm text-muted-foreground">
+          EMOData-opslag sprunget over (manglende adgang) — kan tilføjes senere.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span
+              className={`inline-flex items-center font-mono text-sm tracking-[0.1em] rounded-full border px-3 py-1 ${klasseColor}`}
+            >
+              KLASSE {klasse ?? "—"}
+            </span>
+            {udloebet === true && (
+              <span className="inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-warning border-warning/40 bg-warning/10">
+                UDLØBET
+              </span>
+            )}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 text-xs text-muted-foreground">
+            {data.rapportdato && (
+              <div>
+                Rapportdato:{" "}
+                <span className="text-foreground font-mono">{data.rapportdato.slice(0, 10)}</span>
+              </div>
+            )}
+            {data.gyldig_til && (
+              <div>
+                Gyldig til:{" "}
+                <span className="text-foreground font-mono">{data.gyldig_til.slice(0, 10)}</span>
+              </div>
+            )}
+            {data.rapport_url && (
+              <a
+                href={data.rapport_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-mono text-accent hover:underline"
+              >
+                Rapport PDF <ExternalLink size={10} />
+              </a>
+            )}
+          </div>
+        </>
+      )}
     </Card>
   );
 }
