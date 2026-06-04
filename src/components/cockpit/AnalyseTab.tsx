@@ -192,6 +192,12 @@ function AnalyseTab({
   const openDrawer = useCallback((id?: string) => setDrawerSection(id ?? "lokalplaner"), []);
   const closeDrawer = useCallback(() => setDrawerSection(null), []);
 
+  const tjekditnetCoverage = useProject((s) => s.tjekditnetCoverage);
+  const energimaerke = useProject((s) => s.energimaerke);
+  const plandataContext = useProject((s) => s.plandataContext);
+  const arealdataContext = useProject((s) => s.arealdataContext);
+  const matGeometri = useProject((s) => s.matGeometri);
+
   const reactiveContext = useMemo(
     () => ({ geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord }),
     [geusRisk, servitutter, terrain, fbbData, naturbeskyttelse, dkjord],
