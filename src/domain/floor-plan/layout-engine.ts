@@ -133,10 +133,10 @@ export function layoutWalls(brief: LayoutBrief): Wall[] {
 
   // --- 1. Exterior shell (CCW) ---
   const exterior: Wall[] = [
-    exteriorWall([0, 0], [W, 0]),   // south
-    exteriorWall([W, 0], [W, D]),   // east
-    exteriorWall([W, D], [0, D]),   // north
-    exteriorWall([0, D], [0, 0]),   // west
+    exteriorWall([0, 0], [W, 0]), // south
+    exteriorWall([W, 0], [W, D]), // east
+    exteriorWall([W, D], [0, D]), // north
+    exteriorWall([0, D], [0, 0]), // west
   ];
 
   if (N === 1) {
