@@ -79,6 +79,34 @@ describe("FloorPlanCanvas målsætning", () => {
   });
 });
 
+describe("FloorPlanCanvas tastatur-slet", () => {
+  it("committer delete_wall når Delete trykkes med en valgt væg", async () => {
+    const d = doc();
+    const wallId = d.levels[0]!.walls[0]!.id;
+    let committed: unknown = null;
+    render(
+      <FloorPlanCanvas
+        document={d}
+        levelId={d.levels[0]!.id}
+        selectedElement={{ kind: "wall", id: wallId }}
+        activeTool="select"
+        snapEnabled
+        statusMessage={null}
+        onSelectElement={() => {}}
+        onPreviewCommand={() => true}
+        onResetPreview={() => {}}
+        onCommitCommand={async (cmd) => {
+          committed = cmd;
+          return true;
+        }}
+      />,
+    );
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+    await Promise.resolve();
+    expect(committed).toEqual({ type: "delete_wall", wallId });
+  });
+});
+
 describe("FloorPlanCanvas møbler", () => {
   it("renderer møbel-symboler som path-grupper når furniture findes", () => {
     const base = doc();

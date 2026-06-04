@@ -128,6 +128,21 @@ export function FloorPlanCanvas({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeTool, cancelDrawWall]);
 
+  // Delete selected wall on Delete/Backspace
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      if (selectedElement?.kind !== "wall") return;
+      // Avoid interfering with text inputs
+      const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "select" || tag === "textarea") return;
+      event.preventDefault();
+      void onCommitCommand({ type: "delete_wall", wallId: selectedElement.id }, document);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedElement, document, onCommitCommand]);
+
   function localFromEvent(event: React.PointerEvent<SVGSVGElement>): Point2D {
     const rect = event.currentTarget.getBoundingClientRect();
     return viewport.screenToLocal({ x: event.clientX - rect.left, y: event.clientY - rect.top });
