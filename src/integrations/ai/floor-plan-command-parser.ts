@@ -90,6 +90,69 @@ export interface FloorPlanCommandGateway {
   suggest(input: { instruction: string; slice: CommandParserSlice }): Promise<unknown>;
 }
 
+// --- Concrete Anthropic adapter (SERVER-SIDE ONLY) -------------------------
+// Import lazily via dynamic import in the server function — never bundled into
+// the client. This file itself is imported from both client and server, so the
+// adapter class lives here but must only be instantiated on the server.
+
+const SYSTEM_PROMPT = `\
+Du er en assistent, der oversætter naturligt dansk sprog til præcise plantegnings-redigeringskommandoer.
+
+Du modtager et JSON-objekt med:
+- instruction: brugerens naturlige sprogkommando
+- slice: aktuel kontekst (valgte elementer, rum, vægge)
+
+Du skal returnere ét JSON-objekt i ét af disse to formater:
+
+Hvis du kan tolke kommandoen entydigt:
+{"kind":"command","command":{...}}
+
+Hvis kommandoen er uklar eller kræver mere info:
+{"kind":"clarification","question":"Dit spørgsmål her","options":["mulighed 1","mulighed 2"]}
+
+Tilgængelige kommandotyper og deres felter:
+
+move_wall: { type, wallId, deltaM (meter), axis ("x"|"y") }
+move_opening: { type, openingId, wallId, offsetM (meter fra væggens start) }
+resize_opening: { type, openingId, widthM (meter) }
+delete_wall: { type, wallId }
+move_fixture: { type, fixtureId, roomId, x, y (LOCAL_METER koordinater) }
+split_room: { type, roomId, wallLine: { start: {x,y}, end: {x,y} } }
+merge_rooms: { type, roomIds: [id1, id2] }
+add_wall: { type, levelId, start: {x,y}, end: {x,y}, thicknessM, wallKind ("exterior"|"interior"|"party") }
+add_opening: { type, levelId, wallId, openingKind ("door"|"window"|"sliding_door"|"opening"|"garage_door"), offsetAlongWallM, widthM, heightM, swing ("left"|"right"|"sliding"|"none"|"unknown") }
+add_fixture: { type, levelId, roomId, fixtureKind ("toilet"|"sink"|"shower"|"bathtub"|"kitchen_unit"|"technical_cabinet"|"wardrobe"|"appliance"|"ventilation_unit"|"heat_pump_indoor"|"other"), position: {x,y}, rotationDeg }
+add_furniture: { type, levelId, roomId, furnitureKind ("single_bed"|"double_bed"|"sofa"|"armchair"|"dining_table"|"chair"|"wardrobe_shelf"), position: {x,y}, rotationDeg, widthM, depthM }
+
+Regler:
+- Brug kun ID'er fra slice — opfind aldrig nye ID'er.
+- Koordinater er i LOCAL_METER (meter fra lokalt origo).
+- Returner KUN JSON — ingen forklarende tekst uden for JSON-blokken.
+- Hvis du er i tvivl om et ID, koordinat eller mål, returnér clarification i stedet.`;
+
+export class AnthropicFloorPlanCommandGateway implements FloorPlanCommandGateway {
+  async suggest(input: { instruction: string; slice: CommandParserSlice }): Promise<unknown> {
+    const { callAnthropicGateway, extractStructuredOutput } = await import("./gateway");
+    const { z } = await import("zod");
+
+    const response = await callAnthropicGateway({
+      model: "claude-haiku-4-5-20251001",
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: JSON.stringify({ instruction: input.instruction, slice: input.slice }),
+        },
+      ],
+      maxTokens: 512,
+      operation: "floor_plan_command_parse",
+    });
+
+    const text = response.content.find((b) => b.type === "text")?.text ?? "";
+    return extractStructuredOutput(z.unknown(), text);
+  }
+}
+
 export type ParseFloorPlanCommandInput = {
   document: FloorPlanDocument;
   levelId: string;
