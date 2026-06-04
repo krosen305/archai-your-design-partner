@@ -12,7 +12,15 @@ import {
   Sparkles,
   Flame,
   Home as HomeIcon,
+  Wifi,
+  Zap,
+  TreePine,
+  Droplets,
+  Layers,
+  Square,
 } from "lucide-react";
+import { useProject } from "@/lib/project-store";
+import { DataSourceStatus } from "@/components/cockpit/DataSourceStatus";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/wizard-ui";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
