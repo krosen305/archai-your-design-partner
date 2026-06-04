@@ -1,6 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { buildRenderModel } from "./floor-plan-render-model";
 import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
+import { generateSeedFloorPlan } from "@/domain/floor-plan/seed-generator";
 
 const sourceMeta = {
   source: "generated",
@@ -193,5 +194,30 @@ describe("buildRenderModel", () => {
     const d = doc();
     d.levels[0]!.openings[0]!.wallId = "ghost";
     expect(buildRenderModel(d, "level_0").openings).toHaveLength(0);
+  });
+});
+
+describe("rum-gulv-hatch", () => {
+  it("giver hatch-paths pr. rum når floorFinishAssemblyId er sat", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1", targetAreaM2: 60,
+      rooms: [{ name: "Stue", roomType: "living" }],
+    });
+    const lvl = base.levels[0]!;
+    const withFinish = { ...base, levels: [{ ...lvl,
+      rooms: lvl.rooms.map((r) => ({ ...r, floorFinishAssemblyId: "oak_plank" })) }] };
+    const model = buildRenderModel(withFinish, lvl.id);
+    const room = model.rooms[0]!;
+    expect(room.floorHatchPaths.length).toBeGreaterThan(0);
+  });
+
+  it("rum uden floorFinishAssemblyId har tomme floorHatchPaths", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1", targetAreaM2: 60,
+      rooms: [{ name: "Stue", roomType: "living" }],
+    });
+    const lvl = base.levels[0]!;
+    const model = buildRenderModel(base, lvl.id);
+    expect(model.rooms[0]!.floorHatchPaths).toEqual([]);
   });
 });

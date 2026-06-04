@@ -230,6 +230,26 @@ export function FloorPlanCanvas({
             strokeWidth={1}
           />
         ))}
+        {model.rooms.flatMap((room) =>
+          room.floorHatchPaths.map((d, idx) => {
+            const pts = parseHatchPath(d);
+            if (!pts) return null;
+            const a = viewport.localToScreen(pts[0]);
+            const b = viewport.localToScreen(pts[1]);
+            return (
+              <line
+                key={`${room.id}-hatch-${idx}`}
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                stroke="#d0cdc8"
+                strokeWidth={0.5}
+                style={{ pointerEvents: "none" }}
+              />
+            );
+          }),
+        )}
         {model.rooms.map((room) => {
           const label = viewport.localToScreen(room.labelPoint);
           return (
@@ -426,6 +446,19 @@ function commandForDrag(
 
 function pointString(point: Point2D): string {
   return `${roundPx(point.x)},${roundPx(point.y)}`;
+}
+
+/**
+ * Parse a hatch path `d` string of the form "M x,y L x,y" (LOCAL_METER)
+ * into two Point2D endpoints. Returns null for malformed strings.
+ */
+function parseHatchPath(d: string): [Point2D, Point2D] | null {
+  const match = /M\s*([\d.-]+)\s*,\s*([\d.-]+)\s*L\s*([\d.-]+)\s*,\s*([\d.-]+)/.exec(d);
+  if (!match) return null;
+  return [
+    { x: parseFloat(match[1]!), y: parseFloat(match[2]!) },
+    { x: parseFloat(match[3]!), y: parseFloat(match[4]!) },
+  ];
 }
 
 function roundPx(value: number): number {

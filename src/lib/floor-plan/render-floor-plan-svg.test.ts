@@ -85,6 +85,7 @@ const model: FloorPlanRenderModel = {
         { x: 0, y: 3 },
       ],
       labelPoint: { x: 2, y: 1.5 },
+      floorHatchPaths: [],
     },
   ],
   openings: [{ id: "door_1", kind: "door", center: { x: 1, y: 0 }, widthM: 0.9, angleDeg: 0 }],

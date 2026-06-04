@@ -69,8 +69,16 @@ export function renderFloorPlanSvg(
   const roomEls = model.rooms.map((room) => {
     const pts = room.points.map((p) => pointStr(px(p))).join(" ");
     const label = px(room.labelPoint);
+    const roomHatchEls =
+      layers.showHatch && room.floorHatchPaths.length > 0
+        ? room.floorHatchPaths.map((d) => {
+            const svgD = transformHatchPath(d, { minX, maxY, scale });
+            return `<path d="${svgD}" stroke="#ccc" stroke-width="0.5" fill="none" pointer-events="none" />`;
+          })
+        : [];
     const baseEls = [
       `<polygon data-room-id="${attr(room.id)}" points="${pts}" fill="#f4f1ea" stroke="none" />`,
+      ...roomHatchEls,
       `<text data-room-label="${attr(room.id)}" x="${fmt(label.x)}" y="${fmt(label.y)}" text-anchor="middle" font-size="12">${esc(room.name)}</text>`,
       `<text data-room-area="${attr(room.id)}" x="${fmt(label.x)}" y="${fmt(label.y + 14)}" text-anchor="middle" font-size="10">${esc(formatArea(room.areaM2))}</text>`,
     ];

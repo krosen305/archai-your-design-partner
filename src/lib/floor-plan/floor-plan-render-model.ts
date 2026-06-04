@@ -43,6 +43,8 @@ export type RenderRoom = {
   areaM2: number;
   points: Point2D[];
   labelPoint: Point2D;
+  /** SVG path `d` strings for floor-finish hatch lines (LOCAL_METER). Empty when no finish is set. */
+  floorHatchPaths: string[];
 };
 
 export type RenderOpening = {
@@ -257,6 +259,9 @@ export function buildRenderModel(
     areaM2: room.netAreaM2,
     points: room.polygon.vertices,
     labelPoint: polygonCentroid(room.polygon),
+    floorHatchPaths: room.floorFinishAssemblyId
+      ? buildHatchPaths({ polygon: room.polygon.vertices, pattern: "plank" })
+      : [],
   }));
 
   const openings: RenderOpening[] = [];
