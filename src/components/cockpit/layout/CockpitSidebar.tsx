@@ -9,7 +9,7 @@ export type SidebarSection =
   | "datakilder";
 
 export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
-  { id: "verdict", label: "Verdict" },
+  { id: "verdict", label: "Oversigt" },
   { id: "opmærksomhed", label: "Opmærksomhed" },
   { id: "grunden", label: "Grunden" },
   { id: "plan", label: "Plan & regulering" },

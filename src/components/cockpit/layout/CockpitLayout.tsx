@@ -43,7 +43,7 @@ export function CockpitLayout({ adresse, adresseId, projectId, children }: Cockp
           }
         }
       },
-      { threshold: 0.3 },
+      { threshold: [0.1, 0.3], rootMargin: "-10% 0px -60% 0px" },
     );
     const refs = sectionRefs.current;
     for (const [, el] of refs) obs.observe(el);
