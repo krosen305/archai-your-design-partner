@@ -95,6 +95,8 @@ export function computePartialUpdate(params: PartialUpdateParams): PartialUpdate
     dkjord,
     geusRisk,
     ruleEngineResult,
+    null,
+    byggeoenske,
   );
 
   return { complianceMetrics, complianceFlags, ruleEngineResult };

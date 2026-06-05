@@ -63,9 +63,7 @@ function FlagRow({ flag }: { flag: ComplianceFlag }) {
 
       {expanded && hasDetalje && (
         <div className="mt-3 ml-5 space-y-2 text-sm">
-          {flag.detalje && (
-            <p className="text-muted-foreground leading-relaxed">{flag.detalje}</p>
-          )}
+          {flag.detalje && <p className="text-muted-foreground leading-relaxed">{flag.detalje}</p>}
           <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
             {flag.aktuelVærdi != null && (
               <>
@@ -92,11 +90,15 @@ function FlagRow({ flag }: { flag: ComplianceFlag }) {
   );
 }
 
-export function OpmærksomhedSection({ onOpenDetails: _onOpenDetails, registerSection }: OpmærksomhedSectionProps) {
+export function OpmærksomhedSection({
+  onOpenDetails: _onOpenDetails,
+  registerSection,
+}: OpmærksomhedSectionProps) {
   const { complianceFlags } = useProject();
   const [visAlle, setVisAlle] = useState(false);
 
-  const sorted = [...complianceFlags].sort(
+  const attentionFlags = complianceFlags.filter((flag) => flag.status !== "ok");
+  const sorted = [...attentionFlags].sort(
     (a, b) => SEVERITY_ORDER[a.status] - SEVERITY_ORDER[b.status],
   );
 
@@ -104,9 +106,9 @@ export function OpmærksomhedSection({ onOpenDetails: _onOpenDetails, registerSe
   const skjulteAntal = sorted.length - 3;
   const harSkjulte = !visAlle && skjulteAntal > 0;
 
-  if (complianceFlags.length === 0) return null;
+  if (attentionFlags.length === 0) return null;
 
-  const aktiveFejl = sorted.filter((f) => f.status !== "ok").length;
+  const aktiveFejl = sorted.length;
 
   return (
     <section ref={(el) => registerSection("opmærksomhed", el)} aria-label="Opmærksomhed">

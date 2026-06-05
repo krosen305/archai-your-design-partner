@@ -70,7 +70,7 @@ export function GrundenSection({ bbr, metrics, naboer, registerSection }: Grunde
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {grundareal != null && <Måletal label="Grundareal" value={`${grundareal} m²`} />}
           {zone && <Måletal label="Zone" value={zone} />}
-          {bebygget != null && <Måletal label="Bebygget i dag" value={`${bebygget} m²`} />}
+          {bebygget != null && <Måletal label="Bebygget grundplan" value={`${bebygget} m²`} />}
           {maksAreal != null && <Måletal label="Maks tilladt" value={`${maksAreal} m²`} />}
         </div>
 

@@ -66,7 +66,7 @@ export function EjendomPanel() {
       value: grundareal != null ? `${grundareal} m²` : "Ikke registreret",
       sub:
         currentPct != null
-          ? `Bebygget: ${currentPct}%`
+          ? `Bebyggelsesprocent: ${currentPct}%`
           : "Ikke registreret i BBR/DAWA for denne ejendom",
     },
     {
@@ -175,7 +175,7 @@ export function EjendomPanel() {
               value={bbr?.samlet_areal != null ? `${bbr.samlet_areal} m²` : "—"}
             />
             <Field
-              label="Bebygget areal"
+              label="Bebygget grundplan"
               value={bbr?.bebygget_areal != null ? `${bbr.bebygget_areal} m²` : "—"}
             />
             <Field label="Etager" value={bbr?.antal_etager != null ? `${bbr.antal_etager}` : "—"} />
