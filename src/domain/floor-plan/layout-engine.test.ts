@@ -5,7 +5,8 @@ import { detectRooms } from "./topology-engine";
 describe("layout-engine", () => {
   it("producerer et lukket hylster + skillevægge der giver mindst antallet af rum", () => {
     const walls = layoutWalls({
-      widthM: 10, depthM: 8,
+      widthM: 10,
+      depthM: 8,
       rooms: [
         { name: "Stue", roomType: "living" },
         { name: "Køkken", roomType: "kitchen" },
@@ -19,7 +20,8 @@ describe("layout-engine", () => {
 
   it("giver ikke alle rum samme bredde (ikke strimler)", () => {
     const walls = layoutWalls({
-      widthM: 10, depthM: 8,
+      widthM: 10,
+      depthM: 8,
       rooms: [
         { name: "Bad", roomType: "bathroom" },
         { name: "Stue", roomType: "living" },
