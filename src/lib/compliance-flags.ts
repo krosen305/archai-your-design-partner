@@ -9,7 +9,10 @@ import type {
   RuleEngineNaturbeskyttelsesResultat,
 } from "@/domain/contracts/rule-engine.types";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
-import type { ComplianceFlag } from "@/types/project-state";
+import type { Byggeoenske, ComplianceFlag } from "@/types/project-state";
+
+const MODERN_BUILDING_REVIEW_YEARS = 50;
+const SELECTIVE_DEMOLITION_AREA_M2 = 250;
 
 export function deriveComplianceFlags(
   bbr: RuleEngineBbrData | null,
@@ -19,6 +22,7 @@ export function deriveComplianceFlags(
   geusRisk?: RuleEngineGeusRiskData | null,
   ruleEngine?: RuleEngineResult | null,
   fjernvarme?: FjernvarmeResultat | null,
+  byggeoenske?: Byggeoenske | null,
 ): ComplianceFlag[] {
   const flags: ComplianceFlag[] = [];
 
@@ -144,6 +148,42 @@ export function deriveComplianceFlags(
       dispensationMulig: true,
       dispensationMyndighed: "Slots- og Kulturstyrelsen",
     });
+  }
+
+  if (byggeoenske?.byggetype === "nybyg") {
+    const byggeaar = bbr.byggeaar !== null ? Number.parseInt(bbr.byggeaar, 10) : null;
+    const currentYear = new Date().getFullYear();
+    if (
+      byggeaar !== null &&
+      Number.isFinite(byggeaar) &&
+      byggeaar >= currentYear - MODERN_BUILDING_REVIEW_YEARS
+    ) {
+      flags.push({
+        id: "ressource-nyere-bygning-nybyg",
+        label: "Nyere bygning ønskes revet ned",
+        status: "advarsel",
+        detalje:
+          "Der er ikke en generel juridisk aldersgrænse for nedrivning, men renovering bør afklares tidligt før nybyg, fordi nyere bygninger ofte har væsentlig restlevetid og indlejrede materialer.",
+        aktuelVærdi: `Opført ${byggeaar}`,
+        tilladt: "Afklar renovering, LCA og ressourcekortlægning",
+        kilde: "beregnet",
+        appliesTo: ["byggetype"],
+      });
+    }
+
+    if (bbr.samlet_areal !== null && bbr.samlet_areal >= SELECTIVE_DEMOLITION_AREA_M2) {
+      flags.push({
+        id: "ressource-selektiv-nedrivning",
+        label: "Selektiv nedrivning skal planlægges",
+        status: "advarsel",
+        detalje:
+          "Nedrivning af bygninger på 250 m² eller mere kræver særskilt planlægning for selektiv nedrivning, affald og genbrug/genanvendelse.",
+        aktuelVærdi: `${bbr.samlet_areal} m² samlet areal`,
+        tilladt: "Nedrivningsplan og ressource-/miljøkortlægning",
+        kilde: "beregnet",
+        appliesTo: ["byggetype", "oensketAreal"],
+      });
+    }
   }
 
   // ── Fjernvarme-mismatch (ARCH-117) ──────────────────────────────────────
@@ -327,13 +367,20 @@ export function deriveComplianceFlags(
   if (ruleEngine) {
     // Eksisterende flag-IDs — undgå duplikering med BBR/plandata-beregninger
     const existingIds = new Set(flags.map((f) => f.id));
+    const existingStatus = (id: string) => flags.find((f) => f.id === id)?.status ?? null;
 
     for (const violation of ruleEngine.violations) {
       // Beregningsregler duplikerer eksisterende BBR-flags — skip dem
       if (
-        (violation.rule === "bebyggelsesprocent" && existingIds.has("bebyggelsesprocent")) ||
-        (violation.rule === "etager" && existingIds.has("etager")) ||
-        (violation.rule === "bygningshøjde" && existingIds.has("bygningshoejde"))
+        (violation.rule === "bebyggelsesprocent" &&
+          existingStatus("bebyggelsesprocent") !== null &&
+          existingStatus("bebyggelsesprocent") !== "ok") ||
+        (violation.rule === "etager" &&
+          existingStatus("etager") !== null &&
+          existingStatus("etager") !== "ok") ||
+        (violation.rule === "bygningshøjde" &&
+          existingStatus("bygningshoejde") !== null &&
+          existingStatus("bygningshoejde") !== "ok")
       ) {
         continue;
       }

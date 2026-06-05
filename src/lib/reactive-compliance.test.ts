@@ -104,6 +104,35 @@ describe("computePartialUpdate", () => {
     expect(flag?.status).toBe("ok");
   });
 
+  it("adds attention flag when desired storeys exceed the allowed value", () => {
+    const result = computePartialUpdate({
+      ...baseParams,
+      byggeoenske: { byggetype: "nybyg", oensketAreal: 180, antalEtager: 3 },
+    });
+
+    const staticFlag = result.complianceFlags.find((f) => f.id === "etager");
+    const desiredFlag = result.complianceFlags.find((f) => f.id === "regelkerne-etager");
+
+    expect(staticFlag?.status).toBe("ok");
+    expect(desiredFlag).toBeDefined();
+    expect(desiredFlag?.status).toBe("blocker");
+  });
+
+  it("adds resource warnings for newer existing buildings and selective demolition", () => {
+    const result = computePartialUpdate({
+      ...baseParams,
+      bbr: { ...baseBbr, byggeaar: "2022", samlet_areal: 271 },
+      byggeoenske: { byggetype: "nybyg", oensketAreal: 180, antalEtager: 2 },
+    });
+
+    expect(
+      result.complianceFlags.find((f) => f.id === "ressource-nyere-bygning-nybyg"),
+    ).toBeDefined();
+    expect(
+      result.complianceFlags.find((f) => f.id === "ressource-selektiv-nedrivning"),
+    ).toBeDefined();
+  });
+
   it("bebyggelsesprocent over limit → flag status is blocker", () => {
     const params: PartialUpdateParams = {
       ...baseParams,

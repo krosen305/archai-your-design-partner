@@ -23,8 +23,6 @@ function scoreBygning(b: BbrBuildingCandidate): number {
   if (b.byg038SamletBygningsareal != null) score += 150;
   if (b.byg041BebyggetAreal != null) score += 100;
   if (b.byg054AntalEtager != null) score += 80;
-  if (b.byg094Revisionsdato != null) score += 60;
-  if (b.byg026Opfoerelsesaar != null) score += 40;
   return score;
 }
 
@@ -60,16 +58,16 @@ export function selectCanonicalBuilding<T extends BbrBuildingCandidate>(
   if (candidates.length === 1) return { canonical: candidates[0], reason: "only_candidate" };
 
   const sorted = [...candidates].sort((a, b) => {
+    const aarA = a.byg026Opfoerelsesaar ?? 0;
+    const aarB = b.byg026Opfoerelsesaar ?? 0;
+    if (aarA !== aarB) return aarB - aarA;
+
     const diff = scoreBygning(b) - scoreBygning(a);
     if (diff !== 0) return diff;
 
     const revA = a.byg094Revisionsdato ?? "";
     const revB = b.byg094Revisionsdato ?? "";
     if (revA !== revB) return revB.localeCompare(revA);
-
-    const aarA = a.byg026Opfoerelsesaar ?? 0;
-    const aarB = b.byg026Opfoerelsesaar ?? 0;
-    if (aarA !== aarB) return aarB - aarA;
 
     const boligA = a.byg039BygningensSamledeBoligAreal ?? 0;
     const boligB = b.byg039BygningensSamledeBoligAreal ?? 0;

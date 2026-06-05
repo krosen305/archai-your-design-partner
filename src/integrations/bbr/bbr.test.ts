@@ -484,7 +484,7 @@ describe("selectCanonicalBuilding", () => {
     expect(canonical!.id_lokalId).toBe("uuid-perm");
   });
 
-  it("bygning med byg094Revisionsdato rangerer over bygning uden", () => {
+  it("nyere opførelsesår rangerer over ældre revisionsdato", () => {
     const udenRev = {
       ...MOCK_BYGNING,
       id_lokalId: "uuid-a",
@@ -498,7 +498,30 @@ describe("selectCanonicalBuilding", () => {
       byg094Revisionsdato: "2024-01-01",
     };
     const { canonical } = selectCanonicalBuilding([udenRev, medRev]);
-    expect(canonical!.id_lokalId).toBe("uuid-b");
+    expect(canonical!.id_lokalId).toBe("uuid-a");
+  });
+
+  it("tagdækning kommer fra den nyere canonical boligbygning", async () => {
+    const gammel = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-old",
+      byg026Opfoerelsesaar: 1930,
+      byg033Tagdaekningsmateriale: "1",
+      byg094Revisionsdato: "2025-01-01",
+    };
+    const ny = {
+      ...MOCK_BYGNING,
+      id_lokalId: "uuid-new",
+      byg026Opfoerelsesaar: 2022,
+      byg033Tagdaekningsmateriale: "2",
+      byg094Revisionsdato: null,
+    };
+    mockFetch([okResponse([gammel, ny])]);
+
+    const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
+
+    expect(result.canonical_building_lokal_id).toBe("uuid-new");
+    expect(result.tagdaekning).toBe("Eternit/fibercement");
   });
 
   it("garage (910) frasorteres — boligbygning vinder", () => {
