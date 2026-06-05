@@ -285,7 +285,6 @@ export const useProject = create<State>((set) => ({
   setEnergimaerke: (energimaerke) => set({ energimaerke }),
   setAnalysisRunId: (analysisRunId) => set({ analysisRunId }),
 
-
   reset: () =>
     set({
       address: null,

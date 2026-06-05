@@ -12,7 +12,10 @@ import type {
 } from "@/types/project-state";
 import { evaluateHardStop } from "@/lib/rule-engine/hard-stop-adapter";
 import type { AnalysisSnapshot } from "@/lib/project-restore-facade";
-import type { RuleEnginePlandataContext, RuleEngineArealdataContext } from "@/domain/contracts/rule-engine.types";
+import type {
+  RuleEnginePlandataContext,
+  RuleEngineArealdataContext,
+} from "@/domain/contracts/rule-engine.types";
 import type { MatParcelGeometryPayload } from "@/domain/contracts/analysis.types";
 import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
 import type { EnergyLabelData } from "@/integrations/energimaerke/client";
@@ -46,10 +49,7 @@ function deriveDataStatusFromServiceStates(
   states: Partial<Record<DataSourceKind, PipelineServiceState>>,
 ): AnalysisDataStatus {
   const out: AnalysisDataStatus = {};
-  for (const [kind, state] of Object.entries(states) as [
-    DataSourceKind,
-    PipelineServiceState,
-  ][]) {
+  for (const [kind, state] of Object.entries(states) as [DataSourceKind, PipelineServiceState][]) {
     if (state) out[kind] = pipelineStateToDataStatus(state);
   }
   return out;
