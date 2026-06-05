@@ -14,7 +14,11 @@ import {
   wallDragAxis,
 } from "@/lib/floor-plan/editor-hit-testing";
 import { snapDelta, snapOpeningOffset, snapPoint } from "@/lib/floor-plan/snap-engine";
-import { orthoSnapEndpoint, buildAddWallCommand } from "@/lib/floor-plan/draw-wall-interaction";
+import {
+  orthoSnapEndpoint,
+  polylineStep,
+  type PolylineState,
+} from "@/lib/floor-plan/draw-wall-interaction";
 import {
   buildAddOpeningCommand,
   type OpeningPlacementKind,
@@ -75,8 +79,12 @@ export function FloorPlanCanvas({
   const [zoom, setZoom] = useState(1);
   const [panPx, setPanPx] = useState<Point2D>({ x: 0, y: 0 });
 
-  // draw_wall tool state
-  const [drawStart, setDrawStart] = useState<Point2D | null>(null);
+  // draw_wall tool state — polyline chain
+  const [polylineState, setPolylineState] = useState<PolylineState>({
+    levelId,
+    last: null,
+  });
+  // The ortho-snapped cursor preview endpoint (null when chain not started)
   const [drawCursor, setDrawCursor] = useState<Point2D | null>(null);
 
   // add_opening tool state
@@ -110,11 +118,16 @@ export function FloorPlanCanvas({
     return () => observer.disconnect();
   }, []);
 
-  // Cancel draw_wall on Escape
+  // Reset the polyline chain (Escape, double-click, or tool switch)
   const cancelDrawWall = useCallback(() => {
-    setDrawStart(null);
+    setPolylineState((prev) => ({ ...prev, last: null }));
     setDrawCursor(null);
   }, []);
+
+  // Keep levelId in sync with polylineState when the active level changes
+  useEffect(() => {
+    setPolylineState((prev) => ({ ...prev, levelId }));
+  }, [levelId]);
 
   useEffect(() => {
     if (activeTool !== "draw_wall") {
@@ -153,20 +166,25 @@ export function FloorPlanCanvas({
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
 
+  function handleDoubleClick(event: React.MouseEvent<SVGSVGElement>) {
+    if (activeTool === "draw_wall") {
+      // Double-click ends the polyline chain (the second single-click already
+      // committed a segment — just close the chain without an extra segment).
+      cancelDrawWall();
+    }
+  }
+
   function handlePointerDown(event: React.PointerEvent<SVGSVGElement>) {
     const local = localFromEvent(event);
     const screen = screenFromEvent(event);
 
     if (activeTool === "draw_wall") {
       const snapped = snapPoint(local, level).point;
-      if (!drawStart) {
-        setDrawStart(snapped);
-        setDrawCursor(snapped);
-      } else {
-        const end = orthoSnapEndpoint(drawStart, snapped);
-        void onCommitCommand(buildAddWallCommand(level.id, drawStart, end), document);
-        setDrawStart(null);
-        setDrawCursor(null);
+      const result = polylineStep(polylineState, snapped);
+      setPolylineState(result.state);
+      setDrawCursor(result.state.last);
+      if (result.command) {
+        void onCommitCommand(result.command, document);
       }
       return;
     }
@@ -222,9 +240,9 @@ export function FloorPlanCanvas({
   }
 
   function handlePointerMove(event: React.PointerEvent<SVGSVGElement>) {
-    if (activeTool === "draw_wall" && drawStart) {
+    if (activeTool === "draw_wall" && polylineState.last) {
       const local = localFromEvent(event);
-      setDrawCursor(orthoSnapEndpoint(drawStart, local));
+      setDrawCursor(orthoSnapEndpoint(polylineState.last, local));
       return;
     }
 
@@ -299,6 +317,7 @@ export function FloorPlanCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onDoubleClick={handleDoubleClick}
       >
         <defs>
           <pattern id="floor-plan-grid" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -688,16 +707,19 @@ export function FloorPlanCanvas({
           </g>
         )}
         {activeTool === "draw_wall" &&
-          drawStart &&
+          polylineState.last &&
           drawCursor &&
           (() => {
-            const startScreen = viewport.localToScreen(drawStart);
+            const startScreen = viewport.localToScreen(polylineState.last!);
             const endScreen = viewport.localToScreen(drawCursor);
             const midScreen = {
               x: (startScreen.x + endScreen.x) / 2,
               y: (startScreen.y + endScreen.y) / 2,
             };
-            const distanceM = Math.hypot(drawCursor.x - drawStart.x, drawCursor.y - drawStart.y);
+            const distanceM = Math.hypot(
+              drawCursor.x - polylineState.last!.x,
+              drawCursor.y - polylineState.last!.y,
+            );
             return (
               <g className="pointer-events-none" data-draw-wall-preview>
                 <line

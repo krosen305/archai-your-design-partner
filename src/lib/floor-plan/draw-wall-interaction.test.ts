@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { orthoSnapEndpoint, buildAddWallCommand } from "./draw-wall-interaction";
+import { orthoSnapEndpoint, buildAddWallCommand, polylineStep } from "./draw-wall-interaction";
 
 describe("draw-wall ortho-snap", () => {
   it("snapper til vandret når dx >= dy", () => {
@@ -16,5 +16,22 @@ describe("draw-wall ortho-snap", () => {
     expect(cmd.thicknessM).toBeGreaterThan(0);
     expect(cmd.start).toEqual({ x: 0, y: 0 });
     expect(cmd.end).toEqual({ x: 3, y: 0 });
+  });
+});
+
+import { polylineStep } from "./draw-wall-interaction";
+
+describe("polyline wall drawing", () => {
+  it("første punkt starter kæden uden at udsende en kommando", () => {
+    const r = polylineStep({ levelId: "level_0", last: null }, { x: 0, y: 0 });
+    expect(r.command).toBeNull();
+    expect(r.state.last).toEqual({ x: 0, y: 0 });
+  });
+  it("efterfølgende punkt udsender add_wall fra forrige (ortho-snappet) og avancerer kæden", () => {
+    const r = polylineStep({ levelId: "level_0", last: { x: 0, y: 0 } }, { x: 4, y: 0.2 });
+    expect(r.command?.type).toBe("add_wall");
+    expect(r.command?.start).toEqual({ x: 0, y: 0 });
+    expect(r.command?.end).toEqual({ x: 4, y: 0 }); // ortho-snapped
+    expect(r.state.last).toEqual({ x: 4, y: 0 });
   });
 });
