@@ -7,6 +7,7 @@ import { FloorPlanToolbar, type FloorPlanTool } from "./FloorPlanToolbar";
 import { VerificationPanel } from "./VerificationPanel";
 import { FloorPlanComplianceStrip } from "./FloorPlanComplianceStrip";
 import { useFloorPlanEditor, type GenerateFloorPlanForm } from "@/hooks/useFloorPlanEditor";
+import { useProject } from "@/lib/project-store";
 import type { RoomZone } from "@/domain/floor-plan/floor-plan.types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -40,9 +41,14 @@ const DEFAULT_ROOMS: GenerateFloorPlanForm["rooms"] = [
 
 export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEditorProps) {
   const editor = useFloorPlanEditor({ projectId });
+  const { byggeoenske } = useProject();
   const [tool, setTool] = useState<FloorPlanTool>("select");
   const [snapEnabled, setSnapEnabled] = useState(true);
-  const [targetAreaM2, setTargetAreaM2] = useState("120");
+  const [targetAreaM2, setTargetAreaM2] = useState(() =>
+    byggeoenske.oensketAreal != null && byggeoenske.oensketAreal > 0
+      ? String(byggeoenske.oensketAreal)
+      : "120",
+  );
   const [footprintWidthM, setFootprintWidthM] = useState("");
   const [footprintDepthM, setFootprintDepthM] = useState("");
   const [rooms, setRooms] = useState(DEFAULT_ROOMS);
@@ -120,7 +126,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
             <div className="space-y-5">
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="text-sm font-medium text-stone-700">
-                  Areal m²
+                  Areal m²{byggeoenske.oensketAreal != null ? " (fra byggeønsker)" : ""}
                   <input
                     type="number"
                     min={20}
