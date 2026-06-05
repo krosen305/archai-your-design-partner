@@ -205,6 +205,21 @@ export function FloorPlanCanvas({
       return;
     }
 
+    if (activeTool === "add_annotation") {
+      const annotationLocal = localFromEvent(event);
+      void onCommitCommand(
+        {
+          type: "add_annotation",
+          levelId: level.id,
+          kind: "note",
+          text: "Note",
+          position: annotationLocal,
+        },
+        document,
+      );
+      return;
+    }
+
     if (activeTool === "pan" || event.button === 1) {
       dragRef.current = {
         kind: "pan",
@@ -309,7 +324,7 @@ export function FloorPlanCanvas({
           "h-full min-h-[620px] w-full touch-none select-none bg-stone-100",
           activeTool === "pan"
             ? "cursor-grab"
-            : activeTool === "draw_wall"
+            : activeTool === "draw_wall" || activeTool === "add_annotation"
               ? "cursor-crosshair"
               : "cursor-crosshair",
         )}

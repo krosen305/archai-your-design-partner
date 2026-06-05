@@ -20,6 +20,7 @@ import type { FloorPlanCommand, CommandRejectionCode } from "./commands";
 import type {
   FloorPlanDocument,
   FloorLevel,
+  PlanAnnotation,
   RoomZone,
   Wall,
   Opening,
@@ -86,6 +87,8 @@ export function applyCommand(doc: FloorPlanDocument, command: FloorPlanCommand):
       return applyUpdateRoom(doc, command);
     case "add_zone":
       return applyAddZone(doc, command);
+    case "add_annotation":
+      return applyAddAnnotation(doc, command);
     default:
       return reject(
         "WOULD_CORRUPT_TOPOLOGY",
@@ -473,6 +476,37 @@ function applyAddZone(
     accepted: true,
     document: next,
     changedElementIds: [newZone.id],
+    liveFindings: liveFindingsFor(next),
+  };
+}
+
+// --- add_annotation --------------------------------------------------------
+
+function applyAddAnnotation(
+  doc: FloorPlanDocument,
+  cmd: Extract<FloorPlanCommand, { type: "add_annotation" }>,
+): ApplyOutcome {
+  const levelIndex = doc.levels.findIndex((l) => l.id === cmd.levelId);
+  if (levelIndex === -1) return reject("LEVEL_NOT_FOUND", `Etagen "${cmd.levelId}" findes ikke.`);
+
+  const newId = `annotation-${crypto.randomUUID().slice(0, 8)}`;
+  const newAnnotation: PlanAnnotation = {
+    id: newId,
+    levelId: cmd.levelId,
+    kind: cmd.kind,
+    text: cmd.text,
+    position: cmd.position,
+  };
+
+  const next = structuredClone(doc);
+  const lvl = next.levels[levelIndex]!;
+  if (!lvl.annotations) lvl.annotations = [];
+  lvl.annotations.push(newAnnotation);
+
+  return {
+    accepted: true,
+    document: next,
+    changedElementIds: [newId],
     liveFindings: liveFindingsFor(next),
   };
 }

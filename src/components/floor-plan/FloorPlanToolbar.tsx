@@ -5,7 +5,7 @@ import {
   MousePointer2,
   Redo2,
   Ruler,
-  Square,
+  StickyNote,
   Undo2,
   Wrench,
 } from "lucide-react";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-export type FloorPlanTool = "select" | "pan" | "draw_wall" | "add_opening";
+export type FloorPlanTool = "select" | "pan" | "draw_wall" | "add_opening" | "add_annotation";
 
 type FloorPlanToolbarProps = {
   activeTool: FloorPlanTool;
@@ -85,8 +85,12 @@ export function FloorPlanToolbar({
         >
           <DoorOpen />
         </ToolButton>
-        <ToolButton label="Fixture-oprettelse kommer senere" disabled>
-          <Square />
+        <ToolButton
+          label="Tilføj note"
+          active={activeTool === "add_annotation"}
+          onClick={() => onToolChange("add_annotation")}
+        >
+          <StickyNote />
         </ToolButton>
 
         <div className="mt-auto">

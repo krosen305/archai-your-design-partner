@@ -105,6 +105,13 @@ export const FloorPlanCommandSchema = z.discriminatedUnion("type", [
     name: z.string(),
     heated: z.boolean().default(false),
   }),
+  z.object({
+    type: z.literal("add_annotation"),
+    levelId: z.string().min(1),
+    kind: z.enum(["dimension", "label", "note"]),
+    text: z.string().min(1),
+    position: Point2DSchema,
+  }),
 ]);
 
 /** Stable reason codes for rejected commands (extend as engines grow). */
