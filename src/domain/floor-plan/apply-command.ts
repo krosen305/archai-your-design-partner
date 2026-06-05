@@ -7,7 +7,12 @@
 // Lifecycle: permission/lock check -> deterministic apply -> topology repair ->
 // geometry recalculation -> live validation result.
 
-import { lineLengthM, pointInPolygon, polygonCentroid } from "../geometry/polygon-ops";
+import {
+  lineLengthM,
+  pointInPolygon,
+  polygonCentroid,
+  polygonSignedAreaM2,
+} from "../geometry/polygon-ops";
 import type { Point2D, Polygon2D } from "../geometry/geometry-2d.types";
 import { detectRooms, reconcileRoomIdentity } from "./topology-engine";
 import { runVerification } from "./verification-engine";
@@ -20,6 +25,7 @@ import type {
   Opening,
   Fixture,
   Furniture,
+  Zone,
 } from "./floor-plan.types";
 
 const TOL = 1e-6;
@@ -78,6 +84,8 @@ export function applyCommand(doc: FloorPlanDocument, command: FloorPlanCommand):
       return applyMergeRooms(doc, command);
     case "update_room":
       return applyUpdateRoom(doc, command);
+    case "add_zone":
+      return applyAddZone(doc, command);
     default:
       return reject(
         "WOULD_CORRUPT_TOPOLOGY",
@@ -431,6 +439,40 @@ function applyAddFurniture(
     accepted: true,
     document: next,
     changedElementIds: [newId],
+    liveFindings: liveFindingsFor(next),
+  };
+}
+
+// --- add_zone --------------------------------------------------------------
+
+function applyAddZone(
+  doc: FloorPlanDocument,
+  cmd: Extract<FloorPlanCommand, { type: "add_zone" }>,
+): ApplyOutcome {
+  const levelIndex = doc.levels.findIndex((l) => l.id === cmd.levelId);
+  if (levelIndex === -1) return reject("LEVEL_NOT_FOUND", `Etagen "${cmd.levelId}" findes ikke.`);
+
+  const areaM2 = Math.abs(polygonSignedAreaM2(cmd.polygon));
+  const newZone: Zone = {
+    id: `zone-${crypto.randomUUID().slice(0, 8)}`,
+    levelId: cmd.levelId,
+    zoneKind: cmd.zoneKind,
+    polygon: cmd.polygon,
+    name: cmd.name,
+    areaM2,
+    heated: cmd.heated,
+    source: DEFAULT_MANUAL_SOURCE,
+  };
+
+  const next = structuredClone(doc);
+  const lvl = next.levels[levelIndex]!;
+  if (!lvl.zones) lvl.zones = [];
+  lvl.zones.push(newZone);
+
+  return {
+    accepted: true,
+    document: next,
+    changedElementIds: [newZone.id],
     liveFindings: liveFindingsFor(next),
   };
 }

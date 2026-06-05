@@ -11,6 +11,8 @@ import {
   Point2DSchema,
   FURNITURE_KINDS,
   RoomZoneSchema,
+  Polygon2DSchema,
+  ZONE_KINDS,
 } from "./floor-plan.schemas";
 
 export const FloorPlanCommandSchema = z.discriminatedUnion("type", [
@@ -94,6 +96,14 @@ export const FloorPlanCommandSchema = z.discriminatedUnion("type", [
     name: z.string().optional(),
     roomType: RoomZoneSchema.shape.roomType.optional(),
     targetAreaM2: z.number().positive().nullable().optional(),
+  }),
+  z.object({
+    type: z.literal("add_zone"),
+    levelId: z.string().min(1),
+    zoneKind: z.enum(ZONE_KINDS),
+    polygon: Polygon2DSchema,
+    name: z.string(),
+    heated: z.boolean().default(false),
   }),
 ]);
 
