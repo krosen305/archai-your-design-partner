@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "@tanstack/react-router";
 import { useProject } from "@/lib/project-store";
 import { beregnProjektReadiness } from "@/lib/projekt-readiness";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
@@ -7,9 +8,11 @@ import type { SidebarSection } from "@/components/cockpit/layout/CockpitSidebar"
 type VerdiktSectionProps = {
   metrics: ComplianceMetrics | null;
   registerSection: (id: SidebarSection, el: HTMLElement | null) => void;
+  adresseId: string;
+  projectId: string | undefined;
 };
 
-export function VerdiktSection({ metrics, registerSection }: VerdiktSectionProps) {
+export function VerdiktSection({ metrics, registerSection, adresseId, projectId }: VerdiktSectionProps) {
   const { hard_stop, hard_stop_reason, complianceFlags, dataStatus } = useProject();
 
   const readiness = beregnProjektReadiness(dataStatus, complianceFlags);
@@ -65,16 +68,14 @@ export function VerdiktSection({ metrics, registerSection }: VerdiktSectionProps
 
         {kanBygge && (
           <div className="mt-6">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
-              onClick={() => {
-                // Navigation håndteres af CockpitHeader-knappen
-                // Denne knap er et visuelt anker — routenavigation kobles på i Task 10
-              }}
+            <Link
+              to="/projekt/$id/plantegning"
+              params={{ id: adresseId }}
+              search={{ projectId }}
+              className="inline-flex items-center gap-2 rounded-md bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
             >
               Åbn plantegning →
-            </button>
+            </Link>
           </div>
         )}
       </div>

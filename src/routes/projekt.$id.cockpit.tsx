@@ -175,7 +175,12 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     >
       {(_scrollTo, registerSection) => (
         <>
-          <VerdiktSection metrics={complianceMetrics} registerSection={registerSection} />
+          <VerdiktSection
+            metrics={complianceMetrics}
+            registerSection={registerSection}
+            adresseId={adresseId}
+            projectId={currentProjectId ?? searchProjectId}
+          />
           <OpmærksomhedSection onOpenDetails={() => {}} registerSection={registerSection} />
           <GrundenSection
             bbr={bbrData}
