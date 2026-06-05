@@ -111,9 +111,7 @@ export function DatakildeCard({
               className={cn(
                 "inline-flex items-center justify-center gap-1.5 self-start rounded-md border border-danger/40 bg-danger/10 px-3 py-1.5",
                 "font-mono text-[10px] tracking-[0.15em] text-danger transition-colors",
-                isRetrying
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-danger/20",
+                isRetrying ? "opacity-50 cursor-not-allowed" : "hover:bg-danger/20",
               )}
             >
               <RefreshCw size={11} className={cn(isRetrying && "animate-spin")} />

@@ -25,7 +25,6 @@ import {
   energimaerkeSchema,
 } from "./project-restore.schemas";
 
-
 const tokenSchema = z.string().min(1);
 
 export const addressSchema = z

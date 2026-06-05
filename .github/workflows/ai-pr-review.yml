@@ -118,10 +118,13 @@ jobs:
       - name: Post review comment
         if: steps.skip.outputs.skip == 'false' && steps.diff.outputs.lines > 50
         uses: actions/github-script@v7
+        env:
+          REVIEW_TEXT_JSON: ${{ toJson(steps.review.outputs.result) }}
+          DIFF_LINES: ${{ steps.diff.outputs.lines }}
         with:
           script: |
-            const review = `${{ steps.review.outputs.result }}`;
-            const lines  = ${{ steps.diff.outputs.lines }};
+            const review = JSON.parse(process.env.REVIEW_TEXT_JSON ?? '""');
+            const lines = Number(process.env.DIFF_LINES ?? '0');
             const marker = '<!-- ai-pr-review -->';
 
             // Slet tidligere bot-kommentar (idempotent ved re-push)
