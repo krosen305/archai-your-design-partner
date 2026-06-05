@@ -39,13 +39,25 @@ export type BBox25832 = {
 };
 
 export type TileRequest = {
+  layer?: MapTileLayer;
   z: string;
   x: string;
   y: string;
 };
 
+export type MapTileLayer = "skaermkort" | "ortofoto";
+
 const SKAERMKORT_WMTS =
   "https://api.dataforsyningen.dk/topo_skaermkort_daempet_wmts_topo_skaermkort_daempet/1.0.0/wmts";
+const ORTOFOTO_WMTS = "https://wmts.datafordeler.dk/GeoDanmarkOrto/orto_foraar_webm/1.0.0/WMTS";
+
+export async function fetchMapTileProxy(req: TileRequest): Promise<string | null> {
+  if (req.layer === "ortofoto") {
+    return fetchOrtofotoTileProxy(req);
+  }
+
+  return fetchSkaermkortTileProxy(req);
+}
 
 export async function fetchSkaermkortTileProxy(req: TileRequest): Promise<string | null> {
   const token = getEnvOptional("DATAFORSYNINGEN_TOKEN");
@@ -69,6 +81,29 @@ export async function fetchSkaermkortTileProxy(req: TileRequest): Promise<string
   const buf = await res.arrayBuffer();
   if (buf.byteLength === 0) return null;
   return toDataUrl(res.headers.get("content-type") ?? "image/png", buf);
+}
+
+export async function fetchOrtofotoTileProxy(req: TileRequest): Promise<string | null> {
+  const apiKey = getEnvRequired("DATAFORDELER_API_KEY");
+  const url = new URL(ORTOFOTO_WMTS);
+  url.searchParams.set("apikey", apiKey);
+  url.searchParams.set("SERVICE", "WMTS");
+  url.searchParams.set("REQUEST", "GetTile");
+  url.searchParams.set("VERSION", "1.0.0");
+  url.searchParams.set("LAYER", "orto_foraar_webm");
+  url.searchParams.set("STYLE", "default");
+  url.searchParams.set("FORMAT", "image/jpeg");
+  url.searchParams.set("TILEMATRIXSET", "DFD_GoogleMapsCompatible");
+  url.searchParams.set("TILEMATRIX", req.z);
+  url.searchParams.set("TILEROW", req.y);
+  url.searchParams.set("TILECOL", req.x);
+
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength === 0) return null;
+  return toDataUrl(res.headers.get("content-type") ?? "image/jpeg", buf);
 }
 
 export type ProxiedMapImage = {
