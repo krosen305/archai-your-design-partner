@@ -60,21 +60,21 @@ export function FloorPlanInspector({
   );
 
   return (
-    <aside className="w-full border-b border-stone-200 bg-white p-4 lg:w-[340px] lg:border-b-0 lg:border-l">
+    <aside className="w-full border-b border-border/40 bg-surface p-4 lg:w-[340px] lg:border-b-0 lg:border-l">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-stone-950">Inspector</h2>
-          <p className="text-xs text-stone-500">{selected?.label ?? "Intet element valgt"}</p>
+          <h2 className="text-sm font-semibold text-foreground">Inspector</h2>
+          <p className="text-xs text-muted-foreground">{selected?.label ?? "Intet element valgt"}</p>
         </div>
         {selected?.kind && (
-          <span className="rounded bg-stone-100 px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-stone-600">
-            {selected.kind}
+          <span className="rounded bg-surface-elevated px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+            {selected.kind === "wall" ? "Væg" : selected.kind === "opening" ? "Åbning" : selected.kind === "fixture" ? "Inventar" : "Rum"}
           </span>
         )}
       </div>
 
       {!selected && (
-        <div className="rounded-md border border-dashed border-stone-200 p-4 text-sm text-stone-500">
+        <div className="rounded-md border border-dashed border-border/40 p-4 text-sm text-muted-foreground">
           Vælg en væg, åbning, fixture eller et rum i tegningen.
         </div>
       )}
@@ -86,6 +86,7 @@ export function FloorPlanInspector({
         <OpeningInspector
           opening={selected.opening}
           hostWall={selected.hostWall}
+          level={level}
           document={document}
           onCommitCommand={onCommitCommand}
         />
@@ -157,8 +158,8 @@ function WallInspector({
       <InfoRow label="Rolle" value={wall.structuralRole} />
       <InfoRow label="Flytteakse" value={axis.toUpperCase()} />
 
-      <div className="rounded-md border border-stone-200 p-3">
-        <label className="mb-2 block text-xs font-medium text-stone-600">Position (m)</label>
+      <div className="rounded-md border border-border/40 bg-surface p-3">
+        <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Position (m)</label>
         <div className="flex gap-2">
           <input
             type="number"
@@ -170,20 +171,20 @@ function WallInspector({
             onKeyDown={(event) => {
               if (event.key === "Enter") commitPositionValue(event.currentTarget.value);
             }}
-            className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+            className="min-w-0 flex-1 rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
           />
         </div>
       </div>
 
-      <div className="rounded-md border border-stone-200 p-3">
-        <label className="mb-2 block text-xs font-medium text-stone-600">Præcis flytning (m)</label>
+      <div className="rounded-md border border-border/40 bg-surface p-3">
+        <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Præcis flytning (m)</label>
         <div className="flex gap-2">
           <input
             type="number"
             step="0.1"
             value={delta}
             onChange={(event) => setDelta(event.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+            className="min-w-0 flex-1 rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
           />
           <Button
             type="button"
@@ -210,11 +211,13 @@ function WallInspector({
 function OpeningInspector({
   opening,
   hostWall,
+  level,
   document,
   onCommitCommand,
 }: {
   opening: Opening;
   hostWall: Wall | null;
+  level: FloorLevel;
   document: FloorPlanDocument;
   onCommitCommand: FloorPlanInspectorProps["onCommitCommand"];
 }) {
@@ -233,10 +236,10 @@ function OpeningInspector({
       <InfoRow label="Type" value={opening.openingKind} />
       <InfoRow label="Bredde" value={`${opening.widthM.toFixed(2)} m`} />
       <InfoRow label="Højde" value={`${opening.heightM.toFixed(2)} m`} />
-      <InfoRow label="Værtsvæg" value={opening.wallId} />
+      <InfoRow label="Værtsvæg" value={hostWall ? `Væg ${level.walls.indexOf(hostWall) + 1}` : "Ukendt"} />
 
-      <div className="rounded-md border border-stone-200 p-3">
-        <label className="mb-2 block text-xs font-medium text-stone-600">
+      <div className="rounded-md border border-border/40 bg-surface p-3">
+        <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           Afstand langs væg (m)
         </label>
         <div className="flex gap-2">
@@ -246,7 +249,7 @@ function OpeningInspector({
             step="0.05"
             value={offset}
             onChange={(event) => setOffset(event.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+            className="min-w-0 flex-1 rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
           />
           <Button
             type="button"
@@ -309,12 +312,12 @@ function FixtureInspector({
       <InfoRow label="Type" value={fixture.fixtureKind} />
       <InfoRow label="Rum" value={fixture.roomId ?? "Ikke placeret"} />
 
-      <div className="space-y-3 rounded-md border border-stone-200 p-3">
-        <label className="block text-xs font-medium text-stone-600">Rum</label>
+      <div className="space-y-3 rounded-md border border-border/40 bg-surface p-3">
+        <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Rum</label>
         <select
           value={roomId}
           onChange={(event) => setRoomId(event.target.value)}
-          className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+          className="w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
         >
           {level.rooms.map((room) => (
             <option key={room.id} value={room.id}>
@@ -323,24 +326,24 @@ function FixtureInspector({
           ))}
         </select>
         <div className="grid grid-cols-2 gap-2">
-          <label className="text-xs font-medium text-stone-600">
+          <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             X
             <input
               type="number"
               step="0.05"
               value={x}
               onChange={(event) => setX(event.target.value)}
-              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+              className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
             />
           </label>
-          <label className="text-xs font-medium text-stone-600">
+          <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Y
             <input
               type="number"
               step="0.05"
               value={y}
               onChange={(event) => setY(event.target.value)}
-              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+              className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
             />
           </label>
         </div>
@@ -442,8 +445,8 @@ function RoomInspector({
         value={room.ventilationNeed === "unknown" ? "Ukendt" : room.ventilationNeed}
       />
 
-      <div className="space-y-3 rounded-md border border-stone-200 p-3">
-        <label className="block text-xs font-medium text-stone-600">
+      <div className="space-y-3 rounded-md border border-border/40 bg-surface p-3">
+        <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           Navn
           <input
             type="text"
@@ -451,11 +454,11 @@ function RoomInspector({
             value={name}
             onChange={(event) => setName(event.target.value)}
             onBlur={() => commitName(name)}
-            className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+            className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
           />
         </label>
 
-        <label className="block text-xs font-medium text-stone-600">
+        <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           Type
           <select
             aria-label="Type"
@@ -465,7 +468,7 @@ function RoomInspector({
               setRoomType(next);
               commitRoomType(next);
             }}
-            className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+            className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
           >
             {ROOM_TYPES.map((type) => (
               <option key={type.value} value={type.value}>
@@ -475,7 +478,7 @@ function RoomInspector({
           </select>
         </label>
 
-        <label className="block text-xs font-medium text-stone-600">
+        <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           Målsat areal m²
           <input
             type="number"
@@ -485,7 +488,7 @@ function RoomInspector({
             onChange={(event) => setTargetArea(event.target.value)}
             onBlur={() => commitTargetArea(targetArea)}
             placeholder="Ikke sat"
-            className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+            className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
           />
         </label>
       </div>
@@ -519,9 +522,9 @@ function RoomInspector({
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-stone-100 py-2">
-      <span className="text-xs text-stone-500">{label}</span>
-      <span className="break-words text-right font-medium text-stone-900">{value}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-border/30 py-2">
+      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="break-words text-right text-sm font-medium text-foreground">{value}</span>
     </div>
   );
 }
@@ -531,7 +534,10 @@ function resolveSelection(level: FloorLevel, selection: FloorPlanSelection | nul
 
   if (selection.kind === "wall") {
     const wall = level.walls.find((candidate) => candidate.id === selection.id);
-    return wall ? { kind: "wall" as const, label: wall.id, wall } : null;
+    if (!wall) return null;
+    const index = level.walls.indexOf(wall) + 1;
+    const roleLabel = wall.wallKind === "exterior" ? "Ydervæg" : "Skillevæg";
+    return { kind: "wall" as const, label: `${roleLabel} ${index}`, wall };
   }
 
   if (selection.kind === "opening") {
@@ -539,12 +545,26 @@ function resolveSelection(level: FloorLevel, selection: FloorPlanSelection | nul
     const hostWall = opening
       ? (level.walls.find((wall) => wall.id === opening.wallId) ?? null)
       : null;
-    return opening ? { kind: "opening" as const, label: opening.id, opening, hostWall } : null;
+    if (!opening) return null;
+    const kindLabel =
+      opening.openingKind === "door"
+        ? "Dør"
+        : opening.openingKind === "window"
+          ? "Vindue"
+          : "Åbning";
+    const index = level.openings.indexOf(opening) + 1;
+    return { kind: "opening" as const, label: `${kindLabel} ${index}`, opening, hostWall };
   }
 
   if (selection.kind === "fixture") {
     const fixture = level.fixtures.find((candidate) => candidate.id === selection.id);
-    return fixture ? { kind: "fixture" as const, label: fixture.id, fixture } : null;
+    if (!fixture) return null;
+    const index = level.fixtures.indexOf(fixture) + 1;
+    return {
+      kind: "fixture" as const,
+      label: `Inventar ${index} (${fixture.fixtureKind})`,
+      fixture,
+    };
   }
 
   const room = level.rooms.find((candidate) => candidate.id === selection.id);
