@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, type ReactNode } from "react";
 import { CockpitHeader } from "./CockpitHeader";
 import { CockpitSidebar, type SidebarSection, SIDEBAR_ITEMS } from "./CockpitSidebar";
+import { useProject } from "@/lib/project-store";
 
 type CockpitLayoutProps = {
   adresse: string;
@@ -15,6 +16,7 @@ type CockpitLayoutProps = {
 export function CockpitLayout({ adresse, adresseId, projectId, children }: CockpitLayoutProps) {
   const [active, setActive] = useState<SidebarSection>("verdict");
   const sectionRefs = useRef<Map<SidebarSection, HTMLElement>>(new Map());
+  const dataStatus = useProject((s) => s.dataStatus);
 
   const registerSection = useCallback((id: SidebarSection, el: HTMLElement | null) => {
     if (el) {
@@ -43,7 +45,7 @@ export function CockpitLayout({ adresse, adresseId, projectId, children }: Cockp
           }
         }
       },
-      { threshold: 0.3 },
+      { threshold: [0.1, 0.3], rootMargin: "-10% 0px -60% 0px" },
     );
     const refs = sectionRefs.current;
     for (const [, el] of refs) obs.observe(el);
@@ -52,7 +54,7 @@ export function CockpitLayout({ adresse, adresseId, projectId, children }: Cockp
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <CockpitHeader adresse={adresse} adresseId={adresseId} projectId={projectId} />
+      <CockpitHeader adresse={adresse} adresseId={adresseId} projectId={projectId} dataStatus={dataStatus} />
       <div className="flex flex-1 overflow-hidden">
         <CockpitSidebar active={active} onNavigate={scrollTo} />
         <main className="flex-1 overflow-y-auto px-8 py-8 space-y-8">

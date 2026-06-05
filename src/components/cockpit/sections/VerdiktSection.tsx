@@ -1,15 +1,19 @@
+import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useProject } from "@/lib/project-store";
 import { beregnProjektReadiness } from "@/lib/projekt-readiness";
+import { ReadinessDetail } from "@/components/cockpit/ReadinessDetail";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { SidebarSection } from "@/components/cockpit/layout/CockpitSidebar";
 
 type VerdiktSectionProps = {
   metrics: ComplianceMetrics | null;
   registerSection: (id: SidebarSection, el: HTMLElement | null) => void;
+  adresseId: string;
+  projectId: string | undefined;
 };
 
-export function VerdiktSection({ metrics, registerSection }: VerdiktSectionProps) {
+export function VerdiktSection({ metrics, registerSection, adresseId, projectId }: VerdiktSectionProps) {
   const { hard_stop, hard_stop_reason, complianceFlags, dataStatus } = useProject();
 
   const readiness = beregnProjektReadiness(dataStatus, complianceFlags);
@@ -26,8 +30,11 @@ export function VerdiktSection({ metrics, registerSection }: VerdiktSectionProps
     .join(" · ");
 
   return (
-    <section ref={(el) => registerSection("verdict", el)} aria-label="Verdict">
-      <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-8">
+    <section ref={(el) => registerSection("verdict", el)} aria-label="Oversigt">
+      <div
+        className="relative overflow-hidden rounded-xl p-10"
+        style={{ background: "radial-gradient(ellipse at 15% 50%, rgba(200,255,0,0.05) 0%, transparent 65%), #0d0d0d" }}
+      >
         <motion.h1
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -39,19 +46,21 @@ export function VerdiktSection({ metrics, registerSection }: VerdiktSectionProps
           {kanBygge ? "Du kan bygge her." : "Du kan ikke bygge her."}
         </motion.h1>
 
-        <div
-          className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`}
-        />
+        <div className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`} />
 
-        {metrikLinje && <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>}
+        {metrikLinje && (
+          <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>
+        )}
 
         {!kanBygge && hard_stop_reason && (
           <p className="mt-3 text-sm text-danger/90 leading-relaxed">{hard_stop_reason}</p>
         )}
 
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-sm text-muted-foreground">Projekt-readiness {readiness}%</span>
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground">
+              Projekt-readiness <span className="text-foreground font-medium">{readiness}%</span>
+            </span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#222]">
             <motion.div
@@ -61,20 +70,19 @@ export function VerdiktSection({ metrics, registerSection }: VerdiktSectionProps
               className="h-full rounded-full bg-[#c8ff00]"
             />
           </div>
+          <ReadinessDetail dataStatus={dataStatus} complianceFlags={complianceFlags} />
         </div>
 
         {kanBygge && (
-          <div className="mt-6">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
-              onClick={() => {
-                // Navigation håndteres af CockpitHeader-knappen
-                // Denne knap er et visuelt anker — routenavigation kobles på i Task 10
-              }}
+          <div className="mt-8">
+            <Link
+              to="/projekt/$id/plantegning"
+              params={{ id: adresseId }}
+              search={{ projectId }}
+              className="inline-flex items-center gap-2 rounded-md bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
             >
               Åbn plantegning →
-            </button>
+            </Link>
           </div>
         )}
       </div>

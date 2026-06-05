@@ -56,22 +56,22 @@ export function GrundenSection({ bbr, metrics, naboer, registerSection }: Grunde
       <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-6 space-y-6">
         <h2 className="text-lg font-medium text-foreground">Grunden</h2>
 
-        <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
-          <div className="rounded-lg overflow-hidden" style={{ minHeight: 180 }}>
-            <MatrikelMap
-              bbr={bbr}
-              metrics={metrics}
-              naboer={naboer}
-              jordstykkeLokalId={jordstykkeId}
-            />
-          </div>
+        {/* Kort i fuld bredde */}
+        <div className="rounded-lg overflow-hidden" style={{ minHeight: 340 }}>
+          <MatrikelMap
+            bbr={bbr}
+            metrics={metrics}
+            naboer={naboer}
+            jordstykkeLokalId={jordstykkeId}
+          />
+        </div>
 
-          <div className="space-y-5 min-w-[140px]">
-            {grundareal != null && <Måletal label="Grundareal" value={`${grundareal} m²`} />}
-            {zone && <Måletal label="Zone" value={zone} />}
-            {bebygget != null && <Måletal label="Bebygget i dag" value={`${bebygget} m²`} />}
-            {maksAreal != null && <Måletal label="Maks tilladt" value={`${maksAreal} m²`} />}
-          </div>
+        {/* Nøgletal i grid under kortet */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {grundareal != null && <Måletal label="Grundareal" value={`${grundareal} m²`} />}
+          {zone && <Måletal label="Zone" value={zone} />}
+          {bebygget != null && <Måletal label="Bebygget i dag" value={`${bebygget} m²`} />}
+          {maksAreal != null && <Måletal label="Maks tilladt" value={`${maksAreal} m²`} />}
         </div>
 
         {ekstraFelter.length > 0 && (

@@ -15,7 +15,7 @@ mock.module("@/lib/env", () => ({
   getEnvOptional: (_key: string) => null,
 }));
 
-const { fetchParcelGeometryByJordstykkeId } = await import("./map-proxy");
+const { fetchMapTileProxy, fetchParcelGeometryByJordstykkeId } = await import("./map-proxy");
 
 describe("fetchParcelGeometryByJordstykkeId", () => {
   const originalFetch = globalThis.fetch;
@@ -88,6 +88,41 @@ describe("fetchParcelGeometryByJordstykkeId", () => {
     const result = await fetchParcelGeometryByJordstykkeId("missing");
 
     expect(result).toEqual({ featureCollection: null, source: "notfound" });
+  });
+
+  it("fetches ortofoto tiles from Datafordeler WMTS", async () => {
+    const fetchMock = mock(async (input: string | URL | Request) => {
+      const requestUrl =
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = new URL(requestUrl);
+
+      expect(url.origin + url.pathname).toBe(
+        "https://wmts.datafordeler.dk/GeoDanmarkOrto/orto_foraar_webm/1.0.0/WMTS",
+      );
+      expect(url.searchParams.get("apikey")).toBe("test-api-key");
+      expect(url.searchParams.get("REQUEST")).toBe("GetTile");
+      expect(url.searchParams.get("LAYER")).toBe("orto_foraar_webm");
+      expect(url.searchParams.get("FORMAT")).toBe("image/jpeg");
+      expect(url.searchParams.get("TILEMATRIXSET")).toBe("DFD_GoogleMapsCompatible");
+      expect(url.searchParams.get("TILEMATRIX")).toBe("19");
+      expect(url.searchParams.get("TILEROW")).toBe("160000");
+      expect(url.searchParams.get("TILECOL")).toBe("270000");
+
+      return new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchMapTileProxy({
+      layer: "ortofoto",
+      z: "19",
+      x: "270000",
+      y: "160000",
+    });
+
+    expect(result?.startsWith("data:image/jpeg;base64,")).toBe(true);
   });
 
   afterEach(() => {
