@@ -72,8 +72,8 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
   }
 
   return (
-    <div className="floor-plan-theme min-h-screen bg-stone-100 text-stone-950">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-white px-5 py-3">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-surface px-5">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon" asChild aria-label="Tilbage">
             <Link to={backTo}>
@@ -82,7 +82,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
           </Button>
           <div>
             <h1 className="text-lg font-semibold">Plantegning</h1>
-            <p className="text-sm text-stone-500">{addressLabel ?? "Projekt uden adresse"}</p>
+            <p className="text-xs text-muted-foreground">{addressLabel ?? "Projekt uden adresse"}</p>
           </div>
         </div>
 
@@ -109,10 +109,10 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
 
       {projectId && !editor.document && (
         <main className="mx-auto max-w-5xl px-5 py-8">
-          <section className="grid gap-5 rounded-md border border-stone-200 bg-white p-5 shadow-sm lg:grid-cols-[320px_1fr]">
+          <section className="grid gap-5 rounded-xl border border-border/40 bg-surface p-6 lg:grid-cols-[320px_1fr]">
             <div>
-              <h2 className="text-base font-semibold">Opret plantegning</h2>
-              <p className="mt-1 text-sm text-stone-500">
+              <h2 className="text-base font-semibold text-foreground">Opret plantegning</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Den første model genereres deterministisk fra areal, footprint og rumprogram.
               </p>
             </div>
@@ -126,7 +126,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
                     step={1}
                     value={targetAreaM2}
                     onChange={(event) => setTargetAreaM2(event.target.value)}
-                    className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                    className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
                   />
                 </label>
                 <label className="text-sm font-medium text-stone-700">
@@ -137,7 +137,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
                     step={0.1}
                     value={footprintWidthM}
                     onChange={(event) => setFootprintWidthM(event.target.value)}
-                    className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                    className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
                   />
                 </label>
                 <label className="text-sm font-medium text-stone-700">
@@ -148,7 +148,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
                     step={0.1}
                     value={footprintDepthM}
                     onChange={(event) => setFootprintDepthM(event.target.value)}
-                    className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                    className="mt-1 w-full rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
                   />
                 </label>
               </div>
@@ -170,7 +170,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
                           ),
                         )
                       }
-                      className="rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                      className="rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
                     />
                     <select
                       value={room.roomType}
@@ -186,7 +186,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
                           ),
                         )
                       }
-                      className="rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                      className="rounded-md border border-border bg-input text-foreground px-3 py-2 text-sm outline-none focus:border-accent/60"
                     >
                       {ROOM_TYPES.map((type) => (
                         <option key={type.value} value={type.value}>
@@ -248,7 +248,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
 
       {editor.document && activeLevelId && (
         <main className="flex min-h-[calc(100vh-65px)] flex-col">
-          <div className="flex items-center gap-2 border-b border-stone-200 bg-white px-4 py-2">
+          <div className="flex items-center gap-2 border-b border-border/40 bg-surface px-4 py-2">
             {editor.document.levels.map((level) => (
               <button
                 key={level.id}
@@ -257,8 +257,8 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   activeLevelId === level.id
-                    ? "bg-stone-900 text-white"
-                    : "text-stone-600 hover:bg-stone-100",
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-surface-elevated",
                 )}
               >
                 {level.name}
@@ -311,16 +311,17 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
             </div>
           </div>
 
-          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 bg-white px-5 py-2 text-xs text-stone-600">
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 bg-surface px-5 py-2 text-xs text-muted-foreground">
             <div className="flex gap-4">
-              <span>{editor.document.levels.length} etage(r)</span>
+              <span>{editor.document.levels.length} etage{editor.document.levels.length !== 1 ? "r" : ""}</span>
               <span>{totalNetArea.toFixed(1)} m² netto</span>
-              <span>{editor.localFindings.length} live finding(s)</span>
             </div>
-            <div className="font-mono" data-testid="floor-plan-version">
-              {editor.floorPlanIterationId
-                ? editor.floorPlanIterationId.slice(0, 8)
-                : "ingen version"}
+            <div
+              className="font-mono opacity-30"
+              data-testid="floor-plan-version"
+              title={editor.floorPlanIterationId ?? "ingen version"}
+            >
+              v{editor.floorPlanIterationId ? editor.floorPlanIterationId.slice(0, 6) : "—"}
             </div>
           </footer>
         </main>
