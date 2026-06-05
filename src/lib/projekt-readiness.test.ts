@@ -48,6 +48,34 @@ describe("beregnProjektReadiness", () => {
     return result;
   }
 
+  // Helper: create a partial dataStatus object, allowing selective override
+  function makeStatus(
+    overrides: Partial<Record<DataSourceKind, DataSourceStatus>>,
+  ): Record<DataSourceKind, DataSourceStatus> {
+    const defaults: Record<DataSourceKind, DataSourceStatus> = {
+      bbr: "missing",
+      lokalplaner: "missing",
+      kommuneplanramme: "missing",
+      fbb: "missing",
+      naturbeskyttelse: "missing",
+      arealdata: "missing",
+      dkjord: "missing",
+      geusRisk: "missing",
+      servitutter: "missing",
+      terrain: "missing",
+      fjernvarme: "missing",
+      naboer: "missing",
+      matGeometri: "missing",
+      vurdering: "missing",
+      byggeanalyse: "loading",
+      billedanalyse: "loading",
+      husDna: "loading",
+      tjekditnet: "missing",
+      energimaerke: "missing",
+    };
+    return { ...defaults, ...overrides };
+  }
+
   it("should return 100 when all handlingsbare kilder are fresh and no flags", () => {
     const dataStatus = createDataStatus("fresh");
     const flags: ComplianceFlag[] = [];
@@ -118,5 +146,80 @@ describe("beregnProjektReadiness", () => {
     ];
     const result = beregnProjektReadiness(dataStatus, flags);
     expect(result).toBe(60);
+  });
+
+  it("sekundære AI-pipeline-kilder (byggeanalyse, billedanalyse, husDna) ignoreres", () => {
+    const status = makeStatus({
+      bbr: "missing",
+      lokalplaner: "missing",
+      kommuneplanramme: "missing",
+      fbb: "missing",
+      naturbeskyttelse: "missing",
+      arealdata: "missing",
+      dkjord: "missing",
+      geusRisk: "missing",
+      servitutter: "missing",
+      terrain: "missing",
+      fjernvarme: "missing",
+      naboer: "missing",
+      matGeometri: "missing",
+      vurdering: "missing",
+      tjekditnet: "missing",
+      energimaerke: "missing",
+      // these three are "fresh" but SHOULD be ignored
+      byggeanalyse: "fresh",
+      billedanalyse: "fresh",
+      husDna: "fresh",
+    });
+    // All handlingsbare are missing → data = 0%, compliance = 100% → 40
+    const flags: ComplianceFlag[] = [];
+    const result = beregnProjektReadiness(status, flags);
+    expect(result).toBe(40);
+  });
+
+  it("blandet: halvdelen fresh, én ok og én advarsel → 50", () => {
+    // 8 fresh out of 16 → dataPct = 0.5
+    const status = makeStatus({
+      bbr: "fresh",
+      lokalplaner: "fresh",
+      kommuneplanramme: "fresh",
+      fbb: "fresh",
+      naturbeskyttelse: "fresh",
+      arealdata: "fresh",
+      dkjord: "fresh",
+      geusRisk: "fresh",
+      servitutter: "missing",
+      terrain: "missing",
+      fjernvarme: "missing",
+      naboer: "missing",
+      matGeometri: "missing",
+      vurdering: "missing",
+      tjekditnet: "missing",
+      energimaerke: "missing",
+    });
+    const flags: ComplianceFlag[] = [
+      {
+        id: "1",
+        label: "OK",
+        status: "ok",
+        detalje: null,
+        aktuelVærdi: null,
+        tilladt: null,
+        kilde: "bbr",
+      },
+      {
+        id: "2",
+        label: "Advarsel",
+        status: "advarsel",
+        detalje: null,
+        aktuelVærdi: null,
+        tilladt: null,
+        kilde: "plandata",
+      },
+    ];
+    // dataPct = 0.5, compliancePct = 0.5
+    // 0.6 * 0.5 * 100 + 0.4 * 0.5 * 100 = 30 + 20 = 50
+    const result = beregnProjektReadiness(status, flags);
+    expect(result).toBe(50);
   });
 });
