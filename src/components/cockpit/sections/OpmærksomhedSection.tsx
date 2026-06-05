@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import type { ComplianceFlag } from "@/types/project-state";
 import { cn } from "@/lib/utils";
@@ -16,12 +17,82 @@ const DOT_COLOR: Record<ComplianceFlag["status"], string> = {
   ok: "bg-emerald-400",
 };
 
+const STATUS_LABEL: Record<ComplianceFlag["status"], string> = {
+  blocker: "Blokerer",
+  advarsel: "Advarsel",
+  ok: "OK",
+};
+
 type OpmærksomhedSectionProps = {
   onOpenDetails: (flagId: string) => void;
   registerSection: (id: SidebarSection, el: HTMLElement | null) => void;
 };
 
-export function OpmærksomhedSection({ onOpenDetails, registerSection }: OpmærksomhedSectionProps) {
+function FlagRow({ flag }: { flag: ComplianceFlag }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasDetalje = !!(flag.detalje || flag.aktuelVærdi || flag.tilladt || flag.dispensationMulig);
+
+  return (
+    <li className="py-3 border-b border-border/30 last:border-0">
+      <button
+        type="button"
+        onClick={() => hasDetalje && setExpanded((v) => !v)}
+        className={cn(
+          "flex w-full items-center justify-between gap-3 text-left",
+          hasDetalje ? "cursor-pointer" : "cursor-default",
+        )}
+        aria-expanded={hasDetalje ? expanded : undefined}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span
+            className={cn("size-2 shrink-0 rounded-full", DOT_COLOR[flag.status])}
+            aria-label={STATUS_LABEL[flag.status]}
+          />
+          <span className="text-sm text-foreground truncate">{flag.label}</span>
+        </div>
+        {hasDetalje && (
+          <ChevronDown
+            size={14}
+            className={cn(
+              "shrink-0 text-muted-foreground transition-transform",
+              expanded && "rotate-180",
+            )}
+          />
+        )}
+      </button>
+
+      {expanded && hasDetalje && (
+        <div className="mt-3 ml-5 space-y-2 text-sm">
+          {flag.detalje && (
+            <p className="text-muted-foreground leading-relaxed">{flag.detalje}</p>
+          )}
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+            {flag.aktuelVærdi != null && (
+              <>
+                <dt className="text-muted-foreground">Aktuel værdi</dt>
+                <dd className="text-foreground">{flag.aktuelVærdi}</dd>
+              </>
+            )}
+            {flag.tilladt != null && (
+              <>
+                <dt className="text-muted-foreground">Tilladt</dt>
+                <dd className="text-foreground">{flag.tilladt}</dd>
+              </>
+            )}
+          </dl>
+          {flag.dispensationMulig && (
+            <p className="text-xs text-amber-400/80">
+              Dispensation mulig
+              {flag.dispensationMyndighed ? ` via ${flag.dispensationMyndighed}` : ""}.
+            </p>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+export function OpmærksomhedSection({ onOpenDetails: _onOpenDetails, registerSection }: OpmærksomhedSectionProps) {
   const { complianceFlags } = useProject();
   const [visAlle, setVisAlle] = useState(false);
 
@@ -46,24 +117,9 @@ export function OpmærksomhedSection({ onOpenDetails, registerSection }: Opmærk
             : "Ingen opmærksomhedspunkter"}
         </h2>
 
-        <ul className="divide-y divide-border/30">
+        <ul>
           {visibleFlags.map((flag) => (
-            <li key={flag.id} className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={cn("size-2 shrink-0 rounded-full", DOT_COLOR[flag.status])}
-                  aria-label={flag.status}
-                />
-                <span className="text-sm text-foreground truncate">{flag.label}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenDetails(flag.id)}
-                className="shrink-0 ml-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Åbn →
-              </button>
-            </li>
+            <FlagRow key={flag.id} flag={flag} />
           ))}
         </ul>
 
