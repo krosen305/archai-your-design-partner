@@ -10,7 +10,7 @@ import type { Point2D } from "@/domain/geometry/geometry-2d.types";
 // Public types
 // ---------------------------------------------------------------------------
 
-export type HatchPattern = "diagonal" | "cross_hatch" | "terrace_deck" | "none";
+export type HatchPattern = "diagonal" | "cross_hatch" | "terrace_deck" | "plank" | "none";
 
 export type HatchOptions = {
   polygon: Point2D[];
@@ -55,6 +55,12 @@ export function buildHatchPaths(opts: HatchOptions): string[] {
   if (pattern === "terrace_deck") {
     // Deck boards: horizontal lines only
     return buildAngledLines(polygon, spacingM, 0);
+  }
+
+  if (pattern === "plank") {
+    // Floor planks: horizontal parallel lines, closer spacing for floor finish texture
+    const plankSpacing = spacingM !== 0.3 ? spacingM : 0.2;
+    return buildAngledLines(polygon, plankSpacing, 0);
   }
 
   return [];

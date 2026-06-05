@@ -22,6 +22,12 @@ import {
   wardrobeShelfPaths,
 } from "./furniture-symbols";
 import { doorPaths, slidingDoorPaths, windowPaths, garageDoorPaths } from "./opening-symbols";
+import {
+  vehiclePaths,
+  plantPaths,
+  outdoorLoungePaths,
+  wardrobeWalkinPaths,
+} from "./landscape-symbols";
 import { FURNITURE_KINDS } from "@/domain/floor-plan/floor-plan.schemas";
 
 // Re-export FURNITURE_KINDS and FurnitureKind so consumers can import from one place.
@@ -114,6 +120,14 @@ function resolve(
       return chairPaths(widthM, heightM);
     case "wardrobe_shelf":
       return wardrobeShelfPaths(widthM, heightM);
+    case "vehicle":
+      return vehiclePaths(widthM, heightM);
+    case "plant":
+      return plantPaths(widthM, heightM);
+    case "outdoor_lounge":
+      return outdoorLoungePaths(widthM, heightM);
+    case "wardrobe_walkin":
+      return wardrobeWalkinPaths(widthM, heightM);
 
     // --- Openings ---
     case "door":

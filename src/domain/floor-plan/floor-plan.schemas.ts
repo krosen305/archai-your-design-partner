@@ -81,6 +81,8 @@ export const RoomZoneSchema = z.object({
   ventilationNeed: z.enum(["unknown", "natural", "mechanical", "wet_room"]),
   wetRoomZone: z.boolean(),
   daylightRelevant: z.boolean(),
+  ceilingHeightM: z.number().positive().nullable().default(null),
+  floorOffsetM: z.number().nullable().default(null),
   source: ElementSourceMetaSchema,
 });
 
@@ -96,6 +98,7 @@ export const OpeningSchema = z.object({
   heightM: z.number().positive(),
   sillHeightM: z.number().nonnegative().nullable(),
   swing: z.enum(["left", "right", "sliding", "none", "unknown"]),
+  operable: z.boolean().default(false),
   productTypeId: z.string().nullable(),
   locked: z.boolean(),
   source: ElementSourceMetaSchema,
@@ -172,6 +175,10 @@ export const FURNITURE_KINDS = [
   "dining_table",
   "chair",
   "wardrobe_shelf",
+  "vehicle",
+  "plant",
+  "outdoor_lounge",
+  "wardrobe_walkin",
 ] as const;
 
 export type FurnitureKind = (typeof FURNITURE_KINDS)[number];

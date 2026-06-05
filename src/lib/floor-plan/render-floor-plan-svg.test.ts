@@ -1,6 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { renderFloorPlanSvg } from "./render-floor-plan-svg";
+import { buildRenderModel } from "./floor-plan-render-model";
 import type { FloorPlanRenderModel } from "./floor-plan-render-model";
+import { generateSeedFloorPlan } from "@/domain/floor-plan/seed-generator";
 
 /** Helper: build a minimal poché rectangle for a wall used in test fixtures. */
 function pocheRect(
@@ -85,6 +87,7 @@ const model: FloorPlanRenderModel = {
         { x: 0, y: 3 },
       ],
       labelPoint: { x: 2, y: 1.5 },
+      floorHatchPaths: [],
     },
   ],
   openings: [{ id: "door_1", kind: "door", center: { x: 1, y: 0 }, widthM: 0.9, angleDeg: 0 }],
@@ -142,5 +145,26 @@ describe("renderFloorPlanSvg", () => {
     });
     expect(escaped).toContain("Bad &amp; Bryggers");
     expect(escaped).not.toContain("Bad & Bryggers");
+  });
+});
+
+describe("renderFloorPlanSvg - annotations", () => {
+  it("renderer annotations som data-annotation tekst", () => {
+    // Build a render model with one annotation. Use buildRenderModel on a doc whose
+    // room has ceilingHeightM set so an annotation is produced.
+    const base = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 60,
+      rooms: [{ name: "Stue", roomType: "living" }],
+    });
+    const lvl = base.levels[0]!;
+    const withData = {
+      ...base,
+      levels: [{ ...lvl, rooms: lvl.rooms.map((r) => ({ ...r, ceilingHeightM: 2.5 })) }],
+    };
+    const renderModel = buildRenderModel(withData, lvl.id);
+    const svg = renderFloorPlanSvg(renderModel);
+    expect(svg).toContain("data-annotation");
+    expect(svg).toContain("Lofthøjde");
   });
 });

@@ -2,7 +2,7 @@
 //
 // Unit tests for the symbol registry (Tier 1 — pure domain, no network/DOM).
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { getSymbol } from "./symbol-registry";
 
 describe("getSymbol", () => {
@@ -163,4 +163,12 @@ describe("getSymbol", () => {
     expect(sym.defaultWidthM).toBeCloseTo(1.0, 5);
     expect(sym.defaultHeightM).toBeCloseTo(2.1, 5);
   });
+});
+
+describe("nye symboler", () => {
+  for (const kind of ["vehicle", "plant", "outdoor_lounge", "wardrobe_walkin"] as const) {
+    it(`returnerer paths for ${kind}`, () => {
+      expect(getSymbol(kind).paths.length).toBeGreaterThan(0);
+    });
+  }
 });

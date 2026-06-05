@@ -284,6 +284,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
               activeTool={tool}
               snapEnabled={snapEnabled}
               statusMessage={statusMessage}
+              findings={editor.localFindings}
               onSelectElement={editor.selectElement}
               onPreviewCommand={editor.previewCommand}
               onResetPreview={editor.resetPreview}

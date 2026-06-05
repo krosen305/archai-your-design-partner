@@ -24,6 +24,30 @@ const PAPER_SIZES = {
 /** 96 dpi: 1 mm = 96/25.4 px ≈ 3.7795 */
 const PX_PER_MM = 96 / 25.4;
 
+/** Structured metadata for the authority-required sheet elements. */
+export type FloorPlanSheetMeta = {
+  /** Nominal drawing scale denominator, e.g. 100 for 1:100. */
+  scaleDenominator: number;
+  /** Human-readable scale label, e.g. "1:100". */
+  scaleLabel: string;
+  /** True when a north arrow is present on the sheet. */
+  northArrow: boolean;
+  /** Title block structured fields. */
+  titleBlock: {
+    address: string | null;
+    /** ISO date string from document metadata. */
+    createdAt: string | null;
+    /** Scale label as rendered in the title block, e.g. "Plantegning 1:100". */
+    scaleText: string;
+  };
+  /** Rows in the area schedule (rooms + unheated zones). */
+  areaSchedule: Array<{
+    label: string;
+    areaM2: number;
+    heated: boolean;
+  }>;
+};
+
 export type FloorPlanSheet = {
   /** All SVG elements: plan + north arrow + title block (no outer <svg> wrapper). */
   svgElements: string[];
@@ -33,6 +57,8 @@ export type FloorPlanSheet = {
   totalHeightPx: number;
   /** Pixels per mm for this sheet (typically 3.78 at 96 dpi). */
   pxPerMm: number;
+  /** Structured metadata for authority-required sheet elements (scale, north arrow, title block, area schedule). */
+  sheetMeta: FloorPlanSheetMeta;
 };
 
 /**
@@ -143,10 +169,23 @@ export function buildFloorPlanSheet(
   }
   elements.push(`</g>`);
 
+  const sheetMeta: FloorPlanSheetMeta = {
+    scaleDenominator: scale,
+    scaleLabel: `1:${scale}`,
+    northArrow: true,
+    titleBlock: {
+      address: opts.address ?? null,
+      createdAt: doc.metadata.createdAt ?? null,
+      scaleText: `Plantegning 1:${scale}`,
+    },
+    areaSchedule: rows,
+  };
+
   return {
     svgElements: elements,
     totalWidthPx,
     totalHeightPx,
     pxPerMm: PX_PER_MM,
+    sheetMeta,
   };
 }

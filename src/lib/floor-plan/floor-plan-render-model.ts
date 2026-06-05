@@ -43,6 +43,8 @@ export type RenderRoom = {
   areaM2: number;
   points: Point2D[];
   labelPoint: Point2D;
+  /** SVG path `d` strings for floor-finish hatch lines (LOCAL_METER). Empty when no finish is set. */
+  floorHatchPaths: string[];
 };
 
 export type RenderOpening = {
@@ -70,6 +72,13 @@ export type RenderSymbol = {
   centerY: number;
   /** Clockwise rotation in degrees in architectural space. */
   rotationDeg: number;
+};
+
+export type RenderAnnotation = {
+  id: string;
+  kind: string;
+  text: string;
+  position: Point2D;
 };
 
 export type RenderZone = {
@@ -156,6 +165,11 @@ export type FloorPlanRenderModel = {
   /** Interior room-dimension segments (width + depth per room). */
   interiorDimensions: RenderDimensionSegment[];
   /**
+   * Draw-ready callout annotations derived from room data (ceiling height, floor
+   * level), operable openings and any free PlanAnnotations on the level.
+   */
+  annotations: RenderAnnotation[];
+  /**
    * Compliance overlay: room-level BR18/verification findings + area summary.
    * Only present when findings are supplied to buildRenderModel via opts.findings.
    */
@@ -166,6 +180,49 @@ export type FloorPlanRenderModel = {
 export type { ComplianceOverlay, RoomCompliance } from "./compliance-overlay";
 
 const MARGIN_M = 1;
+
+// --- Fixture / furniture label maps ----------------------------------------
+
+const FIXTURE_LABEL: Record<string, string> = {
+  toilet: "WC",
+  sink: "Vask",
+  shower: "Bruser",
+  bathtub: "Badekar",
+  kitchen_unit: "Køkken",
+  technical_cabinet: "Teknik",
+  wardrobe: "Garderobe",
+  appliance: "Hvidevarer",
+  ventilation_unit: "Ventilation",
+  heat_pump_indoor: "VP",
+  other: "",
+};
+
+const FURNITURE_LABEL: Record<string, string> = {
+  single_bed: "Seng",
+  double_bed: "Dobbeltseng",
+  sofa: "Sofa",
+  armchair: "Lænestol",
+  dining_table: "Spisebord",
+  chair: "Stol",
+  wardrobe_shelf: "Reol",
+  vehicle: "Bil",
+  plant: "",
+  outdoor_lounge: "Loungemøbler",
+  wardrobe_walkin: "Walk-in",
+};
+
+// --- Annotation helpers ----------------------------------------------------
+
+/** Format a number with Danish comma decimals, e.g. 2.5 → "2,5". */
+function formatDa(n: number, decimals: number): string {
+  return n.toFixed(decimals).replace(".", ",");
+}
+
+/** Format a meter value as a signed centimetre string, e.g. 0.4 → "+40 cm". */
+function signedCm(m: number): string {
+  const cm = Math.round(m * 100);
+  return `${cm >= 0 ? "+" : ""}${cm} cm`;
+}
 
 export function buildRenderModel(
   doc: FloorPlanDocument,
@@ -257,6 +314,9 @@ export function buildRenderModel(
     areaM2: room.netAreaM2,
     points: room.polygon.vertices,
     labelPoint: polygonCentroid(room.polygon),
+    floorHatchPaths: room.floorFinishAssemblyId
+      ? buildHatchPaths({ polygon: room.polygon.vertices, pattern: "plank" })
+      : [],
   }));
 
   const openings: RenderOpening[] = [];
@@ -372,6 +432,86 @@ export function buildRenderModel(
   const complianceOverlay =
     opts?.findings !== undefined ? buildComplianceOverlay(level, opts.findings) : undefined;
 
+  // Build draw-ready annotation list from room data, operable openings and
+  // any free PlanAnnotations already on the level.
+  const annotations: RenderAnnotation[] = [];
+
+  // Build a lookup from opening id → already-computed RenderOpening center.
+  const openingCenterById = new Map<string, Point2D>(openings.map((op) => [op.id, op.center]));
+
+  for (const room of level.rooms) {
+    const centroid = polygonCentroid(room.polygon);
+
+    if (room.ceilingHeightM != null) {
+      annotations.push({
+        id: `ann-ceil-${room.id}`,
+        kind: "ceiling_height",
+        text: `Lofthøjde ca. ${formatDa(room.ceilingHeightM, 1)}`,
+        position: centroid,
+      });
+    }
+
+    if (room.floorOffsetM != null && room.floorOffsetM !== 0) {
+      // Offset slightly in Y so the callout doesn't overlap the ceiling label.
+      annotations.push({
+        id: `ann-floor-${room.id}`,
+        kind: "floor_level",
+        text: `Gulvniveau ${signedCm(room.floorOffsetM)}`,
+        position: { x: centroid.x, y: centroid.y - 0.3 },
+      });
+    }
+  }
+
+  for (const opening of level.openings) {
+    if (opening.operable) {
+      const center = openingCenterById.get(opening.id);
+      if (center) {
+        annotations.push({
+          id: `ann-oplukfelt-${opening.id}`,
+          kind: "operable_window",
+          text: "Opluk. felt",
+          position: center,
+        });
+      }
+    }
+  }
+
+  // Append free PlanAnnotations from the level.
+  for (const pa of level.annotations) {
+    annotations.push({
+      id: pa.id,
+      kind: pa.kind,
+      text: pa.text,
+      position: pa.position,
+    });
+  }
+
+  // Fixture labels: one annotation per fixture with a non-empty label.
+  for (const fx of fixtures) {
+    const text = FIXTURE_LABEL[fx.kind] ?? "";
+    if (text) {
+      annotations.push({
+        id: `ann-fxlabel-${fx.id}`,
+        kind: "fixture_label",
+        text,
+        position: fx.labelPoint,
+      });
+    }
+  }
+
+  // Furniture labels: one annotation per furniture item with a non-empty label.
+  for (const item of furniture) {
+    const text = FURNITURE_LABEL[item.kind] ?? "";
+    if (text) {
+      annotations.push({
+        id: `ann-fnlabel-${item.id}`,
+        kind: "furniture_label",
+        text,
+        position: { x: item.centerX, y: item.centerY },
+      });
+    }
+  }
+
   return {
     levelId: level.id,
     levelName: level.name,
@@ -388,6 +528,7 @@ export function buildRenderModel(
     layers: DEFAULT_RENDER_LAYERS,
     dimensionChains,
     interiorDimensions,
+    annotations,
     complianceOverlay,
   };
 }

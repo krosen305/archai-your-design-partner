@@ -1,6 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { buildRenderModel } from "./floor-plan-render-model";
 import type { FloorPlanDocument } from "@/domain/floor-plan/floor-plan.types";
+import { generateSeedFloorPlan } from "@/domain/floor-plan/seed-generator";
 
 const sourceMeta = {
   source: "generated",
@@ -193,5 +194,121 @@ describe("buildRenderModel", () => {
     const d = doc();
     d.levels[0]!.openings[0]!.wallId = "ghost";
     expect(buildRenderModel(d, "level_0").openings).toHaveLength(0);
+  });
+});
+
+describe("rum-gulv-hatch", () => {
+  it("giver hatch-paths pr. rum når floorFinishAssemblyId er sat", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 60,
+      rooms: [{ name: "Stue", roomType: "living" }],
+    });
+    const lvl = base.levels[0]!;
+    const withFinish = {
+      ...base,
+      levels: [
+        { ...lvl, rooms: lvl.rooms.map((r) => ({ ...r, floorFinishAssemblyId: "oak_plank" })) },
+      ],
+    };
+    const model = buildRenderModel(withFinish, lvl.id);
+    const room = model.rooms[0]!;
+    expect(room.floorHatchPaths.length).toBeGreaterThan(0);
+  });
+
+  it("rum uden floorFinishAssemblyId har tomme floorHatchPaths", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 60,
+      rooms: [{ name: "Stue", roomType: "living" }],
+    });
+    const lvl = base.levels[0]!;
+    const model = buildRenderModel(base, lvl.id);
+    expect(model.rooms[0]!.floorHatchPaths).toEqual([]);
+  });
+});
+
+describe("installations-/inventar-labels", () => {
+  it("giver en label-annotation for et appliance-fixture", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 60,
+      rooms: [{ name: "Køkken", roomType: "kitchen" }],
+    });
+    const lvl = base.levels[0]!;
+    const withFix = {
+      ...base,
+      levels: [
+        {
+          ...lvl,
+          fixtures: [
+            {
+              id: "fx1",
+              levelId: lvl.id,
+              roomId: null,
+              fixtureKind: "appliance" as const,
+              position: { x: 2, y: 2 },
+              rotationDeg: 0,
+              footprint: {
+                vertices: [
+                  { x: 1.8, y: 1.8 },
+                  { x: 2.2, y: 1.8 },
+                  { x: 2.2, y: 2.2 },
+                  { x: 1.8, y: 2.2 },
+                ],
+              },
+              productTypeId: null,
+              requiresDisciplineReview: [],
+              source: {
+                source: "manual" as const,
+                confidence: "medium" as const,
+                fetchedAt: null,
+                requiresReview: false,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const model = buildRenderModel(withFix, lvl.id);
+    const labels = model.annotations.filter((a) => a.kind === "fixture_label").map((a) => a.text);
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels[0]!.length).toBeGreaterThan(0);
+  });
+});
+
+describe("annotations i render-model", () => {
+  it("udleder lofthøjde-, gulvniveau- og opluk-felt-annotationer", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 60,
+      rooms: [{ name: "Stue", roomType: "living" }],
+    });
+    const lvl = base.levels[0]!;
+    const withData = {
+      ...base,
+      levels: [
+        {
+          ...lvl,
+          rooms: lvl.rooms.map((r) => ({ ...r, ceilingHeightM: 2.5, floorOffsetM: 0.4 })),
+          openings: lvl.openings.map((o, i) => (i === 0 ? { ...o, operable: true } : o)),
+        },
+      ],
+    };
+    const model = buildRenderModel(withData, lvl.id);
+    const texts = model.annotations.map((a) => a.text);
+    expect(texts.some((t) => t.includes("Lofthøjde"))).toBe(true);
+    expect(texts.some((t) => t.includes("Gulvniveau") && t.includes("40"))).toBe(true);
+    expect(texts.some((t) => t.includes("Opluk"))).toBe(true);
+  });
+
+  it("ingen annotationer når ingen data og ingen level.annotations", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 60,
+      rooms: [{ name: "Stue", roomType: "living" }],
+    });
+    const model = buildRenderModel(base, base.levels[0]!.id);
+    expect(model.annotations).toEqual([]);
   });
 });

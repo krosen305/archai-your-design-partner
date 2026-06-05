@@ -5,6 +5,7 @@
 // Pure, 0 AI tokens. Rooms are DERIVED from the wall graph via the topology
 // engine, so a generated plan is always topology-consistent and verifies.
 
+import { layoutWalls } from "./layout-engine";
 import { detectRooms } from "./topology-engine";
 import type {
   ElementSourceMeta,
@@ -32,9 +33,6 @@ const GENERATED: ElementSourceMeta = {
   requiresReview: false,
 };
 
-const EXTERIOR_THICKNESS_M = 0.3;
-const INTERIOR_THICKNESS_M = 0.1;
-const WALL_HEIGHT_M = 2.5;
 const DEFAULT_ASPECT = 1.5;
 
 export function generateSeedFloorPlan(brief: BuildingBrief): FloorPlanDocument {
@@ -42,21 +40,15 @@ export function generateSeedFloorPlan(brief: BuildingBrief): FloorPlanDocument {
   const { widthM: W, depthM: D } = footprintFor(brief);
   const levelId = "level_0";
 
-  // Exterior shell (counter-clockwise) + vertical interior partitions.
-  const walls: Wall[] = [
-    exteriorWall("w_south", levelId, [0, 0], [W, 0]),
-    exteriorWall("w_east", levelId, [W, 0], [W, D]),
-    exteriorWall("w_north", levelId, [W, D], [0, D]),
-    exteriorWall("w_west", levelId, [0, D], [0, 0]),
-  ];
-  const divisions = roomCount - 1;
-  for (let i = 1; i <= divisions; i++) {
-    const x = round3((i * W) / roomCount);
-    walls.push(interiorWall(`w_int_${i}`, levelId, [x, 0], [x, D]));
-  }
+  // Exterior shell + weighted interior partitions from the layout engine.
+  // layoutWalls returns walls in order: south [0], east [1], north [2], west [3], partitions...
+  const walls: Wall[] = layoutWalls({ widthM: W, depthM: D, rooms: brief.rooms });
 
-  // Derive rooms from the wall graph (left-to-right strips) and label them.
-  const faces = detectRooms(walls.map((w) => w.centerline));
+  // Derive rooms from the wall graph and label them from the brief.
+  // The grid may produce more faces than brief.rooms (e.g. 2×3 grid for 5 rooms);
+  // truncate to the requested count so room count always matches the brief.
+  const allFaces = detectRooms(walls.map((w) => w.centerline));
+  const faces = allFaces.slice(0, roomCount);
   const rooms: RoomZone[] = faces.map((face, j) => {
     const spec = brief.rooms[j] ?? { name: `Rum ${j + 1}`, roomType: "other" as const };
     return {
@@ -76,19 +68,26 @@ export function generateSeedFloorPlan(brief: BuildingBrief): FloorPlanDocument {
       ventilationNeed: spec.roomType === "bathroom" ? "wet_room" : "natural",
       wetRoomZone: spec.roomType === "bathroom",
       daylightRelevant: spec.roomType !== "technical" && spec.roomType !== "storage",
+      ceilingHeightM: null,
+      floorOffsetM: null,
       source: GENERATED,
     };
   });
 
+  // layoutWalls returns exterior walls in CCW order: south=0, east=1, north=2, west=3.
+  const southWallId = walls[0]!.id;
+  const northWallId = walls[2]!.id;
+
   // One entrance door on the south wall, one window per room on the north wall.
+  // stripW is used only for facade-level opening placement (independent of interior layout).
   const stripW = W / roomCount;
   const openings: Opening[] = [
-    door("op_entrance", levelId, "w_south", clamp(stripW / 2, 0.6, W - 0.6), 0.9),
+    door("op_entrance", levelId, southWallId, clamp(stripW / 2, 0.6, W - 0.6), 0.9),
   ];
   rooms.forEach((_, j) => {
     const centerX = (j + 0.5) * stripW;
     openings.push(
-      window_(`op_window_${j}`, levelId, "w_north", clamp(W - centerX, 0.7, W - 0.7), 1.2),
+      window_(`op_window_${j}`, levelId, northWallId, clamp(W - centerX, 0.7, W - 0.7), 1.2),
     );
   });
 
@@ -151,37 +150,6 @@ function footprintFor(brief: BuildingBrief): { widthM: number; depthM: number } 
   return { widthM: width, depthM: depth };
 }
 
-function exteriorWall(id: string, levelId: string, a: [number, number], b: [number, number]): Wall {
-  return wall(id, levelId, a, b, "exterior", EXTERIOR_THICKNESS_M);
-}
-
-function interiorWall(id: string, levelId: string, a: [number, number], b: [number, number]): Wall {
-  return wall(id, levelId, a, b, "interior", INTERIOR_THICKNESS_M);
-}
-
-function wall(
-  id: string,
-  levelId: string,
-  a: [number, number],
-  b: [number, number],
-  wallKind: Wall["wallKind"],
-  thicknessM: number,
-): Wall {
-  return {
-    id,
-    levelId,
-    centerline: { start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] } },
-    thicknessM,
-    heightM: WALL_HEIGHT_M,
-    wallKind,
-    structuralRole: wallKind === "exterior" ? "bearing" : "non_bearing",
-    fireRole: "none",
-    assemblyId: null,
-    locked: false,
-    source: GENERATED,
-  };
-}
-
 function door(
   id: string,
   levelId: string,
@@ -222,6 +190,7 @@ function opening(
     heightM,
     sillHeightM,
     swing: openingKind === "door" ? "left" : "none",
+    operable: false,
     productTypeId: null,
     locked: false,
     source: GENERATED,

@@ -139,9 +139,12 @@ describe("useFloorPlanEditor", () => {
     });
 
     const base = result.current.document!;
+    // Pick a vertical interior partition by geometry rather than a hard-coded id,
+    // so the test stays valid regardless of the generator's internal wall naming.
+    const movableWallId = verticalInteriorWallId(base);
     const command: FloorPlanCommand = {
       type: "move_wall",
-      wallId: "w_int_1",
+      wallId: movableWallId,
       axis: "x",
       deltaM: 0.4,
     };
@@ -149,8 +152,8 @@ describe("useFloorPlanEditor", () => {
     act(() => {
       expect(result.current.previewCommand(command, base)).toBe(true);
     });
-    expect(wallStartX(result.current.document!, "w_int_1")).toBeCloseTo(
-      wallStartX(base, "w_int_1") + 0.4,
+    expect(wallStartX(result.current.document!, movableWallId)).toBeCloseTo(
+      wallStartX(base, movableWallId) + 0.4,
       6,
     );
 
@@ -181,6 +184,16 @@ function wallStartX(document: FloorPlanDocument, wallId: string): number {
   const wall = document.levels[0]!.walls.find((candidate) => candidate.id === wallId);
   if (!wall) throw new Error(`Missing wall ${wallId}`);
   return wall.centerline.start.x;
+}
+
+function verticalInteriorWallId(document: FloorPlanDocument): string {
+  const wall = document.levels[0]!.walls.find(
+    (candidate) =>
+      candidate.wallKind === "interior" &&
+      Math.abs(candidate.centerline.start.x - candidate.centerline.end.x) < 1e-9,
+  );
+  if (!wall) throw new Error("No vertical interior wall in generated layout");
+  return wall.id;
 }
 
 function nextIterationId(): string {

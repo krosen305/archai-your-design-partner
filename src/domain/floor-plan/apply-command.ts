@@ -7,7 +7,12 @@
 // Lifecycle: permission/lock check -> deterministic apply -> topology repair ->
 // geometry recalculation -> live validation result.
 
-import { lineLengthM, pointInPolygon, polygonCentroid } from "../geometry/polygon-ops";
+import {
+  lineLengthM,
+  pointInPolygon,
+  polygonCentroid,
+  polygonSignedAreaM2,
+} from "../geometry/polygon-ops";
 import type { Point2D, Polygon2D } from "../geometry/geometry-2d.types";
 import { detectRooms, reconcileRoomIdentity } from "./topology-engine";
 import { runVerification } from "./verification-engine";
@@ -15,11 +20,13 @@ import type { FloorPlanCommand, CommandRejectionCode } from "./commands";
 import type {
   FloorPlanDocument,
   FloorLevel,
+  PlanAnnotation,
   RoomZone,
   Wall,
   Opening,
   Fixture,
   Furniture,
+  Zone,
 } from "./floor-plan.types";
 
 const TOL = 1e-6;
@@ -76,6 +83,12 @@ export function applyCommand(doc: FloorPlanDocument, command: FloorPlanCommand):
       return applySplitRoom(doc, command);
     case "merge_rooms":
       return applyMergeRooms(doc, command);
+    case "update_room":
+      return applyUpdateRoom(doc, command);
+    case "add_zone":
+      return applyAddZone(doc, command);
+    case "add_annotation":
+      return applyAddAnnotation(doc, command);
     default:
       return reject(
         "WOULD_CORRUPT_TOPOLOGY",
@@ -340,6 +353,7 @@ function applyAddOpening(
     heightM: cmd.heightM,
     sillHeightM: null,
     swing: cmd.swing,
+    operable: false,
     productTypeId: null,
     locked: false,
     source: DEFAULT_MANUAL_SOURCE,
@@ -423,6 +437,71 @@ function applyAddFurniture(
   const targetLevel = next.levels[levelIndex]!;
   if (!targetLevel.furniture) targetLevel.furniture = [];
   targetLevel.furniture.push(newFurniture);
+
+  return {
+    accepted: true,
+    document: next,
+    changedElementIds: [newId],
+    liveFindings: liveFindingsFor(next),
+  };
+}
+
+// --- add_zone --------------------------------------------------------------
+
+function applyAddZone(
+  doc: FloorPlanDocument,
+  cmd: Extract<FloorPlanCommand, { type: "add_zone" }>,
+): ApplyOutcome {
+  const levelIndex = doc.levels.findIndex((l) => l.id === cmd.levelId);
+  if (levelIndex === -1) return reject("LEVEL_NOT_FOUND", `Etagen "${cmd.levelId}" findes ikke.`);
+
+  const areaM2 = Math.abs(polygonSignedAreaM2(cmd.polygon));
+  const newZone: Zone = {
+    id: `zone-${crypto.randomUUID().slice(0, 8)}`,
+    levelId: cmd.levelId,
+    zoneKind: cmd.zoneKind,
+    polygon: cmd.polygon,
+    name: cmd.name,
+    areaM2,
+    heated: cmd.heated,
+    source: DEFAULT_MANUAL_SOURCE,
+  };
+
+  const next = structuredClone(doc);
+  const lvl = next.levels[levelIndex]!;
+  if (!lvl.zones) lvl.zones = [];
+  lvl.zones.push(newZone);
+
+  return {
+    accepted: true,
+    document: next,
+    changedElementIds: [newZone.id],
+    liveFindings: liveFindingsFor(next),
+  };
+}
+
+// --- add_annotation --------------------------------------------------------
+
+function applyAddAnnotation(
+  doc: FloorPlanDocument,
+  cmd: Extract<FloorPlanCommand, { type: "add_annotation" }>,
+): ApplyOutcome {
+  const levelIndex = doc.levels.findIndex((l) => l.id === cmd.levelId);
+  if (levelIndex === -1) return reject("LEVEL_NOT_FOUND", `Etagen "${cmd.levelId}" findes ikke.`);
+
+  const newId = `annotation-${crypto.randomUUID().slice(0, 8)}`;
+  const newAnnotation: PlanAnnotation = {
+    id: newId,
+    levelId: cmd.levelId,
+    kind: cmd.kind,
+    text: cmd.text,
+    position: cmd.position,
+  };
+
+  const next = structuredClone(doc);
+  const lvl = next.levels[levelIndex]!;
+  if (!lvl.annotations) lvl.annotations = [];
+  lvl.annotations.push(newAnnotation);
 
   return {
     accepted: true,
@@ -581,6 +660,39 @@ function applyMergeRooms(
   };
 }
 
+// --- update_room -----------------------------------------------------------
+
+function applyUpdateRoom(
+  doc: FloorPlanDocument,
+  cmd: Extract<FloorPlanCommand, { type: "update_room" }>,
+): ApplyOutcome {
+  // Search all levels for the room.
+  let levelIndex = -1;
+  for (let i = 0; i < doc.levels.length; i++) {
+    if (doc.levels[i]!.rooms.some((r) => r.id === cmd.roomId)) {
+      levelIndex = i;
+      break;
+    }
+  }
+  if (levelIndex === -1) {
+    return reject("ROOM_NOT_FOUND", `Rummet "${cmd.roomId}" findes ikke.`);
+  }
+
+  const next = structuredClone(doc);
+  const room = next.levels[levelIndex]!.rooms.find((r) => r.id === cmd.roomId)!;
+
+  if (cmd.name !== undefined) room.name = cmd.name;
+  if (cmd.roomType !== undefined) room.roomType = cmd.roomType;
+  if (cmd.targetAreaM2 !== undefined) room.targetAreaM2 = cmd.targetAreaM2;
+
+  return {
+    accepted: true,
+    document: next,
+    changedElementIds: [cmd.roomId],
+    liveFindings: liveFindingsFor(next),
+  };
+}
+
 // --- helpers ---------------------------------------------------------------
 
 function locateWall(
@@ -653,6 +765,8 @@ function newRoomFrom(level: FloorLevel, id: string, polygon: Polygon2D, areaM2: 
     ventilationNeed: "unknown",
     wetRoomZone: false,
     daylightRelevant: false,
+    ceilingHeightM: null,
+    floorOffsetM: null,
     source: {
       source: "generated",
       confidence: "low",

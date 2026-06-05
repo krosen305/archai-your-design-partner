@@ -1,5 +1,8 @@
 import { Download, FileCheck2, FileDown, RefreshCw } from "lucide-react";
-import type { VerificationFinding } from "@/domain/floor-plan/verification-engine";
+import type {
+  VerificationFinding,
+  VerificationSeverity,
+} from "@/domain/floor-plan/verification-engine";
 import type { LiveFinding } from "@/domain/floor-plan/apply-command";
 import type { ExportFloorPlanResult } from "@/services/floor-plan/export-floor-plan.service";
 import type { FloorPlanVerificationResult } from "@/services/floor-plan/verify-floor-plan.service";
@@ -89,14 +92,22 @@ export function VerificationPanel({
             Ingen deterministiske findings på den aktuelle model.
           </div>
         )}
-        {findings.map((finding) => (
+        {sortedFindings(findings).map((finding) => (
           <div
             key={finding.id}
+            data-finding-severity={finding.severity}
             className={cn("rounded-md border p-3 text-sm", findingTone(finding.severity))}
           >
             <div className="mb-1 flex items-center justify-between gap-2">
               <span className="font-medium">{finding.category}</span>
-              <span className="font-mono text-[10px] uppercase">{finding.severity}</span>
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 font-mono text-[10px] uppercase",
+                  severityBadgeTone(finding.severity),
+                )}
+              >
+                {finding.severity}
+              </span>
             </div>
             <p>{finding.message}</p>
             {finding.nextAction && <p className="mt-1 text-xs opacity-80">{finding.nextAction}</p>}
@@ -166,6 +177,14 @@ function statusTone(status: FloorPlanVerificationResult["status"]): string {
   return "bg-emerald-50 text-emerald-800 border border-emerald-200";
 }
 
+const SEVERITY_ORDER: VerificationSeverity[] = ["blocking", "review_required", "warning", "info"];
+
+function sortedFindings(findings: VerificationFinding[]): VerificationFinding[] {
+  return [...findings].sort(
+    (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
+  );
+}
+
 function findingTone(severity: VerificationFinding["severity"]): string {
   switch (severity) {
     case "blocking":
@@ -176,6 +195,19 @@ function findingTone(severity: VerificationFinding["severity"]): string {
       return "border-yellow-200 bg-yellow-50 text-yellow-900";
     case "info":
       return "border-stone-200 bg-stone-50 text-stone-700";
+  }
+}
+
+function severityBadgeTone(severity: VerificationSeverity): string {
+  switch (severity) {
+    case "blocking":
+      return "bg-red-200 text-red-900";
+    case "review_required":
+      return "bg-amber-200 text-amber-900";
+    case "warning":
+      return "bg-yellow-200 text-yellow-900";
+    case "info":
+      return "bg-stone-200 text-stone-700";
   }
 }
 
