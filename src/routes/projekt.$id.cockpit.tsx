@@ -16,6 +16,7 @@ import { GrundenSection } from "@/components/cockpit/sections/GrundenSection";
 import { PlanReguleringSection } from "@/components/cockpit/sections/PlanReguleringSection";
 import { OkonomiSection } from "@/components/cockpit/sections/OkonomiSection";
 import { DatakilderSection } from "@/components/cockpit/sections/DatakilderSection";
+import { ByggeønskerSection } from "@/components/cockpit/sections/ByggeønskerSection";
 
 // ---------------------------------------------------------------------------
 // Route
@@ -188,6 +189,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             naboer={analysisSnapshot.naboer}
             registerSection={registerSection}
           />
+          <ByggeønskerSection registerSection={registerSection} />
           <PlanReguleringSection
             lokalplaner={analysisSnapshot.lokalplaner}
             servitutter={analysisSnapshot.servitutter}

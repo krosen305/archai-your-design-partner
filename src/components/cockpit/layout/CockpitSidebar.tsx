@@ -4,6 +4,7 @@ export type SidebarSection =
   | "verdict"
   | "opmærksomhed"
   | "grunden"
+  | "byggeønsker"
   | "plan"
   | "økonomi"
   | "datakilder";
@@ -12,6 +13,7 @@ export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
   { id: "verdict", label: "Oversigt" },
   { id: "opmærksomhed", label: "Opmærksomhed" },
   { id: "grunden", label: "Grunden" },
+  { id: "byggeønsker", label: "Byggeønsker" },
   { id: "plan", label: "Plan & regulering" },
   { id: "økonomi", label: "Økonomi" },
   { id: "datakilder", label: "Datakilder" },
