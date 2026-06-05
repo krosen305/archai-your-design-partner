@@ -324,8 +324,8 @@ export function FloorPlanCanvas({
           "h-full min-h-[620px] w-full touch-none select-none bg-stone-100",
           activeTool === "pan"
             ? "cursor-grab"
-            : activeTool === "draw_wall" || activeTool === "add_annotation"
-              ? "cursor-crosshair"
+            : activeTool === "select"
+              ? "cursor-default"
               : "cursor-crosshair",
         )}
         onPointerDown={handlePointerDown}

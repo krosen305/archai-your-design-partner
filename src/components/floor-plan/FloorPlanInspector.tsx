@@ -12,7 +12,11 @@ import { lineLengthM } from "@/domain/geometry/polygon-ops";
 import type { FloorPlanSelection } from "@/hooks/useFloorPlanEditor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { findRoomAtPoint, wallDragAxis } from "@/lib/floor-plan/editor-hit-testing";
+import {
+  findRoomAtPoint,
+  wallBordersRoom,
+  wallDragAxis,
+} from "@/lib/floor-plan/editor-hit-testing";
 import { deltaForTargetLength, wallCoordinate } from "@/lib/floor-plan/dimension-edit";
 
 const ROOM_TYPES: Array<{ value: RoomZone["roomType"]; label: string }> = [
@@ -390,16 +394,19 @@ function RoomInspector({
     setTargetArea(room.targetAreaM2 != null ? String(room.targetAreaM2) : "");
   }, [room.id, room.name, room.roomType, room.targetAreaM2]);
 
-  // Find a non-bearing interior wall that borders this room — used for "Slet rum".
+  // Find a non-bearing interior wall that actually borders THIS room — used for
+  // "Slet rum". Without the wallBordersRoom check this returned an arbitrary
+  // interior wall elsewhere on the level, silently deleting the wrong partition.
   const deletableWall = useMemo<Wall | null>(() => {
     for (const wall of level.walls) {
       if (wall.wallKind !== "interior") continue;
       if (wall.locked) continue;
       if (wall.structuralRole === "bearing") continue;
+      if (!wallBordersRoom(wall, room.polygon)) continue;
       return wall;
     }
     return null;
-  }, [level.walls]);
+  }, [level.walls, room.polygon]);
 
   function commitName(newName: string) {
     void onCommitCommand(

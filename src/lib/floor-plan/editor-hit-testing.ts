@@ -87,6 +87,26 @@ export function pointToSegmentDistanceM(point: Point2D, segment: Line2D): number
   return projectPointToSegment(point, segment).distanceM;
 }
 
+/**
+ * True when the wall's centerline lies along an edge of the room polygon — i.e.
+ * the wall borders the room. Rooms are detected from wall centerlines, so a
+ * bordering wall's midpoint sits on a polygon edge. Used to choose which
+ * partition to remove when a room is deleted, so the correct wall is targeted
+ * instead of an arbitrary interior wall elsewhere on the level.
+ */
+export function wallBordersRoom(wall: Wall, roomPolygon: Polygon2D, toleranceM = 0.3): boolean {
+  const mid: Point2D = {
+    x: (wall.centerline.start.x + wall.centerline.end.x) / 2,
+    y: (wall.centerline.start.y + wall.centerline.end.y) / 2,
+  };
+  const vertices = roomPolygon.vertices;
+  for (let i = 0; i < vertices.length; i++) {
+    const edge: Line2D = { start: vertices[i]!, end: vertices[(i + 1) % vertices.length]! };
+    if (pointToSegmentDistanceM(mid, edge) <= toleranceM) return true;
+  }
+  return false;
+}
+
 function nearestOpening(
   level: FloorLevel,
   point: Point2D,
