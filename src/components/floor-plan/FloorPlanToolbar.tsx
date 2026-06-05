@@ -38,7 +38,7 @@ export function FloorPlanToolbar({
 }: FloorPlanToolbarProps) {
   return (
     <TooltipProvider delayDuration={120}>
-      <aside className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-stone-200 bg-white px-2 py-3">
+      <aside className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-border/40 bg-surface px-2 py-3">
         <ToolButton
           label="Vælg og træk"
           active={activeTool === "select"}
@@ -54,7 +54,7 @@ export function FloorPlanToolbar({
           <Hand />
         </ToolButton>
 
-        <div className="my-1 h-px w-8 bg-stone-200" />
+        <div className="my-1 h-px w-8 bg-border/40" />
 
         <ToolButton label="Undo" disabled={!canUndo} onClick={onUndo}>
           <Undo2 />
@@ -63,13 +63,13 @@ export function FloorPlanToolbar({
           <Redo2 />
         </ToolButton>
 
-        <div className="my-1 h-px w-8 bg-stone-200" />
+        <div className="my-1 h-px w-8 bg-border/40" />
 
         <ToolButton label="Snap" active={snapEnabled} onClick={onToggleSnap}>
           <Magnet />
         </ToolButton>
 
-        <div className="my-1 h-px w-8 bg-stone-200" />
+        <div className="my-1 h-px w-8 bg-border/40" />
 
         <ToolButton
           label="Tegn væg"
@@ -127,8 +127,9 @@ function ToolButton({
           onClick={onClick}
           aria-label={label}
           className={cn(
-            "h-9 w-9 rounded-md border border-transparent text-stone-600",
-            active && "border-stone-900 bg-stone-900 text-white hover:bg-stone-800",
+            "h-9 w-9 rounded-md border border-transparent text-muted-foreground",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60",
+            active && "border-accent bg-accent text-accent-foreground hover:brightness-95",
           )}
         >
           {children}
