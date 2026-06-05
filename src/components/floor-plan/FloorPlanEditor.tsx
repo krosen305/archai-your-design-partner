@@ -5,6 +5,7 @@ import { FloorPlanCanvas } from "./FloorPlanCanvas";
 import { FloorPlanInspector } from "./FloorPlanInspector";
 import { FloorPlanToolbar, type FloorPlanTool } from "./FloorPlanToolbar";
 import { VerificationPanel } from "./VerificationPanel";
+import { FloorPlanComplianceStrip } from "./FloorPlanComplianceStrip";
 import { useFloorPlanEditor, type GenerateFloorPlanForm } from "@/hooks/useFloorPlanEditor";
 import type { RoomZone } from "@/domain/floor-plan/floor-plan.types";
 import { Button } from "@/components/ui/button";
@@ -265,6 +266,11 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
               </button>
             ))}
           </div>
+
+          <FloorPlanComplianceStrip
+            totalNetAreaM2={totalNetArea}
+            targetAreaM2={Number.parseFloat(targetAreaM2) || 120}
+          />
 
           <div className="flex flex-1 flex-col lg:flex-row">
             <FloorPlanToolbar
