@@ -74,6 +74,13 @@ export type RenderSymbol = {
   rotationDeg: number;
 };
 
+export type RenderAnnotation = {
+  id: string;
+  kind: string;
+  text: string;
+  position: Point2D;
+};
+
 export type RenderZone = {
   id: string;
   kind: string;
@@ -158,6 +165,11 @@ export type FloorPlanRenderModel = {
   /** Interior room-dimension segments (width + depth per room). */
   interiorDimensions: RenderDimensionSegment[];
   /**
+   * Draw-ready callout annotations derived from room data (ceiling height, floor
+   * level), operable openings and any free PlanAnnotations on the level.
+   */
+  annotations: RenderAnnotation[];
+  /**
    * Compliance overlay: room-level BR18/verification findings + area summary.
    * Only present when findings are supplied to buildRenderModel via opts.findings.
    */
@@ -168,6 +180,19 @@ export type FloorPlanRenderModel = {
 export type { ComplianceOverlay, RoomCompliance } from "./compliance-overlay";
 
 const MARGIN_M = 1;
+
+// --- Annotation helpers ----------------------------------------------------
+
+/** Format a number with Danish comma decimals, e.g. 2.5 → "2,5". */
+function formatDa(n: number, decimals: number): string {
+  return n.toFixed(decimals).replace(".", ",");
+}
+
+/** Format a meter value as a signed centimetre string, e.g. 0.4 → "+40 cm". */
+function signedCm(m: number): string {
+  const cm = Math.round(m * 100);
+  return `${cm >= 0 ? "+" : ""}${cm} cm`;
+}
 
 export function buildRenderModel(
   doc: FloorPlanDocument,
@@ -377,6 +402,60 @@ export function buildRenderModel(
   const complianceOverlay =
     opts?.findings !== undefined ? buildComplianceOverlay(level, opts.findings) : undefined;
 
+  // Build draw-ready annotation list from room data, operable openings and
+  // any free PlanAnnotations already on the level.
+  const annotations: RenderAnnotation[] = [];
+
+  // Build a lookup from opening id → already-computed RenderOpening center.
+  const openingCenterById = new Map<string, Point2D>(openings.map((op) => [op.id, op.center]));
+
+  for (const room of level.rooms) {
+    const centroid = polygonCentroid(room.polygon);
+
+    if (room.ceilingHeightM != null) {
+      annotations.push({
+        id: `ann-ceil-${room.id}`,
+        kind: "ceiling_height",
+        text: `Lofthøjde ca. ${formatDa(room.ceilingHeightM, 1)}`,
+        position: centroid,
+      });
+    }
+
+    if (room.floorOffsetM != null && room.floorOffsetM !== 0) {
+      // Offset slightly in Y so the callout doesn't overlap the ceiling label.
+      annotations.push({
+        id: `ann-floor-${room.id}`,
+        kind: "floor_level",
+        text: `Gulvniveau ${signedCm(room.floorOffsetM)}`,
+        position: { x: centroid.x, y: centroid.y - 0.3 },
+      });
+    }
+  }
+
+  for (const opening of level.openings) {
+    if (opening.operable) {
+      const center = openingCenterById.get(opening.id);
+      if (center) {
+        annotations.push({
+          id: `ann-oplukfelt-${opening.id}`,
+          kind: "operable_window",
+          text: "Opluk. felt",
+          position: center,
+        });
+      }
+    }
+  }
+
+  // Append free PlanAnnotations from the level.
+  for (const pa of level.annotations) {
+    annotations.push({
+      id: pa.id,
+      kind: pa.kind,
+      text: pa.text,
+      position: pa.position,
+    });
+  }
+
   return {
     levelId: level.id,
     levelName: level.name,
@@ -393,6 +472,7 @@ export function buildRenderModel(
     layers: DEFAULT_RENDER_LAYERS,
     dimensionChains,
     interiorDimensions,
+    annotations,
     complianceOverlay,
   };
 }
