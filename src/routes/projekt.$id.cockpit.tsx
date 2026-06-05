@@ -1,32 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useCallback, useEffect, useRef } from "react";
-import { ArrowRight, XCircle } from "lucide-react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { XCircle } from "lucide-react";
 import { useProject } from "@/lib/project-store";
-import { CockpitStatusBar } from "@/components/cockpit/CockpitStatusBar";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
 import { FreeDesignCockpit } from "@/components/cockpit/FreeDesignCockpit";
-import {
-  AnalyseTab,
-  LoadingView,
-  ErrorView,
-  type AnalyseTabData,
-  type AnalyseTabCallbacks,
-} from "@/components/cockpit/AnalyseTab";
-import { EjendomPanel } from "@/components/cockpit/EjendomPanel";
-import { OekonomiPanel } from "@/components/cockpit/OekonomiPanel";
+import { LoadingView, ErrorView } from "@/components/cockpit/AnalyseTab";
 import { useCockpitRestore } from "@/hooks/useCockpitRestore";
 import { useCockpitAnalysis } from "@/hooks/useCockpitAnalysis";
 import type { AnalysisSnapshot } from "@/lib/project-restore-facade";
-import { cn } from "@/lib/utils";
+import { CockpitLayout } from "@/components/cockpit/layout/CockpitLayout";
+import { VerdiktSection } from "@/components/cockpit/sections/VerdiktSection";
+import { OpmærksomhedSection } from "@/components/cockpit/sections/OpmærksomhedSection";
+import { GrundenSection } from "@/components/cockpit/sections/GrundenSection";
+import { PlanReguleringSection } from "@/components/cockpit/sections/PlanReguleringSection";
+import { OkonomiSection } from "@/components/cockpit/sections/OkonomiSection";
+import { DatakilderSection } from "@/components/cockpit/sections/DatakilderSection";
 
 // ---------------------------------------------------------------------------
 // Route
 // ---------------------------------------------------------------------------
-
-type CockpitTab = "analyse" | "ejendom" | "oekonomi";
-const VALID_TABS: readonly CockpitTab[] = ["analyse", "ejendom", "oekonomi"];
 
 export const Route = createFileRoute("/projekt/$id/cockpit")({
   component: CockpitPage,
@@ -34,10 +27,7 @@ export const Route = createFileRoute("/projekt/$id/cockpit")({
     const tab = search.tab;
     const projectId = search.projectId;
     return {
-      tab:
-        typeof tab === "string" && (VALID_TABS as readonly string[]).includes(tab)
-          ? (tab as CockpitTab)
-          : ("analyse" as CockpitTab),
+      tab: typeof tab === "string" ? tab : undefined,
       projectId: typeof projectId === "string" && projectId.trim() ? projectId : undefined,
     };
   },
@@ -140,22 +130,8 @@ function CockpitPage() {
 // ---------------------------------------------------------------------------
 
 function CockpitContent({ adresseId }: { adresseId: string }) {
-  const navigate = useNavigate();
-  const { tab: activeTab, projectId: searchProjectId } = Route.useSearch();
-  const setActiveTab = useCallback(
-    (next: CockpitTab) => {
-      navigate({
-        to: "/projekt/$id/cockpit",
-        params: { id: adresseId },
-        search: { tab: next, projectId: searchProjectId },
-        replace: false,
-      });
-    },
-    [navigate, adresseId, searchProjectId],
-  );
-
-  const { address, bbrData, complianceMetrics, vurderingData, currentProjectId } = useProject();
-
+  const { tab: _tab, projectId: searchProjectId } = Route.useSearch();
+  const { address, bbrData, complianceMetrics, currentProjectId } = useProject();
   const setSnapshotPatchRef = useRef<((p: Partial<AnalysisSnapshot>) => void) | null>(null);
 
   const { restorePhase } = useCockpitRestore({
@@ -171,121 +147,61 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     isRecomputing,
     setSnapshotPatch,
     triggerRefresh,
-    runManualAnalyse,
   } = useCockpitAnalysis({ adresseId, restorePhase });
 
   setSnapshotPatchRef.current = setSnapshotPatch;
 
-  return (
-    <PageTransition>
-      <div
-        className={`mx-auto px-6 py-10 ${status === "done" ? "max-w-[1400px]" : "max-w-[720px]"}`}
-      >
-        <div className="mb-6">
-          <BackLink to="/projekt/adresse" />
+  if (status === "loading") {
+    return (
+      <PageTransition>
+        <div className="mx-auto max-w-[720px] px-6 py-10">
+          <LoadingView />
         </div>
+      </PageTransition>
+    );
+  }
 
-        {status === "loading" && <LoadingView />}
-
-        {status === "error" && (
+  if (status === "error") {
+    return (
+      <PageTransition>
+        <div className="mx-auto max-w-[720px] px-6 py-10">
           <ErrorView message={fetchError ?? "Ukendt fejl."} onRetry={triggerRefresh} />
-        )}
+        </div>
+      </PageTransition>
+    );
+  }
 
-        {status === "done" && bbrData && (
-          <>
-            <CockpitStatusBar onRefreshAll={triggerRefresh} isRefreshing={false} />
-            <HardStopBanner />
+  if (!bbrData) return null;
 
-            <div className="mb-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  navigate({
-                    to: "/projekt/$id/plantegning",
-                    params: { id: adresseId },
-                    search: { projectId: currentProjectId ?? searchProjectId },
-                  })
-                }
-                className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-mono text-[11px] tracking-[0.15em] text-accent-foreground transition-colors hover:bg-accent/90"
-              >
-                ÅBN PLANTEGNING
-                <ArrowRight className="size-3.5" />
-              </button>
-            </div>
-
-            <div className="flex gap-1 mb-6 border-b border-border/40">
-              {(
-                [
-                  { id: "analyse", label: "ANALYSE" },
-                  { id: "ejendom", label: "EJENDOM" },
-                  { id: "oekonomi", label: "ØKONOMI" },
-                ] as { id: CockpitTab; label: string }[]
-              ).map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "relative px-4 py-2 font-mono text-[11px] tracking-[0.15em] transition-colors -mb-px",
-                      isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {tab.label}
-                    {isActive && (
-                      <motion.span
-                        layoutId="cockpit-tab-underline"
-                        className="absolute inset-x-0 -bottom-px h-[2px] bg-accent"
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-            >
-              {activeTab === "analyse" && (
-                <AnalyseTab
-                  adresse={address?.adresse ?? ""}
-                  analyseData={
-                    {
-                      data: bbrData,
-                      lokalplaner: analysisSnapshot.lokalplaner,
-                      byggeanalyse: useProject.getState().byggeanalyseResultat,
-                      metrics: complianceMetrics,
-                      fbbData: analysisSnapshot.fbbData,
-                      vurderingData,
-                      geusRisk: analysisSnapshot.geusRisk,
-                      servitutter: analysisSnapshot.servitutter,
-                      terrain: analysisSnapshot.terrain,
-                      fjernvarme: analysisSnapshot.fjernvarme,
-                      naboer: analysisSnapshot.naboer,
-                      naturbeskyttelse: analysisSnapshot.naturbeskyttelse,
-                      dkjord: analysisSnapshot.dkjord,
-                    } satisfies AnalyseTabData
-                  }
-                  callbacks={
-                    {
-                      onRunAnalyse: runManualAnalyse,
-                      onShowEjendom: () => setActiveTab("ejendom"),
-                      onShowOekonomi: () => setActiveTab("oekonomi"),
-                    } satisfies AnalyseTabCallbacks
-                  }
-                  isRecomputing={isRecomputing}
-                />
-              )}
-              {activeTab === "ejendom" && <EjendomPanel />}
-              {activeTab === "oekonomi" && <OekonomiPanel />}
-            </motion.div>
-          </>
-        )}
-      </div>
-    </PageTransition>
+  return (
+    <CockpitLayout
+      adresse={address?.adresse ?? adresseId}
+      adresseId={adresseId}
+      projectId={currentProjectId ?? searchProjectId}
+    >
+      {(_scrollTo, registerSection) => (
+        <>
+          <VerdiktSection metrics={complianceMetrics} registerSection={registerSection} />
+          <OpmærksomhedSection onOpenDetails={() => {}} registerSection={registerSection} />
+          <GrundenSection
+            bbr={bbrData}
+            metrics={complianceMetrics}
+            naboer={analysisSnapshot.naboer}
+            registerSection={registerSection}
+          />
+          <PlanReguleringSection
+            lokalplaner={analysisSnapshot.lokalplaner}
+            servitutter={analysisSnapshot.servitutter}
+            registerSection={registerSection}
+          />
+          <OkonomiSection registerSection={registerSection} />
+          <DatakilderSection
+            onRefreshAll={triggerRefresh}
+            isRefreshing={isRecomputing}
+            registerSection={registerSection}
+          />
+        </>
+      )}
+    </CockpitLayout>
   );
 }
