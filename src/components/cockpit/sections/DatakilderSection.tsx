@@ -84,9 +84,7 @@ export function DatakilderSection({
                     isBlokeret ? "bg-muted-foreground/30" : DOT[status],
                   )}
                 />
-                <span className="text-xs text-muted-foreground">
-                  {DATA_SOURCE_LABELS[kind]}
-                </span>
+                <span className="text-xs text-muted-foreground">{DATA_SOURCE_LABELS[kind]}</span>
                 {isBlokeret && (
                   <span className="text-[10px] font-mono text-muted-foreground/50">
                     KOMMER SNART

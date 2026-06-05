@@ -12,9 +12,7 @@ export function KommerSnartCard({ title, beskrivelse }: { title: string; beskriv
   return (
     <div className="rounded-md border border-border/40 bg-[#0c0c0c] p-4">
       <p className="text-sm font-medium text-foreground mb-1">{title}</p>
-      {beskrivelse && (
-        <p className="text-xs text-muted-foreground mb-3">{beskrivelse}</p>
-      )}
+      {beskrivelse && <p className="text-xs text-muted-foreground mb-3">{beskrivelse}</p>}
       <KommerSnart />
     </div>
   );

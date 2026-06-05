@@ -43,9 +43,7 @@ export function VerdiktSection({ metrics, registerSection }: VerdiktSectionProps
           className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`}
         />
 
-        {metrikLinje && (
-          <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>
-        )}
+        {metrikLinje && <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>}
 
         {!kanBygge && hard_stop_reason && (
           <p className="mt-3 text-sm text-danger/90 leading-relaxed">{hard_stop_reason}</p>

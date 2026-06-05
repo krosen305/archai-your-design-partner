@@ -37,7 +37,10 @@ export function GrundenSection({ bbr, metrics, naboer, registerSection }: Grunde
     ? [
         { label: "Byggeår", value: bbr.byggeaar?.toString() },
         { label: "Ombygningsår", value: bbr.ombygningsaar?.toString() },
-        { label: "Samlet areal", value: bbr.samlet_areal != null ? `${bbr.samlet_areal} m²` : undefined },
+        {
+          label: "Samlet areal",
+          value: bbr.samlet_areal != null ? `${bbr.samlet_areal} m²` : undefined,
+        },
         { label: "Antal etager", value: bbr.antal_etager?.toString() },
         { label: "Anvendelse", value: bbr.anvendelse_tekst ?? undefined },
         { label: "Varmeinstallation", value: bbr.varmeinstallation ?? undefined },
@@ -88,7 +91,10 @@ export function GrundenSection({ bbr, metrics, naboer, registerSection }: Grunde
             {visAlle && (
               <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                 {ekstraFelter.map(({ label, value }) => (
-                  <div key={label} className="flex justify-between border-b border-border/20 py-1.5">
+                  <div
+                    key={label}
+                    className="flex justify-between border-b border-border/20 py-1.5"
+                  >
                     <dt className="text-muted-foreground">{label}</dt>
                     <dd className="text-foreground">{value}</dd>
                   </div>

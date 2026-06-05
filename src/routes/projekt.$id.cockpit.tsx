@@ -140,14 +140,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     onSnapshotRestored: (patch) => setSnapshotPatchRef.current?.(patch),
   });
 
-  const {
-    status,
-    fetchError,
-    analysisSnapshot,
-    isRecomputing,
-    setSnapshotPatch,
-    triggerRefresh,
-  } = useCockpitAnalysis({ adresseId, restorePhase });
+  const { status, fetchError, analysisSnapshot, isRecomputing, setSnapshotPatch, triggerRefresh } =
+    useCockpitAnalysis({ adresseId, restorePhase });
 
   setSnapshotPatchRef.current = setSnapshotPatch;
 

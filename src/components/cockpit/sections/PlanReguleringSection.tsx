@@ -18,9 +18,7 @@ export function PlanReguleringSection({
   registerSection,
 }: PlanRegularingSectionProps) {
   const harServitutter =
-    servitutter &&
-    servitutter.kilde !== "mock" &&
-    servitutter.servitutter.length > 0;
+    servitutter && servitutter.kilde !== "mock" && servitutter.servitutter.length > 0;
 
   return (
     <section ref={(el) => registerSection("plan", el)} aria-label="Plan og regulering">
