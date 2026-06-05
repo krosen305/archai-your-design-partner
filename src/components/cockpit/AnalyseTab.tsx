@@ -25,7 +25,6 @@ import { DatakildeCard } from "@/components/cockpit/DatakildeCard";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/wizard-ui";
 import { useCockpitMode } from "@/lib/use-cockpit-mode";
-import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { AiDesignHero } from "@/components/cockpit/AiDesignHero";
 import { type DetailsSection } from "@/components/cockpit/DetailsAccordion";
 import { RisikoFeed } from "@/components/cockpit/RisikoFeed";
@@ -215,12 +214,7 @@ function AnalyseTab({
     {
       id: "ai-byggeanalyse",
       label: "AI BYGGEANALYSE",
-      badge:
-        byggeanalyse?.kilde === "mock" ? (
-          <span className="text-[9px] border border-warning/40 text-warning rounded px-1 font-mono">
-            MOCK
-          </span>
-        ) : null,
+      badge: null,
       content: byggeanalyse ? (
         <ByggeanalyseKort analyse={byggeanalyse} />
       ) : (
@@ -479,11 +473,6 @@ function FjernvarmeSektion({ data }: { data: FjernvarmeResultat }) {
       <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
         <Flame size={12} className="text-accent" />
         FJERNVARMEDÆKNING
-        {FEATURE_FLAGS.fjernvarmeMock && (
-          <span className="text-[9px] border border-warning/40 text-warning rounded px-1">
-            MOCK
-          </span>
-        )}
       </div>
       <span
         className={`inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 ${badge.color}`}
@@ -575,11 +564,6 @@ function ByggeanalyseKort({ analyse }: { analyse: ByggeanalyseResultat }) {
         <Sparkles size={14} className="text-accent" />
         <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground">
           AI BYGGEANALYSE
-          {analyse.kilde === "mock" && (
-            <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
-              MOCK
-            </span>
-          )}
         </div>
       </div>
 
@@ -630,11 +614,6 @@ function TerrainSektion({ data }: { data: RuleEngineTerrainData }) {
     <Card className="mb-4">
       <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
         TERRÆN & KOTER
-        {data.kilde === "mock" && (
-          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
-            MOCK
-          </span>
-        )}
       </div>
       {erBrat && (
         <div className="mb-3 inline-flex items-center font-mono text-[10px] tracking-[0.1em] rounded-full border px-3 py-1 text-warning border-warning/40 bg-warning/10">
@@ -685,11 +664,6 @@ function ServitutterSektion({ data }: { data: RuleEngineTinglysningResult }) {
     <Card className="mb-4">
       <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
         TINGLYSTE SERVITUTTER
-        {data.kilde === "mock" && (
-          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
-            MOCK
-          </span>
-        )}
         {data.pant > 0 && (
           <span className="ml-2 text-[9px] border border-border text-muted-foreground rounded px-1">
             {data.pant} PANTEHÆFTELSE{data.pant !== 1 ? "R" : ""}
@@ -758,11 +732,6 @@ function GeusRisikoSektion({ data }: { data: RuleEngineGeusRiskData }) {
     <Card className="mb-4">
       <div className="font-mono text-[11px] tracking-[0.15em] text-muted-foreground mb-3">
         GEOTEKNISK RISIKOPROFIL
-        {data.kilde === "mock" && (
-          <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
-            MOCK
-          </span>
-        )}
       </div>
       <div className="flex flex-wrap gap-2 mb-3">
         <span
