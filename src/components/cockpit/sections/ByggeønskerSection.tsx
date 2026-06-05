@@ -96,7 +96,7 @@ export function ByggeønskerSection({ registerSection }: ByggeønskerSectionProp
               setByggeoenske({ oensketAreal: Number.isNaN(n) ? undefined : n });
             }}
             placeholder="f.eks. 120"
-            className="w-40 rounded-md border border-border/40 bg-[#111] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[#c8ff00]/60 focus:outline-none transition-colors"
+            className="w-40 rounded-md border border-border/40 bg-[#111] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[#c8ff00]/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#c8ff00]/40 transition-colors"
           />
         </div>
 
