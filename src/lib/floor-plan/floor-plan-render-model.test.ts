@@ -228,6 +228,55 @@ describe("rum-gulv-hatch", () => {
   });
 });
 
+describe("installations-/inventar-labels", () => {
+  it("giver en label-annotation for et appliance-fixture", () => {
+    const base = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 60,
+      rooms: [{ name: "Køkken", roomType: "kitchen" }],
+    });
+    const lvl = base.levels[0]!;
+    const withFix = {
+      ...base,
+      levels: [
+        {
+          ...lvl,
+          fixtures: [
+            {
+              id: "fx1",
+              levelId: lvl.id,
+              roomId: null,
+              fixtureKind: "appliance" as const,
+              position: { x: 2, y: 2 },
+              rotationDeg: 0,
+              footprint: {
+                vertices: [
+                  { x: 1.8, y: 1.8 },
+                  { x: 2.2, y: 1.8 },
+                  { x: 2.2, y: 2.2 },
+                  { x: 1.8, y: 2.2 },
+                ],
+              },
+              productTypeId: null,
+              requiresDisciplineReview: [],
+              source: {
+                source: "manual" as const,
+                confidence: "medium" as const,
+                fetchedAt: null,
+                requiresReview: false,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const model = buildRenderModel(withFix, lvl.id);
+    const labels = model.annotations.filter((a) => a.kind === "fixture_label").map((a) => a.text);
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels[0]!.length).toBeGreaterThan(0);
+  });
+});
+
 describe("annotations i render-model", () => {
   it("udleder lofthøjde-, gulvniveau- og opluk-felt-annotationer", () => {
     const base = generateSeedFloorPlan({
