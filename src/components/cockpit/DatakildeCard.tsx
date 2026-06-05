@@ -57,6 +57,24 @@ export function DatakildeCard({
   children: ReactNode;
 }) {
   const status = useProject((s) => s.dataStatus[kind]);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  // Når status ændrer sig væk fra error, reset retry-tilstand
+  useEffect(() => {
+    if (status !== "error") {
+      setIsRetrying(false);
+    }
+  }, [status]);
+
+  const handleRetry = () => {
+    if (!onRetry || isRetrying) return;
+    setIsRetrying(true);
+    onRetry();
+  };
+
+  const showSkeleton = status === "loading" || isRetrying;
+  const showError = status === "error" && !isRetrying;
+  const showContent = (status === "fresh" || status === "stale") && !isRetrying;
 
   return (
     <Card className="mb-4">
@@ -68,9 +86,9 @@ export function DatakildeCard({
         <DataSourceStatus kind={kind} onRefresh={onRetry} showLabel={false} />
       </div>
 
-      {status === "loading" && <SkeletonLines />}
+      {showSkeleton && <SkeletonLines />}
 
-      {status === "error" && (
+      {showError && (
         <motion.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -88,20 +106,24 @@ export function DatakildeCard({
           {onRetry && (
             <button
               type="button"
-              onClick={onRetry}
+              onClick={handleRetry}
+              disabled={isRetrying}
               className={cn(
                 "inline-flex items-center justify-center gap-1.5 self-start rounded-md border border-danger/40 bg-danger/10 px-3 py-1.5",
-                "font-mono text-[10px] tracking-[0.15em] text-danger transition-colors hover:bg-danger/20",
+                "font-mono text-[10px] tracking-[0.15em] text-danger transition-colors",
+                isRetrying
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-danger/20",
               )}
             >
-              <RefreshCw size={11} />
-              PRØV IGEN
+              <RefreshCw size={11} className={cn(isRetrying && "animate-spin")} />
+              {isRetrying ? "GENFORSØGER…" : "PRØV IGEN"}
             </button>
           )}
         </motion.div>
       )}
 
-      {(status === "fresh" || status === "stale") && (
+      {showContent && (
         <motion.div
           initial={{ opacity: 0, y: 2 }}
           animate={{ opacity: 1, y: 0 }}
