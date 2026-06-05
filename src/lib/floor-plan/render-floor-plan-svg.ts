@@ -306,6 +306,12 @@ export function renderFloorPlanSvg(
     areaTableEls.push(...tableLines);
   }
 
+  // Annotations: draw-ready callout labels (ceiling height, floor level, etc.)
+  const annotationEls = (model.annotations ?? []).map((a) => {
+    const p = px(a.position);
+    return `<text data-annotation="${attr(a.id)}" data-annotation-kind="${attr(a.kind)}" x="${fmt(p.x)}" y="${fmt(p.y)}" text-anchor="middle" font-size="9" fill="#444">${esc(a.text)}</text>`;
+  });
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`,
     `<g data-level-id="${attr(model.levelId)}">`,
@@ -319,6 +325,7 @@ export function renderFloorPlanSvg(
     ...dimensionEls,
     ...interiorDimEls,
     ...areaTableEls,
+    ...annotationEls,
     `</g>`,
     `</svg>`,
   ].join("\n");

@@ -706,6 +706,22 @@ export function FloorPlanCanvas({
             })}
           </g>
         )}
+        {/* Annotations: non-interactive callout labels (ceiling height, floor level, etc.) */}
+        {(model.annotations ?? []).map((a) => {
+          const p = viewport.localToScreen(a.position);
+          return (
+            <text
+              key={a.id}
+              data-annotation={a.id}
+              x={p.x}
+              y={p.y}
+              textAnchor="middle"
+              className="pointer-events-none fill-stone-600 text-[9px]"
+            >
+              {a.text}
+            </text>
+          );
+        })}
         {activeTool === "draw_wall" &&
           polylineState.last &&
           drawCursor &&
