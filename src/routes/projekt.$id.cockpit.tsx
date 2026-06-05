@@ -15,6 +15,7 @@ import { OpmærksomhedSection } from "@/components/cockpit/sections/Opmærksomhe
 import { GrundenSection } from "@/components/cockpit/sections/GrundenSection";
 import { PlanReguleringSection } from "@/components/cockpit/sections/PlanReguleringSection";
 import { OkonomiSection } from "@/components/cockpit/sections/OkonomiSection";
+import { NaesteStepSection } from "@/components/cockpit/sections/NaesteStepSection";
 import { DatakilderSection } from "@/components/cockpit/sections/DatakilderSection";
 import { ByggeønskerSection } from "@/components/cockpit/sections/ByggeønskerSection";
 
@@ -196,6 +197,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             registerSection={registerSection}
           />
           <OkonomiSection registerSection={registerSection} />
+          <NaesteStepSection registerSection={registerSection} />
           <DatakilderSection
             onRefreshAll={triggerRefresh}
             isRefreshing={isRecomputing}

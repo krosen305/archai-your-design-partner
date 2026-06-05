@@ -3,9 +3,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   fetchMatriklenPreviewProxy,
+  fetchMapTileProxy,
   fetchParcelGeometryByJordstykkeId,
   fetchParcelGeometryProxy,
-  fetchSkaermkortTileProxy,
   type ParcelGeometryRequest,
   type ParcelPreviewRequest,
   type TileRequest,
@@ -34,6 +34,7 @@ const jordstykkeLokalIdRequestSchema = z.object({
 });
 
 const tileRequestSchema = z.object({
+  layer: z.enum(["skaermkort", "ortofoto"]).optional().default("skaermkort"),
   z: z.string().regex(/^-?\d+$/),
   x: z.string().regex(/^-?\d+$/),
   y: z.string().regex(/^-?\d+$/),
@@ -55,7 +56,7 @@ export const fetchParcelGeometryById = createServerFn({ method: "POST" })
 
 export const fetchSkaermkortTile = createServerFn({ method: "GET" })
   .inputValidator((data: unknown): TileRequest => tileRequestSchema.parse(data))
-  .handler(async ({ data }) => fetchSkaermkortTileProxy(data));
+  .handler(async ({ data }) => fetchMapTileProxy(data));
 
 export const fetchSkærmkortTile = fetchSkaermkortTile;
 

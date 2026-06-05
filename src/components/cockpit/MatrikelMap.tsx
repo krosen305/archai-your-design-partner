@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, LocateFixed, Move3D, MapPin, RotateCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  LocateFixed,
+  Move3D,
+  Map as MapIcon,
+  MapPin,
+  RotateCcw,
+  Satellite,
+} from "lucide-react";
 import { Card } from "@/components/wizard-ui";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/project-store";
@@ -38,6 +46,7 @@ export function MatrikelMap({
   const hasValidGeo = !!(geo && (geo.lat !== 0 || geo.lng !== 0));
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("ol/Map").default | null>(null);
+  const baseTileSourceRef = useRef<import("ol/source/OSM").default | null>(null);
   const parcelSourceRef = useRef<import("ol/source/Vector").default | null>(null);
   const footprintSourceRef = useRef<import("ol/source/Vector").default | null>(null);
   const previewLayerRef = useRef<
@@ -50,12 +59,18 @@ export function MatrikelMap({
 
   const [olReady, setOlReady] = useState(false);
   const [dragHint, setDragHint] = useState("Træk bygningen for at flytte den");
+  const [baseLayer, setBaseLayer] = useState<"skaermkort" | "ortofoto">("ortofoto");
+  const baseLayerRef = useRef(baseLayer);
 
   const loadTile = useServerFn(fetchSkærmkortTile);
   const loadTileRef = useRef(loadTile);
   useEffect(() => {
     loadTileRef.current = loadTile;
   }, [loadTile]);
+  useEffect(() => {
+    baseLayerRef.current = baseLayer;
+    baseTileSourceRef.current?.refresh();
+  }, [baseLayer]);
 
   const activeBlockers = useMemo(
     () => complianceFlags.filter((flag) => flag.status === "blocker"),
@@ -207,12 +222,18 @@ export function MatrikelMap({
       previewLayerRef.current = previewLayer;
 
       const osmSource = new OSM();
+      baseTileSourceRef.current = osmSource;
       osmSource.setTileLoadFunction(async (tile: any, osmSrc: string) => {
         const [z, x, olY] = tile.getTileCoord() as [number, number, number];
         const tileRow = -(olY + 1);
         try {
           const dataUrl = await loadTileRef.current({
-            data: { z: String(z), x: String(x), y: String(tileRow) },
+            data: {
+              layer: baseLayerRef.current,
+              z: String(z),
+              x: String(x),
+              y: String(tileRow),
+            },
           });
           tile.getImage().src = dataUrl ?? osmSrc;
         } catch {
@@ -287,6 +308,7 @@ export function MatrikelMap({
         map.setTarget(undefined);
         mapRef.current = null;
         parcelSourceRef.current = null;
+        baseTileSourceRef.current = null;
         footprintSourceRef.current = null;
         previewLayerRef.current = null;
         translateRef.current = null;
@@ -405,6 +427,34 @@ export function MatrikelMap({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <div className="inline-flex rounded-md border border-border/60 bg-black/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setBaseLayer("skaermkort")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 font-mono text-[10px] text-muted-foreground transition-colors",
+                baseLayer === "skaermkort" && "bg-accent text-accent-foreground",
+              )}
+              aria-pressed={baseLayer === "skaermkort"}
+              aria-label="Vis kortbaggrund"
+            >
+              <MapIcon size={12} />
+              Kort
+            </button>
+            <button
+              type="button"
+              onClick={() => setBaseLayer("ortofoto")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 font-mono text-[10px] text-muted-foreground transition-colors",
+                baseLayer === "ortofoto" && "bg-accent text-accent-foreground",
+              )}
+              aria-pressed={baseLayer === "ortofoto"}
+              aria-label="Vis luftfoto"
+            >
+              <Satellite size={12} />
+              Luftfoto
+            </button>
+          </div>
           <span className="rounded-full border border-border/60 px-2 py-1 font-mono text-[10px] text-muted-foreground">
             {parcelStatus === "ready"
               ? "PARCEL LIVE"
@@ -533,6 +583,8 @@ export function MatrikelMap({
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 px-4 py-2.5 font-mono text-[10px] text-muted-foreground">
         <span>OPENLAYERS</span>
+        <span className="opacity-60">•</span>
+        <span>{baseLayer === "ortofoto" ? "ORTOFOTO" : "SKÆRMKORT"}</span>
         <span className="opacity-60">•</span>
         <span>PARCEL WFS</span>
         <span className="opacity-60">•</span>

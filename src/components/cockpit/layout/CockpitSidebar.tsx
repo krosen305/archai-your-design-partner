@@ -7,6 +7,7 @@ export type SidebarSection =
   | "byggeønsker"
   | "plan"
   | "økonomi"
+  | "næste"
   | "datakilder";
 
 export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
@@ -16,6 +17,7 @@ export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
   { id: "byggeønsker", label: "Byggeønsker" },
   { id: "plan", label: "Plan & regulering" },
   { id: "økonomi", label: "Økonomi" },
+  { id: "næste", label: "Næste skridt" },
   { id: "datakilder", label: "Datakilder" },
 ];
 
