@@ -5,7 +5,6 @@ import { useProject } from "@/lib/project-store";
 import { cn } from "@/lib/utils";
 import {
   buildRiskOverviewCategories,
-  hasProvisionalRiskSignals,
   type ComplianceRiskLevel,
   type ComplianceRiskOverviewKey,
   type RiskOverviewItem,
@@ -62,7 +61,6 @@ const CATEGORY_ICONS: Record<ComplianceRiskOverviewKey, LucideIcon> = {
 
 export function RiskOverview() {
   const { complianceFlags, heritage_save_value, is_fredet } = useProject();
-  const hasMockRiskSignals = hasProvisionalRiskSignals(complianceFlags);
 
   const categories = useMemo<RiskCategory[]>(
     () =>
@@ -85,12 +83,6 @@ export function RiskOverview() {
         </h3>
         <span className="text-[10px] text-muted-foreground/60">5 områder</span>
       </div>
-
-      {hasMockRiskSignals && (
-        <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
-          Geoteknik- og miljÃ¸signaler er forelÃ¸bige mock-data, ikke live-verificeret compliance.
-        </div>
-      )}
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {categories.map((cat, i) => (
