@@ -33,6 +33,7 @@ import type {
   NeighborBuildingData,
   VurData,
 } from "@/domain/contracts/analysis.types";
+import type { BbrDueDiligenceData } from "@/domain/contracts/bbr-due-diligence.types";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
 import type { AddressEnrichmentPatch } from "@/lib/analysis/address-patch-schema";
 import { selectPrimaryLokalplanForPdf } from "@/integrations/plandata/selectors";
@@ -58,6 +59,7 @@ import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 
 export type ComplianceResult = {
   bbr: RuleEngineBbrData | null;
+  bbrDueDiligence?: BbrDueDiligenceData | null;
   lokalplaner: RuleEngineLokalplan[];
   kommuneplanramme: RuleEngineKommuneplanramme | null;
   analysedAt: string;

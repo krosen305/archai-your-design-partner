@@ -106,6 +106,7 @@ export function hydrateProjectIntoStore(
   const cd = parseComplianceData(project.compliance_data);
   if (cd) {
     if (cd.bbr) store.setBbrData(cd.bbr);
+    if (cd.bbrDueDiligence) store.setBbrDueDiligence(cd.bbrDueDiligence);
     store.setComplianceFlags(cd.flags);
     store.setLokalplaner(cd.lokalplaner);
     if (cd.kommuneplanramme) store.setKommuneplanramme(cd.kommuneplanramme);

@@ -41,10 +41,37 @@ import {
   selectCanonicalBuilding as selectCanonicalBuildingPure,
 } from "@/domain/bbr/canonical-building";
 import { parseBbrBygninger } from "@/domain/bbr/node-decoder";
+import {
+  bbrBuildingsResponseSchema,
+  bbrGroundResponseSchema,
+  bbrTechnicalInstallationsResponseSchema,
+  bbrUnitsResponseSchema,
+  type BbrBuildingDueDiligenceNode,
+  type BbrGroundNode,
+  type BbrTechnicalInstallationNode,
+  type BbrUnitNode,
+} from "@/domain/bbr/bbr-due-diligence.schemas";
+import { resolveBbrCode } from "@/domain/bbr/code-registry";
+import type {
+  BbrBuildingRecord,
+  BbrCodeValue,
+  BbrDueDiligenceData,
+  BbrGroundRecord,
+  BbrObjectDisplayState,
+  BbrQualityNotice,
+  BbrTechnicalInstallationRecord,
+  BbrUnitRecord,
+} from "@/domain/contracts/bbr-due-diligence.types";
 
 type BbrClientConfig = {
   apiKey?: string;
   endpoint?: string;
+};
+
+type DueDiligenceInput = {
+  husnummerId: string;
+  adresseId?: string | null;
+  grundarealM2?: number | null;
 };
 
 function getConfig(explicit?: BbrClientConfig) {
@@ -91,6 +118,7 @@ export type BbrBygning = {
   byg055AfvigendeEtager: string | null;
   byg056Varmeinstallation: string | null;
   byg057Opvarmningsmiddel: string | null;
+  byg058SupplerendeVarme: string | null;
   byg070Fredning: string | null;
   byg071BevaringsvaerdighedReference: string | null;
   byg094Revisionsdato: string | null;
@@ -182,6 +210,7 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!, $registreringstid: D
       byg055AfvigendeEtager
       byg056Varmeinstallation
       byg057Opvarmningsmiddel
+      byg058SupplerendeVarme
       byg070Fredning
       byg071BevaringsvaerdighedReference
       byg094Revisionsdato
@@ -189,6 +218,81 @@ query GetBygning($id: String!, $virkningstid: DafDateTime!, $registreringstid: D
       registreringFra
       registreringTil
       virkningFra
+      virkningTil
+    }
+  }
+}`;
+
+const DUE_DILIGENCE_BUILDING_QUERY = BYGNING_QUERY;
+
+const UNIT_QUERY = `
+query GetEnhed($buildingId: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+  BBR_Enhed(
+    where: { bygning: { eq: $buildingId } }
+    virkningstid: $virkningstid
+    registreringstid: $registreringstid
+  ) {
+    nodes {
+      id_lokalId
+      bygning
+      adresseIdentificerer
+      enh020EnhedensAnvendelse
+      enh026EnhedensSamledeAreal
+      enh027ArealTilBeboelse
+      enh031AntalVaerelser
+      enh032Toiletforhold
+      enh033Badeforhold
+      enh034Koekkenforhold
+      enh065AntalVandskylledeToiletter
+      enh066AntalBadevaerelser
+      status
+      registreringTil
+      virkningTil
+    }
+  }
+}`;
+
+const TECHNICAL_INSTALLATION_QUERY = `
+query GetTekniskAnlaeg($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+  BBR_TekniskAnlaeg(
+    where: { husnummer: { eq: $id } }
+    virkningstid: $virkningstid
+    registreringstid: $registreringstid
+  ) {
+    nodes {
+      id_lokalId
+      tek007Anlaegsnummer
+      tek020Klassifikation
+      tek024Etableringsaar
+      tek026StoerrelsesklasseOlietank
+      tek027Placering
+      tek028SloejfningOlietank
+      tek032Stoerrelse
+      tek034IndholdOlietank
+      tek035SloejfningsfristOlietank
+      tek042Revisionsdato
+      tek101Gyldighedsdato
+      tek107PlaceringPaaSoeterritorie
+      status
+      registreringTil
+      virkningTil
+    }
+  }
+}`;
+
+const GROUND_QUERY = `
+query GetGrund($id: String!, $virkningstid: DafDateTime!, $registreringstid: DafDateTime!) {
+  BBR_Grund(
+    where: { husnummer: { eq: $id } }
+    virkningstid: $virkningstid
+    registreringstid: $registreringstid
+  ) {
+    nodes {
+      id_lokalId
+      gru009Vandforsyning
+      gru010Afloebsforhold
+      status
+      registreringTil
       virkningTil
     }
   }
@@ -211,11 +315,479 @@ export const selectCanonicalBuilding = selectCanonicalBuildingPure;
  */
 export const deriveBbrSummary = deriveBbrSummaryPure;
 
+function codeValue(
+  codelist: string,
+  code: string | number | null | undefined,
+  quality: BbrQualityNotice[],
+  field: string,
+  objectId: string | null,
+): BbrCodeValue {
+  const resolved = resolveBbrCode(codelist, code);
+  if (!resolved) return { code: null, label: null, disabled: false, known: true };
+
+  if (!resolved.known) {
+    quality.push({
+      code: "unknown_code",
+      severity: "warning",
+      message: `Ukendt BBR-kode ${resolved.key} i ${codelist}`,
+      field,
+      objectId,
+    });
+  } else if (resolved.disabled) {
+    quality.push({
+      code: "disabled_code",
+      severity: "info",
+      message: `BBR-kode ${resolved.key} i ${codelist} er markeret som udgået i kodelisten`,
+      field,
+      objectId,
+    });
+  }
+
+  return {
+    code: resolved.key,
+    label: resolved.label,
+    disabled: resolved.disabled,
+    known: resolved.known,
+  };
+}
+
+function displayState(node: {
+  status: string | null;
+  registreringTil: string | null;
+  virkningTil: string | null;
+}): BbrObjectDisplayState {
+  const now = new Date().toISOString();
+  if (node.status === "11") return "error_registered";
+  if (node.registreringTil != null && node.registreringTil <= now) return "historical";
+  if (node.virkningTil != null && node.virkningTil <= now) return "historical";
+  if (node.status === "10") return "historical";
+  if (node.status === "6") return "current";
+  return "unknown";
+}
+
+function isSecondaryUsage(code: string | null): boolean {
+  return ["910", "920", "930", "940"].includes(code ?? "");
+}
+
+function listedBuildingValue(value: string | null): boolean | null {
+  if (value === null) return null;
+  return value !== "" && value !== "0";
+}
+
+function mapBuilding(
+  node: BbrBuildingDueDiligenceNode,
+  canonicalBuildingId: string | null,
+  quality: BbrQualityNotice[],
+): BbrBuildingRecord {
+  const objectId = node.id_lokalId;
+  return {
+    id: objectId,
+    buildingNumber: node.byg007Bygningsnummer,
+    statusCode: node.status,
+    statusLabel: codeValue("Livscyklus", node.status, quality, "building.status", objectId).label,
+    displayState: displayState(node),
+    usage: codeValue(
+      "BygAnvendelse",
+      node.byg021BygningensAnvendelse,
+      quality,
+      "building.usage",
+      objectId,
+    ),
+    yearBuilt: node.byg026Opfoerelsesaar,
+    remodelYear: node.byg027OmTilbygningsaar,
+    footprintAreaM2: node.byg041BebyggetAreal,
+    totalBuildingAreaM2: node.byg038SamletBygningsareal,
+    residentialAreaM2: node.byg039BygningensSamledeBoligAreal,
+    commercialAreaM2: node.byg040BygningensSamledeErhvervsAreal,
+    floors: node.byg054AntalEtager,
+    deviatingFloors: codeValue(
+      "AfvigendeEtager",
+      node.byg055AfvigendeEtager,
+      quality,
+      "building.deviatingFloors",
+      objectId,
+    ),
+    outerWall: codeValue(
+      "YdervaeggenesMateriale",
+      node.byg032YdervaeggensMateriale,
+      quality,
+      "building.outerWall",
+      objectId,
+    ),
+    roof: codeValue(
+      "Tagdaekningsmateriale",
+      node.byg033Tagdaekningsmateriale,
+      quality,
+      "building.roof",
+      objectId,
+    ),
+    heatingInstallation: codeValue(
+      "Varmeinstallation",
+      node.byg056Varmeinstallation,
+      quality,
+      "building.heatingInstallation",
+      objectId,
+    ),
+    heatingFuel: codeValue(
+      "Opvarmningsmiddel",
+      node.byg057Opvarmningsmiddel,
+      quality,
+      "building.heatingFuel",
+      objectId,
+    ),
+    supplementaryHeating: codeValue(
+      "BygSupplerendeVarme",
+      node.byg058SupplerendeVarme,
+      quality,
+      "building.supplementaryHeating",
+      objectId,
+    ),
+    listedBuilding: listedBuildingValue(node.byg070Fredning),
+    fbbReference: node.byg071BevaringsvaerdighedReference,
+    revisionDate: node.byg094Revisionsdato,
+    isCanonical: objectId != null && objectId === canonicalBuildingId,
+    isSecondary: isSecondaryUsage(node.byg021BygningensAnvendelse),
+  };
+}
+
+function mapUnit(node: BbrUnitNode, quality: BbrQualityNotice[]): BbrUnitRecord {
+  const objectId = node.id_lokalId;
+  if (!node.bygning) {
+    quality.push({
+      code: "missing_unit_building_reference",
+      severity: "warning",
+      message: "BBR-enhed mangler bygning-reference og er derfor kun løst koblet til ejendommen",
+      field: "unit.buildingId",
+      objectId,
+    });
+  }
+
+  return {
+    id: objectId,
+    buildingId: node.bygning,
+    addressId: node.adresseIdentificerer,
+    statusCode: node.status,
+    statusLabel: codeValue("Livscyklus", node.status, quality, "unit.status", objectId).label,
+    displayState: displayState(node),
+    usage: codeValue(
+      "EnhAnvendelse",
+      node.enh020EnhedensAnvendelse,
+      quality,
+      "unit.usage",
+      objectId,
+    ),
+    totalAreaM2: node.enh026EnhedensSamledeAreal,
+    residentialAreaM2: node.enh027ArealTilBeboelse,
+    rooms: node.enh031AntalVaerelser,
+    toilet: codeValue("Toiletforhold", node.enh032Toiletforhold, quality, "unit.toilet", objectId),
+    toilets: node.enh065AntalVandskylledeToiletter,
+    bath: codeValue("Badeforhold", node.enh033Badeforhold, quality, "unit.bath", objectId),
+    bathrooms: node.enh066AntalBadevaerelser,
+    kitchen: codeValue(
+      "Koekkenforhold",
+      node.enh034Koekkenforhold,
+      quality,
+      "unit.kitchen",
+      objectId,
+    ),
+  };
+}
+
+function mapTechnicalInstallation(
+  node: BbrTechnicalInstallationNode,
+  quality: BbrQualityNotice[],
+): BbrTechnicalInstallationRecord {
+  const objectId = node.id_lokalId;
+  return {
+    id: objectId,
+    installationNumber: node.tek007Anlaegsnummer,
+    statusCode: node.status,
+    statusLabel: codeValue("Livscyklus", node.status, quality, "technical.status", objectId).label,
+    displayState: displayState(node),
+    classification: codeValue(
+      "Klassifikation",
+      node.tek020Klassifikation,
+      quality,
+      "technical.classification",
+      objectId,
+    ),
+    yearEstablished: node.tek024Etableringsaar,
+    sizeClass: codeValue(
+      "Stoerrelsesklasse",
+      node.tek026StoerrelsesklasseOlietank,
+      quality,
+      "technical.sizeClass",
+      objectId,
+    ),
+    location: codeValue("Placering", node.tek027Placering, quality, "technical.location", objectId),
+    decommissioning: codeValue(
+      "Sloejfning",
+      node.tek028SloejfningOlietank,
+      quality,
+      "technical.decommissioning",
+      objectId,
+    ),
+    size: node.tek032Stoerrelse,
+    content: codeValue(
+      "Indhold",
+      node.tek034IndholdOlietank,
+      quality,
+      "technical.content",
+      objectId,
+    ),
+    revisionDate: node.tek042Revisionsdato,
+    decommissioningDeadline: node.tek035SloejfningsfristOlietank,
+    validUntil: node.tek101Gyldighedsdato,
+    onSeaTerritory: codeValue(
+      "PaaSoeTerritorie",
+      node.tek107PlaceringPaaSoeterritorie,
+      quality,
+      "technical.onSeaTerritory",
+      objectId,
+    ),
+  };
+}
+
+function mapGround(node: BbrGroundNode, quality: BbrQualityNotice[]): BbrGroundRecord {
+  const objectId = node.id_lokalId;
+  return {
+    id: objectId,
+    statusCode: node.status,
+    statusLabel: codeValue("Livscyklus", node.status, quality, "ground.status", objectId).label,
+    displayState: displayState(node),
+    waterSupply: codeValue(
+      "GruVandforsyning",
+      node.gru009Vandforsyning,
+      quality,
+      "ground.waterSupply",
+      objectId,
+    ),
+    drainage: codeValue(
+      "GruAfloebsforhold",
+      node.gru010Afloebsforhold,
+      quality,
+      "ground.drainage",
+      objectId,
+    ),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // BbrService
 // ---------------------------------------------------------------------------
 
 export class BbrService {
+  static async getDueDiligenceData(
+    input: DueDiligenceInput,
+    config?: BbrClientConfig,
+    trace?: AnalysisTraceContext | null,
+  ): Promise<BbrDueDiligenceData> {
+    const husnummerId = input.husnummerId.trim();
+    const fetchedAt = new Date().toISOString();
+    const quality: BbrQualityNotice[] = [];
+
+    if (!husnummerId) {
+      return {
+        source: "datafordeler-bbr",
+        fetchedAt,
+        husnummerId,
+        buildings: [],
+        units: [],
+        technicalInstallations: [],
+        ground: null,
+        canonicalBuildingId: null,
+        quality: [
+          {
+            code: "integration_error",
+            severity: "error",
+            message: "husnummerId er påkrævet for BBR due-diligence opslag",
+          },
+        ],
+      };
+    }
+
+    const { apiKey, endpoint } = getConfig(config);
+    const url = new URL(endpoint);
+    url.searchParams.set("apiKey", apiKey);
+    const bitemporalArgs = currentBitemporalArgs();
+
+    try {
+      const buildingData = await datafordelerGraphqlFetch<unknown>(
+        url,
+        DUE_DILIGENCE_BUILDING_QUERY,
+        { id: husnummerId, ...bitemporalArgs },
+        "BBR_Bygning",
+        { trace, phase: "layer1", metadata: { endpoint: "BBR/v2", detail: "due_diligence" } },
+      );
+      const buildingParsed = bbrBuildingsResponseSchema.safeParse(buildingData);
+      if (!buildingParsed.success) {
+        throw new Error("Ugyldigt BBR_Bygning due-diligence payload");
+      }
+
+      const buildingNodes = buildingParsed.data.BBR_Bygning.nodes;
+      const { canonicalBuilding } = deriveBbrSummary(buildingNodes);
+      const canonicalBuildingId = canonicalBuilding?.id_lokalId ?? null;
+
+      if (!buildingNodes.length) {
+        quality.push({
+          code: "no_buildings",
+          severity: "warning",
+          message: "BBR returnerede ingen bygninger for husnummeret",
+        });
+      }
+
+      const currentPrimaryCount = buildingNodes.filter(
+        (node) =>
+          displayState(node) === "current" && !isSecondaryUsage(node.byg021BygningensAnvendelse),
+      ).length;
+      if (currentPrimaryCount > 1) {
+        quality.push({
+          code: "multiple_primary_buildings",
+          severity: "warning",
+          message: "BBR returnerede flere aktuelle primære bygninger for samme husnummer",
+        });
+      }
+
+      const buildingIds = [
+        ...new Set(buildingNodes.map((node) => node.id_lokalId).filter((id): id is string => !!id)),
+      ];
+
+      const unitResults = await Promise.all(
+        buildingIds.map((buildingId) =>
+          datafordelerGraphqlFetch<unknown>(
+            url,
+            UNIT_QUERY,
+            { buildingId, ...bitemporalArgs },
+            "BBR_Enhed",
+            { trace, phase: "layer1", metadata: { endpoint: "BBR/v2", detail: "units" } },
+          ).catch((error: unknown) => {
+            quality.push({
+              code: "integration_error",
+              severity: "warning",
+              message: `BBR_Enhed-opslag fejlede for bygning ${buildingId}: ${getErrorMessage(error)}`,
+              objectId: buildingId,
+            });
+            return null;
+          }),
+        ),
+      );
+
+      const unitNodes = unitResults.flatMap((data) => {
+        if (!data) return [];
+        const parsed = bbrUnitsResponseSchema.safeParse(data);
+        if (!parsed.success) {
+          quality.push({
+            code: "integration_error",
+            severity: "warning",
+            message: "Ugyldigt BBR_Enhed payload",
+          });
+          return [];
+        }
+        return parsed.data.BBR_Enhed.nodes;
+      });
+
+      const [technicalData, groundData] = await Promise.all([
+        datafordelerGraphqlFetch<unknown>(
+          url,
+          TECHNICAL_INSTALLATION_QUERY,
+          { id: husnummerId, ...bitemporalArgs },
+          "BBR_TekniskAnlaeg",
+          { trace, phase: "layer1", metadata: { endpoint: "BBR/v2", detail: "technical" } },
+        ).catch((error: unknown) => {
+          quality.push({
+            code: "integration_error",
+            severity: "warning",
+            message: `BBR_TekniskAnlaeg-opslag fejlede: ${getErrorMessage(error)}`,
+          });
+          return null;
+        }),
+        datafordelerGraphqlFetch<unknown>(
+          url,
+          GROUND_QUERY,
+          { id: husnummerId, ...bitemporalArgs },
+          "BBR_Grund",
+          { trace, phase: "layer1", metadata: { endpoint: "BBR/v2", detail: "ground" } },
+        ).catch((error: unknown) => {
+          quality.push({
+            code: "integration_error",
+            severity: "warning",
+            message: `BBR_Grund-opslag fejlede: ${getErrorMessage(error)}`,
+          });
+          return null;
+        }),
+      ]);
+
+      const technicalParsed = technicalData
+        ? bbrTechnicalInstallationsResponseSchema.safeParse(technicalData)
+        : null;
+      if (technicalParsed && !technicalParsed.success) {
+        quality.push({
+          code: "integration_error",
+          severity: "warning",
+          message: "Ugyldigt BBR_TekniskAnlaeg payload",
+        });
+      }
+
+      const groundParsed = groundData ? bbrGroundResponseSchema.safeParse(groundData) : null;
+      if (groundParsed && !groundParsed.success) {
+        quality.push({
+          code: "integration_error",
+          severity: "warning",
+          message: "Ugyldigt BBR_Grund payload",
+        });
+      }
+
+      const groundNode = groundParsed?.success
+        ? (groundParsed.data.BBR_Grund.nodes.find((node) => displayState(node) === "current") ??
+          groundParsed.data.BBR_Grund.nodes[0] ??
+          null)
+        : null;
+
+      return {
+        source: "datafordeler-bbr",
+        fetchedAt,
+        husnummerId,
+        buildings: buildingNodes.map((node) => mapBuilding(node, canonicalBuildingId, quality)),
+        units: unitNodes.map((node) => mapUnit(node, quality)),
+        technicalInstallations: technicalParsed?.success
+          ? technicalParsed.data.BBR_TekniskAnlaeg.nodes.map((node) =>
+              mapTechnicalInstallation(node, quality),
+            )
+          : [],
+        ground: groundNode ? mapGround(groundNode, quality) : null,
+        canonicalBuildingId,
+        quality,
+      };
+    } catch (error) {
+      logServerEvent({
+        module: "bbr/client",
+        operation: "getDueDiligenceData",
+        severity: "degraded",
+        message: "BBR due-diligence opslag fejlede",
+        error,
+        trace,
+        metadata: { husnummerId },
+      });
+      return {
+        source: "datafordeler-bbr",
+        fetchedAt,
+        husnummerId,
+        buildings: [],
+        units: [],
+        technicalInstallations: [],
+        ground: null,
+        canonicalBuildingId: null,
+        quality: [
+          {
+            code: "integration_error",
+            severity: "error",
+            message: getErrorMessage(error),
+          },
+        ],
+      };
+    }
+  }
+
   /**
    * Henter BBR-bygningsdata via Datafordelers GraphQL v2-endpoint.
    *

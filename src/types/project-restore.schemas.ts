@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
+import type { BbrDueDiligenceData } from "@/domain/contracts/bbr-due-diligence.types";
 import { dataStatusMapSchema } from "@/lib/datacheck";
 
 const complianceFlagSourceValues = [
@@ -131,6 +132,127 @@ export const ruleEngineBbrDataSchema = z
     tagdaekning_kode: z.string().nullable().catch(null),
   })
   .passthrough() as z.ZodType<RuleEngineBbrData>;
+
+const bbrCodeValueSchema = z
+  .object({
+    code: z.string().nullable(),
+    label: z.string().nullable(),
+    disabled: z.boolean(),
+    known: z.boolean(),
+  })
+  .strict();
+
+const bbrDisplayStateSchema = z.enum([
+  "current",
+  "historical",
+  "error_registered",
+  "future",
+  "unknown",
+]);
+
+export const bbrDueDiligenceSchema = z
+  .object({
+    source: z.literal("datafordeler-bbr"),
+    fetchedAt: z.string(),
+    husnummerId: z.string(),
+    buildings: z.array(
+      z
+        .object({
+          id: z.string().nullable(),
+          buildingNumber: z.number().nullable(),
+          statusCode: z.string().nullable(),
+          statusLabel: z.string().nullable(),
+          displayState: bbrDisplayStateSchema,
+          usage: bbrCodeValueSchema,
+          yearBuilt: z.number().nullable(),
+          remodelYear: z.number().nullable(),
+          footprintAreaM2: z.number().nullable(),
+          totalBuildingAreaM2: z.number().nullable(),
+          residentialAreaM2: z.number().nullable(),
+          commercialAreaM2: z.number().nullable(),
+          floors: z.number().nullable(),
+          deviatingFloors: bbrCodeValueSchema,
+          outerWall: bbrCodeValueSchema,
+          roof: bbrCodeValueSchema,
+          heatingInstallation: bbrCodeValueSchema,
+          heatingFuel: bbrCodeValueSchema,
+          supplementaryHeating: bbrCodeValueSchema,
+          listedBuilding: z.boolean().nullable(),
+          fbbReference: z.string().nullable(),
+          revisionDate: z.string().nullable(),
+          isCanonical: z.boolean(),
+          isSecondary: z.boolean(),
+        })
+        .strict(),
+    ),
+    units: z.array(
+      z
+        .object({
+          id: z.string().nullable(),
+          buildingId: z.string().nullable(),
+          addressId: z.string().nullable(),
+          statusCode: z.string().nullable(),
+          statusLabel: z.string().nullable(),
+          displayState: bbrDisplayStateSchema,
+          usage: bbrCodeValueSchema,
+          totalAreaM2: z.number().nullable(),
+          residentialAreaM2: z.number().nullable(),
+          rooms: z.number().nullable(),
+          toilet: bbrCodeValueSchema,
+          toilets: z.number().nullable(),
+          bath: bbrCodeValueSchema,
+          bathrooms: z.number().nullable(),
+          kitchen: bbrCodeValueSchema,
+        })
+        .strict(),
+    ),
+    technicalInstallations: z.array(
+      z
+        .object({
+          id: z.string().nullable(),
+          installationNumber: z.number().nullable(),
+          statusCode: z.string().nullable(),
+          statusLabel: z.string().nullable(),
+          displayState: bbrDisplayStateSchema,
+          classification: bbrCodeValueSchema,
+          yearEstablished: z.number().nullable(),
+          sizeClass: bbrCodeValueSchema,
+          location: bbrCodeValueSchema,
+          decommissioning: bbrCodeValueSchema,
+          size: z.number().nullable(),
+          content: bbrCodeValueSchema,
+          revisionDate: z.string().nullable(),
+          decommissioningDeadline: z.string().nullable(),
+          validUntil: z.string().nullable(),
+          onSeaTerritory: bbrCodeValueSchema,
+        })
+        .strict(),
+    ),
+    ground: z
+      .object({
+        id: z.string().nullable(),
+        statusCode: z.string().nullable(),
+        statusLabel: z.string().nullable(),
+        displayState: bbrDisplayStateSchema,
+        waterSupply: bbrCodeValueSchema,
+        drainage: bbrCodeValueSchema,
+      })
+      .strict()
+      .nullable(),
+    canonicalBuildingId: z.string().nullable(),
+    quality: z.array(
+      z
+        .object({
+          code: z.string(),
+          severity: z.enum(["info", "warning", "error"]),
+          message: z.string(),
+          field: z.string().optional(),
+          objectId: z.string().nullable().optional(),
+        })
+        .strict(),
+    ),
+  })
+  .strict() as z.ZodType<BbrDueDiligenceData>;
 
 export const ruleEngineLokalplanSchema = z
   .object({
@@ -477,6 +599,7 @@ export const billedeAnalyseResultatSchema = z
 export const restoredComplianceDataSchema = z
   .object({
     bbr: ruleEngineBbrDataSchema.nullable().optional().default(null),
+    bbrDueDiligence: bbrDueDiligenceSchema.nullable().optional().default(null),
     flags: z.array(complianceFlagSchema).optional().default([]),
     lokalplaner: z.array(ruleEngineLokalplanSchema).optional().default([]),
     kommuneplanramme: ruleEngineKommuneplanrammeSchema.nullable().optional().default(null),

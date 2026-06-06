@@ -11,6 +11,7 @@ import type {
   RuleEnginePlandataContext,
   RuleEngineArealdataContext,
 } from "@/domain/contracts/rule-engine.types";
+import type { BbrDueDiligenceData } from "@/domain/contracts/bbr-due-diligence.types";
 import type { TjekditnetCoverageData } from "@/integrations/tjekditnet/client";
 import type { EnergyLabelData } from "@/integrations/energimaerke/client";
 import type { LokalplanExtract } from "@/integrations/ai/pdf-extractor";
@@ -57,6 +58,7 @@ type State = {
   // Eksisterende felter (backward compatible)
   address: Address | null;
   bbrData: RuleEngineBbrData | null;
+  bbrDueDiligence: BbrDueDiligenceData | null;
   complianceDone: boolean;
   project: ProjectData;
   briefDone: boolean;
@@ -119,6 +121,7 @@ type State = {
   // Setters — eksisterende
   setAddress: (a: Address | null) => void;
   setBbrData: (d: RuleEngineBbrData | null) => void;
+  setBbrDueDiligence: (d: BbrDueDiligenceData | null) => void;
   setComplianceDone: (v: boolean) => void;
   setProject: (p: Partial<ProjectData>) => void;
   setBriefDone: (v: boolean) => void;
@@ -203,6 +206,7 @@ const DEFAULT_DATA_STATUS: Record<DataSourceKind, DataSourceStatus> = {
 export const useProject = create<State>((set) => ({
   address: null,
   bbrData: null,
+  bbrDueDiligence: null,
   complianceDone: false,
   project: {},
   briefDone: false,
@@ -243,6 +247,7 @@ export const useProject = create<State>((set) => ({
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
+  setBbrDueDiligence: (bbrDueDiligence) => set({ bbrDueDiligence }),
   setComplianceDone: (v) => set({ complianceDone: v }),
   setProject: (p) => set((s) => ({ project: { ...s.project, ...p } })),
   setBriefDone: (v) => set({ briefDone: v }),
@@ -289,6 +294,7 @@ export const useProject = create<State>((set) => ({
     set({
       address: null,
       bbrData: null,
+      bbrDueDiligence: null,
       complianceDone: false,
       project: {},
       briefDone: false,

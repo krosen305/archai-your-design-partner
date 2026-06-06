@@ -38,6 +38,7 @@ export function useCockpitAnalysis(params: {
     byggeanalyseResultat,
     setAddress,
     setBbrData,
+    setBbrDueDiligence,
     setComplianceDone,
     setComplianceFlags,
     setComplianceMetrics,
@@ -85,8 +86,9 @@ export function useCockpitAnalysis(params: {
     analysisStartedRef.current = false;
     setComplianceDone(false);
     setBbrData(null);
+    setBbrDueDiligence(null);
     setStatus("loading");
-  }, [setBbrData, setComplianceDone]);
+  }, [setBbrData, setBbrDueDiligence, setComplianceDone]);
 
   const runManualAnalyse = useCallback(async () => {
     if (!bbrData || !address) return;
@@ -198,6 +200,7 @@ export function useCockpitAnalysis(params: {
           });
 
           setBbrData(result.bbr);
+          setBbrDueDiligence(result.bbrDueDiligence ?? null);
           setLokalplaner(result.lokalplaner);
           setLokalplanExtract(result.lokalplanExtract);
           setKommuneplanramme(result.kommuneplanramme);
@@ -276,6 +279,7 @@ export function useCockpitAnalysis(params: {
     byggeanalyseResultat,
     setAddress,
     setBbrData,
+    setBbrDueDiligence,
     setComplianceDone,
     setComplianceFlags,
     setComplianceMetrics,

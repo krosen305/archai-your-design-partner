@@ -21,6 +21,7 @@ export type BbrBuildingNode = {
   byg055AfvigendeEtager: string | null;
   byg056Varmeinstallation: string | null;
   byg057Opvarmningsmiddel: string | null;
+  byg058SupplerendeVarme: string | null;
   byg070Fredning: string | null;
   byg071BevaringsvaerdighedReference: string | null;
   byg094Revisionsdato: string | null;
@@ -52,6 +53,7 @@ const bbrBuildingNodeSchema = z.object({
   byg055AfvigendeEtager: z.string().nullable(),
   byg056Varmeinstallation: z.string().nullable(),
   byg057Opvarmningsmiddel: z.string().nullable(),
+  byg058SupplerendeVarme: z.string().nullable().optional().default(null),
   byg070Fredning: z.string().nullable(),
   byg071BevaringsvaerdighedReference: z.string().nullable(),
   byg094Revisionsdato: z.string().nullable(),

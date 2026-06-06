@@ -39,6 +39,7 @@ describe("persistedProjectSchema", () => {
     if (!parsed.success) return;
     expect(parsed.data.compliance_data).toEqual({
       bbr: null,
+      bbrDueDiligence: null,
       flags: [],
       lokalplaner: [],
       kommuneplanramme: null,
