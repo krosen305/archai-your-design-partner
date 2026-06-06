@@ -4,6 +4,8 @@ import { useProject } from "@/lib/project-store";
 import { exportBeliggenhedsplanFn } from "@/routes/api.drawing";
 import type { ExportResult } from "@/services/drawing/export-drawing.service";
 import type { DrawingReadinessStatus } from "@/domain/drawing/decision-engine";
+import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
+import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
 
 const READINESS_LABELS: Record<DrawingReadinessStatus, string> = {
   AUTO_DRAFT: "Udkast (mangler data)",
@@ -59,6 +61,10 @@ function TeknikPage() {
     !!centroid &&
     buildingWidthM !== "" &&
     parseFloat(buildingWidthM) > 0;
+
+  const footprintForMap: GeoJsonPolygon25832 | null = designPlacement?.footprintGeojson
+    ? { ...designPlacement.footprintGeojson, crs: "EPSG:25832" as const }
+    : null;
 
   const missingFields: string[] = [];
   if (!currentProjectId) missingFields.push("Projekt ikke gemt");
@@ -120,186 +126,207 @@ function TeknikPage() {
           </span>
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto p-8 space-y-6">
-
-        {!canGenerate && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-4">
-            <p className="text-sm font-medium text-amber-300 mb-2">Mangler data for at generere:</p>
-            <ul className="list-disc list-inside space-y-1">
-              {missingFields.map((f) => (
-                <li key={f} className="text-sm text-amber-400/80">
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {canGenerate && !hasFootprint && (
-          <div className="rounded-lg border border-border/40 bg-[#0d0d0d] p-4 space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">
-              Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en
-              centreret standardplacering
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Bredde (m) *</label>
-                <input
-                  type="number"
-                  value={buildingWidthM}
-                  onChange={(e) => setBuildingWidthM(e.target.value)}
-                  placeholder="f.eks. 12"
-                  min={1}
-                  max={60}
-                  step={0.5}
-                  className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Dybde (m)</label>
-                <input
-                  type="number"
-                  value={buildingDepthM}
-                  onChange={(e) => setBuildingDepthM(e.target.value)}
-                  placeholder="= bredde hvis tom"
-                  min={1}
-                  max={60}
-                  step={0.5}
-                  className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Rotation (°)</label>
-                <input
-                  type="number"
-                  value={rotationDeg}
-                  onChange={(e) => setRotationDeg(e.target.value)}
-                  placeholder="0"
-                  min={0}
-                  max={360}
-                  step={5}
-                  className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {canGenerate && hasFootprint && (
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/20 p-3">
-            <p className="text-sm text-emerald-300">
-              Fodprint fra designværktøjet anvendes (
-              {(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)} m²)
-            </p>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-5 space-y-4">
-          <h2 className="text-sm font-medium text-foreground">Tegningsdata</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Bygherre</label>
-              <input
-                type="text"
-                value={bygherre}
-                onChange={(e) => setBygherre(e.target.value)}
-                placeholder="Navn på bygherre"
-                maxLength={200}
-                className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Sokkelkote DVR90 (m)
-              </label>
-              <input
-                type="number"
-                value={sokkelKoteM}
-                onChange={(e) => setSokkelKoteM(e.target.value)}
-                placeholder="f.eks. 18.50"
-                step="0.01"
-                className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Bygningshøjde (m)
-              </label>
-              <input
-                type="number"
-                value={heightM}
-                onChange={(e) => setHeightM(e.target.value)}
-                placeholder="f.eks. 8.50"
-                step="0.01"
-                className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
-              />
-            </div>
-          </div>
+      <main className="flex flex-1 overflow-hidden">
+        {/* Left: map fills remaining space */}
+        <div className="flex-1 overflow-hidden">
+          <MatrikelMap
+            bbr={bbrData}
+            metrics={null}
+            naboer={null}
+            jordstykkeLokalId={matrikelId}
+            footprintGeojson={footprintForMap}
+          />
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleGenerate}
-            disabled={!canGenerate || loading || (!hasFootprint && !canGenerateWithDimensions)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-4 py-2 font-mono text-[11px] tracking-[0.1em] text-foreground hover:bg-[#1a1a1a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? "Genererer…" : "Generer beliggenhedsplan"}
-          </button>
+        {/* Right: input panel */}
+        <aside className="w-[360px] shrink-0 border-l border-border/40 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
-          {result && !loading && (
-            <span className="font-mono text-[11px] text-emerald-400">Tegning genereret</span>
-          )}
-        </div>
+            {!canGenerate && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-4">
+                <p className="text-sm font-medium text-amber-300 mb-2">Mangler data for at generere:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {missingFields.map((f) => (
+                    <li key={f} className="text-sm text-amber-400/80">
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-        {error && (
-          <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4">
-            <p className="text-sm font-medium text-red-300">Fejl ved generering</p>
-            <p className="text-sm text-red-400/80 mt-1 font-mono">{error}</p>
+            {canGenerate && !hasFootprint && (
+              <div className="rounded-lg border border-border/40 bg-[#0d0d0d] p-4 space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en
+                  centreret standardplacering
+                </p>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Bredde (m) *</label>
+                    <input
+                      type="number"
+                      value={buildingWidthM}
+                      onChange={(e) => setBuildingWidthM(e.target.value)}
+                      placeholder="f.eks. 12"
+                      min={1}
+                      max={60}
+                      step={0.5}
+                      className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Dybde (m)</label>
+                    <input
+                      type="number"
+                      value={buildingDepthM}
+                      onChange={(e) => setBuildingDepthM(e.target.value)}
+                      placeholder="= bredde hvis tom"
+                      min={1}
+                      max={60}
+                      step={0.5}
+                      className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Rotation (°)</label>
+                    <input
+                      type="number"
+                      value={rotationDeg}
+                      onChange={(e) => setRotationDeg(e.target.value)}
+                      placeholder="0"
+                      min={0}
+                      max={360}
+                      step={5}
+                      className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {canGenerate && hasFootprint && (
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/20 p-3">
+                <p className="text-sm text-emerald-300">
+                  Fodprint fra designværktøjet anvendes (
+                  {(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)} m²)
+                </p>
+              </div>
+            )}
+
+            <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-5 space-y-4">
+              <h2 className="text-sm font-medium text-foreground">Tegningsdata</h2>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Bygherre</label>
+                  <input
+                    type="text"
+                    value={bygherre}
+                    onChange={(e) => setBygherre(e.target.value)}
+                    placeholder="Navn på bygherre"
+                    maxLength={200}
+                    className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Sokkelkote DVR90 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={sokkelKoteM}
+                    onChange={(e) => setSokkelKoteM(e.target.value)}
+                    placeholder="f.eks. 18.50"
+                    step="0.01"
+                    className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Bygningshøjde (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={heightM}
+                    onChange={(e) => setHeightM(e.target.value)}
+                    placeholder="f.eks. 8.50"
+                    step="0.01"
+                    className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4">
+                <p className="text-sm font-medium text-red-300">Fejl ved generering</p>
+                <p className="text-sm text-red-400/80 mt-1 font-mono">{error}</p>
+              </div>
+            )}
+
+            {result && (
+              <div className="space-y-4">
+                <div className={`rounded-lg border p-4 ${READINESS_COLORS[result.readinessStatus]}`}>
+                  <p className="text-sm font-semibold">
+                    Status: {READINESS_LABELS[result.readinessStatus]}
+                  </p>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() =>
+                      downloadSvg(
+                        result.svgContent,
+                        `beliggenhedsplan-${result.exportId.slice(0, 8)}.svg`,
+                      )
+                    }
+                    className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    Download SVG
+                  </button>
+
+                  {result.pdfUrl !== null && (
+                    <a
+                      href={result.pdfUrl}
+                      download={`beliggenhedsplan-${result.exportId.slice(0, 8)}.pdf`}
+                      className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
+                    >
+                      Download PDF
+                    </a>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-border/40 bg-[#0d0d0d] overflow-auto shadow-sm">
+                  <div className="p-3 border-b border-border/20">
+                    <span className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
+                      Preview — beliggenhedsplan
+                    </span>
+                  </div>
+                  <div className="p-4" dangerouslySetInnerHTML={{ __html: result.svgContent }} />
+                </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {result && (
-          <div className="space-y-4">
-            <div className={`rounded-lg border p-4 ${READINESS_COLORS[result.readinessStatus]}`}>
-              <p className="text-sm font-semibold">
-                Status: {READINESS_LABELS[result.readinessStatus]}
+          {/* Sticky generate button */}
+          <div className="shrink-0 border-t border-border/40 p-4">
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate || loading || (!hasFootprint && !canGenerateWithDimensions)}
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border
+                         border-border/60 bg-[#111] px-4 py-2.5 font-mono text-[11px]
+                         tracking-[0.1em] text-foreground hover:bg-[#1a1a1a]
+                         disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? "Genererer…" : "Generer beliggenhedsplan"}
+            </button>
+            {result && !loading && (
+              <p className="mt-2 text-center font-mono text-[10px] text-emerald-400">
+                Tegning genereret
               </p>
-            </div>
-
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() =>
-                  downloadSvg(
-                    result.svgContent,
-                    `beliggenhedsplan-${result.exportId.slice(0, 8)}.svg`,
-                  )
-                }
-                className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
-              >
-                Download SVG
-              </button>
-
-              {result.pdfUrl !== null && (
-                <a
-                  href={result.pdfUrl}
-                  download={`beliggenhedsplan-${result.exportId.slice(0, 8)}.pdf`}
-                  className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
-                >
-                  Download PDF
-                </a>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-border/40 bg-[#0d0d0d] overflow-auto shadow-sm">
-              <div className="p-3 border-b border-border/20">
-                <span className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
-                  Preview — beliggenhedsplan
-                </span>
-              </div>
-              <div className="p-4" dangerouslySetInnerHTML={{ __html: result.svgContent }} />
-            </div>
+            )}
           </div>
-        )}
+        </aside>
       </main>
     </div>
   );
