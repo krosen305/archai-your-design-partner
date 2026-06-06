@@ -14,7 +14,7 @@ export type BbrBuildingCandidate = {
 };
 
 const SECONDARY_CODES = new Set(["910", "920", "930", "940"]);
-const BOLIG_KODER = new Set(["110", "120", "121", "122", "130", "140", "510"]);
+const BOLIG_KODER = new Set(["110", "120", "121", "122", "130", "131", "132", "140", "510"]);
 
 function scoreBygning(b: BbrBuildingCandidate): number {
   let score = 0;

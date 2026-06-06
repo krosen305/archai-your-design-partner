@@ -10,6 +10,7 @@ describe("parseComplianceData", () => {
   it("decodes an empty persisted payload with schema defaults", () => {
     expect(parseComplianceData({})).toEqual({
       bbr: null,
+      bbrDueDiligence: null,
       flags: [],
       lokalplaner: [],
       kommuneplanramme: null,

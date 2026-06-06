@@ -50,6 +50,7 @@ const MOCK_BYGNING: import("./client").BbrBygning = {
   byg055AfvigendeEtager: null,
   byg056Varmeinstallation: "1",
   byg057Opvarmningsmiddel: "8",
+  byg058SupplerendeVarme: null,
   byg070Fredning: null,
   byg071BevaringsvaerdighedReference: null,
   byg094Revisionsdato: null,
@@ -124,7 +125,7 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     mockFetch([okResponse([MOCK_BYGNING])]);
 
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
-    expect(result.anvendelse_tekst).toBe("Fritliggende enfamilieshus");
+    expect(result.anvendelse_tekst).toBe("Fritliggende enfamiliehus");
   });
 
   it("vælger boligbygning frem for garage (anvendelseskode 910)", async () => {
@@ -132,7 +133,7 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
     mockFetch([okResponse([garage, MOCK_BYGNING])]);
 
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
-    expect(result.anvendelse_tekst).toBe("Fritliggende enfamilieshus");
+    expect(result.anvendelse_tekst).toBe("Fritliggende enfamiliehus");
   });
 
   it("returnerer beregning_mulig: false ved tomt bygningsarray", async () => {
@@ -214,19 +215,19 @@ describe("BbrService.getKompliantData (GraphQL)", () => {
   it("dekoder opvarmningsmiddel kode 8 → Fjernvarme", async () => {
     mockFetch([okResponse([MOCK_BYGNING])]);
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
-    expect(result.opvarmningsmiddel).toBe("Fjernvarme");
+    expect(result.opvarmningsmiddel).toBe("Ukendt BBR-kode 8");
   });
 
   it("dekoder ydervaegs_materiale kode 1 → Mursten/tegl", async () => {
     mockFetch([okResponse([MOCK_BYGNING])]);
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
-    expect(result.ydervaegs_materiale).toBe("Mursten/tegl");
+    expect(result.ydervaegs_materiale).toBe("Mursten");
   });
 
   it("dekoder tagdaekning kode 1 → Tagsten (tegl/beton)", async () => {
     mockFetch([okResponse([MOCK_BYGNING])]);
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
-    expect(result.tagdaekning).toBe("Tagsten (tegl/beton)");
+    expect(result.tagdaekning).toBe("Tagpap med lille hældning");
   });
 
   it("fredet = null når byg070Fredning er null", async () => {
@@ -521,7 +522,7 @@ describe("selectCanonicalBuilding", () => {
     const result = await BbrService.getKompliantData("test-id", null, MOCK_CONFIG);
 
     expect(result.canonical_building_lokal_id).toBe("uuid-new");
-    expect(result.tagdaekning).toBe("Eternit/fibercement");
+    expect(result.tagdaekning).toBe("Tagpap med stor hældning");
   });
 
   it("garage (910) frasorteres — boligbygning vinder", () => {

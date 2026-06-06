@@ -171,6 +171,7 @@ export function buildComplianceApplication(params: {
     syncPatch: {
       ...(mergedAddress && result.addressPatch ? { address: mergedAddress } : {}),
       bbrData: result.bbr,
+      bbrDueDiligence: result.bbrDueDiligence,
       complianceFlags,
       lokalplaner: result.lokalplaner,
       kommuneplanramme: result.kommuneplanramme,

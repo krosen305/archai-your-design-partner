@@ -5,6 +5,7 @@
 // Only AI-extracted lokalplan data is cached (see lokalplan-extraction-step.ts).
 
 import type { VurData } from "@/domain/contracts/analysis.types";
+import type { BbrDueDiligenceData } from "@/domain/contracts/bbr-due-diligence.types";
 import type {
   RuleEngineBbrData,
   RuleEngineKommuneplanramme,
@@ -17,6 +18,7 @@ import type { DataSourceKind, PipelineServiceState } from "@/types/project-state
 
 export type ComplianceBase = {
   bbr: RuleEngineBbrData | null;
+  bbrDueDiligence: BbrDueDiligenceData | null;
   lokalplaner: RuleEngineLokalplan[];
   kommuneplanramme: RuleEngineKommuneplanramme | null;
   analysedAt: string;
@@ -67,6 +69,24 @@ export async function runLayer1Analysis(
     fetchVurViaEbr(adgangsadresseid, trace),
   ]);
 
+  let bbrDueDiligence: BbrDueDiligenceData | null = null;
+  if (adgangsadresseid) {
+    try {
+      const { BbrService } = await import("@/integrations/bbr/client");
+      bbrDueDiligence = await BbrService.getDueDiligenceData(
+        {
+          husnummerId: adgangsadresseid,
+          adresseId: addressId,
+          grundarealM2: grundareal,
+        },
+        undefined,
+        trace,
+      );
+    } catch {
+      bbrDueDiligence = null;
+    }
+  }
+
   states.bbr = bbrResult ? "success" : "no_hit";
   states.lokalplaner = plandataResult.lokalplaner.length > 0 ? "success" : "no_hit";
   states.kommuneplanramme = plandataResult.kommuneplanramme ? "success" : "no_hit";
@@ -87,6 +107,7 @@ export async function runLayer1Analysis(
 
   const complianceBase: ComplianceBase = {
     bbr: bbrResult,
+    bbrDueDiligence,
     lokalplaner: plandataResult.lokalplaner,
     kommuneplanramme: plandataResult.kommuneplanramme,
     analysedAt: new Date().toISOString(),

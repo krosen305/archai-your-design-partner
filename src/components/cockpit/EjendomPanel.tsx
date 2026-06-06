@@ -12,9 +12,15 @@ import {
   Users,
 } from "lucide-react";
 import { useProject } from "@/lib/project-store";
+import { buildBbrDueDiligenceViewModel } from "@/lib/bbr-due-diligence-view-model";
 import { buildSaveFieldView, type SaveFieldTone } from "@/lib/compliance-view-model";
 import { PIPELINE_SERVICE_STATE_LABELS } from "@/types/project-state";
 import type { ComplianceFlag, PipelineServiceState } from "@/types/project-state";
+import type {
+  BbrBuildingRecord,
+  BbrTechnicalInstallationRecord,
+  BbrUnitRecord,
+} from "@/domain/contracts/bbr-due-diligence.types";
 import { Card } from "@/components/wizard-ui";
 
 const SAVE_FIELD_TONE_CLASS: Record<SaveFieldTone, string> = {
@@ -27,6 +33,7 @@ export function EjendomPanel() {
   const {
     complianceMetrics,
     bbrData,
+    bbrDueDiligence,
     vurderingData,
     complianceFlags,
     address,
@@ -42,6 +49,7 @@ export function EjendomPanel() {
   const [showDatakilder, setShowDatakilder] = useState(false);
 
   const bbr = bbrData;
+  const bbrView = buildBbrDueDiligenceViewModel(bbrDueDiligence);
 
   const grundareal = grundareal_m2 ?? complianceMetrics?.grundareal ?? bbrData?.grundareal ?? null;
   const bebyggetAreal = bebygget_areal_m2 ?? bbr?.bebygget_areal ?? null;
@@ -209,6 +217,87 @@ export function EjendomPanel() {
           </div>
         </Card>
       </div>
+
+      {bbrView && (
+        <>
+          <SectionHeader title="BBR-register" />
+          <div className="space-y-3">
+            {bbrView.primaryBuildings.map((building) => (
+              <BbrBuildingCard
+                key={building.id ?? `primary-${building.buildingNumber ?? "unknown"}`}
+                building={building}
+                units={building.id ? (bbrView.unitsByBuildingId.get(building.id) ?? []) : []}
+              />
+            ))}
+
+            {bbrView.secondaryBuildings.length > 0 && (
+              <Card>
+                <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-3">
+                  SEKUNDÆRE BYGNINGER
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {bbrView.secondaryBuildings.map((building) => (
+                    <BbrSecondaryBuilding
+                      key={building.id ?? `secondary-${building.buildingNumber}`}
+                      building={building}
+                    />
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {(bbrView.currentTechnicalInstallations.length > 0 ||
+              bbrView.historicalTechnicalInstallations.length > 0) && (
+              <Card>
+                <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-3">
+                  TEKNISKE ANLÆG
+                </div>
+                <div className="space-y-3">
+                  {bbrView.currentTechnicalInstallations.map((installation) => (
+                    <BbrTechnicalInstallation
+                      key={installation.id ?? `technical-${installation.installationNumber}`}
+                      installation={installation}
+                    />
+                  ))}
+                  {bbrView.historicalTechnicalInstallations.map((installation) => (
+                    <BbrTechnicalInstallation
+                      key={installation.id ?? `historical-${installation.installationNumber}`}
+                      installation={installation}
+                    />
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {bbrView.ground && (
+              <Card>
+                <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-3">
+                  VAND OG AFLØB
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Vandforsyning" value={bbrView.ground.waterSupply.label ?? "-"} />
+                  <Field label="Afløb" value={bbrView.ground.drainage.label ?? "-"} />
+                </div>
+              </Card>
+            )}
+
+            {bbrView.qualityMessages.length > 0 && (
+              <div className="rounded-md border border-warning/40 bg-warning/5 p-3">
+                <div className="font-mono text-[10px] tracking-[0.15em] text-warning">
+                  BBR DATAKVALITET
+                </div>
+                <ul className="mt-2 space-y-1">
+                  {bbrView.qualityMessages.map((message) => (
+                    <li key={message} className="text-xs text-muted-foreground">
+                      {message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {neighborContextFacts && (
         <>
@@ -405,9 +494,133 @@ function formatMio(v: number | null | undefined): string {
   return `${(v / 1_000_000).toFixed(2).replace(".", ",")} mio. kr.`;
 }
 
+function formatM2(v: number | null): string {
+  return v != null ? `${v} m²` : "-";
+}
+
+function BbrBuildingCard({
+  building,
+  units,
+}: {
+  building: BbrBuildingRecord;
+  units: BbrUnitRecord[];
+}) {
+  return (
+    <Card>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+            HOVEDBYGNING
+          </div>
+          <div className="mt-1 text-sm text-foreground">
+            {building.usage.label ?? "-"}
+            {building.buildingNumber != null ? ` · Bygning ${building.buildingNumber}` : ""}
+          </div>
+        </div>
+        <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em] text-muted-foreground">
+          {building.displayState.toUpperCase()}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Field label="Opført" value={building.yearBuilt ?? "-"} />
+        <Field label="Ombygget" value={building.remodelYear ?? "-"} />
+        <Field label="Bygningsareal" value={formatM2(building.totalBuildingAreaM2)} />
+        <Field label="Boligareal" value={formatM2(building.residentialAreaM2)} />
+        <Field label="Bebygget areal" value={formatM2(building.footprintAreaM2)} />
+        <Field label="Etager" value={building.floors ?? "-"} />
+        <Field label="Afvigende etager" value={building.deviatingFloors.label ?? "-"} />
+        <Field label="Ydervæg" value={building.outerWall.label ?? "-"} />
+        <Field label="Tag" value={building.roof.label ?? "-"} />
+        <Field label="Varme" value={building.heatingInstallation.label ?? "-"} />
+        <Field label="Opvarmning" value={building.heatingFuel.label ?? "-"} />
+        <Field label="Supplerende" value={building.supplementaryHeating.label ?? "-"} />
+      </div>
+      {units.length > 0 && (
+        <div className="mt-4 border-t border-border pt-3">
+          <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground mb-3">
+            ENHEDER
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {units.map((unit) => (
+              <BbrUnit key={unit.id ?? `unit-${unit.totalAreaM2}-${unit.rooms}`} unit={unit} />
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function BbrUnit({ unit }: { unit: BbrUnitRecord }) {
+  return (
+    <div className="rounded-md border border-border/60 p-3">
+      <div className="mb-2 text-sm text-foreground">{unit.usage.label ?? "Enhed"}</div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Areal" value={formatM2(unit.totalAreaM2)} />
+        <Field label="Bolig" value={formatM2(unit.residentialAreaM2)} />
+        <Field label="Værelser" value={unit.rooms ?? "-"} />
+        <Field label="Toiletter" value={unit.toilets ?? "-"} />
+        <Field label="Bad" value={unit.bathrooms ?? "-"} />
+        <Field label="Køkken" value={unit.kitchen.label ?? "-"} />
+      </div>
+    </div>
+  );
+}
+
+function BbrSecondaryBuilding({ building }: { building: BbrBuildingRecord }) {
+  return (
+    <div className="rounded-md border border-border/60 p-3">
+      <div className="mb-2 text-sm text-foreground">
+        {building.usage.label ?? "Bygning"}
+        {building.buildingNumber != null ? ` · ${building.buildingNumber}` : ""}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Opført" value={building.yearBuilt ?? "-"} />
+        <Field label="Areal" value={formatM2(building.footprintAreaM2)} />
+        <Field label="Ydervæg" value={building.outerWall.label ?? "-"} />
+        <Field label="Tag" value={building.roof.label ?? "-"} />
+      </div>
+    </div>
+  );
+}
+
+function BbrTechnicalInstallation({
+  installation,
+}: {
+  installation: BbrTechnicalInstallationRecord;
+}) {
+  return (
+    <div className="rounded-md border border-border/60 p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-sm text-foreground">
+          {installation.classification.label ?? "Anlæg"}
+        </div>
+        <span className="font-mono text-[9px] tracking-[0.1em] text-muted-foreground">
+          {installation.displayState.toUpperCase()}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Field label="Etableret" value={installation.yearEstablished ?? "-"} />
+        <Field label="Placering" value={installation.location.label ?? "-"} />
+        <Field label="Størrelse" value={installation.sizeClass.label ?? installation.size ?? "-"} />
+        <Field label="Indhold" value={installation.content.label ?? "-"} />
+        <Field label="Sløjfning" value={installation.decommissioning.label ?? "-"} />
+        <Field label="Revision" value={formatDate(installation.revisionDate)} />
+        <Field label="Søterritorie" value={installation.onSeaTerritory.label ?? "-"} />
+        <Field label="Status" value={installation.statusLabel ?? installation.statusCode ?? "-"} />
+      </div>
+    </div>
+  );
+}
+
 function formatMeter(v: number | null | undefined): string {
   if (v == null) return "-";
   return `${v.toLocaleString("da-DK", { maximumFractionDigits: v < 10 ? 1 : 0 })} m`;
+}
+
+function formatDate(v: string | null): string {
+  if (!v) return "-";
+  return new Date(v).toLocaleDateString("da-DK");
 }
 
 function formatNullableBoolean(v: boolean | null | undefined): string {

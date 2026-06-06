@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataStatusMapSchema } from "@/lib/datacheck";
 import {
   addressKoordinaterSchema,
+  bbrDueDiligenceSchema,
   billedeAnalyseResultatSchema,
   byggeoenskeSchema,
   designPlacementSchema,
@@ -79,6 +80,7 @@ export const projectPatchSchema = z
   .object({
     address: addressSchema.optional(),
     bbrData: ruleEngineBbrDataSchema.nullable().optional(),
+    bbrDueDiligence: bbrDueDiligenceSchema.nullable().optional(),
     husDna: husDnaSchema.nullable().optional(),
     byggeoenske: byggeoenskeSchema.optional(),
     designPlacement: designPlacementSchema.nullable().optional(),

@@ -12,6 +12,7 @@ type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
 export function hasComplianceFields(patch: ProjectPatch): boolean {
   return (
     patch.bbrData !== undefined ||
+    patch.bbrDueDiligence !== undefined ||
     patch.complianceFlags !== undefined ||
     patch.lokalplaner !== undefined ||
     patch.kommuneplanramme !== undefined ||
@@ -67,6 +68,9 @@ export function buildProjectUpdate(
     const complianceData: Json = {
       ...toJsonObject(prevCompliance),
       ...(patch.bbrData !== undefined && { bbr: toJsonValue(patch.bbrData) }),
+      ...(patch.bbrDueDiligence !== undefined && {
+        bbrDueDiligence: toJsonValue(patch.bbrDueDiligence),
+      }),
       ...(patch.complianceFlags !== undefined && { flags: toJsonValue(patch.complianceFlags) }),
       ...(patch.lokalplaner !== undefined && { lokalplaner: toJsonValue(patch.lokalplaner) }),
       ...(patch.kommuneplanramme !== undefined && {

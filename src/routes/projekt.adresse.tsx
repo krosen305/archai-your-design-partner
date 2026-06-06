@@ -18,8 +18,14 @@ export const Route = createFileRoute("/projekt/adresse")({
 
 function AddressStep() {
   const navigate = useNavigate();
-  const { setAddress, setBbrData, setComplianceDone, setCurrentProjectId, currentProjectId } =
-    useProject();
+  const {
+    setAddress,
+    setBbrData,
+    setBbrDueDiligence,
+    setComplianceDone,
+    setCurrentProjectId,
+    currentProjectId,
+  } = useProject();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<GsearchSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,6 +87,7 @@ function AddressStep() {
     if (!selected || continuing) return;
     setContinuing(true);
     setBbrData(null);
+    setBbrDueDiligence(null);
     setComplianceDone(false);
 
     // Sørg for at vi har et projectId før vi navigerer til cockpit. Uden et

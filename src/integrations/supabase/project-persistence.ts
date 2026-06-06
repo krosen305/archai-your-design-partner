@@ -26,6 +26,7 @@ import type { NeighborBuildingData } from "@/integrations/bbr/neighbor-client";
 import type { FjernvarmeResultat } from "@/integrations/plandata/fjernvarme";
 import type { PlanContextResult } from "@/integrations/plandata/client";
 import type { NeighborContextFacts } from "@/domain/contracts/surroundings.types";
+import type { BbrDueDiligenceData } from "@/domain/contracts/bbr-due-diligence.types";
 import {
   getUserId,
   getOrCreateProject,
@@ -60,6 +61,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export type ProjectPatch = {
   address?: Address;
   bbrData?: BbrKompliantData | null;
+  bbrDueDiligence?: BbrDueDiligenceData | null;
   husDna?: HusDna | null;
   byggeoenske?: Byggeoenske;
   designPlacement?: DesignPlacement | null;
