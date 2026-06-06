@@ -69,6 +69,7 @@ describe("buildProjectUpdate", () => {
     expect(update.address_full).toBe("Hasselvej 48, 2800 Lyngby");
     expect(update.address_adresseid).toBe("adr-uuid-1");
     expect(update.adresse_dar_id).toBe("adr-uuid-1");
+    expect(update.address_kommunekode).toBe("0173");
     expect(update.address_ejerlavskode).toBe(168951);
   });
 

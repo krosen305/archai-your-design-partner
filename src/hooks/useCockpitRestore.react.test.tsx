@@ -22,6 +22,7 @@ const MINIMAL_PROJECT: PersistedProject = {
   id: "project-uuid-001",
   address_full: "Testgade 1, 2800 Kongens Lyngby",
   address_kommune: "Lyngby-Taarbæk",
+  address_kommunekode: null,
   address_matrikel: null,
   address_bbr: null,
   address_adresseid: ADRESSE_ID,
@@ -128,6 +129,7 @@ describe("useCockpitRestore", () => {
     expect(address).not.toBeNull();
     expect(address?.adresse).toBe("Testgade 1, 2800 Kongens Lyngby");
     expect(address?.adresseid).toBe(ADRESSE_ID);
+    expect(address?.kommunekode).toBe("0173");
   });
 
   it("restorer grundareal ind i store", async () => {

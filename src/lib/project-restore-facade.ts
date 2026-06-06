@@ -1,5 +1,6 @@
 import type { PersistedProject } from "@/integrations/supabase/project-persistence";
 import { useProject } from "@/lib/project-store";
+import { kommunekodeFraKommunenavn } from "@/lib/kommuner";
 import { deriveSourceStatus, parseComplianceData } from "@/types/project-state";
 import type { FjernvarmeResultat, NeighborBuildingData } from "@/domain/contracts/analysis.types";
 import type {
@@ -74,13 +75,15 @@ export function hydrateProjectIntoStore(
       project.address_adresseid ?? project.address_bbr ?? options.routeAddressId ?? "";
     const resolvedAdgangsadresseid =
       project.address_bbr ?? project.address_adresseid ?? options.routeAddressId ?? "";
+    const resolvedKommunekode =
+      project.address_kommunekode ?? kommunekodeFraKommunenavn(project.address_kommune) ?? "";
     store.setAddress({
       adresseid: resolvedAdresseid,
       adresse: project.address_full,
       postnr: project.address_postnr ?? "",
       postnrnavn: project.address_postnrnavn ?? "",
       kommune: project.address_kommune ?? "",
-      kommunekode: "",
+      kommunekode: resolvedKommunekode,
       matrikel: project.address_matrikel,
       adgangsadresseid: resolvedAdgangsadresseid,
       grundareal: project.grundareal_m2 ?? null,

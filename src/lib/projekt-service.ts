@@ -30,7 +30,7 @@ export async function listProjekter(): Promise<Projekt[]> {
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, user_id, created_at, updated_at, address_full, address_adresseid, address_postnr, address_postnrnavn, address_kommune, address_matrikel, address_koordinater, address_ejerlavskode, address_matrikelnummer, address_bbr, compliance_done, current_step",
+      "id, user_id, created_at, updated_at, address_full, address_adresseid, address_postnr, address_postnrnavn, address_kommune, address_kommunekode, address_matrikel, address_koordinater, address_ejerlavskode, address_matrikelnummer, address_bbr, compliance_done, current_step",
     )
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
@@ -54,6 +54,7 @@ export async function listProjekter(): Promise<Projekt[]> {
     address_postnr: row.address_postnr,
     address_postnrnavn: row.address_postnrnavn,
     address_kommune: row.address_kommune,
+    address_kommunekode: row.address_kommunekode,
     address_matrikel: row.address_matrikel,
     address_koordinater: (row.address_koordinater as { lat: number; lng: number } | null) ?? null,
     address_ejerlavskode: row.address_ejerlavskode,

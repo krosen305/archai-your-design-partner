@@ -670,6 +670,7 @@ export const persistedProjectSchema = z.object({
   id: z.string(),
   address_full: z.string().nullable(),
   address_kommune: z.string().nullable(),
+  address_kommunekode: z.string().nullable(),
   address_matrikel: z.string().nullable(),
   address_bbr: z.string().nullable(),
   address_adresseid: z.string().nullable(),

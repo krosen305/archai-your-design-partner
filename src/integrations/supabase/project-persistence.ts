@@ -94,6 +94,7 @@ export type PersistedProject = {
   id: string;
   address_full: string | null;
   address_kommune: string | null;
+  address_kommunekode: string | null;
   address_matrikel: string | null;
   address_bbr: string | null;
   address_adresseid: string | null;

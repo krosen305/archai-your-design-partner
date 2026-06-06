@@ -7,6 +7,7 @@ describe("persistedProjectSchema", () => {
       id: "project-1",
       address_full: "Testvej 1",
       address_kommune: "Kobenhavn",
+      address_kommunekode: "0101",
       address_matrikel: null,
       address_bbr: "addr-1",
       address_adresseid: "addr-1",
@@ -37,6 +38,7 @@ describe("persistedProjectSchema", () => {
 
     expect(parsed.success).toBe(true);
     if (!parsed.success) return;
+    expect(parsed.data.address_kommunekode).toBe("0101");
     expect(parsed.data.compliance_data).toEqual({
       bbr: null,
       bbrDueDiligence: null,
@@ -55,6 +57,7 @@ describe("persistedProjectSchema", () => {
       id: "project-1",
       address_full: "Testvej 1",
       address_kommune: "Kobenhavn",
+      address_kommunekode: "0101",
       address_matrikel: null,
       address_bbr: "addr-1",
       address_adresseid: "addr-1",

@@ -47,6 +47,7 @@ export function buildProjectUpdate(
   if (patch.address !== undefined) {
     update.address_full = patch.address.adresse;
     update.address_kommune = patch.address.kommune;
+    update.address_kommunekode = patch.address.kommunekode;
     update.address_matrikel = patch.address.matrikel;
     update.address_bbr = patch.address.adgangsadresseid;
     update.address_adresseid = patch.address.adresseid;
