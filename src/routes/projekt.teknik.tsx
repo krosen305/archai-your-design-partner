@@ -13,10 +13,10 @@ const READINESS_LABELS: Record<DrawingReadinessStatus, string> = {
 };
 
 const READINESS_COLORS: Record<DrawingReadinessStatus, string> = {
-  AUTO_DRAFT: "bg-yellow-50 border-yellow-200 text-yellow-800",
-  AUTO_REVIEW: "bg-green-50 border-green-200 text-green-800",
-  SURVEY_REQUIRED: "bg-orange-50 border-orange-200 text-orange-800",
-  BLOCKED_MISSING_CORE_DATA: "bg-red-50 border-red-200 text-red-800",
+  AUTO_DRAFT: "border-amber-500/20 bg-amber-950/20 text-amber-300",
+  AUTO_REVIEW: "border-emerald-500/20 bg-emerald-950/20 text-emerald-300",
+  SURVEY_REQUIRED: "border-orange-500/20 bg-orange-950/20 text-orange-300",
+  BLOCKED_MISSING_CORE_DATA: "border-red-500/20 bg-red-950/20 text-red-300",
 };
 
 function downloadSvg(svgContent: string, filename: string) {
@@ -102,26 +102,32 @@ function TeknikPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Link to={backTo} className="text-sm text-stone-500 hover:text-stone-700 mb-1 block">
-              ← Tilbage til cockpit
-            </Link>
-            <h1 className="text-2xl font-semibold text-stone-900">Beliggenhedsplan</h1>
-            <p className="text-stone-500 text-sm mt-1">
-              Myndighedstegning til byggetilladelse — genereret fra matrikeldata og bygningsfodprint
-            </p>
-          </div>
+    <div className="flex h-screen flex-col bg-background text-foreground">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/40 px-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            to={backTo}
+            className="font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Cockpit
+          </Link>
+          <span className="text-border/40">|</span>
+          <span className="font-mono text-[11px] tracking-[0.1em] text-foreground">
+            BELIGGENHEDSPLAN
+          </span>
+          <span className="text-xs text-muted-foreground hidden sm:block">
+            — myndighedstegning til byggetilladelse
+          </span>
         </div>
+      </header>
+      <main className="flex-1 overflow-y-auto p-8 space-y-6">
 
         {!canGenerate && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-medium text-amber-800 mb-2">Mangler data for at generere:</p>
+          <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-4">
+            <p className="text-sm font-medium text-amber-300 mb-2">Mangler data for at generere:</p>
             <ul className="list-disc list-inside space-y-1">
               {missingFields.map((f) => (
-                <li key={f} className="text-sm text-amber-700">
+                <li key={f} className="text-sm text-amber-400/80">
                   {f}
                 </li>
               ))}
@@ -130,14 +136,14 @@ function TeknikPage() {
         )}
 
         {canGenerate && !hasFootprint && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
-            <p className="text-sm font-medium text-blue-800">
+          <div className="rounded-lg border border-border/40 bg-[#0d0d0d] p-4 space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">
               Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en
               centreret standardplacering
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">Bredde (m) *</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Bredde (m) *</label>
                 <input
                   type="number"
                   value={buildingWidthM}
@@ -146,12 +152,11 @@ function TeknikPage() {
                   min={1}
                   max={60}
                   step={0.5}
-                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">Dybde (m)</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Dybde (m)</label>
                 <input
                   type="number"
                   value={buildingDepthM}
@@ -160,12 +165,11 @@ function TeknikPage() {
                   min={1}
                   max={60}
                   step={0.5}
-                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">Rotation (°)</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Rotation (°)</label>
                 <input
                   type="number"
                   value={rotationDeg}
@@ -174,8 +178,7 @@ function TeknikPage() {
                   min={0}
                   max={360}
                   step={5}
-                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
                 />
               </div>
             </div>
@@ -183,31 +186,30 @@ function TeknikPage() {
         )}
 
         {canGenerate && hasFootprint && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-            <p className="text-sm text-green-800">
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/20 p-3">
+            <p className="text-sm text-emerald-300">
               Fodprint fra designværktøjet anvendes (
               {(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)} m²)
             </p>
           </div>
         )}
 
-        <div className="rounded-xl border border-stone-200 bg-white p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-stone-700">Tegningsdata</h2>
+        <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-5 space-y-4">
+          <h2 className="text-sm font-medium text-foreground">Tegningsdata</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Bygherre</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Bygherre</label>
               <input
                 type="text"
                 value={bygherre}
                 onChange={(e) => setBygherre(e.target.value)}
                 placeholder="Navn på bygherre"
                 maxLength={200}
-                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-stone-300"
+                className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Sokkelkote DVR90 (m)
               </label>
               <input
@@ -216,12 +218,11 @@ function TeknikPage() {
                 onChange={(e) => setSokkelKoteM(e.target.value)}
                 placeholder="f.eks. 18.50"
                 step="0.01"
-                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-stone-300"
+                className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Bygningshøjde (m)
               </label>
               <input
@@ -230,8 +231,7 @@ function TeknikPage() {
                 onChange={(e) => setHeightM(e.target.value)}
                 placeholder="f.eks. 8.50"
                 step="0.01"
-                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-stone-300"
+                className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
               />
             </div>
           </div>
@@ -241,22 +241,20 @@ function TeknikPage() {
           <button
             onClick={handleGenerate}
             disabled={!canGenerate || loading || (!hasFootprint && !canGenerateWithDimensions)}
-            className="px-5 py-2.5 rounded-lg bg-stone-900 text-white text-sm font-medium
-                       hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed
-                       transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-4 py-2 font-mono text-[11px] tracking-[0.1em] text-foreground hover:bg-[#1a1a1a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? "Genererer…" : "Generer beliggenhedsplan"}
           </button>
 
           {result && !loading && (
-            <span className="text-sm text-green-700 font-medium">Tegning genereret</span>
+            <span className="font-mono text-[11px] text-emerald-400">Tegning genereret</span>
           )}
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-medium text-red-800">Fejl ved generering</p>
-            <p className="text-sm text-red-700 mt-1 font-mono">{error}</p>
+          <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4">
+            <p className="text-sm font-medium text-red-300">Fejl ved generering</p>
+            <p className="text-sm text-red-400/80 mt-1 font-mono">{error}</p>
           </div>
         )}
 
@@ -268,7 +266,7 @@ function TeknikPage() {
               </p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() =>
                   downloadSvg(
@@ -276,8 +274,7 @@ function TeknikPage() {
                     `beliggenhedsplan-${result.exportId.slice(0, 8)}.svg`,
                   )
                 }
-                className="px-4 py-2 rounded-lg border border-stone-300 bg-white text-sm
-                           font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+                className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
               >
                 Download SVG
               </button>
@@ -286,17 +283,16 @@ function TeknikPage() {
                 <a
                   href={result.pdfUrl}
                   download={`beliggenhedsplan-${result.exportId.slice(0, 8)}.pdf`}
-                  className="px-4 py-2 rounded-lg border border-stone-300 bg-white text-sm
-                             font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
                 >
                   Download PDF
                 </a>
               )}
             </div>
 
-            <div className="rounded-xl border border-stone-200 bg-white overflow-auto shadow-sm">
-              <div className="p-3 border-b border-stone-100">
-                <span className="text-xs font-medium text-stone-500 uppercase tracking-wide">
+            <div className="rounded-xl border border-border/40 bg-[#0d0d0d] overflow-auto shadow-sm">
+              <div className="p-3 border-b border-border/20">
+                <span className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
                   Preview — beliggenhedsplan
                 </span>
               </div>
@@ -304,7 +300,7 @@ function TeknikPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
