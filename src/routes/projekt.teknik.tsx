@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { Download } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { exportBeliggenhedsplanFn } from "@/routes/api.drawing";
 import type { ExportResult } from "@/services/drawing/export-drawing.service";
@@ -42,7 +43,9 @@ function TeknikPage() {
   const [error, setError] = useState<string | null>(null);
   const [bygherre, setBygherre] = useState<string>("");
   const [sokkelKoteM, setSokkelKoteM] = useState<string>("");
-  const [heightM, setHeightM] = useState<string>("");
+  const [heightM, setHeightM] = useState<string>(() =>
+    designPlacement?.heightM != null ? String(designPlacement.heightM) : "",
+  );
   const [buildingWidthM, setBuildingWidthM] = useState<string>("");
   const [buildingDepthM, setBuildingDepthM] = useState<string>("");
   const [rotationDeg, setRotationDeg] = useState<string>("0");
@@ -135,7 +138,6 @@ function TeknikPage() {
         {/* Right: input panel */}
         <aside className="w-[360px] shrink-0 border-l border-border/40 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
-
             {!canGenerate && (
               <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-4 space-y-2">
                 <p className="font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase mb-3">
@@ -182,7 +184,9 @@ function TeknikPage() {
                   <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
                     <div>
                       <p className="text-sm text-amber-300">Matrikeldata ikke hentet</p>
-                      <p className="text-xs text-amber-400/70 mt-0.5">Kør adresseanalysen i cockpit</p>
+                      <p className="text-xs text-amber-400/70 mt-0.5">
+                        Kør adresseanalysen i cockpit
+                      </p>
                     </div>
                     <Link
                       to={backTo}
@@ -203,7 +207,9 @@ function TeknikPage() {
                 </p>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Bredde (m) *</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Bredde (m) *
+                    </label>
                     <input
                       type="number"
                       value={buildingWidthM}
@@ -216,7 +222,9 @@ function TeknikPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Dybde (m)</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Dybde (m)
+                    </label>
                     <input
                       type="number"
                       value={buildingDepthM}
@@ -229,7 +237,9 @@ function TeknikPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Rotation (°)</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Rotation (°)
+                    </label>
                     <input
                       type="number"
                       value={rotationDeg}
@@ -258,7 +268,9 @@ function TeknikPage() {
               <h2 className="text-sm font-medium text-foreground">Tegningsdata</h2>
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Bygherre</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Bygherre
+                  </label>
                   <input
                     type="text"
                     value={bygherre}
@@ -306,36 +318,59 @@ function TeknikPage() {
 
             {result && (
               <div className="space-y-4">
-                <div className={`rounded-lg border p-4 ${READINESS_COLORS[result.readinessStatus]}`}>
+                {/* Readiness status */}
+                <div
+                  className={`rounded-lg border p-3 ${READINESS_COLORS[result.readinessStatus]}`}
+                >
                   <p className="text-sm font-semibold">
                     Status: {READINESS_LABELS[result.readinessStatus]}
                   </p>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={() =>
-                      downloadSvg(
-                        result.svgContent,
-                        `beliggenhedsplan-${result.exportId.slice(0, 8)}.svg`,
-                      )
-                    }
-                    className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
-                  >
-                    Download SVG
-                  </button>
-
-                  {result.pdfUrl !== null && (
-                    <a
-                      href={result.pdfUrl}
-                      download={`beliggenhedsplan-${result.exportId.slice(0, 8)}.pdf`}
-                      className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground hover:bg-[#1a1a1a] transition-colors"
+                {/* Downloads */}
+                <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-4 space-y-3">
+                  <p className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
+                    Download
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() =>
+                        downloadSvg(
+                          result.svgContent,
+                          `beliggenhedsplan-${result.exportId.slice(0, 8)}.svg`,
+                        )
+                      }
+                      className="inline-flex items-center gap-2 rounded-md border border-border/60
+                                 bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground
+                                 hover:bg-[#1a1a1a] transition-colors"
                     >
-                      Download PDF
-                    </a>
-                  )}
+                      <Download size={12} />
+                      SVG
+                      <span className="text-muted-foreground text-[10px]">vektorgrafik</span>
+                    </button>
+
+                    {result.pdfUrl !== null && (
+                      <a
+                        href={result.pdfUrl}
+                        download={`beliggenhedsplan-${result.exportId.slice(0, 8)}.pdf`}
+                        className="inline-flex items-center gap-2 rounded-md border border-border/60
+                                   bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground
+                                   hover:bg-[#1a1a1a] transition-colors"
+                      >
+                        <Download size={12} />
+                        PDF
+                        <span className="text-muted-foreground text-[10px]">til print</span>
+                      </a>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground border-t border-border/20 pt-3">
+                    Upload filen til kommunens byggesagsportal (Byg og Miljø) som bilag til
+                    byggeansøgningen.
+                  </p>
                 </div>
 
+                {/* SVG preview */}
                 <div className="rounded-xl border border-border/40 bg-[#0d0d0d] overflow-auto shadow-sm">
                   <div className="p-3 border-b border-border/20">
                     <span className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
