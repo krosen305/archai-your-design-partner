@@ -23,6 +23,7 @@ export type Projekt = {
   address_postnr: string | null;
   address_postnrnavn: string | null;
   address_kommune: string | null;
+  address_kommunekode: string | null;
   address_matrikel: string | null;
   address_koordinater: { lat: number; lng: number } | null;
   address_ejerlavskode: number | null;

@@ -864,6 +864,7 @@ export type Database = {
           address_ejerlavskode: number | null;
           address_full: string | null;
           address_kommune: string | null;
+          address_kommunekode: string | null;
           address_koordinater: Json | null;
           address_matrikel: string | null;
           address_matrikelnummer: string | null;
@@ -906,6 +907,7 @@ export type Database = {
           address_ejerlavskode?: number | null;
           address_full?: string | null;
           address_kommune?: string | null;
+          address_kommunekode?: string | null;
           address_koordinater?: Json | null;
           address_matrikel?: string | null;
           address_matrikelnummer?: string | null;
@@ -948,6 +950,7 @@ export type Database = {
           address_ejerlavskode?: number | null;
           address_full?: string | null;
           address_kommune?: string | null;
+          address_kommunekode?: string | null;
           address_koordinater?: Json | null;
           address_matrikel?: string | null;
           address_matrikelnummer?: string | null;

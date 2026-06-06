@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Plus, ChevronRight, LogIn, Clock, LogOut, Trash2, Loader2 } from "lucide-react";
 import { useProject } from "@/lib/project-store";
+import { kommunekodeFraKommunenavn } from "@/lib/kommuner";
 import type { Address } from "@/types/project-state";
 import { serverCreateProject } from "@/lib/project-sync";
 import { Card } from "@/components/wizard-ui";
@@ -207,7 +208,8 @@ function ProjektKort({
         postnr: projekt.address_postnr ?? "",
         postnrnavn: projekt.address_postnrnavn ?? "",
         kommune: projekt.address_kommune ?? "",
-        kommunekode: "",
+        kommunekode:
+          projekt.address_kommunekode ?? kommunekodeFraKommunenavn(projekt.address_kommune) ?? "",
         matrikel: projekt.address_matrikel,
         adgangsadresseid: adgang,
         koordinater: projekt.address_koordinater ?? { lat: 0, lng: 0 },

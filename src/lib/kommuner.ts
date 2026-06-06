@@ -109,3 +109,16 @@ export const KOMMUNE_MAP: Record<string, string> = {
 export function kommunenavnFraKode(kode: string): string {
   return KOMMUNE_MAP[kode] ?? kode;
 }
+
+/** Returnerer 4-cifret kommunekode for et kendt kommunenavn. */
+export function kommunekodeFraKommunenavn(navn: string | null | undefined): string | null {
+  const normalized = navn
+    ?.trim()
+    .toLocaleLowerCase("da-DK")
+    .replace(/\s+kommune$/, "");
+  if (!normalized) return null;
+  const match = Object.entries(KOMMUNE_MAP).find(
+    ([, kommunenavn]) => kommunenavn.toLocaleLowerCase("da-DK") === normalized,
+  );
+  return match?.[0] ?? null;
+}
