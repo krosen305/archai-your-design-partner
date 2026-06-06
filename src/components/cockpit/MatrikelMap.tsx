@@ -22,6 +22,8 @@ import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 import { buildSquareFootprint25832 } from "@/lib/drawing/footprint-builder";
 import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
 
+const DATAFORDELER_MAX_TILE_ZOOM = 20;
+
 export type MatrikelMapProps = {
   bbr: RuleEngineBbrData | null;
   metrics: ComplianceMetrics | null;
@@ -221,11 +223,11 @@ export function MatrikelMap({
       const previewLayer = new ImageLayer({ opacity: 0.68 });
       previewLayerRef.current = previewLayer;
 
-      const osmSource = new OSM();
+      const osmSource = new OSM({ maxZoom: DATAFORDELER_MAX_TILE_ZOOM });
       baseTileSourceRef.current = osmSource;
       osmSource.setTileLoadFunction(async (tile: any, osmSrc: string) => {
         const [z, x, olY] = tile.getTileCoord() as [number, number, number];
-        const tileRow = -(olY + 1);
+        const tileRow = normalizeDatafordelerTileRow(olY);
         try {
           const dataUrl = await loadTileRef.current({
             data: {
@@ -603,4 +605,8 @@ function Badge({ label, value }: { label: string; value: string }) {
       <div className="mt-0.5 font-mono text-sm text-foreground tabular-nums">{value}</div>
     </div>
   );
+}
+
+function normalizeDatafordelerTileRow(tileCoordY: number): number {
+  return tileCoordY < 0 ? -(tileCoordY + 1) : tileCoordY;
 }
