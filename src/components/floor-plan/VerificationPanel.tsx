@@ -1,4 +1,5 @@
-import { Download, FileCheck2, FileDown, RefreshCw } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Download, FileCheck2, FileDown, Map, RefreshCw } from "lucide-react";
 import type {
   VerificationFinding,
   VerificationSeverity,
@@ -17,6 +18,7 @@ type VerificationPanelProps = {
   exportResult: ExportFloorPlanResult | null;
   onVerify: () => Promise<void>;
   onExport: () => Promise<void>;
+  beliggenhedsplanHref?: string;
 };
 
 const STATUS_LABELS = {
@@ -35,6 +37,7 @@ export function VerificationPanel({
   exportResult,
   onVerify,
   onExport,
+  beliggenhedsplanHref,
 }: VerificationPanelProps) {
   const findings = formalVerification?.findings ?? localFindings;
   const status = formalVerification?.status ?? deriveLocalStatus(localFindings);
@@ -147,6 +150,21 @@ export function VerificationPanel({
               </Button>
             )}
           </div>
+        </div>
+      )}
+      {beliggenhedsplanHref && exportResult && (
+        <div className="mt-3 rounded-md border border-border/40 bg-surface-elevated p-3">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Næste trin
+          </p>
+          <Link
+            to={beliggenhedsplanHref}
+            className="inline-flex items-center gap-1.5 font-mono text-[11px]
+                       tracking-[0.1em] text-foreground hover:text-[#c8ff00] transition-colors"
+          >
+            <Map size={12} />
+            Generer beliggenhedsplan →
+          </Link>
         </div>
       )}
     </section>
