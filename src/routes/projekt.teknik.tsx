@@ -66,12 +66,6 @@ function TeknikPage() {
     ? { ...designPlacement.footprintGeojson, crs: "EPSG:25832" as const }
     : null;
 
-  const missingFields: string[] = [];
-  if (!currentProjectId) missingFields.push("Projekt ikke gemt");
-  if (!address?.adresseid) missingFields.push("Adresse ikke valgt");
-  if (!address?.kommunekode) missingFields.push("Kommunekode mangler");
-  if (!matrikelId) missingFields.push("Matrikeldata ikke hentet (kør adresseanalyse)");
-
   async function handleGenerate() {
     if (!canGenerate) return;
     setLoading(true);
@@ -143,15 +137,61 @@ function TeknikPage() {
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
             {!canGenerate && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-4">
-                <p className="text-sm font-medium text-amber-300 mb-2">Mangler data for at generere:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  {missingFields.map((f) => (
-                    <li key={f} className="text-sm text-amber-400/80">
-                      {f}
-                    </li>
-                  ))}
-                </ul>
+              <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-4 space-y-2">
+                <p className="font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase mb-3">
+                  Mangler data
+                </p>
+
+                {!currentProjectId && (
+                  <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+                    <p className="text-sm text-amber-300">Projekt ikke gemt</p>
+                    <Link
+                      to="/projekt/start"
+                      className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+                    >
+                      Start projekt →
+                    </Link>
+                  </div>
+                )}
+
+                {!address?.adresseid && (
+                  <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+                    <p className="text-sm text-amber-300">Adresse ikke valgt</p>
+                    <Link
+                      to="/projekt/adresse"
+                      className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+                    >
+                      Vælg adresse →
+                    </Link>
+                  </div>
+                )}
+
+                {!address?.kommunekode && !!address?.adresseid && (
+                  <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+                    <p className="text-sm text-amber-300">Kommunekode mangler</p>
+                    <Link
+                      to={backTo}
+                      className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+                    >
+                      Åbn cockpit →
+                    </Link>
+                  </div>
+                )}
+
+                {!matrikelId && (
+                  <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+                    <div>
+                      <p className="text-sm text-amber-300">Matrikeldata ikke hentet</p>
+                      <p className="text-xs text-amber-400/70 mt-0.5">Kør adresseanalysen i cockpit</p>
+                    </div>
+                    <Link
+                      to={backTo}
+                      className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+                    >
+                      Åbn cockpit →
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 
