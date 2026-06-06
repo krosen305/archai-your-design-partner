@@ -17,9 +17,7 @@ export function FloorPlanComplianceStrip({ totalNetAreaM2, targetAreaM2 }: Props
 
   return (
     <div className="flex items-center gap-6 border-b border-border/40 bg-surface px-4 py-1.5">
-      {hard_stop && (
-        <Chip label="Hard stop" value="Blokeret" danger />
-      )}
+      {hard_stop && <Chip label="Hard stop" value="Blokeret" danger />}
       <Chip
         label="Netto areal"
         value={`${totalNetAreaM2.toFixed(1)} m²`}
@@ -64,9 +62,7 @@ function Chip({
       >
         {value}
       </span>
-      {sub && (
-        <span className="font-mono text-[10px] text-muted-foreground">{sub}</span>
-      )}
+      {sub && <span className="font-mono text-[10px] text-muted-foreground">{sub}</span>}
     </div>
   );
 }

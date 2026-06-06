@@ -89,7 +89,9 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
           </Button>
           <div>
             <h1 className="text-lg font-semibold">Plantegning</h1>
-            <p className="text-xs text-muted-foreground">{addressLabel ?? "Projekt uden adresse"}</p>
+            <p className="text-xs text-muted-foreground">
+              {addressLabel ?? "Projekt uden adresse"}
+            </p>
           </div>
         </div>
 
@@ -325,7 +327,10 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
 
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 bg-surface px-5 py-2 text-xs text-muted-foreground">
             <div className="flex gap-4">
-              <span>{editor.document.levels.length} etage{editor.document.levels.length !== 1 ? "r" : ""}</span>
+              <span>
+                {editor.document.levels.length} etage
+                {editor.document.levels.length !== 1 ? "r" : ""}
+              </span>
               <span>{totalNetArea.toFixed(1)} m² netto</span>
             </div>
             <div

@@ -156,7 +156,9 @@ export function VerificationPanel({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border/40 bg-surface-elevated px-3 py-2">
-      <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
       <div className="font-mono text-sm font-semibold tabular-nums text-foreground">{value}</div>
     </div>
   );

@@ -64,11 +64,19 @@ export function FloorPlanInspector({
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Inspector</h2>
-          <p className="text-xs text-muted-foreground">{selected?.label ?? "Intet element valgt"}</p>
+          <p className="text-xs text-muted-foreground">
+            {selected?.label ?? "Intet element valgt"}
+          </p>
         </div>
         {selected?.kind && (
           <span className="rounded bg-surface-elevated px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            {selected.kind === "wall" ? "Væg" : selected.kind === "opening" ? "Åbning" : selected.kind === "fixture" ? "Inventar" : "Rum"}
+            {selected.kind === "wall"
+              ? "Væg"
+              : selected.kind === "opening"
+                ? "Åbning"
+                : selected.kind === "fixture"
+                  ? "Inventar"
+                  : "Rum"}
           </span>
         )}
       </div>
@@ -159,7 +167,9 @@ function WallInspector({
       <InfoRow label="Flytteakse" value={axis.toUpperCase()} />
 
       <div className="rounded-md border border-border/40 bg-surface p-3">
-        <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Position (m)</label>
+        <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          Position (m)
+        </label>
         <div className="flex gap-2">
           <input
             type="number"
@@ -177,7 +187,9 @@ function WallInspector({
       </div>
 
       <div className="rounded-md border border-border/40 bg-surface p-3">
-        <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Præcis flytning (m)</label>
+        <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          Præcis flytning (m)
+        </label>
         <div className="flex gap-2">
           <input
             type="number"
@@ -236,7 +248,10 @@ function OpeningInspector({
       <InfoRow label="Type" value={opening.openingKind} />
       <InfoRow label="Bredde" value={`${opening.widthM.toFixed(2)} m`} />
       <InfoRow label="Højde" value={`${opening.heightM.toFixed(2)} m`} />
-      <InfoRow label="Værtsvæg" value={hostWall ? `Væg ${level.walls.indexOf(hostWall) + 1}` : "Ukendt"} />
+      <InfoRow
+        label="Værtsvæg"
+        value={hostWall ? `Væg ${level.walls.indexOf(hostWall) + 1}` : "Ukendt"}
+      />
 
       <div className="rounded-md border border-border/40 bg-surface p-3">
         <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -313,7 +328,9 @@ function FixtureInspector({
       <InfoRow label="Rum" value={fixture.roomId ?? "Ikke placeret"} />
 
       <div className="space-y-3 rounded-md border border-border/40 bg-surface p-3">
-        <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Rum</label>
+        <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          Rum
+        </label>
         <select
           value={roomId}
           onChange={(event) => setRoomId(event.target.value)}
@@ -523,7 +540,9 @@ function RoomInspector({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-border/30 py-2">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
       <span className="break-words text-right text-sm font-medium text-foreground">{value}</span>
     </div>
   );
