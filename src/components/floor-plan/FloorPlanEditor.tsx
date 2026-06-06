@@ -53,6 +53,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
   const [footprintDepthM, setFootprintDepthM] = useState("");
   const [rooms, setRooms] = useState(DEFAULT_ROOMS);
 
+  const beliggenhedsplanHref = projectId ? "/projekt/teknik" : undefined;
   const activeLevelId = editor.activeLevelId ?? editor.document?.levels[0]?.id ?? null;
   const busy = editor.busyState !== "idle";
   const statusMessage = editor.error ?? editor.liveFindings[0]?.message ?? null;
@@ -321,6 +322,7 @@ export function FloorPlanEditor({ projectId, addressLabel, backTo }: FloorPlanEd
                 exportResult={editor.exportResult}
                 onVerify={editor.verify}
                 onExport={editor.exportPlan}
+                beliggenhedsplanHref={beliggenhedsplanHref}
               />
             </div>
           </div>

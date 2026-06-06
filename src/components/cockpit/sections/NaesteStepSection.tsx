@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useProject } from "@/lib/project-store";
 import { beregnProjektReadiness } from "@/lib/projekt-readiness";
 import type { SidebarSection } from "@/components/cockpit/layout/CockpitSidebar";
@@ -6,7 +7,13 @@ type NaesteStepSectionProps = {
   registerSection: (id: SidebarSection, el: HTMLElement | null) => void;
 };
 
-const NAESTE_TRIN = [
+const NAESTE_TRIN: Array<{
+  nummer: string;
+  titel: string;
+  beskrivelse: string;
+  href?: string;
+  kommerSnart: boolean;
+}> = [
   {
     nummer: "01",
     titel: "Byg på plantegning",
@@ -21,6 +28,14 @@ const NAESTE_TRIN = [
   },
   {
     nummer: "03",
+    titel: "Generer beliggenhedsplan",
+    beskrivelse:
+      "Lav myndighedstegningen til byggetilladelsesansøgningen direkte fra dit design.",
+    href: "/projekt/teknik",
+    kommerSnart: false,
+  },
+  {
+    nummer: "04",
     titel: "Ansøg om byggetilladelse",
     beskrivelse:
       "Forbered ansøgningsmaterialet til kommunen. Vi hjælper dig med at samle dokumentation.",
@@ -47,7 +62,16 @@ export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">{trin.titel}</p>
+                  {trin.href && !trin.kommerSnart ? (
+                    <Link
+                      to={trin.href}
+                      className="text-sm font-medium text-foreground hover:text-[#c8ff00] transition-colors"
+                    >
+                      {trin.titel} →
+                    </Link>
+                  ) : (
+                    <p className="text-sm font-medium text-foreground">{trin.titel}</p>
+                  )}
                   {trin.kommerSnart && (
                     <span className="font-mono text-[10px] text-muted-foreground/50 border border-border/40 rounded px-1">
                       KOMMER SNART
