@@ -100,6 +100,7 @@ export type ExistingBuilding = {
   usageCode: string | null;
   areaM2: number;
   sokkelKoteM: number | null;
+  nedrives: boolean;
   source: LayerSourceMeta;
 };
 
@@ -126,6 +127,9 @@ export type ProposedBuildingLayer = {
   finishedFloorKoteM: number | null;
   terrainOffsetM: number | null;
   dimensions: DimensionLine[];
+  tagform: "sadeltag" | "fladt" | "mansard" | "pulttag" | null;
+  taghaldningGrad: number | null;
+  rygningsKoteM: number | null;
   source: LayerSourceMeta;
 };
 
@@ -182,6 +186,50 @@ export type SiteUseLayer = {
   source: LayerSourceMeta;
 };
 
+// --- New layer types for authority-grade drawing ---
+
+export type VejLayer = {
+  vejnavn: string;
+  centerline25832: GeoJsonLineString25832 | null;
+  vejkant25832: GeoJsonLineString25832 | null;
+  vejbreddeM: number | null;
+  source: LayerSourceMeta;
+};
+
+export type NaturbeskyttelseType =
+  | "strandbeskyttelse"
+  | "skovbyggelinje"
+  | "åbeskyttelse"
+  | "fortidsmindebeskyttelse"
+  | "klitfredning";
+
+export type NaturbeskyttelseLayer = {
+  type: NaturbeskyttelseType;
+  geometry25832: GeoJsonPolygon25832 | GeoJsonLineString25832;
+  bufferDistanceM: number;
+  intersectsProposedBuilding: boolean;
+  source: LayerSourceMeta;
+};
+
+export type LerLedningType =
+  | "kloak_spildevand"
+  | "kloak_regnvand"
+  | "kloak_faelles"
+  | "vand"
+  | "el"
+  | "naturgas"
+  | "fjernvarme"
+  | "telekom";
+
+export type LerLedning = {
+  type: LerLedningType;
+  geometry25832: GeoJsonLineString25832;
+  ejer: string | null;
+  dybdeM: number | null;
+  diameterMm: number | null;
+  source: LayerSourceMeta;
+};
+
 export type RevisionEntry = {
   nr: string;
   description: string;
@@ -235,4 +283,8 @@ export type BeliggenhedsplanInput = {
   terrain: TerrainLayer | null;
   metadata: DrawingMetadata;
   mandatoryAnnotations: MandatoryAnnotations;
+  vej: VejLayer | null;
+  naturbeskyttelse: NaturbeskyttelseLayer[];
+  lerLedninger: LerLedning[];
+  kloakoplandType: "separat" | "faelles" | null;
 };
