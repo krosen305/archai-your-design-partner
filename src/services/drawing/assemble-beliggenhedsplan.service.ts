@@ -167,6 +167,9 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
       finishedFloorKoteM: sokkelKoteM !== null ? sokkelKoteM + 0.15 : null,
       terrainOffsetM: null,
       dimensions: [],
+      tagform: null,
+      taghaldningGrad: null,
+      rygningsKoteM: null,
       source: generatedSourceMeta(),
     },
     constraints: allConstraints,
@@ -175,6 +178,10 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     terrain: dhmTerrain,
     metadata,
     mandatoryAnnotations: buildMandatoryAnnotations(survey !== null, false),
+    vej: null,
+    naturbeskyttelse: [],
+    lerLedninger: [],
+    kloakoplandType: null,
   };
 
   const readiness = classifyDrawingReadiness({

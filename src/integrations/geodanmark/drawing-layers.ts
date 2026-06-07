@@ -115,6 +115,7 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
           usageCode: null,
           areaM2: b.footprintAreaM2 ?? 0,
           sokkelKoteM: null,
+          nedrives: false,
           source: perBuildingSource,
         };
       });

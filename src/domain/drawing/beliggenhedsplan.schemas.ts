@@ -96,6 +96,7 @@ export const ExistingFeaturesLayerSchema = z.object({
       usageCode: z.string().nullable(),
       areaM2: z.number(),
       sokkelKoteM: z.number().nullable(),
+      nedrives: z.boolean().default(false),
       source: LayerSourceMetaSchema,
     }),
   ),
@@ -120,6 +121,9 @@ export const ProposedBuildingLayerSchema = z.object({
   finishedFloorKoteM: z.number().nullable(),
   terrainOffsetM: z.number().nullable(),
   dimensions: z.array(DimensionLineSchema),
+  tagform: z.enum(["sadeltag", "fladt", "mansard", "pulttag"]).nullable(),
+  taghaldningGrad: z.number().min(0).max(60).nullable(),
+  rygningsKoteM: z.number().nullable(),
   source: LayerSourceMetaSchema,
 });
 
@@ -136,6 +140,90 @@ export const ConstraintLayerSchema = z.object({
   label: z.string(),
   ruleText: z.string().nullable(),
   ruleReference: z.string().nullable(),
+  source: LayerSourceMetaSchema,
+});
+
+export const UtilityLayerSchema = z.object({
+  type: z.enum([
+    "water", "sewer", "electric", "gas", "rainwater",
+    "wastewater", "inspection_well", "sand_trap", "rat_barrier",
+  ]),
+  geometry25832: z.union([GeoJsonPoint25832Schema, GeoJsonLineString25832Schema]),
+  label: z.string(),
+  dkKoteM: z.number().nullable(),
+  diameterMm: z.number().nullable(),
+  lineStyle: z.enum(["solid", "dashed", "dotted"]).nullable(),
+  source: LayerSourceMetaSchema,
+});
+
+export const SiteUseLayerSchema = z.object({
+  type: z.enum([
+    "parking", "waste_sorting", "driveway", "geothermal_field", "terrace", "future_structure",
+  ]),
+  geometry25832: GeoJsonPolygon25832Schema,
+  label: z.string(),
+  widthM: z.number().nullable(),
+  isExisting: z.boolean(),
+  permitRequired: z.boolean().nullable(),
+  legalBasis: z.enum(["br18_notification", "br18_permit_required"]).nullable(),
+  note: z.string().nullable(),
+  hatchPattern: z.enum(["diagonal", "cross", "dots"]).nullable(),
+  source: LayerSourceMetaSchema,
+});
+
+export const TerrainLayerSchema = z.object({
+  verticalDatum: z.literal("DVR90"),
+  points: z.array(
+    z.object({
+      x: z.number(),
+      y: z.number(),
+      z: z.number(),
+      label: z.string(),
+      source: DataSourceSchema,
+    }),
+  ),
+  slopePercent: z.number().nullable(),
+  lowPointM: z.number().nullable(),
+  source: LayerSourceMetaSchema,
+});
+
+export const VejLayerSchema = z.object({
+  vejnavn: z.string(),
+  centerline25832: GeoJsonLineString25832Schema.nullable(),
+  vejkant25832: GeoJsonLineString25832Schema.nullable(),
+  vejbreddeM: z.number().positive().nullable(),
+  source: LayerSourceMetaSchema,
+});
+
+export const NaturbeskyttelseLayerSchema = z.object({
+  type: z.enum([
+    "strandbeskyttelse",
+    "skovbyggelinje",
+    "åbeskyttelse",
+    "fortidsmindebeskyttelse",
+    "klitfredning",
+  ]),
+  geometry25832: z.union([GeoJsonPolygon25832Schema, GeoJsonLineString25832Schema]),
+  bufferDistanceM: z.number(),
+  intersectsProposedBuilding: z.boolean(),
+  source: LayerSourceMetaSchema,
+});
+
+export const LerLedningSchema = z.object({
+  type: z.enum([
+    "kloak_spildevand",
+    "kloak_regnvand",
+    "kloak_faelles",
+    "vand",
+    "el",
+    "naturgas",
+    "fjernvarme",
+    "telekom",
+  ]),
+  geometry25832: GeoJsonLineString25832Schema,
+  ejer: z.string().nullable(),
+  dybdeM: z.number().nullable(),
+  diameterMm: z.number().nullable(),
   source: LayerSourceMetaSchema,
 });
 
@@ -187,9 +275,13 @@ export const BeliggenhedsplanInputSchema = z.object({
   existing: ExistingFeaturesLayerSchema,
   proposed: ProposedBuildingLayerSchema,
   constraints: z.array(ConstraintLayerSchema),
-  utilities: z.array(z.unknown()),
-  siteUse: z.array(z.unknown()),
-  terrain: z.unknown().nullable(),
+  utilities: z.array(UtilityLayerSchema),
+  siteUse: z.array(SiteUseLayerSchema),
+  terrain: TerrainLayerSchema.nullable(),
   metadata: DrawingMetadataSchema,
   mandatoryAnnotations: MandatoryAnnotationsSchema,
+  vej: VejLayerSchema.nullable(),
+  naturbeskyttelse: z.array(NaturbeskyttelseLayerSchema),
+  lerLedninger: z.array(LerLedningSchema),
+  kloakoplandType: z.enum(["separat", "faelles"]).nullable(),
 });
