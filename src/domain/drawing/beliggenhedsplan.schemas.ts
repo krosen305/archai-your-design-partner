@@ -145,8 +145,15 @@ export const ConstraintLayerSchema = z.object({
 
 export const UtilityLayerSchema = z.object({
   type: z.enum([
-    "water", "sewer", "electric", "gas", "rainwater",
-    "wastewater", "inspection_well", "sand_trap", "rat_barrier",
+    "water",
+    "sewer",
+    "electric",
+    "gas",
+    "rainwater",
+    "wastewater",
+    "inspection_well",
+    "sand_trap",
+    "rat_barrier",
   ]),
   geometry25832: z.union([GeoJsonPoint25832Schema, GeoJsonLineString25832Schema]),
   label: z.string(),
@@ -158,7 +165,12 @@ export const UtilityLayerSchema = z.object({
 
 export const SiteUseLayerSchema = z.object({
   type: z.enum([
-    "parking", "waste_sorting", "driveway", "geothermal_field", "terrace", "future_structure",
+    "parking",
+    "waste_sorting",
+    "driveway",
+    "geothermal_field",
+    "terrace",
+    "future_structure",
   ]),
   geometry25832: GeoJsonPolygon25832Schema,
   label: z.string(),
@@ -188,9 +200,9 @@ export const TerrainLayerSchema = z.object({
 });
 
 export const VejLayerSchema = z.object({
-  vejnavn: z.string(),
+  vejnavn: z.string().nullable(),
   centerline25832: GeoJsonLineString25832Schema.nullable(),
-  vejkant25832: GeoJsonLineString25832Schema.nullable(),
+  vejkant25832: z.array(GeoJsonLineString25832Schema),
   vejbreddeM: z.number().positive().nullable(),
   source: LayerSourceMetaSchema,
 });

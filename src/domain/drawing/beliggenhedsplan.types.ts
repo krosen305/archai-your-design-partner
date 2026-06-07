@@ -189,9 +189,9 @@ export type SiteUseLayer = {
 // --- New layer types for authority-grade drawing ---
 
 export type VejLayer = {
-  vejnavn: string;
+  vejnavn: string | null;
   centerline25832: GeoJsonLineString25832 | null;
-  vejkant25832: GeoJsonLineString25832 | null;
+  vejkant25832: GeoJsonLineString25832[];
   vejbreddeM: number | null;
   source: LayerSourceMeta;
 };

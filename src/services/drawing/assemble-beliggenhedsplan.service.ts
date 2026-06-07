@@ -48,7 +48,7 @@ function buildMandatoryAnnotations(input: {
   return {
     koteDatum:
       hasSurvey || hasRoadCenterline
-        ? "Alle koter er faktiske DVR90 i meter maalt fra midte vej"
+        ? "Alle koter er faktiske DVR90 i meter målt fra midte vej"
         : null,
     terrainSurveyedBy: hasSurvey ? "Terræn/grund indmålt af landinspektør" : null,
     sewerResponsibility: hasUtilities ? "Arbejdet udføres af Aut. Kloakmester" : null,
@@ -102,7 +102,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
         hasDhmKoter: false,
         hasExistingBuildingGeometry: false,
         missingDataPoints: ["parcel.polygon25832"],
-        hasRoadCenterlineGeometry: true,
+        hasRoadCenterlineGeometry: false,
         hasCenterlineDeklaration: false,
         hasSurveyorAttestation: false,
       }),
@@ -129,13 +129,15 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
   const centroidCoords = parcel.labelPoint25832.coordinates;
   const { lat: centroidLat, lng: centroidLng } = utm32ToWgs84(centroidCoords[0], centroidCoords[1]);
 
-  const [existing, constraints, neighborParcels, roadNameResult, dhmTerrain] = await Promise.all([
-    geometrySource.fetchNeighborBuildings(bbox),
-    geometrySource.fetchPlandataLayers(kommunekode, bbox),
-    geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
-    geometrySource.fetchRoadName(addressId),
-    geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
-  ]);
+  const [existing, constraints, neighborParcels, roadNameResult, roadGeometry, dhmTerrain] =
+    await Promise.all([
+      geometrySource.fetchNeighborBuildings(bbox),
+      geometrySource.fetchPlandataLayers(kommunekode, bbox),
+      geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
+      geometrySource.fetchRoadName(addressId),
+      geometrySource.fetchRoadGeometry(addressId, bbox),
+      geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
+    ]);
 
   const br18Constraint = buildBr18Constraint(parcelWithSegments.polygon25832);
   const allConstraints: ConstraintLayer[] = [br18Constraint, ...constraints];
@@ -150,6 +152,14 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
   const hasCenterlineDeklaration = allConstraints.some(
     (c) => c.type === "road_centerline_deklaration",
   );
+  const roadLayer = roadGeometry
+    ? { ...roadGeometry, vejnavn: roadGeometry.vejnavn ?? roadNameResult.name }
+    : null;
+  const hasRoadCenterlineGeometry = roadLayer?.centerline25832 !== null && roadLayer !== null;
+  const missingDataPoints = [
+    ...(hasRoadCenterlineGeometry ? [] : ["vej.centerline25832"]),
+    ...(roadLayer?.vejkant25832.length ? [] : ["vej.vejkant25832"]),
+  ];
 
   const parcelWithNeighbors = {
     ...parcelWithSegments,
@@ -182,8 +192,12 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     siteUse: [],
     terrain: dhmTerrain,
     metadata,
-    mandatoryAnnotations: buildMandatoryAnnotations({ hasSurvey: survey !== null, hasUtilities: false, hasRoadCenterline: false }),
-    vej: null,
+    mandatoryAnnotations: buildMandatoryAnnotations({
+      hasSurvey: survey !== null,
+      hasUtilities: false,
+      hasRoadCenterline: hasRoadCenterlineGeometry,
+    }),
+    vej: roadLayer,
     naturbeskyttelse: [],
     lerLedninger: [],
     kloakoplandType: null,
@@ -201,8 +215,8 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     hasOpmaalteKoter: (survey?.terrainPoints.length ?? 0) > 0,
     hasDhmKoter: dhmTerrain !== null,
     hasExistingBuildingGeometry: existing.buildings.length > 0,
-    missingDataPoints: [],
-    hasRoadCenterlineGeometry: true,
+    missingDataPoints,
+    hasRoadCenterlineGeometry,
     hasCenterlineDeklaration,
     hasSurveyorAttestation: !!survey?.surveyorName,
   });

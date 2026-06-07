@@ -16,7 +16,8 @@ export function validateKælderFeasibility(input: {
     reasons.push({
       code: "KAELDER_GULVKOTE_MISSING",
       severity: "warning",
-      message: "Kælderens gulvkote (DVR90) er ikke angivet — kloak- og grundvandscheck kan ikke udføres",
+      message:
+        "Kælderens gulvkote (DVR90) er ikke angivet — kloak- og grundvandscheck kan ikke udføres",
       affectedLayer: "proposed",
     });
     return reasons;

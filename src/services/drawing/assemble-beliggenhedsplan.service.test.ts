@@ -6,6 +6,7 @@ import type {
   ParcelLayer,
   ExistingFeaturesLayer,
   GeoJsonPolygon25832,
+  VejLayer,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
 
@@ -46,10 +47,42 @@ const fakeExisting: ExistingFeaturesLayer = {
   source: { source: "registry", confidence: "low", fetchedAt: null, requiresReview: true },
 };
 
+const fakeRoadLayer: VejLayer = {
+  vejnavn: "Testvej",
+  centerline25832: {
+    type: "LineString",
+    crs: "EPSG:25832",
+    coordinates: [
+      [720000, 6169996],
+      [720020, 6169996],
+    ],
+  },
+  vejkant25832: [
+    {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [720000, 6169993],
+        [720020, 6169993],
+      ],
+    },
+    {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [720000, 6169999],
+        [720020, 6169999],
+      ],
+    },
+  ],
+  vejbreddeM: 6,
+  source: registrySourceMeta(now),
+};
+
 const fakeSource: DrawingGeometrySourcePort = {
   fetchParcelLayers: async () => fakeParcel,
   fetchNeighborBuildings: async () => fakeExisting,
-  fetchRoadGeometry: async () => ({ centerline25832: null }),
+  fetchRoadGeometry: async () => fakeRoadLayer,
   fetchPlandataLayers: async () => [],
   fetchNeighborParcels: async () => [],
   fetchRoadName: async () => ({ name: "Testvej" }),
@@ -189,5 +222,48 @@ describe("assembleBeliggenhedsplan", () => {
       survey: null,
     });
     expect(result.plan?.parcel.roadName).toBe("Testvej");
+  });
+
+  it("koteDatum is null when neither survey nor road centerline exists", async () => {
+    const sourceWithoutRoad: DrawingGeometrySourcePort = {
+      ...fakeSource,
+      fetchRoadGeometry: async () => null,
+    };
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: sourceWithoutRoad,
+      survey: null,
+    });
+    expect(result.plan?.mandatoryAnnotations.koteDatum).toBeNull();
+    expect(result.readiness.missingDataPoints).toContain("vej.centerline25832");
+  });
+
+  it("plan.vej is set from fetchRoadGeometry and named from DAR fallback", async () => {
+    const sourceWithoutRoadName: DrawingGeometrySourcePort = {
+      ...fakeSource,
+      fetchRoadGeometry: async () => ({ ...fakeRoadLayer, vejnavn: null }),
+    };
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: sourceWithoutRoadName,
+      survey: null,
+    });
+    expect(result.plan?.vej?.vejnavn).toBe("Testvej");
+    expect(result.plan?.vej?.centerline25832).not.toBeNull();
+    expect(result.plan?.vej?.vejkant25832).toHaveLength(2);
   });
 });

@@ -52,39 +52,68 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
 
     proposedFootprint: (() => {
       if (!input.proposedFootprintSource)
-        return { status: "missing", blocksSubmission: true, displayLabel: "Bygningsfodprint mangler — angiv i Maskinrummet" };
-      if (input.proposedFootprintSource === "survey" || input.proposedFootprintSource === "cad_upload")
+        return {
+          status: "missing",
+          blocksSubmission: true,
+          displayLabel: "Bygningsfodprint mangler — angiv i Maskinrummet",
+        };
+      if (
+        input.proposedFootprintSource === "survey" ||
+        input.proposedFootprintSource === "cad_upload"
+      )
         return { status: "auto" };
       return { status: "estimated", note: "Genereret fra dimensioner" };
     })(),
 
     sokkelKote: (() => {
       if (input.sokkelKoteM === null)
-        return { status: "placeholder", responsibleParty: "kloakmester", displayLabel: "Sokkelkote DVR90 [af kloakmester]" };
-      if (input.sokkelSource === "survey")
-        return { status: "auto" };
-      return { status: "estimated", note: `ca. DVR90 +${input.sokkelKoteM.toFixed(2)} m (DHM + 0,30 m)` };
+        return {
+          status: "placeholder",
+          responsibleParty: "kloakmester",
+          displayLabel: "Sokkelkote DVR90 [af kloakmester]",
+        };
+      if (input.sokkelSource === "survey") return { status: "auto" };
+      return {
+        status: "estimated",
+        note: `ca. DVR90 +${input.sokkelKoteM.toFixed(2)} m (DHM + 0,30 m)`,
+      };
     })(),
 
     rygningsKote: (() => {
       if (!input.tagform)
-        return { status: "placeholder", responsibleParty: "arkitekt", displayLabel: "Rygningskote DVR90 [angives af arkitekt]" };
+        return {
+          status: "placeholder",
+          responsibleParty: "arkitekt",
+          displayLabel: "Rygningskote DVR90 [angives af arkitekt]",
+        };
       if (input.rygningsKoteM !== null)
-        return { status: "estimated", note: `ca. DVR90 +${input.rygningsKoteM.toFixed(2)} m (beregnet)` };
-      return { status: "placeholder", responsibleParty: "arkitekt", displayLabel: "Rygningskote DVR90 [angives af arkitekt]" };
+        return {
+          status: "estimated",
+          note: `ca. DVR90 +${input.rygningsKoteM.toFixed(2)} m (beregnet)`,
+        };
+      return {
+        status: "placeholder",
+        responsibleParty: "arkitekt",
+        displayLabel: "Rygningskote DVR90 [angives af arkitekt]",
+      };
     })(),
 
     vejGeometry: (() => {
       if (!input.vejLayer) return { status: "estimated", note: "Vejgeometri ikke hentet" };
       if (input.vejLayer.centerline25832 !== null) return { status: "auto" };
-      if (input.vejLayer.vejkant25832.length > 0) return { status: "estimated", note: "Vejkant tilgængeligt, vejmidte ikke kortlagt" };
+      if (input.vejLayer.vejkant25832.length > 0)
+        return { status: "estimated", note: "Vejkant tilgængeligt, vejmidte ikke kortlagt" };
       return { status: "estimated", note: "Vejnavn fra DAR — geometri ikke kortlagt" };
     })(),
 
     koterTerræn: (() => {
       if (input.surveyTerrainPointCount > 0) return { status: "auto" };
       if (input.terrainLayer) return { status: "estimated", note: "DHM estimat (SDFI)" };
-      return { status: "placeholder", responsibleParty: "landinspektør", displayLabel: "Terrænkoter [landinspektør]" };
+      return {
+        status: "placeholder",
+        responsibleParty: "landinspektør",
+        displayLabel: "Terrænkoter [landinspektør]",
+      };
     })(),
 
     kloakStikledning: {
@@ -95,7 +124,11 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
 
     regnvandsløsning: (() => {
       if (input.kloakoplandType === "faelles") return { status: "auto" };
-      return { status: "placeholder", responsibleParty: "kloakmester", displayLabel: "Regnvandsløsning [kloakmester]" };
+      return {
+        status: "placeholder",
+        responsibleParty: "kloakmester",
+        displayLabel: "Regnvandsløsning [kloakmester]",
+      };
     })(),
 
     overkørsel: (() => {
@@ -103,7 +136,11 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
         (l) => l.type === "driveway" && l.source.source !== "estimated",
       );
       if (hasDriveway) return { status: "auto" };
-      return { status: "placeholder", responsibleParty: "bruger", displayLabel: "Overkørsel [placering bekræftes af kommunen]" };
+      return {
+        status: "placeholder",
+        responsibleParty: "bruger",
+        displayLabel: "Overkørsel [placering bekræftes af kommunen]",
+      };
     })(),
 
     naturbeskyttelse: (() => {
@@ -122,9 +159,7 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
     (f) => f.status === "missing" && (f as { blocksSubmission: boolean }).blocksSubmission,
   ).length;
 
-  const placeholderCount = Object.values(fields).filter(
-    (f) => f.status === "placeholder",
-  ).length;
+  const placeholderCount = Object.values(fields).filter((f) => f.status === "placeholder").length;
 
   return {
     overallStatus: blockingCount === 0 ? "ready" : "draft",

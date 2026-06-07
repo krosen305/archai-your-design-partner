@@ -25,7 +25,10 @@ export interface DrawingGeometrySourcePort {
   ): Promise<TerrainLayer | null>;
   fetchNaturbeskyttelse(bbox25832: BBox25832): Promise<NaturbeskyttelseLayer[]>;
   fetchLerLedninger(bbox25832: BBox25832): Promise<LerLedning[]>;
-  fetchKloakopland(kommunekode: string, bbox25832: BBox25832): Promise<"separat" | "faelles" | null>;
+  fetchKloakopland(
+    kommunekode: string,
+    bbox25832: BBox25832,
+  ): Promise<"separat" | "faelles" | null>;
   fetchFjernvarmeDaekning(centroidLat: number, centroidLng: number): Promise<boolean | null>;
 }
 

@@ -165,9 +165,6 @@ export function computeRygningsKote(input: {
   return Math.round((sokkelKoteM + loftshøjdeM + taghøjde) * 100) / 100;
 }
 
-export function polygonsIntersect(
-  a: GeoJsonPolygon25832,
-  b: GeoJsonPolygon25832,
-): boolean {
+export function polygonsIntersect(a: GeoJsonPolygon25832, b: GeoJsonPolygon25832): boolean {
   return toJsts(a).intersects(toJsts(b));
 }

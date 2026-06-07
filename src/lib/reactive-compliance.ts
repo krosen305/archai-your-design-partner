@@ -26,7 +26,10 @@ import type {
 import type { Byggeoenske, ComplianceFlag } from "@/types/project-state";
 import type { ComplianceMetrics } from "@/lib/compliance-engine";
 import type { RuleEngineResult } from "@/lib/rule-engine/types";
-import type { GeoJsonPolygon25832, NaturbeskyttelseLayer } from "@/domain/drawing/beliggenhedsplan.types";
+import type {
+  GeoJsonPolygon25832,
+  NaturbeskyttelseLayer,
+} from "@/domain/drawing/beliggenhedsplan.types";
 import type { ReadinessReason } from "@/domain/drawing/decision-engine";
 import { validateNaturbeskyttelse } from "@/lib/rule-engine/rules/nature-protection-rules";
 import { validateKælderFeasibility } from "@/lib/rule-engine/rules/basement-rules";

@@ -83,6 +83,7 @@ const minimalPlan: BeliggenhedsplanInput = {
         usageCode: null,
         areaM2: 16,
         sokkelKoteM: null,
+        nedrives: false,
         source: sourceMeta,
       },
     ],
@@ -99,6 +100,9 @@ const minimalPlan: BeliggenhedsplanInput = {
     finishedFloorKoteM: null,
     terrainOffsetM: null,
     dimensions: [],
+    tagform: null,
+    taghaldningGrad: null,
+    rygningsKoteM: null,
     source: sourceMeta,
   },
   constraints: [],
@@ -127,6 +131,10 @@ const minimalPlan: BeliggenhedsplanInput = {
     sewerResponsibility: null,
     ratBarrierNote: null,
   },
+  vej: null,
+  naturbeskyttelse: [],
+  lerLedninger: [],
+  kloakoplandType: null,
 };
 
 const autoReadiness: DrawingReadinessDecision = {
@@ -192,5 +200,49 @@ describe("buildDrawingModel — label-rendering", () => {
     };
     const model = buildDrawingModel(planEmpty, autoReadiness);
     expect(model.features.find((feat) => feat.kind === "road_label")).toBeUndefined();
+  });
+
+  it("road geometry emits centerline, edges and centerline label", () => {
+    const planWithRoad = {
+      ...minimalPlan,
+      parcel: { ...minimalPlan.parcel, roadName: "Fallbackvej" },
+      vej: {
+        vejnavn: "Testvej",
+        centerline25832: {
+          type: "LineString" as const,
+          crs: "EPSG:25832" as const,
+          coordinates: [
+            [720000, 6169996],
+            [720020, 6169996],
+          ] as [number, number][],
+        },
+        vejkant25832: [
+          {
+            type: "LineString" as const,
+            crs: "EPSG:25832" as const,
+            coordinates: [
+              [720000, 6169993],
+              [720020, 6169993],
+            ] as [number, number][],
+          },
+          {
+            type: "LineString" as const,
+            crs: "EPSG:25832" as const,
+            coordinates: [
+              [720000, 6169999],
+              [720020, 6169999],
+            ] as [number, number][],
+          },
+        ],
+        vejbreddeM: 6,
+        source: sourceMeta,
+      },
+    };
+
+    const model = buildDrawingModel(planWithRoad, autoReadiness);
+    expect(model.features.find((feat) => feat.kind === "road_centerline")).toBeDefined();
+    expect(model.features.filter((feat) => feat.kind === "road_edge")).toHaveLength(2);
+    const roadLabel = model.features.find((feat) => feat.kind === "road_label");
+    expect(roadLabel?.svgElement).toContain("Testvej");
   });
 });

@@ -55,13 +55,72 @@ function polygonFeature(
   };
 }
 
+function lineFeature(
+  id: string,
+  kind: DrawingFeature["kind"],
+  coords: [number, number][],
+  minX: number,
+  maxY: number,
+  scale: number,
+  style: string,
+  label: string | null = null,
+  zIndex = 10,
+): DrawingFeature {
+  const pts = coordsToSvgPoints(coords, minX, maxY, scale);
+  return {
+    id,
+    kind,
+    svgElement: `<polyline points="${pts}" fill="none" ${style}/>`,
+    label,
+    labelX: null,
+    labelY: null,
+    zIndex,
+  };
+}
+
+function lineLabelFeature(
+  id: string,
+  label: string,
+  coords: [number, number][],
+  minX: number,
+  maxY: number,
+  scale: number,
+): DrawingFeature | null {
+  const first = coords[0];
+  const last = coords[coords.length - 1];
+  if (!first || !last) return null;
+
+  const mid = coords[Math.floor(coords.length / 2)] ?? first;
+  const x = (mid[0] - minX) * scale;
+  const y = (maxY - mid[1]) * scale - 4;
+  const angle = (-Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
+
+  return {
+    id,
+    kind: "road_label",
+    svgElement: `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" transform="rotate(${angle.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(label)}</text>`,
+    label,
+    labelX: x,
+    labelY: y,
+    zIndex: 45,
+  };
+}
+
 export function buildDrawingModel(
   plan: BeliggenhedsplanInput,
   readiness: DrawingReadinessDecision,
 ): DrawingModel {
   const coords = plan.parcel.polygon25832.coordinates[0] as [number, number][];
-  const xs = coords.map((c) => c[0]);
-  const ys = coords.map((c) => c[1]);
+  const roadLines = [
+    ...(plan.vej?.centerline25832 ? [plan.vej.centerline25832] : []),
+    ...(plan.vej?.vejkant25832 ?? []),
+  ];
+  const bboxCoords = [
+    ...coords,
+    ...roadLines.flatMap((line) => line.coordinates as [number, number][]),
+  ];
+  const xs = bboxCoords.map((c) => c[0]);
+  const ys = bboxCoords.map((c) => c[1]);
   const pad = 20;
   const bboxMinX = Math.min(...xs) - pad;
   const bboxMinY = Math.min(...ys) - pad;
@@ -117,6 +176,57 @@ export function buildDrawingModel(
       ),
     );
   });
+
+  // Vejgeometri
+  plan.vej?.vejkant25832.forEach((edge, i) => {
+    features.push(
+      lineFeature(
+        `road-edge-${i}`,
+        "road_edge",
+        edge.coordinates as [number, number][],
+        bboxMinX,
+        bboxMaxY,
+        scale,
+        'stroke="#9ca3af" stroke-width="0.7"',
+        "Vejkant",
+        8,
+      ),
+    );
+  });
+
+  let roadLabelRendered = false;
+  if (plan.vej?.centerline25832) {
+    const centerlineCoords = plan.vej.centerline25832.coordinates as [number, number][];
+    features.push(
+      lineFeature(
+        "road-centerline",
+        "road_centerline",
+        centerlineCoords,
+        bboxMinX,
+        bboxMaxY,
+        scale,
+        'stroke="#6b7280" stroke-width="0.5" stroke-dasharray="4,3"',
+        "Vejmidte",
+        9,
+      ),
+    );
+
+    const roadName = plan.vej.vejnavn ?? plan.parcel.roadName;
+    if (roadName) {
+      const labelFeature = lineLabelFeature(
+        "road-name",
+        roadName,
+        centerlineCoords,
+        bboxMinX,
+        bboxMaxY,
+        scale,
+      );
+      if (labelFeature) {
+        features.push(labelFeature);
+        roadLabelRendered = true;
+      }
+    }
+  }
 
   // Eksisterende bygninger
   plan.existing.buildings.forEach((b, i) => {
@@ -175,7 +285,7 @@ export function buildDrawingModel(
   });
 
   // Vejnavn-label — placeret syd for parcelpolygon
-  if (plan.parcel.roadName) {
+  if (plan.parcel.roadName && !roadLabelRendered) {
     const centerX = coords.reduce((s, c) => s + c[0], 0) / coords.length;
     const southY = Math.min(...coords.map((c) => c[1]));
     const labelPxX = (centerX - bboxMinX) * scale;
@@ -359,6 +469,15 @@ export function buildDrawingModel(
       {
         symbol: '<line x1="0" y1="4" x2="12" y2="4" stroke="#c00" stroke-width="0.6"/>',
         label: "Byggelinje BR18",
+      },
+      {
+        symbol:
+          '<line x1="0" y1="4" x2="12" y2="4" stroke="#6b7280" stroke-width="0.5" stroke-dasharray="4,3"/>',
+        label: "Vejmidte",
+      },
+      {
+        symbol: '<line x1="0" y1="4" x2="12" y2="4" stroke="#9ca3af" stroke-width="0.7"/>',
+        label: "Vejkant",
       },
     ],
     northArrowRotationDeg: 0,

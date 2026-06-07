@@ -8,6 +8,7 @@ import type {
   GeoJsonPolygon25832,
   TerrainLayer,
   BBox25832,
+  VejLayer,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
 import { buildDrawingModel } from "@/lib/drawing/drawing-model-builder";
@@ -76,10 +77,42 @@ const fakeTerrain: TerrainLayer = {
   source: registrySourceMeta(now),
 };
 
+const fakeRoadLayer: VejLayer = {
+  vejnavn: "Testvej",
+  centerline25832: {
+    type: "LineString",
+    crs: "EPSG:25832",
+    coordinates: [
+      [720000, 6169996],
+      [720030, 6169996],
+    ],
+  },
+  vejkant25832: [
+    {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [720000, 6169993],
+        [720030, 6169993],
+      ],
+    },
+    {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [720000, 6169999],
+        [720030, 6169999],
+      ],
+    },
+  ],
+  vejbreddeM: 6,
+  source: registrySourceMeta(now),
+};
+
 const fakeSource: DrawingGeometrySourcePort = {
   fetchParcelLayers: async (_matrikelId: string) => fakeParcel,
   fetchNeighborBuildings: async (_bbox: BBox25832) => fakeExisting,
-  fetchRoadGeometry: async (_addressId: string) => ({ centerline25832: null }),
+  fetchRoadGeometry: async (_addressId: string, _bbox: BBox25832) => fakeRoadLayer,
   fetchPlandataLayers: async (_kommunekode: string, _bbox: BBox25832) => [],
   fetchNeighborParcels: async (_jordstykkeId: string, _bbox: BBox25832) => [],
   fetchRoadName: async (_addressId: string) => ({ name: "Testvej" }),
@@ -193,6 +226,7 @@ describe("beliggenhedsplan SVG — lovpligtige elementer", () => {
           usageCode: "120",
           areaM2: 25,
           sokkelKoteM: null,
+          nedrives: false,
           source: registrySourceMeta(now),
         },
       ],

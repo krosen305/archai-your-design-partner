@@ -19,6 +19,8 @@ export type DrawingLayerKind =
   | "utility_lines"
   | "utility_wells"
   | "hatch_areas"
+  | "road_centerline"
+  | "road_edge"
   | "road_label"
   | "scale_bar"
   | "mandatory_annotations"

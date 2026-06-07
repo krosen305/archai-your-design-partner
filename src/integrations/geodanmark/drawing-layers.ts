@@ -255,11 +255,17 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     return [];
   }
 
-  async fetchKloakopland(_kommunekode: string, _bbox25832: BBox25832): Promise<"separat" | "faelles" | null> {
+  async fetchKloakopland(
+    _kommunekode: string,
+    _bbox25832: BBox25832,
+  ): Promise<"separat" | "faelles" | null> {
     return null;
   }
 
-  async fetchFjernvarmeDaekning(_centroidLat: number, _centroidLng: number): Promise<boolean | null> {
+  async fetchFjernvarmeDaekning(
+    _centroidLat: number,
+    _centroidLng: number,
+  ): Promise<boolean | null> {
     return null;
   }
 }
