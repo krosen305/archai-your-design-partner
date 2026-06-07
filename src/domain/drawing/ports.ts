@@ -4,15 +4,17 @@ import type {
   ConstraintLayer,
   SurveyLayer,
   BBox25832,
-  GeoJsonLineString25832,
   NeighborParcel,
   TerrainLayer,
+  VejLayer,
+  NaturbeskyttelseLayer,
+  LerLedning,
 } from "./beliggenhedsplan.types";
 
 export interface DrawingGeometrySourcePort {
   fetchParcelLayers(matrikelId: string): Promise<ParcelLayer | null>;
   fetchNeighborBuildings(bbox25832: BBox25832): Promise<ExistingFeaturesLayer>;
-  fetchRoadGeometry(addressId: string): Promise<{ centerline25832: GeoJsonLineString25832 | null }>;
+  fetchRoadGeometry(addressId: string, bbox25832: BBox25832): Promise<VejLayer | null>;
   fetchPlandataLayers(kommunekode: string, bbox25832: BBox25832): Promise<ConstraintLayer[]>;
   fetchNeighborParcels(ownJordstykkeId: string, bbox25832: BBox25832): Promise<NeighborParcel[]>;
   fetchRoadName(addressId: string): Promise<{ name: string | null }>;
@@ -21,6 +23,10 @@ export interface DrawingGeometrySourcePort {
     centroidLat: number,
     centroidLng: number,
   ): Promise<TerrainLayer | null>;
+  fetchNaturbeskyttelse(bbox25832: BBox25832): Promise<NaturbeskyttelseLayer[]>;
+  fetchLerLedninger(bbox25832: BBox25832): Promise<LerLedning[]>;
+  fetchKloakopland(kommunekode: string, bbox25832: BBox25832): Promise<"separat" | "faelles" | null>;
+  fetchFjernvarmeDaekning(centroidLat: number, centroidLng: number): Promise<boolean | null>;
 }
 
 export interface SurveyUploadDecoderPort {

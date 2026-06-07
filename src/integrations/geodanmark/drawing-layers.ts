@@ -7,6 +7,9 @@ import type {
   GeoJsonPolygon25832,
   NeighborParcel,
   TerrainLayer,
+  VejLayer,
+  NaturbeskyttelseLayer,
+  LerLedning,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import {
   ParcelLayerSchema,
@@ -132,12 +135,9 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     });
   }
 
-  async fetchRoadGeometry(_addressId: string): Promise<{
-    centerline25832:
-      | import("@/domain/drawing/beliggenhedsplan.types").GeoJsonLineString25832
-      | null;
-  }> {
-    return { centerline25832: null };
+  async fetchRoadGeometry(_addressId: string, bbox25832: BBox25832): Promise<VejLayer | null> {
+    const { fetchGeoDanmarkRoadGeometry } = await import("./road-geometry");
+    return fetchGeoDanmarkRoadGeometry({ vejnavn: null, bbox25832 });
   }
 
   async fetchPlandataLayers(
@@ -245,5 +245,21 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
     } catch {
       return null;
     }
+  }
+
+  async fetchNaturbeskyttelse(_bbox25832: BBox25832): Promise<NaturbeskyttelseLayer[]> {
+    return [];
+  }
+
+  async fetchLerLedninger(_bbox25832: BBox25832): Promise<LerLedning[]> {
+    return [];
+  }
+
+  async fetchKloakopland(_kommunekode: string, _bbox25832: BBox25832): Promise<"separat" | "faelles" | null> {
+    return null;
+  }
+
+  async fetchFjernvarmeDaekning(_centroidLat: number, _centroidLng: number): Promise<boolean | null> {
+    return null;
   }
 }
