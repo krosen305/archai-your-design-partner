@@ -39,12 +39,17 @@ type AssembleResult = {
   readiness: DrawingReadinessDecision;
 };
 
-function buildMandatoryAnnotations(
-  hasSurvey: boolean,
-  hasUtilities: boolean,
-): MandatoryAnnotations {
+function buildMandatoryAnnotations(input: {
+  hasSurvey: boolean;
+  hasUtilities: boolean;
+  hasRoadCenterline: boolean;
+}): MandatoryAnnotations {
+  const { hasSurvey, hasUtilities, hasRoadCenterline } = input;
   return {
-    koteDatum: "Alle koter er faktiske DVR90 i meter målt fra midte vej",
+    koteDatum:
+      hasSurvey || hasRoadCenterline
+        ? "Alle koter er faktiske DVR90 i meter maalt fra midte vej"
+        : null,
     terrainSurveyedBy: hasSurvey ? "Terræn/grund indmålt af landinspektør" : null,
     sewerResponsibility: hasUtilities ? "Arbejdet udføres af Aut. Kloakmester" : null,
     ratBarrierNote: hasUtilities
@@ -177,7 +182,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     siteUse: [],
     terrain: dhmTerrain,
     metadata,
-    mandatoryAnnotations: buildMandatoryAnnotations(survey !== null, false),
+    mandatoryAnnotations: buildMandatoryAnnotations({ hasSurvey: survey !== null, hasUtilities: false, hasRoadCenterline: false }),
     vej: null,
     naturbeskyttelse: [],
     lerLedninger: [],
