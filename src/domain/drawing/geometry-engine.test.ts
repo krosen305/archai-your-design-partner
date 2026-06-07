@@ -7,6 +7,8 @@ import {
   polygonOverlapAreaM2,
   distanceToBoundarySegments,
   buildSetbackAnnotations,
+  computeRygningsKote,
+  polygonsIntersect,
 } from "./geometry-engine";
 import type { GeoJsonPolygon25832 } from "./beliggenhedsplan.types";
 
@@ -150,5 +152,68 @@ describe("buildSetbackAnnotations", () => {
     const south = anns.find((a) => Math.abs(a.buildingPt[1] - 5) < 0.1);
     expect(south).toBeDefined();
     expect(south!.buildingPt[0]).toBeCloseTo(10, 0);
+  });
+});
+
+describe("computeRygningsKote", () => {
+  it("sadeltag 35 grader, 9m bred, sokkel 18.20, loft 2.40", () => {
+    // taghøjde = (9/2) × tan(35°) = 4.5 × 0.7002 = 3.151
+    // rygning = 18.20 + 2.40 + 3.151 = 23.751 → rounded to 2 decimals
+    const result = computeRygningsKote({
+      sokkelKoteM: 18.20,
+      loftshøjdeM: 2.40,
+      fodprintBreddeM: 9,
+      tagform: "sadeltag",
+      taghaldningGrad: 35,
+    });
+    expect(result).toBeCloseTo(23.75, 1);
+  });
+
+  it("fladt tag giver 0.15m taghøjde", () => {
+    const result = computeRygningsKote({
+      sokkelKoteM: 10.00,
+      loftshøjdeM: 2.50,
+      fodprintBreddeM: 8,
+      tagform: "fladt",
+      taghaldningGrad: 0,
+    });
+    expect(result).toBeCloseTo(12.65, 2);
+  });
+
+  it("mansard er 60% af sadeltag-taghøjde", () => {
+    const sadel = computeRygningsKote({
+      sokkelKoteM: 0, loftshøjdeM: 0, fodprintBreddeM: 10,
+      tagform: "sadeltag", taghaldningGrad: 40,
+    });
+    const mansard = computeRygningsKote({
+      sokkelKoteM: 0, loftshøjdeM: 0, fodprintBreddeM: 10,
+      tagform: "mansard", taghaldningGrad: 40,
+    });
+    expect(mansard).toBeCloseTo(sadel * 0.6, 1);
+  });
+});
+
+describe("polygonsIntersect", () => {
+  const square: GeoJsonPolygon25832 = {
+    type: "Polygon",
+    crs: "EPSG:25832",
+    coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]],
+  };
+  const overlapping: GeoJsonPolygon25832 = {
+    type: "Polygon",
+    crs: "EPSG:25832",
+    coordinates: [[[5,5],[15,5],[15,15],[5,15],[5,5]]],
+  };
+  const separate: GeoJsonPolygon25832 = {
+    type: "Polygon",
+    crs: "EPSG:25832",
+    coordinates: [[[20,20],[30,20],[30,30],[20,30],[20,20]]],
+  };
+
+  it("overlapping polygons → true", () => {
+    expect(polygonsIntersect(square, overlapping)).toBe(true);
+  });
+  it("separate polygons → false", () => {
+    expect(polygonsIntersect(square, separate)).toBe(false);
   });
 });

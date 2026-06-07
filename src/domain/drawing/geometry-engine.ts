@@ -136,3 +136,38 @@ export function distanceToBoundarySegments(
     return { segmentId: seg.id, distanceM: buildingGeom.distance(segGeom) };
   });
 }
+
+export function computeRygningsKote(input: {
+  sokkelKoteM: number;
+  loftshøjdeM: number;
+  fodprintBreddeM: number;
+  tagform: "sadeltag" | "pulttag" | "mansard" | "fladt";
+  taghaldningGrad: number;
+}): number {
+  const { sokkelKoteM, loftshøjdeM, fodprintBreddeM, tagform, taghaldningGrad } = input;
+  const halvBredde = fodprintBreddeM / 2;
+  const haldningRad = (taghaldningGrad * Math.PI) / 180;
+
+  let taghøjde: number;
+  switch (tagform) {
+    case "sadeltag":
+    case "pulttag":
+      taghøjde = halvBredde * Math.tan(haldningRad);
+      break;
+    case "mansard":
+      taghøjde = halvBredde * Math.tan(haldningRad) * 0.6;
+      break;
+    case "fladt":
+      taghøjde = 0.15;
+      break;
+  }
+
+  return Math.round((sokkelKoteM + loftshøjdeM + taghøjde) * 100) / 100;
+}
+
+export function polygonsIntersect(
+  a: GeoJsonPolygon25832,
+  b: GeoJsonPolygon25832,
+): boolean {
+  return toJsts(a).intersects(toJsts(b));
+}
