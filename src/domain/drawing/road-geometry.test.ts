@@ -4,6 +4,7 @@ import type {
   GeoJsonPolygon25832,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import {
+  assessRoadGeometryQuality,
   calculateRoadWidthM,
   selectRelevantRoadCenterline,
   selectRelevantRoadEdges,
@@ -55,11 +56,64 @@ describe("road geometry helpers", () => {
     expect(calculateRoadWidthM(line(-6), [line(-9), line(-3)])).toBe(6);
   });
 
+  it("uses a median road width across the centerline instead of a single midpoint", () => {
+    const centerline: GeoJsonLineString25832 = {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [0, -6],
+        [100, -6],
+      ],
+    };
+    const northEdge: GeoJsonLineString25832 = {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [0, -3],
+        [50, -2],
+        [100, -3],
+      ],
+    };
+    const southEdge = line(-9, 0, 100);
+
+    expect(calculateRoadWidthM(centerline, [northEdge, southEdge])).toBe(6.5);
+  });
+
+  it("returns null when sampled road widths vary too much for a reliable width", () => {
+    const centerline: GeoJsonLineString25832 = {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [0, -6],
+        [100, -6],
+      ],
+    };
+    const wideningEdge: GeoJsonLineString25832 = {
+      type: "LineString",
+      crs: "EPSG:25832",
+      coordinates: [
+        [0, -9],
+        [50, -9],
+        [100, -18],
+      ],
+    };
+
+    expect(calculateRoadWidthM(centerline, [wideningEdge, line(-3, 0, 100)])).toBeNull();
+  });
+
   it("returns null when only one side of the road edge is available", () => {
     expect(calculateRoadWidthM(line(-6), [line(-9), line(-10)])).toBeNull();
   });
 
   it("returns null when centerline is missing", () => {
     expect(calculateRoadWidthM(null, [line(-9), line(-3)])).toBeNull();
+  });
+
+  it("marks road geometry for review when width cannot be calculated from edges", () => {
+    const quality = assessRoadGeometryQuality(line(-6), [line(-9), line(-10)], null);
+
+    expect(quality.confidence).toBe("low");
+    expect(quality.requiresReview).toBe(true);
+    expect(quality.reviewReasons).toContain("geodanmark.road_width_uncertain");
   });
 });

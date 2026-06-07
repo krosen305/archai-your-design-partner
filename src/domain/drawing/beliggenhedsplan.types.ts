@@ -34,6 +34,7 @@ export type LayerSourceMeta = {
   confidence: DataConfidence;
   fetchedAt: string | null;
   requiresReview: boolean;
+  reviewReasons?: string[];
 };
 
 export type BoundarySegment = {

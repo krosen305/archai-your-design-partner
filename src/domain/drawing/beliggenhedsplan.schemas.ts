@@ -36,6 +36,7 @@ const LayerSourceMetaSchema = z.object({
   confidence: DataConfidenceSchema,
   fetchedAt: z.string().nullable(),
   requiresReview: z.boolean(),
+  reviewReasons: z.array(z.string()).optional(),
 });
 
 const BoundarySegmentSchema = z.object({
