@@ -274,7 +274,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     metadata,
     mandatoryAnnotations: buildMandatoryAnnotations({
       hasSurvey: survey !== null,
-      hasUtilities: false,
+      hasUtilities: true,
       hasRoadCenterline: hasRoadCenterlineGeometry,
     }),
     vej: roadLayer,

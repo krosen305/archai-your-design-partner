@@ -351,4 +351,36 @@ describe("assembleBeliggenhedsplan", () => {
     });
     expect(result.plan?.kloakoplandType).toBeNull();
   });
+
+  it("sewerResponsibility-note er altid til stede (kloakmester er altid ansvarlig for stikledning)", async () => {
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: fakeSource,
+      survey: null,
+    });
+    expect(result.plan?.mandatoryAnnotations.sewerResponsibility).not.toBeNull();
+  });
+
+  it("ratBarrierNote er altid til stede (rottespærre er lovkrav ved alle nye kloaktilslutninger)", async () => {
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: fakeSource,
+      survey: null,
+    });
+    expect(result.plan?.mandatoryAnnotations.ratBarrierNote).not.toBeNull();
+  });
 });
