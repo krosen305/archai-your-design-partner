@@ -6,6 +6,7 @@ import type {
   ParcelLayer,
   ExistingFeaturesLayer,
   GeoJsonPolygon25832,
+  NaturbeskyttelseLayer,
   VejLayer,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import { registrySourceMeta } from "@/domain/drawing/source-quality";
@@ -79,6 +80,26 @@ const fakeRoadLayer: VejLayer = {
   source: registrySourceMeta(now),
 };
 
+const fakeNaturbeskyttelseLayer: NaturbeskyttelseLayer = {
+  type: "skovbyggelinje",
+  geometry25832: {
+    type: "Polygon",
+    crs: "EPSG:25832",
+    coordinates: [
+      [
+        [720004, 6170004],
+        [720016, 6170004],
+        [720016, 6170016],
+        [720004, 6170016],
+        [720004, 6170004],
+      ],
+    ],
+  },
+  bufferDistanceM: 300,
+  intersectsProposedBuilding: false,
+  source: registrySourceMeta(now),
+};
+
 const fakeSource: DrawingGeometrySourcePort = {
   fetchParcelLayers: async () => fakeParcel,
   fetchNeighborBuildings: async () => fakeExisting,
@@ -87,6 +108,10 @@ const fakeSource: DrawingGeometrySourcePort = {
   fetchNeighborParcels: async () => [],
   fetchRoadName: async () => ({ name: "Testvej" }),
   fetchDhmKoter: async () => null,
+  fetchNaturbeskyttelse: async () => [],
+  fetchLerLedninger: async () => [],
+  fetchKloakopland: async () => null,
+  fetchFjernvarmeDaekning: async () => null,
 };
 
 const fakeFootprint: GeoJsonPolygon25832 = {
@@ -265,5 +290,29 @@ describe("assembleBeliggenhedsplan", () => {
     expect(result.plan?.vej?.vejnavn).toBe("Testvej");
     expect(result.plan?.vej?.centerline25832).not.toBeNull();
     expect(result.plan?.vej?.vejkant25832).toHaveLength(2);
+  });
+
+  it("plan indeholder naturbeskyttelseslag med beregnet footprint-overlap", async () => {
+    const sourceWithNaturbeskyttelse: DrawingGeometrySourcePort = {
+      ...fakeSource,
+      fetchNaturbeskyttelse: async () => [fakeNaturbeskyttelseLayer],
+    };
+
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: sourceWithNaturbeskyttelse,
+      survey: null,
+    });
+
+    expect(result.plan?.naturbeskyttelse).toHaveLength(1);
+    expect(result.plan?.naturbeskyttelse[0]?.type).toBe("skovbyggelinje");
+    expect(result.plan?.naturbeskyttelse[0]?.intersectsProposedBuilding).toBe(true);
   });
 });

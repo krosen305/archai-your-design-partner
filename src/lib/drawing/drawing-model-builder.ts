@@ -106,6 +106,45 @@ function lineLabelFeature(
   };
 }
 
+function naturbeskyttelseLabel(
+  type: BeliggenhedsplanInput["naturbeskyttelse"][number]["type"],
+): string {
+  switch (type) {
+    case "strandbeskyttelse":
+      return "Strandbeskyttelse";
+    case "skovbyggelinje":
+      return "Skovbyggelinje";
+    case "åbeskyttelse":
+      return "Åbeskyttelse";
+    case "fortidsmindebeskyttelse":
+      return "Fortidsmindebeskyttelse";
+    case "klitfredning":
+      return "Klitfredning";
+  }
+}
+
+function naturbeskyttelseStyle(
+  type: BeliggenhedsplanInput["naturbeskyttelse"][number]["type"],
+  intersectsProposedBuilding: boolean,
+): string {
+  if (intersectsProposedBuilding) {
+    return 'fill="#fee2e2" fill-opacity="0.28" stroke="#dc2626" stroke-width="1" stroke-dasharray="5,2"';
+  }
+
+  switch (type) {
+    case "strandbeskyttelse":
+      return 'fill="#dbeafe" fill-opacity="0.24" stroke="#2563eb" stroke-width="0.7" stroke-dasharray="5,3"';
+    case "skovbyggelinje":
+      return 'fill="#dcfce7" fill-opacity="0.22" stroke="#16a34a" stroke-width="0.7" stroke-dasharray="5,3"';
+    case "åbeskyttelse":
+      return 'fill="#ccfbf1" fill-opacity="0.22" stroke="#0f766e" stroke-width="0.7" stroke-dasharray="5,3"';
+    case "fortidsmindebeskyttelse":
+      return 'fill="#fef3c7" fill-opacity="0.25" stroke="#b45309" stroke-width="0.7" stroke-dasharray="5,3"';
+    case "klitfredning":
+      return 'fill="#fef9c3" fill-opacity="0.24" stroke="#a16207" stroke-width="0.7" stroke-dasharray="5,3"';
+  }
+}
+
 export function buildDrawingModel(
   plan: BeliggenhedsplanInput,
   readiness: DrawingReadinessDecision,
@@ -284,6 +323,25 @@ export function buildDrawingModel(
     }
   });
 
+  // Naturbeskyttelseszoner
+  plan.naturbeskyttelse.forEach((layer, i) => {
+    if (layer.geometry25832.type !== "Polygon") return;
+    const label = layer.intersectsProposedBuilding ? naturbeskyttelseLabel(layer.type) : null;
+    features.push(
+      polygonFeature(
+        `nature-protection-${i}`,
+        "nature_protection",
+        layer.geometry25832.coordinates[0] as [number, number][],
+        bboxMinX,
+        bboxMaxY,
+        scale,
+        naturbeskyttelseStyle(layer.type, layer.intersectsProposedBuilding),
+        label,
+        6,
+      ),
+    );
+  });
+
   // Vejnavn-label — placeret syd for parcelpolygon
   if (plan.parcel.roadName && !roadLabelRendered) {
     const centerX = coords.reduce((s, c) => s + c[0], 0) / coords.length;
@@ -451,6 +509,9 @@ export function buildDrawingModel(
         ...(readiness.reviewRequiredBy.length > 0
           ? [`Review: ${readiness.reviewRequiredBy.join(", ")}`]
           : []),
+        ...(plan.naturbeskyttelse.length > 0
+          ? [`Naturbeskyttelse: ${plan.naturbeskyttelse.length} lag`]
+          : []),
       ],
     },
     legend: [
@@ -479,6 +540,15 @@ export function buildDrawingModel(
         symbol: '<line x1="0" y1="4" x2="12" y2="4" stroke="#9ca3af" stroke-width="0.7"/>',
         label: "Vejkant",
       },
+      ...(plan.naturbeskyttelse.length > 0
+        ? [
+            {
+              symbol:
+                '<rect width="12" height="8" fill="#dcfce7" fill-opacity="0.35" stroke="#16a34a" stroke-width="0.7" stroke-dasharray="5,3"/>',
+              label: "Naturbeskyttelse",
+            },
+          ]
+        : []),
     ],
     northArrowRotationDeg: 0,
     readinessStatus: readiness.status,

@@ -248,7 +248,9 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
   }
 
   async fetchNaturbeskyttelse(_bbox25832: BBox25832): Promise<NaturbeskyttelseLayer[]> {
-    return [];
+    const { fetchNaturbeskyttelseLayers } =
+      await import("@/integrations/naturbeskyttelse/geometry-adapter");
+    return fetchNaturbeskyttelseLayers(_bbox25832);
   }
 
   async fetchLerLedninger(_bbox25832: BBox25832): Promise<LerLedning[]> {

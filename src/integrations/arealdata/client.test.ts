@@ -41,6 +41,9 @@ describe("ArealdataService.getContext", () => {
         status_bnbo: featureJson(0),
         drikkevandsinteresser: featureJson(0),
         raastofomr: featureJson(0),
+        fundogfortidsminder_areal_fredet: featureJson(0),
+        fundogfortidsminder_punkt_fredet: featureJson(0),
+        fundogfortidsminder_areal_beskyttelse: featureJson(0),
       },
       errorResponse(404),
     );
@@ -52,9 +55,8 @@ describe("ArealdataService.getContext", () => {
     expect(result.data?.paragraph3Nature).toBe(false);
     expect(result.data?.natura2000).toBe(false);
     expect(result.data?.osd).toBe(false);
-    // fortidsminde/fortidsmindeBuffer er altid null (ingen endpoint)
-    expect(result.data?.fortidsminde).toBeNull();
-    expect(result.data?.fortidsmindeBuffer).toBeNull();
+    expect(result.data?.fortidsminde).toBe(false);
+    expect(result.data?.fortidsmindeBuffer).toBe(false);
   });
 
   it("returnerer natura2000=true når fugle_bes_omr har features (OR-logik)", async () => {
@@ -68,6 +70,9 @@ describe("ArealdataService.getContext", () => {
         status_bnbo: featureJson(0),
         drikkevandsinteresser: featureJson(0),
         raastofomr: featureJson(0),
+        fundogfortidsminder_areal_fredet: featureJson(0),
+        fundogfortidsminder_punkt_fredet: featureJson(0),
+        fundogfortidsminder_areal_beskyttelse: featureJson(0),
       },
       errorResponse(404),
     );
@@ -89,6 +94,9 @@ describe("ArealdataService.getContext", () => {
         status_bnbo: featureJson(0),
         drikkevandsinteresser: featureJson(1), // OSD hit
         raastofomr: featureJson(0),
+        fundogfortidsminder_areal_fredet: featureJson(0),
+        fundogfortidsminder_punkt_fredet: featureJson(0),
+        fundogfortidsminder_areal_beskyttelse: featureJson(0),
       },
       errorResponse(404),
     );
@@ -99,13 +107,28 @@ describe("ArealdataService.getContext", () => {
     expect(result.data?.osd).toBe(true);
   });
 
-  it("returnerer fortidsminde=null og fortidsmindeBuffer=null altid", async () => {
-    globalThis.fetch = urlMock({}, featureJson(0));
+  it("returnerer fortidsminde og fortidsmindeBuffer fra SLKS WFS", async () => {
+    globalThis.fetch = urlMock(
+      {
+        bes_naturtyper: featureJson(0),
+        habitat_omr: featureJson(0),
+        fugle_bes_omr: featureJson(0),
+        ramsar_omr: featureJson(0),
+        bes_sten_jorddiger: featureJson(0),
+        status_bnbo: featureJson(0),
+        drikkevandsinteresser: featureJson(0),
+        raastofomr: featureJson(0),
+        fundogfortidsminder_areal_fredet: featureJson(0),
+        fundogfortidsminder_punkt_fredet: featureJson(1),
+        fundogfortidsminder_areal_beskyttelse: featureJson(1),
+      },
+      errorResponse(404),
+    );
 
     const result = await ArealdataService.getContext({ lat: 55.7, lng: 12.5 });
 
-    expect(result.data?.fortidsminde).toBeNull();
-    expect(result.data?.fortidsmindeBuffer).toBeNull();
+    expect(result.data?.fortidsminde).toBe(true);
+    expect(result.data?.fortidsmindeBuffer).toBe(true);
   });
 
   it("returnerer confidence=unknown når et live lag fejler (paragraph3Nature)", async () => {
@@ -119,6 +142,9 @@ describe("ArealdataService.getContext", () => {
         status_bnbo: featureJson(0),
         drikkevandsinteresser: featureJson(0),
         raastofomr: featureJson(0),
+        fundogfortidsminder_areal_fredet: featureJson(0),
+        fundogfortidsminder_punkt_fredet: featureJson(0),
+        fundogfortidsminder_areal_beskyttelse: featureJson(0),
       },
       errorResponse(404),
     );

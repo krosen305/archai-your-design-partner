@@ -34,6 +34,8 @@ import {
   ruleEngineTerrainDataSchema,
 } from "@/types/project-restore.schemas";
 
+const AREALDATA_EXT_SOURCE_KIND = "arealdata_ext_v2";
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -614,11 +616,15 @@ export async function runGeoRiskStep(
               trace,
               {
                 service: "Cache",
-                operation: "getCachedSourceResult(arealdata_ext)",
+                operation: `getCachedSourceResult(${AREALDATA_EXT_SOURCE_KIND})`,
                 phase: "layer4",
               },
               () =>
-                getCachedSourceResult(addressId, "arealdata_ext", ruleEngineArealdataContextSchema),
+                getCachedSourceResult(
+                  addressId,
+                  AREALDATA_EXT_SOURCE_KIND,
+                  ruleEngineArealdataContextSchema,
+                ),
             );
 
             if (cached) {
@@ -629,7 +635,7 @@ export async function runGeoRiskStep(
               trace,
               {
                 service: "Cache",
-                operation: "getCachedJordstykkePolygon(arealdata_ext)",
+                operation: `getCachedJordstykkePolygon(${AREALDATA_EXT_SOURCE_KIND})`,
                 phase: "layer4",
               },
               () => getCachedJordstykkePolygon(addressId),
@@ -659,14 +665,16 @@ export async function runGeoRiskStep(
               },
             );
 
-            await setCachedSourceResult(addressId, "arealdata_ext", result).catch(() => undefined);
+            await setCachedSourceResult(addressId, AREALDATA_EXT_SOURCE_KIND, result).catch(
+              () => undefined,
+            );
             return { result, cacheHit: false as const };
           },
         )
         .catch((e: Error) => {
           logServerEvent({
             module: "geo-risk-step",
-            operation: "layer4.arealdata_ext",
+            operation: `layer4.${AREALDATA_EXT_SOURCE_KIND}`,
             severity: "degraded",
             message: "ArealdataService.getContext fejlede",
             error: e,

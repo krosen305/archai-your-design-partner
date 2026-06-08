@@ -118,6 +118,10 @@ const fakeSource: DrawingGeometrySourcePort = {
   fetchRoadName: async (_addressId: string) => ({ name: "Testvej" }),
   fetchDhmKoter: async (_bbox: BBox25832, _centroidLat: number, _centroidLng: number) =>
     fakeTerrain,
+  fetchNaturbeskyttelse: async (_bbox: BBox25832) => [],
+  fetchLerLedninger: async (_bbox: BBox25832) => [],
+  fetchKloakopland: async (_kommunekode: string, _bbox: BBox25832) => null,
+  fetchFjernvarmeDaekning: async (_centroidLat: number, _centroidLng: number) => null,
 };
 
 // Bygning centreret i parcellen med 8m til alle skel

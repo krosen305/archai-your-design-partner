@@ -6,6 +6,7 @@ import type {
   SurveyLayer,
   MandatoryAnnotations,
   ConstraintLayer,
+  NaturbeskyttelseLayer,
 } from "@/domain/drawing/beliggenhedsplan.types";
 import type { DrawingGeometrySourcePort } from "@/domain/drawing/ports";
 import {
@@ -17,9 +18,14 @@ import {
   distanceToNearestBoundaryM,
   splitPolygonIntoBoundarySegments,
   generateBuffer25832,
+  polygonsIntersect,
 } from "@/domain/drawing/geometry-engine";
+import { NaturbeskyttelseLayerSchema } from "@/domain/drawing/beliggenhedsplan.schemas";
 import { generatedSourceMeta } from "@/domain/drawing/source-quality";
 import { utm32ToWgs84 } from "@/lib/geometry-utils";
+import { makeOkResult } from "@/lib/source-result";
+
+const NATURBESKYTTELSE_GEOMETRY_SOURCE_KIND = "naturbeskyttelse_geometry";
 
 type AssembleInput = {
   matrikelId: string;
@@ -69,6 +75,66 @@ function buildBr18Constraint(parcelPolygon: GeoJsonPolygon25832): ConstraintLaye
     ruleReference: "BR18",
     source: { source: "generated", confidence: "high", fetchedAt: now, requiresReview: false },
   };
+}
+
+function applyNaturbeskyttelseIntersections(
+  layers: NaturbeskyttelseLayer[],
+  proposedFootprint25832: GeoJsonPolygon25832,
+): NaturbeskyttelseLayer[] {
+  return layers.map((layer) => {
+    if (layer.geometry25832.type !== "Polygon") {
+      return { ...layer, intersectsProposedBuilding: false };
+    }
+
+    return {
+      ...layer,
+      intersectsProposedBuilding: polygonsIntersect(proposedFootprint25832, layer.geometry25832),
+    };
+  });
+}
+
+async function fetchNaturbeskyttelseWithCache(input: {
+  addressId: string;
+  bbox25832: [number, number, number, number];
+  geometrySource: DrawingGeometrySourcePort;
+}): Promise<NaturbeskyttelseLayer[]> {
+  const layerArraySchema = NaturbeskyttelseLayerSchema.array();
+
+  try {
+    const { getCachedSourceResult } = await import("@/integrations/cache/client");
+    const cached = await getCachedSourceResult(
+      input.addressId,
+      NATURBESKYTTELSE_GEOMETRY_SOURCE_KIND,
+      layerArraySchema,
+    );
+    if (cached?.data) return cached.data;
+  } catch {
+    // Cache is an optimization for drawing generation; live registry fetch remains the fallback.
+  }
+
+  const liveLayers = layerArraySchema.parse(
+    await input.geometrySource.fetchNaturbeskyttelse(input.bbox25832),
+  );
+
+  if (liveLayers.length > 0) {
+    try {
+      const { setCachedSourceResult } = await import("@/integrations/cache/client");
+      await setCachedSourceResult(
+        input.addressId,
+        NATURBESKYTTELSE_GEOMETRY_SOURCE_KIND,
+        makeOkResult(liveLayers, {
+          kilde: NATURBESKYTTELSE_GEOMETRY_SOURCE_KIND,
+          sourceUrl: "DMP GeoServer + SLKS WFS + Datafordeler MAT WFS",
+          rawFeatureCount: liveLayers.length,
+          confidence: "confirmed",
+        }),
+      );
+    } catch {
+      // Do not fail drawing export if shared source-result cache is unavailable.
+    }
+  }
+
+  return liveLayers;
 }
 
 export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<AssembleResult> {
@@ -129,15 +195,27 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
   const centroidCoords = parcel.labelPoint25832.coordinates;
   const { lat: centroidLat, lng: centroidLng } = utm32ToWgs84(centroidCoords[0], centroidCoords[1]);
 
-  const [existing, constraints, neighborParcels, roadNameResult, roadGeometry, dhmTerrain] =
-    await Promise.all([
-      geometrySource.fetchNeighborBuildings(bbox),
-      geometrySource.fetchPlandataLayers(kommunekode, bbox),
-      geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
-      geometrySource.fetchRoadName(addressId),
-      geometrySource.fetchRoadGeometry(addressId, bbox),
-      geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
-    ]);
+  const [
+    existing,
+    constraints,
+    neighborParcels,
+    roadNameResult,
+    roadGeometry,
+    dhmTerrain,
+    naturbeskyttelseRaw,
+  ] = await Promise.all([
+    geometrySource.fetchNeighborBuildings(bbox),
+    geometrySource.fetchPlandataLayers(kommunekode, bbox),
+    geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
+    geometrySource.fetchRoadName(addressId),
+    geometrySource.fetchRoadGeometry(addressId, bbox),
+    geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
+    fetchNaturbeskyttelseWithCache({ addressId, bbox25832: bbox, geometrySource }),
+  ]);
+  const naturbeskyttelse = applyNaturbeskyttelseIntersections(
+    naturbeskyttelseRaw,
+    proposedFootprint25832,
+  );
 
   const br18Constraint = buildBr18Constraint(parcelWithSegments.polygon25832);
   const allConstraints: ConstraintLayer[] = [br18Constraint, ...constraints];
@@ -198,7 +276,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
       hasRoadCenterline: hasRoadCenterlineGeometry,
     }),
     vej: roadLayer,
-    naturbeskyttelse: [],
+    naturbeskyttelse,
     lerLedninger: [],
     kloakoplandType: null,
   };

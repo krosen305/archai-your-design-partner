@@ -33,6 +33,7 @@ Server-side integrations must not be imported directly in route files. Wrap call
 | `PlandataService`                  | `plandata/client.ts`                        | ✅ Live                  | Lokalplaner, kommuneplanrammer and PDF links via WFS.                                                                                                                                                                                                                         |
 | `FjernvarmeService`                | `plandata/fjernvarme.ts`                    | ✅ Live                  | District-heating coverage via Plandata WFS.                                                                                                                                                                                                                                   |
 | `NaturbeskyttelseService`          | `sdfi/naturbeskyttelse.ts`                  | ✅ Live                  | DAI WFS protection lines; MAT remains SSOT for MAT-specific flags.                                                                                                                                                                                                            |
+| `NaturbeskyttelseGeometryAdapter`  | `naturbeskyttelse/geometry-adapter.ts`      | Live smoke gated         | Geometry layers for beliggenhedsplan: DMP WFS for skovbyggelinje/aabeskyttelse, SLKS WFS for fortidsmindebeskyttelse, and Datafordeler MAT WFS for strandbeskyttelse/klitfredning. Validates WFS responses and returns `NaturbeskyttelseLayer[]`.                         |
 | `ArealdataService`                 | `arealdata/client.ts`                       | ⚠️ Endpoint verify       | Extended Arealdata screening for §3, Natura 2000, diger, fortidsminder, BNBO, OSD and råstofområder. Tri-state output (`true/false/null`) prevents API errors from being interpreted as no restriction while Miljøportal WFS endpoint/layer verification is still pending.    |
 | `FbbService`                       | `fbb/client.ts`                             | ✅ Live                  | SAVE/fredning via Kulturarv/FBB WFS, keyed by BBR-derived `ois_id` values or address fallback.                                                                                                                                                                                |
 | `CacheService`                     | `cache/client.ts`                           | ✅ Live                  | `address_analysis` and `address_source_results` cache helpers.                                                                                                                                                                                                                |
@@ -115,6 +116,10 @@ new Datafordeler clients.
   `DATAFORDELER_API_KEY`. Road width is derived from centerline/road-edge
   geometry and is returned as `null` with `source.reviewReasons` when the
   geometry is incomplete or too ambiguous for a reliable calculated width.
+- Drawing naturbeskyttelse geometry is cached as `address_source_results`
+  `source_kind = "naturbeskyttelse_geometry"` with a Zod-validated
+  `NaturbeskyttelseLayer[]` payload. It supports DMP, SLKS and MAT WFS geometry
+  and remains drawing/source geometry, not a typed compliance SSOT by itself.
 - `compliance_data JSONB` is an archive, not the source of truth.
 - Never read or write `projekter`; it was dropped in migration `20260515100000`.
 
@@ -125,5 +130,8 @@ new Datafordeler clients.
   `src/integrations/geodanmark/site-context.live-smoke.test.ts`.
 - `RUN_LIVE_GEODANMARK_ROAD_SMOKE=true` enables the GeoDanmark WFS road-geometry
   live smoke in `src/integrations/geodanmark/road-geometry.live-smoke.test.ts`.
+- `RUN_LIVE_NATURBESKYTTELSE_WFS=true` with `DATAFORDELER_API_KEY` enables
+  naturbeskyttelse WFS geometry smoke in
+  `src/integrations/naturbeskyttelse/geometry-adapter.test.ts`.
 - `RUN_LIVE_GEUS_SMOKE=true` with `FEATURE_GEUS_MOCK=false` enables GEUS live smoke in `tests/live/geus-dhm.live.test.ts`.
 - `RUN_LIVE_DHM_SMOKE=true` with `FEATURE_DHM_MOCK=false` enables DHM live smoke in `tests/live/geus-dhm.live.test.ts`.

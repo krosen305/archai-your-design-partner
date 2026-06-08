@@ -56,7 +56,7 @@ const getCachedSourceResult = mock(async (_addressId: string, sourceKind: string
     );
   }
 
-  if (sourceKind === "arealdata_ext") {
+  if (sourceKind === "arealdata_ext_v2") {
     return makeOkResult(
       {
         paragraph3Nature: false,
@@ -224,7 +224,7 @@ describe("runGeoRiskStep", () => {
     expect(getCachedSourceResult).toHaveBeenCalledWith("addr-1", "plandata_ext", expect.anything());
     expect(getCachedSourceResult).toHaveBeenCalledWith(
       "addr-1",
-      "arealdata_ext",
+      "arealdata_ext_v2",
       expect.anything(),
     );
     expect(result.geusRisk?.geoteknikJordart).toBe("MorÃ¦neler");

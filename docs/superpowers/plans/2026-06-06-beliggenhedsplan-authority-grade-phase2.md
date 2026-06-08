@@ -17,6 +17,7 @@
 ### Task 11: Implement real vejgeometri fetch
 
 **Context — read these files first:**
+
 - `src/integrations/geodanmark/drawing-layers.ts` (full file — note existing WFS patterns)
 - `src/domain/drawing/ports.ts` (for `DrawingGeometrySourcePort.fetchRoadGeometry` signature)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `VejLayer`, `BBox25832`)
@@ -24,6 +25,7 @@
 - `src/lib/env.ts` (to find `DATAFORSYNINGEN_TOKEN` env var — use it for WFS auth)
 
 **Files:**
+
 - Create: `src/integrations/geodanmark/wfs-client.ts`
 - Modify: `src/integrations/geodanmark/drawing-layers.ts`
 
@@ -50,10 +52,10 @@ export type WfsFeatureCollection = {
 const WFS_BASE = "https://api.dataforsyningen.dk/wfs";
 
 export async function fetchWfsFeatures(params: {
-  service: string;      // e.g. "GeoDanmarkVektor"
-  typeName: string;     // e.g. "vejmidte"
+  service: string; // e.g. "GeoDanmarkVektor"
+  typeName: string; // e.g. "vejmidte"
   bbox: [number, number, number, number];
-  bboxSrs?: string;     // default "EPSG:25832"
+  bboxSrs?: string; // default "EPSG:25832"
   maxFeatures?: number;
 }): Promise<WfsFeature[]> {
   const { service, typeName, bbox, bboxSrs = "EPSG:25832", maxFeatures = 200 } = params;
@@ -178,7 +180,17 @@ git commit -m "feat(geodanmark): implement real fetchRoadGeometry via GeoDanmark
 
 ### Task 12: Naturbeskyttelse adapter
 
+> **2026-06-07 source-spike correction:** Do not implement this task's MIM
+> `/natur` candidate as-is. Live `GetCapabilities` showed that
+> `https://wfs2-miljoegis.mim.dk/natur` does not expose the five required
+> protection-line feature types. Use the verified source matrix in
+> `docs/superpowers/plans/2026-06-07-naturbeskyttelse-authority-grade-source-plan.md`
+> instead: Danmarks Miljoeportal GeoServer for skov/aa/soe, SLKS WFS for
+> fortidsmindebeskyttelse, and Datafordeler MAT WFS for strand/klit after
+> credential verification.
+
 **Context — read these files first:**
+
 - `src/integrations/geodanmark/wfs-client.ts` (just created — reuse pattern)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `NaturbeskyttelseLayer`, `NaturbeskyttelseType`)
 - `src/domain/drawing/beliggenhedsplan.schemas.ts` (for `NaturbeskyttelseLayerSchema`)
@@ -187,6 +199,7 @@ git commit -m "feat(geodanmark): implement real fetchRoadGeometry via GeoDanmark
 - `src/integrations/geodanmark/drawing-layers.ts` (to know where to add the method)
 
 **Files:**
+
 - Create: `src/integrations/miljoeportalen/naturbeskyttelse-adapter.ts`
 - Modify: `src/integrations/geodanmark/drawing-layers.ts`
 
@@ -203,7 +216,12 @@ git commit -m "feat(geodanmark): implement real fetchRoadGeometry via GeoDanmark
 //
 // Each type wrapped in try/catch — failure on one type does NOT block others.
 
-import type { NaturbeskyttelseLayer, NaturbeskyttelseType, BBox25832, GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
+import type {
+  NaturbeskyttelseLayer,
+  NaturbeskyttelseType,
+  BBox25832,
+  GeoJsonPolygon25832,
+} from "@/domain/drawing/beliggenhedsplan.types";
 import type { LayerSourceMeta } from "@/domain/drawing/beliggenhedsplan.types";
 
 const NATUR_WFS_BASE = "https://wfs2-miljoegis.mim.dk/natur";
@@ -258,9 +276,18 @@ async function fetchOneType(
     .map((f): NaturbeskyttelseLayer => {
       const geom = f.geometry as { type: string; coordinates: unknown };
       // Normalize to our typed geometry
-      const geometry25832 = geom.type === "Polygon"
-        ? { type: "Polygon" as const, crs: "EPSG:25832" as const, coordinates: geom.coordinates as [number, number][][] }
-        : { type: "LineString" as const, crs: "EPSG:25832" as const, coordinates: geom.coordinates as [number, number][] };
+      const geometry25832 =
+        geom.type === "Polygon"
+          ? {
+              type: "Polygon" as const,
+              crs: "EPSG:25832" as const,
+              coordinates: geom.coordinates as [number, number][][],
+            }
+          : {
+              type: "LineString" as const,
+              crs: "EPSG:25832" as const,
+              coordinates: geom.coordinates as [number, number][],
+            };
 
       let intersectsProposedBuilding = false;
       if (proposedFootprint && geometry25832.type === "Polygon") {
@@ -342,10 +369,12 @@ git commit -m "feat(miljoeportalen): add naturbeskyttelse WFS adapter (5 nature 
 ### Task 13: LER adapter
 
 **Context — read these files first:**
+
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `LerLedning`, `LerLedningType`)
 - `src/domain/drawing/beliggenhedsplan.schemas.ts` (for `LerLedningSchema`)
 
 **Files:**
+
 - Create: `src/integrations/ler/ler-adapter.ts`
 - Modify: `src/integrations/geodanmark/drawing-layers.ts`
 
@@ -362,18 +391,22 @@ git commit -m "feat(miljoeportalen): add naturbeskyttelse WFS adapter (5 nature 
 //
 // LER 2.0 may require registration — check current auth requirements.
 
-import type { LerLedning, LerLedningType, BBox25832 } from "@/domain/drawing/beliggenhedsplan.types";
+import type {
+  LerLedning,
+  LerLedningType,
+  BBox25832,
+} from "@/domain/drawing/beliggenhedsplan.types";
 
 // Map from LER type codes to our domain type
 const LER_TYPE_MAP: Record<string, LerLedningType> = {
-  "spildevand": "kloak_spildevand",
-  "regnvand": "kloak_regnvand",
-  "faelleskloak": "kloak_faelles",
-  "vand": "vand",
-  "el": "el",
-  "naturgas": "naturgas",
-  "fjernvarme": "fjernvarme",
-  "telekommunikation": "telekom",
+  spildevand: "kloak_spildevand",
+  regnvand: "kloak_regnvand",
+  faelleskloak: "kloak_faelles",
+  vand: "vand",
+  el: "el",
+  naturgas: "naturgas",
+  fjernvarme: "fjernvarme",
+  telekommunikation: "telekom",
 };
 
 function mapLerType(raw: string | null): LerLedningType | null {
@@ -462,9 +495,11 @@ git commit -m "feat(ler): add LER 2.0 adapter for utility lines (primærnet)"
 ### Task 14: Kloakopland adapter
 
 **Context — read these files first:**
+
 - `src/domain/drawing/ports.ts` (for `fetchKloakopland` signature)
 
 **Files:**
+
 - Create: `src/integrations/plandata/kloakopland-adapter.ts`
 - Modify: `src/integrations/geodanmark/drawing-layers.ts`
 
@@ -551,9 +586,11 @@ git commit -m "feat(plandata): add kloakopland adapter (separat/faelles from spi
 ### Task 15: Fjernvarme adapter
 
 **Context — read these files first:**
+
 - `src/domain/drawing/ports.ts` (for `fetchFjernvarmeDaekning` signature)
 
 **Files:**
+
 - Create: `src/integrations/energistyrelsen/fjernvarme-adapter.ts`
 - Modify: `src/integrations/geodanmark/drawing-layers.ts`
 
@@ -607,12 +644,14 @@ git commit -m "feat(adapters): add fjernvarme adapter stub (returns null → pla
 ### Task 16: handleFetchSiteGeometry service + cache
 
 **Context — read these files first:**
+
 - `src/domain/drawing/ports.ts` (for `DrawingGeometrySourcePort`)
 - `src/domain/drawing/beliggenhedsplan.schemas.ts` (for `VejLayerSchema`, `NaturbeskyttelseLayerSchema`, `LerLedningSchema`)
 - `supabase/migrations/20260519120000_address_source_results.sql` (for table schema — keyed by `address_id` + `source_kind`)
 - `src/integrations/supabase/repositories/` (glob to find an example repository to follow for DB access pattern)
 
 **Files:**
+
 - Create: `src/services/drawing/fetch-site-geometry.service.ts`
 
 - [ ] **Step 1: Read one existing repository for pattern**
@@ -685,26 +724,36 @@ async function upsertCacheRow(
 export async function handleFetchSiteGeometry(
   input: FetchSiteGeometryInput,
 ): Promise<FetchSiteGeometryResult> {
-  const { createSupabaseServerClient } = await import(
-    "@/integrations/supabase/server-client"
-  );
+  const { createSupabaseServerClient } = await import("@/integrations/supabase/server-client");
   const supabase = createSupabaseServerClient();
 
-  const { addressId, matrikelId: _matrikelId, kommunekode, bbox25832, centroidLat, centroidLng, geometrySource } = input;
+  const {
+    addressId,
+    matrikelId: _matrikelId,
+    kommunekode,
+    bbox25832,
+    centroidLat,
+    centroidLng,
+    geometrySource,
+  } = input;
 
-  const [vejResult, naturResult, lerResult, kloakResult, fjernvarmeResult] = await Promise.allSettled([
-    geometrySource.fetchRoadGeometry(addressId, bbox25832),
-    geometrySource.fetchNaturbeskyttelse(bbox25832),
-    geometrySource.fetchLerLedninger(bbox25832),
-    geometrySource.fetchKloakopland(kommunekode, bbox25832),
-    geometrySource.fetchFjernvarmeDaekning(centroidLat, centroidLng),
-  ]);
+  const [vejResult, naturResult, lerResult, kloakResult, fjernvarmeResult] =
+    await Promise.allSettled([
+      geometrySource.fetchRoadGeometry(addressId, bbox25832),
+      geometrySource.fetchNaturbeskyttelse(bbox25832),
+      geometrySource.fetchLerLedninger(bbox25832),
+      geometrySource.fetchKloakopland(kommunekode, bbox25832),
+      geometrySource.fetchFjernvarmeDaekning(centroidLat, centroidLng),
+    ]);
 
   const fetchedSources: string[] = [];
   const failedSources: string[] = [];
 
   if (vejResult.status === "fulfilled") {
-    const parsed = vejResult.value !== null ? VejLayerSchema.safeParse(vejResult.value) : { success: true, data: null };
+    const parsed =
+      vejResult.value !== null
+        ? VejLayerSchema.safeParse(vejResult.value)
+        : { success: true, data: null };
     if (parsed.success) {
       await upsertCacheRow(supabase, addressId, "vej_geometry", parsed.data);
       fetchedSources.push("vej_geometry");
@@ -786,10 +835,12 @@ git commit -m "feat(drawing): add handleFetchSiteGeometry orchestrator with cach
 ### Task 17: api.site-geometry.ts server function
 
 **Context — read these files first:**
+
 - `src/routes/api.drawing.ts` (follow the thin server-function pattern exactly)
 - `src/services/drawing/fetch-site-geometry.service.ts` (just created)
 
 **Files:**
+
 - Create: `src/routes/api.site-geometry.ts`
 
 - [ ] **Step 1: Create server function**
@@ -819,12 +870,10 @@ export const fetchSiteGeometryFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: FetchSiteGeometryInput) => FetchSiteGeometryInputSchema.parse(data))
   .handler(async ({ data }) => {
-    const { handleFetchSiteGeometry } = await import(
-      "@/services/drawing/fetch-site-geometry.service"
-    );
-    const { GeoDanmarkDrawingLayersAdapter } = await import(
-      "@/integrations/geodanmark/drawing-layers"
-    );
+    const { handleFetchSiteGeometry } =
+      await import("@/services/drawing/fetch-site-geometry.service");
+    const { GeoDanmarkDrawingLayersAdapter } =
+      await import("@/integrations/geodanmark/drawing-layers");
 
     return handleFetchSiteGeometry({
       addressId: data.addressId,
@@ -859,12 +908,14 @@ git commit -m "feat(api): add api.site-geometry.ts thin server function for site
 ### Task 18: api.drawing-readiness.ts server function
 
 **Context — read these files first:**
+
 - `src/routes/api.drawing.ts` (follow pattern)
 - `src/domain/drawing/completeness-engine.ts` (for `computeDrawingCompleteness`, `CompletenessInput`)
 - `src/integrations/supabase/repositories/projects.repository.ts` (to understand `getProjectDrawingData` — or find equivalent for reading the 5 new columns)
 - `supabase/migrations/20260606200000_drawing_params.sql` (for column names: `tagform`, `taghaldning_grad`, `har_kaelder`, `kaelder_gulv_kote_m`, `har_jordvarme`)
 
 **Files:**
+
 - Create: `src/routes/api.drawing-readiness.ts`
 
 - [ ] **Step 1: Add `getProjectDrawingParams` to projects.repository.ts**
@@ -886,7 +937,9 @@ export async function getProjectDrawingParams(projectId: string): Promise<{
 
   const { data, error } = await supabase
     .from("projects")
-    .select("tagform, taghaldning_grad, har_kaelder, kaelder_gulv_kote_m, har_jordvarme, sokkelkote_m, grundareal_m2")
+    .select(
+      "tagform, taghaldning_grad, har_kaelder, kaelder_gulv_kote_m, har_jordvarme, sokkelkote_m, grundareal_m2",
+    )
     .eq("id", projectId)
     .single();
 
@@ -935,18 +988,12 @@ export const fetchDrawingReadinessFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: Input) => InputSchema.parse(data))
   .handler(async ({ data }) => {
-    const { computeDrawingCompleteness } = await import(
-      "@/domain/drawing/completeness-engine"
-    );
-    const { getProjectDrawingParams } = await import(
-      "@/integrations/supabase/repositories/projects.repository"
-    );
-    const { createSupabaseServerClient } = await import(
-      "@/integrations/supabase/server-client"
-    );
-    const { VejLayerSchema, NaturbeskyttelseLayerSchema } = await import(
-      "@/domain/drawing/beliggenhedsplan.schemas"
-    );
+    const { computeDrawingCompleteness } = await import("@/domain/drawing/completeness-engine");
+    const { getProjectDrawingParams } =
+      await import("@/integrations/supabase/repositories/projects.repository");
+    const { createSupabaseServerClient } = await import("@/integrations/supabase/server-client");
+    const { VejLayerSchema, NaturbeskyttelseLayerSchema } =
+      await import("@/domain/drawing/beliggenhedsplan.schemas");
     const { z } = await import("zod");
 
     const supabase = createSupabaseServerClient();
@@ -961,18 +1008,16 @@ export const fetchDrawingReadinessFn = createServerFn({ method: "POST" })
         .gt("expires_at", new Date().toISOString()),
     ]);
 
-    const cache = Object.fromEntries(
-      (cacheRows.data ?? []).map((r) => [r.source_kind, r]),
-    );
+    const cache = Object.fromEntries((cacheRows.data ?? []).map((r) => [r.source_kind, r]));
 
     const vejRow = cache["vej_geometry"];
     const vejLayer = vejRow
-      ? VejLayerSchema.nullable().safeParse(vejRow.payload).data ?? null
+      ? (VejLayerSchema.nullable().safeParse(vejRow.payload).data ?? null)
       : null;
 
     const naturRow = cache["naturbeskyttelse"];
     const naturLayers = naturRow
-      ? z.array(NaturbeskyttelseLayerSchema).safeParse(naturRow.payload).data ?? []
+      ? (z.array(NaturbeskyttelseLayerSchema).safeParse(naturRow.payload).data ?? [])
       : [];
 
     return computeDrawingCompleteness({
