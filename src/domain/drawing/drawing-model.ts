@@ -22,6 +22,7 @@ export type DrawingLayerKind =
   | "road_centerline"
   | "road_edge"
   | "road_label"
+  | "nature_protection"
   | "scale_bar"
   | "mandatory_annotations"
   | "north_arrow";

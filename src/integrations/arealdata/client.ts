@@ -15,9 +15,12 @@
 //   Lag:      grukos:drikkevandsinteresser (OSD)
 //   Geometri: wkb_geometry
 //
-// Kilde C — Uafklaret (degraderer til null):
-//   fortidsminde og fortidsmindeBuffer mangler verificeret erstatningsendpoint.
-//   kulturarv.dk/ffgeoserver er utilgængeligt. null = ukendt, IKKE false.
+// Kilde C — Slots- og Kulturstyrelsen Fund og Fortidsminder WFS (offentlig):
+//   URL:      https://www.kulturarv.dk/ffgeoserver/public/wfs
+//   Lag:      public:fundogfortidsminder_areal_fredet,
+//             public:fundogfortidsminder_punkt_fredet,
+//             public:fundogfortidsminder_areal_beskyttelse
+//   Geometri: geom
 
 import { makeErrorResult, makeOkResult } from "@/lib/source-result";
 import type { SourceResult } from "@/lib/source-result";
@@ -26,7 +29,8 @@ import { z } from "zod";
 
 const GEOSERVER_WFS = "https://arealeditering-dist-geo.miljoeportal.dk/geoserver/wfs";
 const MILJOEGIS_GRUKOS_WFS = "https://wfs2-miljoegis.mim.dk/grukos/ows";
-const SOURCE_URL = `${GEOSERVER_WFS}, ${MILJOEGIS_GRUKOS_WFS}`;
+const SLKS_WFS = "https://www.kulturarv.dk/ffgeoserver/public/wfs";
+const SOURCE_URL = `${GEOSERVER_WFS}, ${MILJOEGIS_GRUKOS_WFS}, ${SLKS_WFS}`;
 
 export type ArealdataContextResult = {
   paragraph3Nature: boolean | null;
@@ -127,6 +131,25 @@ async function fetchGrukos(typename: string, cqlFilter: string): Promise<number>
   return parsed.data.totalFeatures ?? parsed.data.features?.length ?? 0;
 }
 
+// ---- Slots- og Kulturstyrelsen fetcher (JSON) ----
+
+async function fetchSlks(typename: string, cqlFilter: string): Promise<number> {
+  const url =
+    `${SLKS_WFS}?service=WFS&version=1.1.0&request=GetFeature` +
+    `&typeName=${typename}&maxFeatures=1&outputFormat=application/json` +
+    `&CQL_FILTER=${encodeURIComponent(cqlFilter)}`;
+
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!res.ok) throw new Error(`SLKS WFS HTTP ${res.status} for ${typename}`);
+
+  const parsed = geoServerResponseSchema.safeParse(await res.json());
+  if (!parsed.success) throw new Error(`SLKS: unexpected response shape for ${typename}`);
+  return parsed.data.totalFeatures ?? parsed.data.features?.length ?? 0;
+}
+
 // ---- Per-lag fetching ----
 
 type LayerOutcome = {
@@ -190,11 +213,23 @@ async function fetchLayer(
         return { key, value: count > 0, errored: false };
       }
 
-      case "fortidsminde":
-      case "fortidsmindeBuffer":
-        // Ingen verificeret erstatningsendpoint efter DAI WFS lukning.
-        // kulturarv.dk/ffgeoserver er utilgængeligt. Returnér null (ukendt), IKKE false.
-        return { key, value: null, errored: true };
+      case "fortidsminde": {
+        const filter = buildCqlFilter("geom", koordinat, polygon, "intersects");
+        const subResults = await Promise.all([
+          fetchSlks("public:fundogfortidsminder_areal_fredet", filter).catch(() => -1),
+          fetchSlks("public:fundogfortidsminder_punkt_fredet", filter).catch(() => -1),
+        ]);
+        const anyHit = subResults.some((n) => n > 0);
+        const allFailed = subResults.every((n) => n === -1);
+        if (allFailed) return { key, value: null, errored: true };
+        return { key, value: anyHit, errored: false };
+      }
+
+      case "fortidsmindeBuffer": {
+        const filter = buildCqlFilter("geom", koordinat, polygon, "intersects");
+        const count = await fetchSlks("public:fundogfortidsminder_areal_beskyttelse", filter);
+        return { key, value: count > 0, errored: false };
+      }
 
       default:
         return { key, value: null, errored: true };
@@ -238,13 +273,12 @@ export class ArealdataService {
         ALL_KEYS.map((key) => fetchLayer(key, koordinat, parcelPolygon)),
       );
 
-      // Tæl kun de lag der faktisk har et live endpoint
-      // fortidsminde og fortidsmindeBuffer tæller ikke som "fejl" i confidence-forstand
-      // — de er eksplicit uafklarede, ikke netværksfejl
       const resolvedKeys = new Set<keyof ArealdataContextResult>([
         "paragraph3Nature",
         "natura2000",
         "protectedDige",
+        "fortidsminde",
+        "fortidsmindeBuffer",
         "bnbo",
         "osd",
         "rawMaterialArea",

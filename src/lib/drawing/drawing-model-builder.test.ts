@@ -245,4 +245,39 @@ describe("buildDrawingModel — label-rendering", () => {
     const roadLabel = model.features.find((feat) => feat.kind === "road_label");
     expect(roadLabel?.svgElement).toContain("Testvej");
   });
+
+  it("naturbeskyttelse emits drawing features, legend and source summary", () => {
+    const planWithNature: BeliggenhedsplanInput = {
+      ...minimalPlan,
+      naturbeskyttelse: [
+        {
+          type: "fortidsmindebeskyttelse",
+          geometry25832: {
+            type: "Polygon",
+            crs: "EPSG:25832",
+            coordinates: [
+              [
+                [720004, 6170004],
+                [720016, 6170004],
+                [720016, 6170016],
+                [720004, 6170016],
+                [720004, 6170004],
+              ],
+            ],
+          },
+          bufferDistanceM: 100,
+          intersectsProposedBuilding: true,
+          source: sourceMeta,
+        },
+      ],
+    };
+
+    const model = buildDrawingModel(planWithNature, autoReadiness);
+    const natureFeature = model.features.find((feat) => feat.kind === "nature_protection");
+
+    expect(natureFeature).toBeDefined();
+    expect(natureFeature?.svgElement).toContain("Fortidsmindebeskyttelse");
+    expect(model.legend.some((item) => item.label === "Naturbeskyttelse")).toBe(true);
+    expect(model.titleBlock.sourceList).toContain("Naturbeskyttelse: 1 lag");
+  });
 });
