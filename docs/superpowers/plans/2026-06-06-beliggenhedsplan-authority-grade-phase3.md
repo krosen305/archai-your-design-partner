@@ -17,10 +17,12 @@
 ### Task 19: Extend DrawingModel layer kinds
 
 **Context — read these files first:**
+
 - `src/domain/drawing/drawing-model.ts` (full file — 79 lines)
 - `src/lib/drawing/render-svg.ts` (to confirm it renders `model.features` by zIndex — no changes needed)
 
 **Files:**
+
 - Modify: `src/domain/drawing/drawing-model.ts`
 
 - [ ] **Step 1: Add new DrawingLayerKind values**
@@ -75,7 +77,7 @@ export type DrawingTitleBlock = {
   revision: string;
   disclaimer: string | null;
   sourceList: string[];
-  completenessStatus: string | null;  // e.g. "UDKAST — 2 placeholders"
+  completenessStatus: string | null; // e.g. "UDKAST — 2 placeholders"
 };
 ```
 
@@ -90,9 +92,11 @@ Expected: zero errors (all existing code that creates `DrawingTitleBlock` may ne
 - [ ] **Step 4: Fix any title block construction errors**
 
 Search for places that create `DrawingTitleBlock`:
+
 ```bash
 bunx grep -r "DrawingTitleBlock\|titleBlock:" src --include="*.ts" -l
 ```
+
 For each file found, add `completenessStatus: null` to the object literal if missing.
 
 - [ ] **Step 5: Commit**
@@ -107,11 +111,13 @@ git commit -m "feat(drawing): add new DrawingLayerKind values and completenessSt
 ### Task 20: Road layer renderer
 
 **Context — read these files first:**
+
 - `src/domain/drawing/drawing-model.ts` (for `DrawingFeature` type and `DrawingLayerKind`)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `VejLayer`)
 - `src/lib/drawing/drawing-model-builder.ts` lines 1–57 (for `coordsToSvgPoints` helper pattern — the `minX`/`maxY`/`scale` coordinate transform)
 
 **Files:**
+
 - Create: `src/lib/drawing/layers/render-road-layer.ts`
 - Create: `src/lib/drawing/layers/render-road-layer.test.ts`
 
@@ -125,10 +131,22 @@ import type { VejLayer } from "@/domain/drawing/beliggenhedsplan.types";
 
 const vejMedCenterline: VejLayer = {
   vejnavn: "Testvej",
-  centerline25832: { type: "LineString", crs: "EPSG:25832", coordinates: [[100, 100], [200, 100]] },
+  centerline25832: {
+    type: "LineString",
+    crs: "EPSG:25832",
+    coordinates: [
+      [100, 100],
+      [200, 100],
+    ],
+  },
   vejkant25832: null,
   vejbreddeM: null,
-  source: { source: "registry", confidence: "medium", fetchedAt: "2026-06-06", requiresReview: false },
+  source: {
+    source: "registry",
+    confidence: "medium",
+    fetchedAt: "2026-06-06",
+    requiresReview: false,
+  },
 };
 
 describe("buildRoadFeatures", () => {
@@ -138,12 +156,12 @@ describe("buildRoadFeatures", () => {
 
   it("vej med centerline → road_centerline feature", () => {
     const features = buildRoadFeatures(vejMedCenterline, 50, 200, 2);
-    expect(features.some(f => f.kind === "road_centerline")).toBe(true);
+    expect(features.some((f) => f.kind === "road_centerline")).toBe(true);
   });
 
   it("alle features har negativt zIndex (bag parcel)", () => {
     const features = buildRoadFeatures(vejMedCenterline, 50, 200, 2);
-    expect(features.every(f => f.zIndex < 5)).toBe(true);
+    expect(features.every((f) => f.zIndex < 5)).toBe(true);
   });
 });
 ```
@@ -162,11 +180,17 @@ import type { DrawingFeature } from "@/domain/drawing/drawing-model";
 import type { VejLayer } from "@/domain/drawing/beliggenhedsplan.types";
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function toSvg(coords: [number, number][], minX: number, maxY: number, scale: number): string {
-  return coords.map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`).join(" ");
+  return coords
+    .map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`)
+    .join(" ");
 }
 
 export function buildRoadFeatures(
@@ -282,10 +306,12 @@ git commit -m "feat(drawing): add road layer renderer (vejmidte, vejkant, vejnav
 ### Task 21: Naturbeskyttelse + LER layer renderers
 
 **Context — read these files first:**
+
 - `src/lib/drawing/layers/render-road-layer.ts` (for coordinate transform pattern)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `NaturbeskyttelseLayer`, `LerLedning`, `LerLedningType`)
 
 **Files:**
+
 - Create: `src/lib/drawing/layers/render-naturbeskyttelse-layer.ts`
 - Create: `src/lib/drawing/layers/render-ler-layer.ts`
 
@@ -313,7 +339,9 @@ const NATUR_LABELS: Record<NaturbeskyttelseLayer["type"], string> = {
 };
 
 function toSvg(coords: [number, number][], minX: number, maxY: number, scale: number): string {
-  return coords.map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`).join(" ");
+  return coords
+    .map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`)
+    .join(" ");
 }
 
 export function buildNaturbeskyttelseFeatures(
@@ -331,28 +359,32 @@ export function buildNaturbeskyttelseFeatures(
     if (layer.geometry25832.type === "Polygon") {
       const ring = layer.geometry25832.coordinates[0] as [number, number][];
       const pts = toSvg(ring, minX, maxY, scale);
-      return [{
-        id: `natur-${i}`,
-        kind: "naturbeskyttelse_zones",
-        svgElement: `<polygon points="${pts}" fill="${color}" fill-opacity="${opacity}" stroke="${strokeColor}" stroke-width="0.5" stroke-dasharray="6,3"/>`,
-        label,
-        labelX: null,
-        labelY: null,
-        zIndex: 5,
-      }];
+      return [
+        {
+          id: `natur-${i}`,
+          kind: "naturbeskyttelse_zones",
+          svgElement: `<polygon points="${pts}" fill="${color}" fill-opacity="${opacity}" stroke="${strokeColor}" stroke-width="0.5" stroke-dasharray="6,3"/>`,
+          label,
+          labelX: null,
+          labelY: null,
+          zIndex: 5,
+        },
+      ];
     }
 
     if (layer.geometry25832.type === "LineString") {
       const pts = toSvg(layer.geometry25832.coordinates, minX, maxY, scale);
-      return [{
-        id: `natur-${i}`,
-        kind: "naturbeskyttelse_zones",
-        svgElement: `<polyline points="${pts}" fill="none" stroke="${strokeColor}" stroke-width="${layer.intersectsProposedBuilding ? "1.5" : "0.8"}" stroke-dasharray="8,4"/>`,
-        label,
-        labelX: null,
-        labelY: null,
-        zIndex: 5,
-      }];
+      return [
+        {
+          id: `natur-${i}`,
+          kind: "naturbeskyttelse_zones",
+          svgElement: `<polyline points="${pts}" fill="none" stroke="${strokeColor}" stroke-width="${layer.intersectsProposedBuilding ? "1.5" : "0.8"}" stroke-dasharray="8,4"/>`,
+          label,
+          labelX: null,
+          labelY: null,
+          zIndex: 5,
+        },
+      ];
     }
 
     return [];
@@ -379,7 +411,9 @@ const LER_COLORS: Record<LerLedningType, string> = {
 };
 
 function toSvg(coords: [number, number][], minX: number, maxY: number, scale: number): string {
-  return coords.map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`).join(" ");
+  return coords
+    .map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`)
+    .join(" ");
 }
 
 export function buildLerFeatures(
@@ -432,11 +466,13 @@ git commit -m "feat(drawing): add naturbeskyttelse and LER layer renderers"
 ### Task 22: Placeholder elements + watermark
 
 **Context — read these files first:**
+
 - `src/lib/drawing/layers/render-road-layer.ts` (for coordinate transform pattern)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `ParcelLayer`, `BoundarySegment`)
 - `src/domain/drawing/completeness-engine.ts` (for `DrawingCompleteness`, `FieldStatus`)
 
 **Files:**
+
 - Create: `src/lib/drawing/layers/render-placeholder-layer.ts`
 - Create: `src/lib/drawing/layers/render-watermark.ts`
 
@@ -451,10 +487,20 @@ import type { DrawingCompleteness } from "@/domain/drawing/completeness-engine";
 import type { ParcelLayer, ProposedBuildingLayer } from "@/domain/drawing/beliggenhedsplan.types";
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-function toSvgPt(x: number, y: number, minX: number, maxY: number, scale: number): [number, number] {
+function toSvgPt(
+  x: number,
+  y: number,
+  minX: number,
+  maxY: number,
+  scale: number,
+): [number, number] {
   return [(x - minX) * scale, (maxY - y) * scale];
 }
 
@@ -624,12 +670,14 @@ git commit -m "feat(drawing): add placeholder element renderer and UDKAST waterm
 ### Task 23: Wire new layers into drawing-model-builder
 
 **Context — read these files first:**
+
 - `src/lib/drawing/drawing-model-builder.ts` (full file)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `BeliggenhedsplanInput` — now includes `vej`, `naturbeskyttelse`, `lerLedninger`, `kloakoplandType`)
 - `src/domain/drawing/completeness-engine.ts` (for `computeDrawingCompleteness`, `CompletenessInput`)
 - All four new layer files just created
 
 **Files:**
+
 - Modify: `src/lib/drawing/drawing-model-builder.ts`
 
 - [ ] **Step 1: Add imports to `drawing-model-builder.ts`**
@@ -655,25 +703,24 @@ The function signature stays the same — it already takes `BeliggenhedsplanInpu
 After the `const scale = ...` line (around line 80), add:
 
 ```typescript
-  const completeness = computeDrawingCompleteness({
-    hasParcelPolygon: true,
-    proposedFootprintSource: plan.proposed.source.source,
-    sokkelKoteM: plan.proposed.sokkelKoteM,
-    sokkelSource: plan.proposed.source.source,
-    tagform: plan.proposed.tagform,
-    taghaldningGrad: plan.proposed.taghaldningGrad,
-    rygningsKoteM: plan.proposed.rygningsKoteM,
-    vejLayer: plan.vej,
-    terrainLayer: plan.terrain,
-    surveyTerrainPointCount: plan.survey?.terrainPoints.length ?? 0,
-    kloakoplandType: plan.kloakoplandType,
-    siteUseLayers: plan.siteUse,
-    naturbeskyttelseFetchedAt: plan.naturbeskyttelse.length > 0
-      ? plan.naturbeskyttelse[0]!.source.fetchedAt
-      : null,
-  });
+const completeness = computeDrawingCompleteness({
+  hasParcelPolygon: true,
+  proposedFootprintSource: plan.proposed.source.source,
+  sokkelKoteM: plan.proposed.sokkelKoteM,
+  sokkelSource: plan.proposed.source.source,
+  tagform: plan.proposed.tagform,
+  taghaldningGrad: plan.proposed.taghaldningGrad,
+  rygningsKoteM: plan.proposed.rygningsKoteM,
+  vejLayer: plan.vej,
+  terrainLayer: plan.terrain,
+  surveyTerrainPointCount: plan.survey?.terrainPoints.length ?? 0,
+  kloakoplandType: plan.kloakoplandType,
+  siteUseLayers: plan.siteUse,
+  naturbeskyttelseFetchedAt:
+    plan.naturbeskyttelse.length > 0 ? plan.naturbeskyttelse[0]!.source.fetchedAt : null,
+});
 
-  const isDraft = completeness.overallStatus === "draft";
+const isDraft = completeness.overallStatus === "draft";
 ```
 
 - [ ] **Step 4: Add new features to the `features` array**
@@ -681,37 +728,45 @@ After the `const scale = ...` line (around line 80), add:
 Find where `features` is built in `buildDrawingModel`. After all existing features are pushed, add:
 
 ```typescript
-  // Road layer (behind parcel, zIndex 1-4)
-  const roadFeatures = buildRoadFeatures(plan.vej, bboxMinX, bboxMaxY, scale);
+// Road layer (behind parcel, zIndex 1-4)
+const roadFeatures = buildRoadFeatures(plan.vej, bboxMinX, bboxMaxY, scale);
 
-  // Naturbeskyttelse (zIndex 5)
-  const naturFeatures = buildNaturbeskyttelseFeatures(
-    plan.naturbeskyttelse, bboxMinX, bboxMaxY, scale,
-  );
+// Naturbeskyttelse (zIndex 5)
+const naturFeatures = buildNaturbeskyttelseFeatures(
+  plan.naturbeskyttelse,
+  bboxMinX,
+  bboxMaxY,
+  scale,
+);
 
-  // LER (zIndex 4)
-  const lerFeatures = buildLerFeatures(plan.lerLedninger, bboxMinX, bboxMaxY, scale);
+// LER (zIndex 4)
+const lerFeatures = buildLerFeatures(plan.lerLedninger, bboxMinX, bboxMaxY, scale);
 
-  // Placeholder elements (zIndex 13-15)
-  const placeholderFeatures = buildPlaceholderFeatures(
-    completeness, plan.parcel, plan.proposed, bboxMinX, bboxMaxY, scale,
-  );
+// Placeholder elements (zIndex 13-15)
+const placeholderFeatures = buildPlaceholderFeatures(
+  completeness,
+  plan.parcel,
+  plan.proposed,
+  bboxMinX,
+  bboxMaxY,
+  scale,
+);
 
-  // Watermark (zIndex 19)
-  const watermarkFeature = buildWatermarkFeature(
-    isDraft,
-    (paperWidthMm - titleBlockMm) * PX_PER_MM,
-    paperHeightMm * PX_PER_MM,
-  );
+// Watermark (zIndex 19)
+const watermarkFeature = buildWatermarkFeature(
+  isDraft,
+  (paperWidthMm - titleBlockMm) * PX_PER_MM,
+  paperHeightMm * PX_PER_MM,
+);
 
-  const allFeatures = [
-    ...features, // existing features from current buildDrawingModel
-    ...roadFeatures,
-    ...naturFeatures,
-    ...lerFeatures,
-    ...placeholderFeatures,
-    ...(watermarkFeature ? [watermarkFeature] : []),
-  ];
+const allFeatures = [
+  ...features, // existing features from current buildDrawingModel
+  ...roadFeatures,
+  ...naturFeatures,
+  ...lerFeatures,
+  ...placeholderFeatures,
+  ...(watermarkFeature ? [watermarkFeature] : []),
+];
 ```
 
 Then ensure the returned `DrawingModel` uses `allFeatures` instead of `features`.

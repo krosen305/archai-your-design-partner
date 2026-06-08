@@ -1,10 +1,27 @@
-import { DATA_SOURCE_LABELS, type DataSourceKind, type DataSourceStatus } from "@/types/project-state";
+import {
+  DATA_SOURCE_LABELS,
+  type DataSourceKind,
+  type DataSourceStatus,
+} from "@/types/project-state";
 import type { ComplianceFlag } from "@/types/project-state";
 
 const HANDLINGSBARE_KILDER: readonly DataSourceKind[] = [
-  "bbr", "lokalplaner", "kommuneplanramme", "fbb", "naturbeskyttelse",
-  "arealdata", "dkjord", "geusRisk", "servitutter", "terrain",
-  "fjernvarme", "naboer", "matGeometri", "vurdering", "tjekditnet", "energimaerke",
+  "bbr",
+  "lokalplaner",
+  "kommuneplanramme",
+  "fbb",
+  "naturbeskyttelse",
+  "arealdata",
+  "dkjord",
+  "geusRisk",
+  "servitutter",
+  "terrain",
+  "fjernvarme",
+  "naboer",
+  "matGeometri",
+  "vurdering",
+  "tjekditnet",
+  "energimaerke",
 ];
 
 type ReadinessDetailProps = {

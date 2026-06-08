@@ -12,39 +12,40 @@
 
 ## Gaps der lukkes (fra fresh analyse 2026-05-30)
 
-| Gap | Konsekvens | Task |
-|-----|-----------|------|
-| `polygonFeature` skriver ingen tekst i SVG — matrikelnumre er usynlige | Myndighed kan ikke se nabolotsnumre | T1 |
-| `plan.parcel.roadName` hentes men rendres aldrig | Vejnavn mangler på tegning | T2 |
-| `model.legend` bygges men `render-svg.ts` rendrer den ikke | Forklaring af symboler mangler | T3 |
-| `metersPerMm` tager altid `plan.metadata.scale/1000`, ikke den faktiske skala | Skalatav viser forkert skala | T4 |
-| `distanceToBoundarySegments()` eksisterer men ingen visuel skel-afstandsannotation | **Lovpligtige skelmål mangler** — kritisk for myndighed | T5 |
-| Fallback-fodprint bruger UTM (0,0) — bygning placeres i Atlanterhavet | Generation fejler for brugere uden design-tool footprint | T6 |
-| Teknik-siden viser ikke om der er et fodprint og har ingen dimension-inputs | Brugere sidder fast og forstår ikke fejlen | T6 |
-| `drawing_exports`-tabellen er ikke i Supabase-typerne — repository bruger `as any` | Skrives til DB med tab af typesikkerhed; mulige runtime-fejl | T7 |
-| Ingen end-to-end test der verificerer SVG-output har alle obligatoriske elementer | Regressioner opdages ikke | T8 |
+| Gap                                                                                | Konsekvens                                                   | Task |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---- |
+| `polygonFeature` skriver ingen tekst i SVG — matrikelnumre er usynlige             | Myndighed kan ikke se nabolotsnumre                          | T1   |
+| `plan.parcel.roadName` hentes men rendres aldrig                                   | Vejnavn mangler på tegning                                   | T2   |
+| `model.legend` bygges men `render-svg.ts` rendrer den ikke                         | Forklaring af symboler mangler                               | T3   |
+| `metersPerMm` tager altid `plan.metadata.scale/1000`, ikke den faktiske skala      | Skalatav viser forkert skala                                 | T4   |
+| `distanceToBoundarySegments()` eksisterer men ingen visuel skel-afstandsannotation | **Lovpligtige skelmål mangler** — kritisk for myndighed      | T5   |
+| Fallback-fodprint bruger UTM (0,0) — bygning placeres i Atlanterhavet              | Generation fejler for brugere uden design-tool footprint     | T6   |
+| Teknik-siden viser ikke om der er et fodprint og har ingen dimension-inputs        | Brugere sidder fast og forstår ikke fejlen                   | T6   |
+| `drawing_exports`-tabellen er ikke i Supabase-typerne — repository bruger `as any` | Skrives til DB med tab af typesikkerhed; mulige runtime-fejl | T7   |
+| Ingen end-to-end test der verificerer SVG-output har alle obligatoriske elementer  | Regressioner opdages ikke                                    | T8   |
 
 ---
 
 ## Filstruktur
 
-| Fil | Ændring |
-|-----|---------|
-| `src/domain/drawing/geometry-engine.ts` | Tilføj `SetbackAnnotation` type + `buildSetbackAnnotations()` |
-| `src/domain/drawing/geometry-engine.test.ts` | Opret ny testfil for `buildSetbackAnnotations` |
-| `src/lib/drawing/drawing-model-builder.ts` | Polygon labels, road name label, setback annotations, scale accuracy |
-| `src/lib/drawing/render-svg.ts` | Legend rendering |
-| `src/lib/drawing/footprint-builder.ts` | Tilføj `buildRectangularFootprint25832()` |
-| `src/routes/api.drawing.ts` | Fix footprint fallback, tilføj width/depth/centroid params |
-| `src/routes/projekt.teknik.tsx` | Footprint status UI, dimension inputs |
-| `src/integrations/supabase/repositories/drawing.repository.ts` | Fjern `as any`, tilføj lokal type |
-| `src/services/drawing/beliggenhedsplan-elements.test.ts` | Opret end-to-end SVG-verifikationstest |
+| Fil                                                            | Ændring                                                              |
+| -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `src/domain/drawing/geometry-engine.ts`                        | Tilføj `SetbackAnnotation` type + `buildSetbackAnnotations()`        |
+| `src/domain/drawing/geometry-engine.test.ts`                   | Opret ny testfil for `buildSetbackAnnotations`                       |
+| `src/lib/drawing/drawing-model-builder.ts`                     | Polygon labels, road name label, setback annotations, scale accuracy |
+| `src/lib/drawing/render-svg.ts`                                | Legend rendering                                                     |
+| `src/lib/drawing/footprint-builder.ts`                         | Tilføj `buildRectangularFootprint25832()`                            |
+| `src/routes/api.drawing.ts`                                    | Fix footprint fallback, tilføj width/depth/centroid params           |
+| `src/routes/projekt.teknik.tsx`                                | Footprint status UI, dimension inputs                                |
+| `src/integrations/supabase/repositories/drawing.repository.ts` | Fjern `as any`, tilføj lokal type                                    |
+| `src/services/drawing/beliggenhedsplan-elements.test.ts`       | Opret end-to-end SVG-verifikationstest                               |
 
 ---
 
 ## Task 1: Polygon labels (matrikelnummer synligt på tegning)
 
 **Files:**
+
 - Modify: `src/lib/drawing/drawing-model-builder.ts`
 
 Den eksisterende `polygonFeature`-funktion gemmer `label` i `DrawingFeature.label` men skriver det aldrig til `svgElement`. Fix: inkluder en `<text>`-node inde i et `<g>`-element.
@@ -113,6 +114,7 @@ git commit -m "feat(drawing): render matrikelnummer labels in polygon SVG elemen
 ## Task 2: Vejnavn-label på tegning
 
 **Files:**
+
 - Modify: `src/lib/drawing/drawing-model-builder.ts`
 
 `plan.parcel.roadName` hentes fra GeoDanmark men tilføjes aldrig som SVG-feature. Placér det som kursiv tekst syd for parcellen (lavest UTM-Y = sydkant i tegnefeltet).
@@ -122,23 +124,23 @@ git commit -m "feat(drawing): render matrikelnummer labels in polygon SVG elemen
 Indsæt følgende blok i `buildDrawingModel` **efter** constraints-løkken (efter linje ~163 — efter `allConstraints.forEach`-blokken):
 
 ```typescript
-  // Vejnavn-label — placeret syd for parcelpolygon
-  if (plan.parcel.roadName) {
-    const parcelCoords = plan.parcel.polygon25832.coordinates[0] as [number, number][];
-    const centerX = parcelCoords.reduce((s, c) => s + c[0], 0) / parcelCoords.length;
-    const southY = Math.min(...parcelCoords.map((c) => c[1]));
-    const labelPxX = (centerX - bboxMinX) * scale;
-    const labelPxY = (bboxMaxY - southY) * scale + 14;
-    features.push({
-      id: "road-name",
-      kind: "road_label",
-      svgElement: `<text x="${labelPxX.toFixed(1)}" y="${labelPxY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(plan.parcel.roadName)}</text>`,
-      label: plan.parcel.roadName,
-      labelX: labelPxX,
-      labelY: labelPxY,
-      zIndex: 45,
-    });
-  }
+// Vejnavn-label — placeret syd for parcelpolygon
+if (plan.parcel.roadName) {
+  const parcelCoords = plan.parcel.polygon25832.coordinates[0] as [number, number][];
+  const centerX = parcelCoords.reduce((s, c) => s + c[0], 0) / parcelCoords.length;
+  const southY = Math.min(...parcelCoords.map((c) => c[1]));
+  const labelPxX = (centerX - bboxMinX) * scale;
+  const labelPxY = (bboxMaxY - southY) * scale + 14;
+  features.push({
+    id: "road-name",
+    kind: "road_label",
+    svgElement: `<text x="${labelPxX.toFixed(1)}" y="${labelPxY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(plan.parcel.roadName)}</text>`,
+    label: plan.parcel.roadName,
+    labelX: labelPxX,
+    labelY: labelPxY,
+    zIndex: 45,
+  });
+}
 ```
 
 - [ ] **Step 2: Kør typecheck + tests**
@@ -161,6 +163,7 @@ git commit -m "feat(drawing): render road name label south of parcel boundary"
 ## Task 3: Legend rendering i SVG
 
 **Files:**
+
 - Modify: `src/lib/drawing/render-svg.ts`
 - Modify: `src/lib/drawing/render-svg.test.ts`
 
@@ -171,24 +174,24 @@ git commit -m "feat(drawing): render road name label south of parcel boundary"
 Tilføj denne test i `describe("renderSvg")` blokken:
 
 ```typescript
-  it("indeholder legend-items fra model.legend", () => {
-    const modelWithLegend: DrawingModel = {
-      ...model,
-      legend: [
-        {
-          symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>',
-          label: "Parcel",
-        },
-        {
-          symbol: '<rect width="12" height="8" fill="#d4e8ff" stroke="#00f" stroke-width="1"/>',
-          label: "Nyt byggeri",
-        },
-      ],
-    };
-    const svg = renderSvg(modelWithLegend);
-    expect(svg).toContain("Parcel");
-    expect(svg).toContain("Nyt byggeri");
-  });
+it("indeholder legend-items fra model.legend", () => {
+  const modelWithLegend: DrawingModel = {
+    ...model,
+    legend: [
+      {
+        symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>',
+        label: "Parcel",
+      },
+      {
+        symbol: '<rect width="12" height="8" fill="#d4e8ff" stroke="#00f" stroke-width="1"/>',
+        label: "Nyt byggeri",
+      },
+    ],
+  };
+  const svg = renderSvg(modelWithLegend);
+  expect(svg).toContain("Parcel");
+  expect(svg).toContain("Nyt byggeri");
+});
 ```
 
 - [ ] **Step 2: Kør test for at bekræfte den fejler**
@@ -238,6 +241,7 @@ git commit -m "feat(drawing): render legend items in SVG title block"
 ## Task 4: Skalanøjagtighed (metersPerMm fra faktisk beregnet skala)
 
 **Files:**
+
 - Modify: `src/domain/drawing/drawing-model.ts`
 - Modify: `src/lib/drawing/drawing-model-builder.ts`
 
@@ -246,6 +250,7 @@ git commit -m "feat(drawing): render legend items in SVG title block"
 - [ ] **Step 1: Opdater `computeViewport` signaturen i `drawing-model.ts`**
 
 Erstat:
+
 ```typescript
 export function computeViewport(
   bbox25832: [number, number, number, number],
@@ -256,6 +261,7 @@ export function computeViewport(
 ```
 
 Med:
+
 ```typescript
 export function computeViewport(
   bbox25832: [number, number, number, number],
@@ -270,12 +276,13 @@ export function computeViewport(
 I `buildDrawingModel`, umiddelbart efter `const scale = Math.min(scaleX, scaleY) * 0.9;` (linje 72), tilføj:
 
 ```typescript
-  // Faktisk skala: pixels per UTM-meter → meter per mm papir
-  const actualMetersPerMm = PX_PER_MM / scale;
-  const actualScaleRounded = Math.round(actualMetersPerMm * 1000);
+// Faktisk skala: pixels per UTM-meter → meter per mm papir
+const actualMetersPerMm = PX_PER_MM / scale;
+const actualScaleRounded = Math.round(actualMetersPerMm * 1000);
 ```
 
 Erstat derefter den eksisterende `viewport:`-linje i return-objektet (linje ~259):
+
 ```typescript
   // Erstat denne linje:
   viewport: computeViewport([bboxMinX, bboxMinY, bboxMaxX, bboxMaxY], plan.metadata.scale),
@@ -284,6 +291,7 @@ Erstat derefter den eksisterende `viewport:`-linje i return-objektet (linje ~259
 ```
 
 Og opdater `scale:`-feltet i `titleBlock` (find `scale: \`1:${plan.metadata.scale}\`` i return-objektet):
+
 ```typescript
   // Erstat:
   scale: `1:${plan.metadata.scale}`,
@@ -313,6 +321,7 @@ git commit -m "fix(drawing): compute actual metersPerMm from pixel scale so scal
 ## Task 5: Skel-afstandsmål (setback dimension lines) — KRITISK
 
 **Files:**
+
 - Modify: `src/domain/drawing/geometry-engine.ts`
 - Create: `src/domain/drawing/geometry-engine.test.ts`
 - Modify: `src/lib/drawing/drawing-model-builder.ts`
@@ -324,23 +333,36 @@ Dette er det vigtigste lovkrav for en dansk beliggenhedsplan: alle afstande fra 
 ```typescript
 // src/domain/drawing/geometry-engine.test.ts
 import { describe, it, expect } from "bun:test";
-import {
-  buildSetbackAnnotations,
-  polygonAreaM2,
-} from "./geometry-engine";
+import { buildSetbackAnnotations, polygonAreaM2 } from "./geometry-engine";
 import type { GeoJsonPolygon25832 } from "./beliggenhedsplan.types";
 
 const parcel: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [[[0, 0], [20, 0], [20, 20], [0, 20], [0, 0]]],
+  coordinates: [
+    [
+      [0, 0],
+      [20, 0],
+      [20, 20],
+      [0, 20],
+      [0, 0],
+    ],
+  ],
 };
 
 // Bygning centreret 5m inde fra alle skel
 const building: GeoJsonPolygon25832 = {
   type: "Polygon",
   crs: "EPSG:25832",
-  coordinates: [[[5, 5], [15, 5], [15, 15], [5, 15], [5, 5]]],
+  coordinates: [
+    [
+      [5, 5],
+      [15, 5],
+      [15, 15],
+      [5, 15],
+      [5, 5],
+    ],
+  ],
 };
 
 describe("buildSetbackAnnotations", () => {
@@ -465,32 +487,32 @@ import {
 Indsæt derefter følgende blok i `buildDrawingModel` **efter** `dimLines.forEach`-blokken (efter linje ~183):
 
 ```typescript
-  // Skel-afstandsmål — obligatoriske afstandsannotationer til myndighed
-  const setbackAnnotations = buildSetbackAnnotations(
-    plan.proposed.footprint25832,
-    plan.parcel.polygon25832,
-  );
-  setbackAnnotations.forEach((ann, i) => {
-    const bx = (ann.buildingPt[0] - bboxMinX) * scale;
-    const by = (bboxMaxY - ann.buildingPt[1]) * scale;
-    const px = (ann.parcelPt[0] - bboxMinX) * scale;
-    const py = (bboxMaxY - ann.parcelPt[1]) * scale;
-    const mx = (bx + px) / 2;
-    const my = (by + py) / 2;
-    const label = `${ann.distanceM.toFixed(2)} m`;
-    features.push({
-      id: `setback-ann-${i}`,
-      kind: "dimension_lines",
-      svgElement: `<g>
+// Skel-afstandsmål — obligatoriske afstandsannotationer til myndighed
+const setbackAnnotations = buildSetbackAnnotations(
+  plan.proposed.footprint25832,
+  plan.parcel.polygon25832,
+);
+setbackAnnotations.forEach((ann, i) => {
+  const bx = (ann.buildingPt[0] - bboxMinX) * scale;
+  const by = (bboxMaxY - ann.buildingPt[1]) * scale;
+  const px = (ann.parcelPt[0] - bboxMinX) * scale;
+  const py = (bboxMaxY - ann.parcelPt[1]) * scale;
+  const mx = (bx + px) / 2;
+  const my = (by + py) / 2;
+  const label = `${ann.distanceM.toFixed(2)} m`;
+  features.push({
+    id: `setback-ann-${i}`,
+    kind: "dimension_lines",
+    svgElement: `<g>
         <line x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="#b00" stroke-width="0.5" stroke-dasharray="3,1.5"/>
         <text x="${mx.toFixed(1)}" y="${(my - 2).toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="5.5" fill="#b00" font-weight="bold">${label}</text>
       </g>`,
-      label,
-      labelX: mx,
-      labelY: my,
-      zIndex: 36,
-    });
+    label,
+    labelX: mx,
+    labelY: my,
+    zIndex: 36,
   });
+});
 ```
 
 - [ ] **Step 6: Kør typecheck + alle drawing-tests**
@@ -513,6 +535,7 @@ git commit -m "feat(drawing): add setback dimension annotations (skel-afstandsm�
 ## Task 6: Fodprint-fallback fix + Teknik-side UX
 
 **Files:**
+
 - Modify: `src/lib/drawing/footprint-builder.ts`
 - Modify: `src/routes/api.drawing.ts`
 - Modify: `src/routes/projekt.teknik.tsx`
@@ -540,10 +563,7 @@ export type RectangularFootprintParams = {
 export function buildRectangularFootprint25832(
   params: RectangularFootprintParams,
 ): GeoJsonPolygon25832 {
-  const [cx, cy] = proj4("WGS84", "EPSG:25832", [
-    params.centroidWgs84[0],
-    params.centroidWgs84[1],
-  ]);
+  const [cx, cy] = proj4("WGS84", "EPSG:25832", [params.centroidWgs84[0], params.centroidWgs84[1]]);
   const halfW = params.widthM / 2;
   const halfD = params.depthM / 2;
   const angle = (params.rotationDeg * Math.PI) / 180;
@@ -587,28 +607,22 @@ Tilføj følgende felter til `ExportBeliggenhedsplanInputSchema`:
 Erstat den eksisterende `let proposedFootprint25832: GeoJsonPolygon25832`-blok (linje 55-72) med:
 
 ```typescript
-    let proposedFootprint25832: GeoJsonPolygon25832;
-    if (data.footprintGeojson) {
-      proposedFootprint25832 = decodeGeoJsonFootprint(data.footprintGeojson);
-    } else if (
-      data.centroidLng != null &&
-      data.centroidLat != null &&
-      data.buildingWidthM != null
-    ) {
-      const { buildRectangularFootprint25832 } = await import(
-        "@/lib/drawing/footprint-builder"
-      );
-      proposedFootprint25832 = buildRectangularFootprint25832({
-        centroidWgs84: [data.centroidLng, data.centroidLat],
-        widthM: data.buildingWidthM,
-        depthM: data.buildingDepthM ?? data.buildingWidthM,
-        rotationDeg: data.rotationDeg ?? 0,
-      });
-    } else {
-      throw new Error(
-        "MISSING_FOOTPRINT: angiv enten fodprint fra designværktøjet eller bredde/dybde i formularen",
-      );
-    }
+let proposedFootprint25832: GeoJsonPolygon25832;
+if (data.footprintGeojson) {
+  proposedFootprint25832 = decodeGeoJsonFootprint(data.footprintGeojson);
+} else if (data.centroidLng != null && data.centroidLat != null && data.buildingWidthM != null) {
+  const { buildRectangularFootprint25832 } = await import("@/lib/drawing/footprint-builder");
+  proposedFootprint25832 = buildRectangularFootprint25832({
+    centroidWgs84: [data.centroidLng, data.centroidLat],
+    widthM: data.buildingWidthM,
+    depthM: data.buildingDepthM ?? data.buildingWidthM,
+    rotationDeg: data.rotationDeg ?? 0,
+  });
+} else {
+  throw new Error(
+    "MISSING_FOOTPRINT: angiv enten fodprint fra designværktøjet eller bredde/dybde i formularen",
+  );
+}
 ```
 
 ### Del C: Teknik-side UI
@@ -618,56 +632,54 @@ Erstat den eksisterende `let proposedFootprint25832: GeoJsonPolygon25832`-blok (
 Tilføj følgende state-variabler i `TeknikPage`-komponenten (efter eksisterende `useState`-kald):
 
 ```typescript
-  const [buildingWidthM, setBuildingWidthM] = useState<string>("");
-  const [buildingDepthM, setBuildingDepthM] = useState<string>("");
-  const [rotationDeg, setRotationDeg] = useState<string>("0");
+const [buildingWidthM, setBuildingWidthM] = useState<string>("");
+const [buildingDepthM, setBuildingDepthM] = useState<string>("");
+const [rotationDeg, setRotationDeg] = useState<string>("0");
 ```
 
 Tilføj disse selectors (under `designPlacement`-selectoren):
 
 ```typescript
-  const hasFootprint = !!designPlacement?.footprintGeojson;
-  const centroid = address?.koordinater ?? null;
+const hasFootprint = !!designPlacement?.footprintGeojson;
+const centroid = address?.koordinater ?? null;
 ```
 
 Opdater `canGenerate`-logikken og tilføj en ny `canGenerateDefault`:
 
 ```typescript
-  const canGenerate =
-    !!currentProjectId && !!address?.adresseid && !!address?.kommunekode && !!matrikelId;
+const canGenerate =
+  !!currentProjectId && !!address?.adresseid && !!address?.kommunekode && !!matrikelId;
 
-  const canGenerateWithDimensions =
-    canGenerate &&
-    !hasFootprint &&
-    !!centroid &&
-    buildingWidthM !== "" &&
-    parseFloat(buildingWidthM) > 0;
+const canGenerateWithDimensions =
+  canGenerate &&
+  !hasFootprint &&
+  !!centroid &&
+  buildingWidthM !== "" &&
+  parseFloat(buildingWidthM) > 0;
 ```
 
 Opdater `handleGenerate` til at sende de nye felter:
 
 ```typescript
-      const res = await exportBeliggenhedsplanFn({
-        data: {
-          projectId: currentProjectId!,
-          matrikelId: matrikelId!,
-          kommunekode: address!.kommunekode,
-          addressId: address!.adresseid,
-          addressText: address!.adresse ?? null,
-          footprintGeojson: designPlacement?.footprintGeojson ?? null,
-          bygherre: bygherre.trim() || null,
-          sokkelKoteM: sokkelKoteM !== "" ? parseFloat(sokkelKoteM) : null,
-          heightM: heightM !== "" ? parseFloat(heightM) : null,
-          // Dimension-fallback hvis ingen designPlacement
-          centroidLng: !hasFootprint && centroid ? centroid.lng : null,
-          centroidLat: !hasFootprint && centroid ? centroid.lat : null,
-          buildingWidthM:
-            !hasFootprint && buildingWidthM !== "" ? parseFloat(buildingWidthM) : null,
-          buildingDepthM:
-            !hasFootprint && buildingDepthM !== "" ? parseFloat(buildingDepthM) : null,
-          rotationDeg: rotationDeg !== "" ? parseFloat(rotationDeg) : null,
-        },
-      });
+const res = await exportBeliggenhedsplanFn({
+  data: {
+    projectId: currentProjectId!,
+    matrikelId: matrikelId!,
+    kommunekode: address!.kommunekode,
+    addressId: address!.adresseid,
+    addressText: address!.adresse ?? null,
+    footprintGeojson: designPlacement?.footprintGeojson ?? null,
+    bygherre: bygherre.trim() || null,
+    sokkelKoteM: sokkelKoteM !== "" ? parseFloat(sokkelKoteM) : null,
+    heightM: heightM !== "" ? parseFloat(heightM) : null,
+    // Dimension-fallback hvis ingen designPlacement
+    centroidLng: !hasFootprint && centroid ? centroid.lng : null,
+    centroidLat: !hasFootprint && centroid ? centroid.lat : null,
+    buildingWidthM: !hasFootprint && buildingWidthM !== "" ? parseFloat(buildingWidthM) : null,
+    buildingDepthM: !hasFootprint && buildingDepthM !== "" ? parseFloat(buildingDepthM) : null,
+    rotationDeg: rotationDeg !== "" ? parseFloat(rotationDeg) : null,
+  },
+});
 ```
 
 Opdater `disabled`-betingelsen på generer-knappen:
@@ -679,71 +691,71 @@ Opdater `disabled`-betingelsen på generer-knappen:
 Tilføj et fodprint-status-banner og dimension-inputs **oven over** det eksisterende tegningsdata-panel (indsæt efter `!canGenerate`-blokken):
 
 ```tsx
-        {canGenerate && !hasFootprint && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
-            <p className="text-sm font-medium text-blue-800">
-              Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en centreret standardplacering
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">
-                  Bredde (m) *
-                </label>
-                <input
-                  type="number"
-                  value={buildingWidthM}
-                  onChange={(e) => setBuildingWidthM(e.target.value)}
-                  placeholder="f.eks. 12"
-                  min={1}
-                  max={60}
-                  step={0.5}
-                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
+{
+  canGenerate && !hasFootprint && (
+    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+      <p className="text-sm font-medium text-blue-800">
+        Ingen bygningsfodprint fra designværktøjet — angiv dimensioner for at generere en centreret
+        standardplacering
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-blue-700 mb-1">Bredde (m) *</label>
+          <input
+            type="number"
+            value={buildingWidthM}
+            onChange={(e) => setBuildingWidthM(e.target.value)}
+            placeholder="f.eks. 12"
+            min={1}
+            max={60}
+            step={0.5}
+            className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
                              focus:outline-none focus:ring-2 focus:ring-blue-300"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">
-                  Dybde (m)
-                </label>
-                <input
-                  type="number"
-                  value={buildingDepthM}
-                  onChange={(e) => setBuildingDepthM(e.target.value)}
-                  placeholder="= bredde hvis tom"
-                  min={1}
-                  max={60}
-                  step={0.5}
-                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-blue-700 mb-1">Dybde (m)</label>
+          <input
+            type="number"
+            value={buildingDepthM}
+            onChange={(e) => setBuildingDepthM(e.target.value)}
+            placeholder="= bredde hvis tom"
+            min={1}
+            max={60}
+            step={0.5}
+            className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
                              focus:outline-none focus:ring-2 focus:ring-blue-300"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">
-                  Rotation (°)
-                </label>
-                <input
-                  type="number"
-                  value={rotationDeg}
-                  onChange={(e) => setRotationDeg(e.target.value)}
-                  placeholder="0"
-                  min={0}
-                  max={360}
-                  step={5}
-                  className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-blue-700 mb-1">Rotation (°)</label>
+          <input
+            type="number"
+            value={rotationDeg}
+            onChange={(e) => setRotationDeg(e.target.value)}
+            placeholder="0"
+            min={0}
+            max={360}
+            step={5}
+            className="w-full rounded-lg border border-blue-200 px-3 py-2 text-sm
                              focus:outline-none focus:ring-2 focus:ring-blue-300"
-                />
-              </div>
-            </div>
-          </div>
-        )}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        {canGenerate && hasFootprint && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-            <p className="text-sm text-green-800">
-              Fodprint fra designværktøjet anvendes ({(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)} m²)
-            </p>
-          </div>
-        )}
+{
+  canGenerate && hasFootprint && (
+    <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+      <p className="text-sm text-green-800">
+        Fodprint fra designværktøjet anvendes ({(designPlacement!.footprintAreaM2 ?? 0).toFixed(0)}{" "}
+        m²)
+      </p>
+    </div>
+  );
+}
 ```
 
 - [ ] **Step 5: Kør typecheck**
@@ -774,6 +786,7 @@ git commit -m "feat(drawing): fix broken footprint fallback + add dimension inpu
 ## Task 7: `drawing_exports` migration + type cleanup
 
 **Files:**
+
 - Modify: `src/integrations/supabase/repositories/drawing.repository.ts`
 
 `DrawingRepository` bruger `(supabaseAdmin as any)` fordi `drawing_exports`-tabellen ikke eksisterer i de genererede Supabase-typer. Migrationsfilen eksisterer i `supabase/migrations/20260528100000_drawing_exports.sql`.
@@ -893,6 +906,7 @@ git commit -m "fix(drawing): replace 'as any' in DrawingRepository with typed lo
 ## Task 8: End-to-end SVG-verifikationstest
 
 **Files:**
+
 - Create: `src/services/drawing/beliggenhedsplan-elements.test.ts`
 
 Ingen test verificerer at det endelige SVG-output indeholder ALLE lovpligtige elementer for en beliggenhedsplan. Skriv en test der kører hele pipeline (assemble → buildModel → renderSvg) med fake-port og tjekker SVG-output.
@@ -1140,18 +1154,19 @@ git commit -m "test(drawing): add end-to-end SVG element verification for author
 
 **Spec coverage:**
 
-| Krav | Task |
-|-----|------|
-| Matrikelnumre synlige på tegning | T1 ✅ |
-| Vejnavn på tegning | T2 ✅ |
-| Legend | T3 ✅ |
-| Korrekt skala | T4 ✅ |
-| Skel-afstandsmål (lovpligtige) | T5 ✅ |
-| Brugere uden design-tool kan generere | T6 ✅ |
-| DB-typesikkerhed for drawing_exports | T7 ✅ |
+| Krav                                      | Task  |
+| ----------------------------------------- | ----- |
+| Matrikelnumre synlige på tegning          | T1 ✅ |
+| Vejnavn på tegning                        | T2 ✅ |
+| Legend                                    | T3 ✅ |
+| Korrekt skala                             | T4 ✅ |
+| Skel-afstandsmål (lovpligtige)            | T5 ✅ |
+| Brugere uden design-tool kan generere     | T6 ✅ |
+| DB-typesikkerhed for drawing_exports      | T7 ✅ |
 | Automatisk verification af alle elementer | T8 ✅ |
 
 **Fortsat ikke i scope (kendte begrænsninger):**
+
 - Forsyningslag (kloak/vand/el) — kræver bruger-input-flow + separat integrationsdata
 - Landinspektør-survey upload — SurveyLayer-typen eksisterer, men upload-flow og PDF-parsing er ikke implementeret
 - Vejlinje/centerline-deklaration geometri — hentes fra Plandata men geometri-præsentationen er ikke implementeret
@@ -1163,6 +1178,7 @@ Disse begrænsninger er transparente i readiness-modellen: cases der kræver dem
 ## Definition of Done
 
 En task er done når:
+
 - [ ] TypeScript passer (`bunx tsc --noEmit`)
 - [ ] Alle tests passer (`bun test src`)
 - [ ] Lint passer (`bunx eslint .`)

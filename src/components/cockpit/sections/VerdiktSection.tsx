@@ -13,7 +13,12 @@ type VerdiktSectionProps = {
   projectId: string | undefined;
 };
 
-export function VerdiktSection({ metrics, registerSection, adresseId, projectId }: VerdiktSectionProps) {
+export function VerdiktSection({
+  metrics,
+  registerSection,
+  adresseId,
+  projectId,
+}: VerdiktSectionProps) {
   const { hard_stop, hard_stop_reason, complianceFlags, dataStatus } = useProject();
 
   const readiness = beregnProjektReadiness(dataStatus, complianceFlags);
@@ -33,7 +38,10 @@ export function VerdiktSection({ metrics, registerSection, adresseId, projectId 
     <section ref={(el) => registerSection("verdict", el)} aria-label="Oversigt">
       <div
         className="relative overflow-hidden rounded-xl p-10"
-        style={{ background: "radial-gradient(ellipse at 15% 50%, rgba(200,255,0,0.05) 0%, transparent 65%), #0d0d0d" }}
+        style={{
+          background:
+            "radial-gradient(ellipse at 15% 50%, rgba(200,255,0,0.05) 0%, transparent 65%), #0d0d0d",
+        }}
       >
         <motion.h1
           initial={{ opacity: 0, y: 8 }}
@@ -46,11 +54,11 @@ export function VerdiktSection({ metrics, registerSection, adresseId, projectId 
           {kanBygge ? "Du kan bygge her." : "Du kan ikke bygge her."}
         </motion.h1>
 
-        <div className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`} />
+        <div
+          className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`}
+        />
 
-        {metrikLinje && (
-          <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>
-        )}
+        {metrikLinje && <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>}
 
         {!kanBygge && hard_stop_reason && (
           <p className="mt-3 text-sm text-danger/90 leading-relaxed">{hard_stop_reason}</p>

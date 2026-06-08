@@ -3,6 +3,7 @@
 **Dato:** 2026-06-06
 **Status:** Godkendt af Kasper Rosenmejer — klar til implementeringsplan
 **Relaterede dokumenter:**
+
 - Tidligere spec: `docs/superpowers/specs/2026-05-28-beliggenhedsplan-myndighedstegning-design.md`
 - Gatekeeper-protokol: `CLAUDE.md`
 
@@ -50,13 +51,13 @@ TRIN 3 — MYNDIGHED (on-demand generering)
 
 Fem nye `source_type`-værdier i `address_source_results`:
 
-| source_type | payload-type | Zod-schema |
-|---|---|---|
-| `"vej_geometry"` | `VejLayer \| null` | `VejLayerSchema` |
-| `"naturbeskyttelse"` | `NaturbeskyttelseLayer[]` | `z.array(NaturbeskyttelseLayerSchema)` |
-| `"ler_ledninger"` | `LerLedning[]` | `z.array(LerLedningSchema)` |
-| `"kloakopland"` | `{ type: "separat" \| "faelles" \| null }` | inline |
-| `"fjernvarme"` | `{ daekning: boolean \| null }` | inline |
+| source_type          | payload-type                               | Zod-schema                             |
+| -------------------- | ------------------------------------------ | -------------------------------------- |
+| `"vej_geometry"`     | `VejLayer \| null`                         | `VejLayerSchema`                       |
+| `"naturbeskyttelse"` | `NaturbeskyttelseLayer[]`                  | `z.array(NaturbeskyttelseLayerSchema)` |
+| `"ler_ledninger"`    | `LerLedning[]`                             | `z.array(LerLedningSchema)`            |
+| `"kloakopland"`      | `{ type: "separat" \| "faelles" \| null }` | inline                                 |
+| `"fjernvarme"`       | `{ daekning: boolean \| null }`            | inline                                 |
 
 Hvert payload valideres med Zod inden skrivning (Rule 1). Cache-miss returnerer `null` for laget — aldrig en fejl. Cachen invalideres ved ny adresseanalyse på samme projekt.
 
@@ -106,8 +107,14 @@ export type NaturbeskyttelseLayer = {
 
 // --- LerLedning ---
 export type LerLedningType =
-  | "kloak_spildevand" | "kloak_regnvand" | "kloak_faelles"
-  | "vand" | "el" | "naturgas" | "fjernvarme" | "telekom";
+  | "kloak_spildevand"
+  | "kloak_regnvand"
+  | "kloak_faelles"
+  | "vand"
+  | "el"
+  | "naturgas"
+  | "fjernvarme"
+  | "telekom";
 
 export type LerLedning = {
   type: LerLedningType;
@@ -122,18 +129,21 @@ export type LerLedning = {
 ### 3.2 Udvidelse af eksisterende typer
 
 **`ProposedBuildingLayer`** — tre nye felter:
+
 ```typescript
 tagform: "sadeltag" | "fladt" | "mansard" | "pulttag" | null;
-taghaldningGrad: number | null;   // 0–60 grader
-rygningsKoteM: number | null;     // DVR90, beregnet deterministisk
+taghaldningGrad: number | null; // 0–60 grader
+rygningsKoteM: number | null; // DVR90, beregnet deterministisk
 ```
 
 **`ExistingBuilding`** — ét nyt felt:
+
 ```typescript
 nedrives: boolean; // tegnes med kryds-skravering + "NEDRIVES"
 ```
 
 **`BeliggenhedsplanInput`** — fire nye lag:
+
 ```typescript
 vej: VejLayer | null;
 naturbeskyttelse: NaturbeskyttelseLayer[];
@@ -223,7 +233,10 @@ export interface DrawingGeometrySourcePort {
   // Nye:
   fetchNaturbeskyttelse(bbox25832: BBox25832): Promise<NaturbeskyttelseLayer[]>;
   fetchLerLedninger(bbox25832: BBox25832): Promise<LerLedning[]>;
-  fetchKloakopland(kommunekode: string, bbox25832: BBox25832): Promise<"separat" | "faelles" | null>;
+  fetchKloakopland(
+    kommunekode: string,
+    bbox25832: BBox25832,
+  ): Promise<"separat" | "faelles" | null>;
   fetchFjernvarmeDaekning(centroidLat: number, centroidLng: number): Promise<boolean | null>;
 }
 ```
@@ -234,52 +247,52 @@ export interface DrawingGeometrySourcePort {
 
 ### 5.1 Vejgeometri (`src/integrations/geodanmark/drawing-layers.ts`)
 
-| Datapunkt | Mulig kilde | Confidence |
-|---|---|---|
-| Vejmidte LineString (EPSG:25832) | GeoDanmark WFS — feature type `vejmidte`. Via Dataforsyningen med `DATAFORSYNINGEN_TOKEN` | medium |
-| Vejkant LineString (EPSG:25832) | GeoDanmark WFS — feature type `vejkant` | medium |
-| Vejbredde (beregnet) | Geometrisk afstand vejkant↔vejkant | medium |
+| Datapunkt                        | Mulig kilde                                                                               | Confidence |
+| -------------------------------- | ----------------------------------------------------------------------------------------- | ---------- |
+| Vejmidte LineString (EPSG:25832) | GeoDanmark WFS — feature type `vejmidte`. Via Dataforsyningen med `DATAFORSYNINGEN_TOKEN` | medium     |
+| Vejkant LineString (EPSG:25832)  | GeoDanmark WFS — feature type `vejkant`                                                   | medium     |
+| Vejbredde (beregnet)             | Geometrisk afstand vejkant↔vejkant                                                        | medium     |
 
 Filter: bbox udvidet med 50 m. Begge feature types forespørges parallelt.
 Fallback: Hvis fetch fejler → `null` for de geometriske felter. Vejnavn genbruges fra eksisterende `fetchRoadName`.
 
 ### 5.2 Naturbeskyttelse (`src/integrations/miljoeportalen/naturbeskyttelse-adapter.ts`)
 
-| Datapunkt | Bufferzone | Mulig kilde | Confidence |
-|---|---|---|---|
-| Strandbeskyttelseslinje | 300 m | Miljøstyrelsen WFS. Mulig service-URL: `https://wfs2-miljoegis.mim.dk/natur`. Feature type: `strandbeskyttelseslinje`. **Verificér endpoint.** | medium |
-| Skovbyggelinje | 300 m | Samme WFS, feature type: `skovbyggelinje` | medium |
-| Åbeskyttelseslinje | 150 m | Samme WFS, feature type: `aabeskyttelseslinje` | medium |
-| Fortidsmindebeskyttelse | 100 m | Slots- og Kulturstyrelsen WFS eller Miljøportalen. Feature type: `fortidsmindebeskyttelseslinje`. **Verificér endpoint.** | medium |
-| Klitfredning | variabel | Kystdirektoratet / Miljøstyrelsen WFS. Feature type: `klitfredning`. **Verificér endpoint.** | medium |
+| Datapunkt               | Bufferzone | Mulig kilde                                                                                                                                    | Confidence |
+| ----------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Strandbeskyttelseslinje | 300 m      | Miljøstyrelsen WFS. Mulig service-URL: `https://wfs2-miljoegis.mim.dk/natur`. Feature type: `strandbeskyttelseslinje`. **Verificér endpoint.** | medium     |
+| Skovbyggelinje          | 300 m      | Samme WFS, feature type: `skovbyggelinje`                                                                                                      | medium     |
+| Åbeskyttelseslinje      | 150 m      | Samme WFS, feature type: `aabeskyttelseslinje`                                                                                                 | medium     |
+| Fortidsmindebeskyttelse | 100 m      | Slots- og Kulturstyrelsen WFS eller Miljøportalen. Feature type: `fortidsmindebeskyttelseslinje`. **Verificér endpoint.**                      | medium     |
+| Klitfredning            | variabel   | Kystdirektoratet / Miljøstyrelsen WFS. Feature type: `klitfredning`. **Verificér endpoint.**                                                   | medium     |
 
 Hvert af de fem kald wraps i individuelt try/catch. Fejl på ét kald → `[]` for den type — blokerer ikke assemblering.
 `intersectsProposedBuilding` beregnes via `polygonsIntersect()` i geometry-engine inden lagret i cache.
 
 ### 5.3 LER-ledninger (`src/integrations/ler/ler-adapter.ts`)
 
-| Datapunkt | Mulig kilde | Note |
-|---|---|---|
+| Datapunkt                                 | Mulig kilde                                                                                                                                                                   | Note                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | Ledningsgeometri (LineString, type, ejer) | LER 2.0 REST API. Mulige base-URLs: `https://lerdataservices.dk/api/v1/` eller `https://ler.forsyningstilsynet.dk/`. Forespørgsel: bbox. **Verificér endpoint og auth-krav.** | Dækker primærnet — ikke stikledninger |
-| Ledningstype mapping | LER-response attribut | Se type-mapping i afsnit 3.1 |
-| Dybde, diameter | LER-response attribut | Accepter null — sjældent udfyldt |
+| Ledningstype mapping                      | LER-response attribut                                                                                                                                                         | Se type-mapping i afsnit 3.1          |
+| Dybde, diameter                           | LER-response attribut                                                                                                                                                         | Accepter null — sjældent udfyldt      |
 
 Confidence: `"medium"`, `requiresReview: true` for alle LER-features.
-Legenden på tegningen: *"Ledninger: LER (primærnet — stikledninger til grunden ikke vist)"*
+Legenden på tegningen: _"Ledninger: LER (primærnet — stikledninger til grunden ikke vist)"_
 
 ### 5.4 Kloakopland (`src/integrations/plandata/kloakopland-adapter.ts`)
 
-| Lag | Kilde | Fallback |
-|---|---|---|
-| Lag 1 | Plandata WFS — kommunale spildevandsplan-lag hvor tilgængeligt | → Lag 2 |
+| Lag   | Kilde                                                                                                       | Fallback |
+| ----- | ----------------------------------------------------------------------------------------------------------- | -------- |
+| Lag 1 | Plandata WFS — kommunale spildevandsplan-lag hvor tilgængeligt                                              | → Lag 2  |
 | Lag 2 | Direkte kommunal WFS — statisk mapping fra kommunekode til endpoint. Bygges progressivt fra top-10 kommuner | → `null` |
 
 Returnerer `"separat" \| "faelles" \| null`. Fejl → `null`. Null vises som placeholder på tegningen.
 
 ### 5.5 Fjernvarmedækning (`src/integrations/energistyrelsen/fjernvarme-adapter.ts`)
 
-| Datapunkt | Mulig kilde | Note |
-|---|---|---|
+| Datapunkt                                 | Mulig kilde                                                                                                                                                                  | Note           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
 | Fjernvarme tilgængelig i område (boolean) | Energistyrelsens Energi Data Service (EDS) eller Varmeplan Danmark. **Verificér endpoint.** Fallback: heuristik baseret på BBR `varmeinstallation`-koder for adresser i bbox | low confidence |
 
 Returnerer `boolean \| null`. Null → placeholder annotation.
@@ -291,8 +304,7 @@ Returnerer `boolean \| null`. Null → placeholder annotation.
 ### 6.1 Typer
 
 ```typescript
-export type ResponsibleParty =
-  | "kloakmester" | "landinspektør" | "arkitekt" | "ingeniør" | "bruger";
+export type ResponsibleParty = "kloakmester" | "landinspektør" | "arkitekt" | "ingeniør" | "bruger";
 
 export type FieldStatus =
   | { status: "auto"; source: DataSource; confidence: DataConfidence }
@@ -323,23 +335,24 @@ export type DrawingCompleteness = {
 
 ### 6.2 Feltregler
 
-| Felt | `auto` | `estimated` | `placeholder` | Blocking |
-|---|---|---|---|---|
-| `parcelPolygon` | altid (nås ikke her ellers) | — | — | — |
-| `proposedFootprint` | source `"survey"\|"cad_upload"` eller fra designværktøj med `"generated"` + high | source `"generated"` fra bredde/dybde-dimensioner | null | **JA** |
-| `sokkelKote` | survey terrainPoints > 0 OG sokkelKoteM sat | sokkelKoteM fra DHM + 0,30 m | sokkelKoteM null | nej — kloakmester |
-| `rygningsKote` | tagform + taghaldningGrad kendte + sokkel auto | tagform kendt, sokkel estimated | tagform null | nej — arkitekt |
-| `vejGeometry` | centerline25832 ikke null | vejkant tilgængeligt, ikke centerline | begge null | nej |
-| `koterTerræn` | survey.terrainPoints.length > 0 | terrain fra DHM (source.source === "registry") | terrain null | nej — landinspektør |
-| `kloakStikledning` | **aldrig** | **aldrig** | **altid** — kloakmester | nej |
-| `regnvandsløsning` | kloakoplandType `"faelles"` | — | kloakoplandType `"separat"` **eller** `null` | nej — kloakmester |
-| `overkørsel` | SiteUseLayer type `"driveway"` med source !== `"placeholder"` | — | **altid som default** — bruger | nej |
-| `naturbeskyttelse` | fetch forsøgt (fetchedAt ikke null) | — | fetch ikke forsøgt | nej |
-| `tinglysteServitutter` | **aldrig** | **aldrig** | **altid** — bruger | nej |
+| Felt                   | `auto`                                                                           | `estimated`                                       | `placeholder`                                | Blocking            |
+| ---------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------- | ------------------- |
+| `parcelPolygon`        | altid (nås ikke her ellers)                                                      | —                                                 | —                                            | —                   |
+| `proposedFootprint`    | source `"survey"\|"cad_upload"` eller fra designværktøj med `"generated"` + high | source `"generated"` fra bredde/dybde-dimensioner | null                                         | **JA**              |
+| `sokkelKote`           | survey terrainPoints > 0 OG sokkelKoteM sat                                      | sokkelKoteM fra DHM + 0,30 m                      | sokkelKoteM null                             | nej — kloakmester   |
+| `rygningsKote`         | tagform + taghaldningGrad kendte + sokkel auto                                   | tagform kendt, sokkel estimated                   | tagform null                                 | nej — arkitekt      |
+| `vejGeometry`          | centerline25832 ikke null                                                        | vejkant tilgængeligt, ikke centerline             | begge null                                   | nej                 |
+| `koterTerræn`          | survey.terrainPoints.length > 0                                                  | terrain fra DHM (source.source === "registry")    | terrain null                                 | nej — landinspektør |
+| `kloakStikledning`     | **aldrig**                                                                       | **aldrig**                                        | **altid** — kloakmester                      | nej                 |
+| `regnvandsløsning`     | kloakoplandType `"faelles"`                                                      | —                                                 | kloakoplandType `"separat"` **eller** `null` | nej — kloakmester   |
+| `overkørsel`           | SiteUseLayer type `"driveway"` med source !== `"placeholder"`                    | —                                                 | **altid som default** — bruger               | nej                 |
+| `naturbeskyttelse`     | fetch forsøgt (fetchedAt ikke null)                                              | —                                                 | fetch ikke forsøgt                           | nej                 |
+| `tinglysteServitutter` | **aldrig**                                                                       | **aldrig**                                        | **altid** — bruger                           | nej                 |
 
 ### 6.3 Permanente advarsler
 
 `permanentWarnings` indeholder **altid** (uanset completeness):
+
 ```
 "Kontroller tinglyste servitutter og privatretlige deklarationer
  via tinglysning.dk inden indgivelse til kommunen."
@@ -348,8 +361,9 @@ export type DrawingCompleteness = {
 ### 6.4 Overall status
 
 ```typescript
-const blockingCount = Object.values(fields)
-  .filter(f => f.status === "missing" && f.blocksSubmission).length;
+const blockingCount = Object.values(fields).filter(
+  (f) => f.status === "missing" && f.blocksSubmission,
+).length;
 overallStatus = blockingCount === 0 ? "ready" : "draft";
 ```
 
@@ -362,19 +376,19 @@ overallStatus = blockingCount === 0 ? "ready" : "draft";
 ```typescript
 export function validateNaturbeskyttelse(
   naturbeskyttelse: NaturbeskyttelseLayer[],
-): ReadinessReason[]
+): ReadinessReason[];
 ```
 
 Returnerer én `blocking` reason per lag hvor `intersectsProposedBuilding === true`.
 Lovhenvisninger er faste strings — se implementering nedenfor:
 
-| Type | Lovhenvisning |
-|---|---|
-| strandbeskyttelse | NBL §15 — dispensation fra Kystdirektoratet |
-| skovbyggelinje | NBL §17 — dispensation fra Miljøstyrelsen |
-| åbeskyttelse | NBL §16 — dispensation |
-| fortidsmindebeskyttelse | NBL §18 — Slots- og Kulturstyrelsen |
-| klitfredning | NBL §8 — dispensation fra Kystdirektoratet |
+| Type                    | Lovhenvisning                               |
+| ----------------------- | ------------------------------------------- |
+| strandbeskyttelse       | NBL §15 — dispensation fra Kystdirektoratet |
+| skovbyggelinje          | NBL §17 — dispensation fra Miljøstyrelsen   |
+| åbeskyttelse            | NBL §16 — dispensation                      |
+| fortidsmindebeskyttelse | NBL §18 — Slots- og Kulturstyrelsen         |
+| klitfredning            | NBL §8 — dispensation fra Kystdirektoratet  |
 
 ### 7.2 `validateKælderFeasibility` (`src/lib/rule-engine/rules/basement-rules.ts`)
 
@@ -382,12 +396,13 @@ Lovhenvisninger er faste strings — se implementering nedenfor:
 export function validateKælderFeasibility(input: {
   hasKælder: boolean;
   kælderGulvKoteM: number | null;
-  grundvandSpejlKoteM: number | null;    // fra GEUS/Jupiter
-  terrainKoteM: number | null;           // fra DHM
-}): ReadinessReason[]
+  grundvandSpejlKoteM: number | null; // fra GEUS/Jupiter
+  terrainKoteM: number | null; // fra DHM
+}): ReadinessReason[];
 ```
 
 **Regler:**
+
 - `!hasKælder` → `[]`
 - `kælderGulvKoteM < grundvandSpejlKoteM + 0,5` → **blocking**: grundvand-Hard Stop
 - `kælderGulvKoteM < terrainKoteM - 1,2` → **warning**: pumpe sandsynligvis nødvendig
@@ -398,12 +413,11 @@ export function validateKælderFeasibility(input: {
 ### 7.3 `validateJordvarmePermit` (`src/lib/rule-engine/rules/utility-rules.ts`)
 
 ```typescript
-export function validateJordvarmePermit(input: {
-  hasJordvarme: boolean;
-}): ReadinessReason[]
+export function validateJordvarmePermit(input: { hasJordvarme: boolean }): ReadinessReason[];
 ```
 
 **Regler:**
+
 - `!hasJordvarme` → `[]`
 - `hasJordvarme` → to `info`-reasons:
   1. §19 MBL-tilladelse fra kommunen (boringer > 10 m)
@@ -414,14 +428,15 @@ export function validateJordvarmePermit(input: {
 ```typescript
 export function computeRygningsKote(input: {
   sokkelKoteM: number;
-  loftshøjdeM: number;       // typisk 2,40–2,60 m
-  fodprintBreddeM: number;   // korteste dimension af bygningsfodprint
+  loftshøjdeM: number; // typisk 2,40–2,60 m
+  fodprintBreddeM: number; // korteste dimension af bygningsfodprint
   tagform: "sadeltag" | "pulttag" | "mansard" | "fladt";
   taghaldningGrad: number;
-}): number
+}): number;
 ```
 
 Beregning:
+
 - sadeltag/pulttag: `taghøjde = (bredde/2) × tan(haldning)`
 - mansard: `taghøjde = (bredde/2) × tan(haldning) × 0,6`
 - fladt: `taghøjde = 0,15` (minimalt fald)
@@ -472,14 +487,14 @@ return { complianceMetrics, complianceFlags, ruleEngineResult, drawingReasons };
 
 ### 9.1 Visuel datakvalitetssprog
 
-| Datakvalitet | Farve | Stil | Tekst |
-|---|---|---|---|
-| `auto` high confidence | Sort `#111827` | Solid, normal vægt | Normal |
-| `estimated` | Grå `#6b7280` | Let stiplet | Kursiv |
-| `placeholder` | Orange `#f97316` | Stiplet | Kursiv + `[ansvarlig]` |
-| Hard Stop intersection | Rød `#dc2626` | Skraveret fill | Stor label |
-| Naturbeskyttelse (ingen intersection) | Amber `#f59e0b` | Let skraveret fill | Lille label |
-| Nedrives | Grå `#9ca3af` | Kryds-skravering | "NEDRIVES" |
+| Datakvalitet                          | Farve            | Stil               | Tekst                  |
+| ------------------------------------- | ---------------- | ------------------ | ---------------------- |
+| `auto` high confidence                | Sort `#111827`   | Solid, normal vægt | Normal                 |
+| `estimated`                           | Grå `#6b7280`    | Let stiplet        | Kursiv                 |
+| `placeholder`                         | Orange `#f97316` | Stiplet            | Kursiv + `[ansvarlig]` |
+| Hard Stop intersection                | Rød `#dc2626`    | Skraveret fill     | Stor label             |
+| Naturbeskyttelse (ingen intersection) | Amber `#f59e0b`  | Let skraveret fill | Lille label            |
+| Nedrives                              | Grå `#9ca3af`    | Kryds-skravering   | "NEDRIVES"             |
 
 ### 9.2 Lagrækkefølge (bund til top)
 
@@ -508,17 +523,20 @@ return { complianceMetrics, complianceFlags, ruleEngineResult, drawingReasons };
 ### 9.3 Vejflade — tre scenarier
 
 **Scenarie A** (vejmidte + vejkant tilgængelige):
+
 - Fill: polygon konstrueret som offset af vejmidte ±(vejbreddeM/2). Farve: `#e5e7eb`
 - Vejkant: solid `#9ca3af`, 0,5 px
 - Vejmidte: stiplet `#d1d5db`, 0,3 px
 - Vejnavn: centreret langs vejmidte, roteret med vejens vinkel
 
 **Scenarie B** (kun vejmidte):
+
 - Ingen fill. Vejmidte: stiplet `#9ca3af`, 0,5 px (lidt tykkere)
 - Vejnavn-label langs vejmidte
 - Lille annotation: "vejkant ikke kortlagt"
 
 **Scenarie C** (ingen vejgeometri):
+
 - Parcel-boundarySegment klassificeret `"road"` bruges som vejskel-reference
 - Tynd solid linje på segmentet
 - `"VEJ"`-tekst vinkelret på segmentet, 3 m ind i vejarealet
@@ -526,43 +544,48 @@ return { complianceMetrics, complianceFlags, ruleEngineResult, drawingReasons };
 ### 9.4 Placeholder-elementer
 
 **kloakStikledning** (altid):
+
 - Stiplet orange linje fra bygningens nærmeste punkt til skel mod vej
 - Lille stiplet orange cirkel ved skel (brønd-symbol)
-- Label: *"Stikledning [af kloakmester]"*
-- Sub-label ved brønd: *"Invert-kote: [af kloakmester]"*
+- Label: _"Stikledning [af kloakmester]"_
+- Sub-label ved brønd: _"Invert-kote: [af kloakmester]"_
 
 **regnvandsløsning** (hvis kloakopland `"separat"` eller `null`):
+
 - Stiplet orange rektangel: algoritme finder bedste position min. 5 m fra bygning, 2 m fra skel
 - Estimeret størrelse: ca. 0,08 m³ pr. m² tagflade (vejledende)
-- Fallback (ingen gyldig position): symbol ved fodprint-hjørne med label *"Regnvandsløsning — placering ikke mulig at beregne automatisk. Fastlægges af kloakmester og landinspektør."*
-- Label inkl. størrelse: *"Faskine ca. X m³ (vejl.) + sandfang [dim. af kloakmester]"*
+- Fallback (ingen gyldig position): symbol ved fodprint-hjørne med label _"Regnvandsløsning — placering ikke mulig at beregne automatisk. Fastlægges af kloakmester og landinspektør."_
+- Label inkl. størrelse: _"Faskine ca. X m³ (vejl.) + sandfang [dim. af kloakmester]"_
 
 **overkørsel** (default placeholder):
+
 - Stiplet orange åbning i vejskel-segmentet, 3 m bred
-- Label: *"Overkørsel [placering bekræftes af kommunen]"*
+- Label: _"Overkørsel [placering bekræftes af kommunen]"_
 
 **sokkelKote** (estimated):
-- Grå kursiv annotation ved hjørnepunkt: *"Sokkelkote: ca. DVR90 +X,XX m (est. DHM)"*
-- Null: orange kursiv *"Sokkelkote: [af kloakmester]"*
+
+- Grå kursiv annotation ved hjørnepunkt: _"Sokkelkote: ca. DVR90 +X,XX m (est. DHM)"_
+- Null: orange kursiv _"Sokkelkote: [af kloakmester]"_
 
 **rygningsKote** (placeholder/estimated):
-- Estimated: grå kursiv *"Rygningskote: ca. DVR90 +X,XX m (beregnet)"*
-- Placeholder: orange kursiv *"Rygningskote: [angives af arkitekt]"*
+
+- Estimated: grå kursiv _"Rygningskote: ca. DVR90 +X,XX m (beregnet)"_
+- Placeholder: orange kursiv _"Rygningskote: [angives af arkitekt]"_
 
 ### 9.5 LER-legende og farver
 
-| Type | Farve | Stil |
-|---|---|---|
-| kloak_spildevand | `#78350f` brun | solid |
-| kloak_regnvand | `#1d4ed8` blå | solid |
-| kloak_faelles | `#525252` grå | solid |
-| vand | `#0891b2` cyan | stiplet |
-| el | `#ca8a04` gul | stiplet |
-| naturgas | `#ea580c` orange | stiplet |
-| fjernvarme | `#dc2626` rød | stiplet |
-| telekom | `#16a34a` grøn | stiplet |
+| Type             | Farve            | Stil    |
+| ---------------- | ---------------- | ------- |
+| kloak_spildevand | `#78350f` brun   | solid   |
+| kloak_regnvand   | `#1d4ed8` blå    | solid   |
+| kloak_faelles    | `#525252` grå    | solid   |
+| vand             | `#0891b2` cyan   | stiplet |
+| el               | `#ca8a04` gul    | stiplet |
+| naturgas         | `#ea580c` orange | stiplet |
+| fjernvarme       | `#dc2626` rød    | stiplet |
+| telekom          | `#16a34a` grøn   | stiplet |
 
-Legende: nederste venstre hjørne. Under legenden: *"Kilde: LER (primærnet — stikledninger til grunden ikke vist)"*
+Legende: nederste venstre hjørne. Under legenden: _"Kilde: LER (primærnet — stikledninger til grunden ikke vist)"_
 
 ### 9.6 Tegningsblok
 
@@ -615,6 +638,7 @@ Implementeringsplanen specificerer at `drawing-model.ts` læses i sin helhed ind
 ### 10.1 Maskinrummet — fire nye inputgrupper
 
 **Tagform** (ved siden af bygningshøjde-input):
+
 ```
 TAGFORM
 [● Sadeltag] [Fladt] [Mansard] [Pulttag]
@@ -625,6 +649,7 @@ Beregnet rygningskote: DVR90 +23,85 m        ← live, ingen server-kald
 ```
 
 **Kælder**:
+
 ```
 [toggle] Kælder inkluderet i projektet
   → Kælderens gulvkote DVR90 (m): [____]
@@ -632,12 +657,14 @@ Beregnet rygningskote: DVR90 +23,85 m        ← live, ingen server-kald
 ```
 
 **Installationer**:
+
 ```
 [toggle] Jordvarme
   → ℹ Kræver §19-tilladelse (vises øjeblikkeligt ved toggle)
 ```
 
 **Nedrivning** (liste under kortvisning):
+
 ```
 Eksisterende bygninger på grunden
 ☐ BBR [ID] — 142 m² bolig (opf. 1987)
@@ -652,6 +679,7 @@ To-kolonne layout:
 **Venstre** — `MatrikelMap` med `readonly={true}` og `planLayers`-prop der viser vej, natur, LER, constraints, placeholders.
 
 **Højre** — Dokumentpanel:
+
 ```
 BELIGGENHEDSPLAN
 ────────────────────────────────
@@ -699,16 +727,19 @@ Når `readonly={true}`: ingen `Translate`-interaction, ingen drag-hints, ingen c
 ### 10.5 Server-funktioner
 
 **`api.site-geometry.ts`** (ny):
+
 - Input: `{ projectId, matrikelId, kommunekode, addressId, bbox25832 }`
 - Kalder `handleFetchSiteGeometry` → gemmer 5 rækker i `address_source_results`
 - Returnerer: `{ status: "ok" | "partial"; fetchedSources: string[] }`
 
 **`api.drawing-readiness.ts`** (ny):
+
 - Input: `{ projectId }`
 - Læser cache + typed kolonner
 - Returnerer `DrawingCompleteness` — ingen SVG-generering, < 200 ms
 
 **`api.drawing.ts`** (eksist. — udvidet schema):
+
 ```typescript
 // Nye felter i input-schema:
 tagform: z.enum(["sadeltag", "fladt", "mansard", "pulttag"]).nullable(),
@@ -742,6 +773,7 @@ harJordvarme: z.boolean().default(false),
 Fire faser der hver kan deployes uafhængigt:
 
 **Fase 1 — Domænefundament** (ingen brugersynlig ændring)
+
 - Nye typer og schemas (afsnit 3.1–3.3)
 - Migration (afsnit 3.4)
 - `computeDrawingCompleteness` (afsnit 6)
@@ -751,6 +783,7 @@ Fire faser der hver kan deployes uafhængigt:
 - Tier 1-tests for alle nye rene funktioner
 
 **Fase 2 — Data-adapters**
+
 - `DrawingGeometrySourcePort` opdateret (afsnit 4)
 - Fem nye adapter-implementeringer (afsnit 5)
 - `handleFetchSiteGeometry` service + `api.site-geometry.ts`
@@ -758,12 +791,14 @@ Fire faser der hver kan deployes uafhængigt:
 - `api.drawing-readiness.ts`
 
 **Fase 3 — SVG-renderer**
+
 - Ny lag-arkitektur i `src/services/drawing/layers/`
 - Implementering af alle lag (vej, natur, LER, placeholders, vandmærke)
 - Udvidet tegningsblok
 - Integration med udvidet `DrawingModel`
 
 **Fase 4 — UI**
+
 - Maskinrummet: de fire inputgrupper + reactive-compliance live-visning
 - Project-store udvidelse
 - `MatrikelMap` readonly-prop + planLayers
@@ -776,6 +811,7 @@ Fire faser der hver kan deployes uafhængigt:
 ## 13. Teststrategi
 
 **Tier 1 (rene funktioner — ingen netværk, ingen DB):**
+
 - `computeDrawingCompleteness`: komplet plan → ready; fodprint null → blocking
 - `computeDrawingCompleteness`: `tinglysteServitutter` altid i `permanentWarnings`
 - `computeRygningsKote`: sadeltag 35° 9m bred → verificeret mod håndberegning
@@ -785,9 +821,11 @@ Fire faser der hver kan deployes uafhængigt:
 - Regnvandsløsning-estimat: tagflade 100 m² → ca. 8 m³ faskine
 
 **Tier 2 (service-tests med injected fakes):**
+
 - `assembleBeliggenhedsplan`: parcel null → BLOCKED_MISSING_CORE_DATA
 - `assembleBeliggenhedsplan`: naturbeskyttelse intersection → blocking reason i output
 - `handleFetchSiteGeometry`: alle 5 adapters fejler → 5 null-rækker i cache
 
 **Tier 3 (Playwright — eksisterende smoke-tests bibeholdes):**
+
 - Ingen nye E2E-tests i denne fase

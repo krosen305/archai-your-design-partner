@@ -15,10 +15,12 @@
 ### Task 1: Extend domain types
 
 **Context — read these files first:**
+
 - `src/domain/drawing/beliggenhedsplan.types.ts`
 - `src/domain/drawing/source-quality.ts`
 
 **Files:**
+
 - Modify: `src/domain/drawing/beliggenhedsplan.types.ts`
 
 - [ ] **Step 1: Add three new types after `SiteUseLayer`**
@@ -153,10 +155,12 @@ git commit -m "feat(drawing): extend domain types for authority-grade beliggenhe
 ### Task 2: Fix schemas + add new schemas
 
 **Context — read these files first:**
+
 - `src/domain/drawing/beliggenhedsplan.schemas.ts` (full file)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (just updated)
 
 **Files:**
+
 - Modify: `src/domain/drawing/beliggenhedsplan.schemas.ts`
 
 - [ ] **Step 1: Add three new exported schemas after `ConstraintLayerSchema`**
@@ -256,8 +260,15 @@ Add utility/siteUse/terrain schemas before `BeliggenhedsplanInputSchema`. First,
 ```typescript
 export const UtilityLayerSchema = z.object({
   type: z.enum([
-    "water", "sewer", "electric", "gas", "rainwater",
-    "wastewater", "inspection_well", "sand_trap", "rat_barrier",
+    "water",
+    "sewer",
+    "electric",
+    "gas",
+    "rainwater",
+    "wastewater",
+    "inspection_well",
+    "sand_trap",
+    "rat_barrier",
   ]),
   geometry25832: z.union([GeoJsonPoint25832Schema, GeoJsonLineString25832Schema]),
   label: z.string(),
@@ -269,7 +280,12 @@ export const UtilityLayerSchema = z.object({
 
 export const SiteUseLayerSchema = z.object({
   type: z.enum([
-    "parking", "waste_sorting", "driveway", "geothermal_field", "terrace", "future_structure",
+    "parking",
+    "waste_sorting",
+    "driveway",
+    "geothermal_field",
+    "terrace",
+    "future_structure",
   ]),
   geometry25832: GeoJsonPolygon25832Schema,
   label: z.string(),
@@ -405,9 +421,11 @@ git commit -m "fix(drawing): repair Rule-1 schema violations + extend schemas fo
 ### Task 3: Add `computeRygningsKote` and `polygonsIntersect` to geometry-engine
 
 **Context — read these files first:**
+
 - `src/domain/drawing/geometry-engine.ts` (full file — note existing jsts imports and pattern)
 
 **Files:**
+
 - Modify: `src/domain/drawing/geometry-engine.ts`
 - Create: `src/domain/drawing/geometry-engine.test.ts` (if it doesn't exist)
 
@@ -424,8 +442,8 @@ describe("computeRygningsKote", () => {
     // taghøjde = (9/2) × tan(35°) = 4.5 × 0.7002 = 3.151
     // rygning = 18.20 + 2.40 + 3.151 = 23.751 → rounded to 2 decimals
     const result = computeRygningsKote({
-      sokkelKoteM: 18.20,
-      loftshøjdeM: 2.40,
+      sokkelKoteM: 18.2,
+      loftshøjdeM: 2.4,
       fodprintBreddeM: 9,
       tagform: "sadeltag",
       taghaldningGrad: 35,
@@ -435,8 +453,8 @@ describe("computeRygningsKote", () => {
 
   it("fladt tag giver 0.15m taghøjde", () => {
     const result = computeRygningsKote({
-      sokkelKoteM: 10.00,
-      loftshøjdeM: 2.50,
+      sokkelKoteM: 10.0,
+      loftshøjdeM: 2.5,
       fodprintBreddeM: 8,
       tagform: "fladt",
       taghaldningGrad: 0,
@@ -446,12 +464,18 @@ describe("computeRygningsKote", () => {
 
   it("mansard er 60% af sadeltag-taghøjde", () => {
     const sadel = computeRygningsKote({
-      sokkelKoteM: 0, loftshøjdeM: 0, fodprintBreddeM: 10,
-      tagform: "sadeltag", taghaldningGrad: 40,
+      sokkelKoteM: 0,
+      loftshøjdeM: 0,
+      fodprintBreddeM: 10,
+      tagform: "sadeltag",
+      taghaldningGrad: 40,
     });
     const mansard = computeRygningsKote({
-      sokkelKoteM: 0, loftshøjdeM: 0, fodprintBreddeM: 10,
-      tagform: "mansard", taghaldningGrad: 40,
+      sokkelKoteM: 0,
+      loftshøjdeM: 0,
+      fodprintBreddeM: 10,
+      tagform: "mansard",
+      taghaldningGrad: 40,
     });
     expect(mansard).toBeCloseTo(sadel * 0.6, 1);
   });
@@ -461,17 +485,41 @@ describe("polygonsIntersect", () => {
   const square: import("./beliggenhedsplan.types").GeoJsonPolygon25832 = {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]],
+    coordinates: [
+      [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+        [0, 0],
+      ],
+    ],
   };
   const overlapping: import("./beliggenhedsplan.types").GeoJsonPolygon25832 = {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [[[5,5],[15,5],[15,15],[5,15],[5,5]]],
+    coordinates: [
+      [
+        [5, 5],
+        [15, 5],
+        [15, 15],
+        [5, 15],
+        [5, 5],
+      ],
+    ],
   };
   const separate: import("./beliggenhedsplan.types").GeoJsonPolygon25832 = {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [[[20,20],[30,20],[30,30],[20,30],[20,20]]],
+    coordinates: [
+      [
+        [20, 20],
+        [30, 20],
+        [30, 30],
+        [20, 30],
+        [20, 20],
+      ],
+    ],
   };
 
   it("overlapping polygons → true", () => {
@@ -524,10 +572,7 @@ export function computeRygningsKote(input: {
   return Math.round((sokkelKoteM + loftshøjdeM + taghøjde) * 100) / 100;
 }
 
-export function polygonsIntersect(
-  a: GeoJsonPolygon25832,
-  b: GeoJsonPolygon25832,
-): boolean {
+export function polygonsIntersect(a: GeoJsonPolygon25832, b: GeoJsonPolygon25832): boolean {
   return toJsts(a).intersects(toJsts(b));
 }
 ```
@@ -553,10 +598,12 @@ git commit -m "feat(drawing): add computeRygningsKote and polygonsIntersect to g
 ### Task 4: Nature-protection rule
 
 **Context — read these files first:**
+
 - `src/domain/drawing/decision-engine.ts` (to understand `ReadinessReason` type — it lives there)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `NaturbeskyttelseType`)
 
 **Files:**
+
 - Create: `src/lib/rule-engine/rules/nature-protection-rules.ts`
 - Create: `src/lib/rule-engine/rules/nature-protection-rules.test.ts`
 
@@ -576,7 +623,10 @@ const mockLayer = (
   geometry25832: {
     type: "LineString",
     crs: "EPSG:25832",
-    coordinates: [[0, 0], [100, 0]],
+    coordinates: [
+      [0, 0],
+      [100, 0],
+    ],
   },
   bufferDistanceM: 300,
   intersectsProposedBuilding: intersects,
@@ -671,10 +721,12 @@ git commit -m "feat(rule-engine): add validateNaturbeskyttelse with NBL law refe
 ### Task 5: Basement feasibility rule
 
 **Context — read these files first:**
+
 - `src/domain/drawing/decision-engine.ts` (for `ReadinessReason` type)
 - `src/domain/contracts/rule-engine.types.ts` lines 108–117 (for `RuleEngineGeusRiskData` — note: the field is `groundwaterDepthM`, depth below surface in meters, NOT an absolute kote)
 
 **Files:**
+
 - Create: `src/lib/rule-engine/rules/basement-rules.ts`
 - Create: `src/lib/rule-engine/rules/basement-rules.test.ts`
 
@@ -687,7 +739,14 @@ import { validateKælderFeasibility } from "./basement-rules";
 
 describe("validateKælderFeasibility", () => {
   it("no kælder → empty", () => {
-    expect(validateKælderFeasibility({ hasKælder: false, kælderGulvKoteM: null, groundwaterDepthM: 2, terrainKoteM: 20 })).toHaveLength(0);
+    expect(
+      validateKælderFeasibility({
+        hasKælder: false,
+        kælderGulvKoteM: null,
+        groundwaterDepthM: 2,
+        terrainKoteM: 20,
+      }),
+    ).toHaveLength(0);
   });
 
   it("kælder with safe depth → empty", () => {
@@ -714,7 +773,7 @@ describe("validateKælderFeasibility", () => {
       groundwaterDepthM: 2,
       terrainKoteM: 20,
     });
-    expect(result.some(r => r.severity === "blocking")).toBe(true);
+    expect(result.some((r) => r.severity === "blocking")).toBe(true);
   });
 
   it("kælder likely below sewer → warning", () => {
@@ -722,10 +781,12 @@ describe("validateKælderFeasibility", () => {
     const result = validateKælderFeasibility({
       hasKælder: true,
       kælderGulvKoteM: 18,
-      groundwaterDepthM: null,  // no groundwater data
+      groundwaterDepthM: null, // no groundwater data
       terrainKoteM: 20,
     });
-    expect(result.some(r => r.severity === "warning" && r.code === "KAELDER_PUMP_LIKELY")).toBe(true);
+    expect(result.some((r) => r.severity === "warning" && r.code === "KAELDER_PUMP_LIKELY")).toBe(
+      true,
+    );
   });
 
   it("kælder floor null → warning about missing kote", () => {
@@ -735,7 +796,7 @@ describe("validateKælderFeasibility", () => {
       groundwaterDepthM: null,
       terrainKoteM: null,
     });
-    expect(result.some(r => r.code === "KAELDER_GULVKOTE_MISSING")).toBe(true);
+    expect(result.some((r) => r.code === "KAELDER_GULVKOTE_MISSING")).toBe(true);
   });
 });
 ```
@@ -755,8 +816,8 @@ import type { ReadinessReason } from "@/domain/drawing/decision-engine";
 export function validateKælderFeasibility(input: {
   hasKælder: boolean;
   kælderGulvKoteM: number | null;
-  groundwaterDepthM: number | null;  // from RuleEngineGeusRiskData.groundwaterDepthM (depth from surface)
-  terrainKoteM: number | null;       // from RuleEngineTerrainData.avgElevationM
+  groundwaterDepthM: number | null; // from RuleEngineGeusRiskData.groundwaterDepthM (depth from surface)
+  terrainKoteM: number | null; // from RuleEngineTerrainData.avgElevationM
 }): ReadinessReason[] {
   const { hasKælder, kælderGulvKoteM, groundwaterDepthM, terrainKoteM } = input;
 
@@ -768,7 +829,8 @@ export function validateKælderFeasibility(input: {
     reasons.push({
       code: "KAELDER_GULVKOTE_MISSING",
       severity: "warning",
-      message: "Kælderens gulvkote (DVR90) er ikke angivet — kloak- og grundvandscheck kan ikke udføres",
+      message:
+        "Kælderens gulvkote (DVR90) er ikke angivet — kloak- og grundvandscheck kan ikke udføres",
       affectedLayer: "proposed",
     });
     return reasons;
@@ -824,9 +886,11 @@ git commit -m "feat(rule-engine): add validateKælderFeasibility with groundwate
 ### Task 6: Jordvarme permit rule
 
 **Context — read these files first:**
+
 - `src/domain/drawing/decision-engine.ts` (for `ReadinessReason` type)
 
 **Files:**
+
 - Create: `src/lib/rule-engine/rules/utility-rules.ts`
 - Create: `src/lib/rule-engine/rules/utility-rules.test.ts`
 
@@ -845,9 +909,9 @@ describe("validateJordvarmePermit", () => {
   it("jordvarme → two info reasons", () => {
     const result = validateJordvarmePermit({ hasJordvarme: true });
     expect(result).toHaveLength(2);
-    expect(result.every(r => r.severity === "info")).toBe(true);
-    expect(result.some(r => r.code === "JORDVARME_PARAGRAPH19_PERMIT")).toBe(true);
-    expect(result.some(r => r.code === "JORDVARME_JUPITER_REGISTRATION")).toBe(true);
+    expect(result.every((r) => r.severity === "info")).toBe(true);
+    expect(result.some((r) => r.code === "JORDVARME_PARAGRAPH19_PERMIT")).toBe(true);
+    expect(result.some((r) => r.code === "JORDVARME_JUPITER_REGISTRATION")).toBe(true);
   });
 });
 ```
@@ -864,16 +928,15 @@ bun test src/lib/rule-engine/rules/utility-rules.test.ts
 // src/lib/rule-engine/rules/utility-rules.ts
 import type { ReadinessReason } from "@/domain/drawing/decision-engine";
 
-export function validateJordvarmePermit(input: {
-  hasJordvarme: boolean;
-}): ReadinessReason[] {
+export function validateJordvarmePermit(input: { hasJordvarme: boolean }): ReadinessReason[] {
   if (!input.hasJordvarme) return [];
 
   return [
     {
       code: "JORDVARME_PARAGRAPH19_PERMIT",
       severity: "info",
-      message: "Jordvarmeboring (> 10 m) kræver §19-tilladelse fra kommunen jf. Miljøbeskyttelsesloven",
+      message:
+        "Jordvarmeboring (> 10 m) kræver §19-tilladelse fra kommunen jf. Miljøbeskyttelsesloven",
       affectedLayer: "siteUse",
     },
     {
@@ -905,10 +968,12 @@ git commit -m "feat(rule-engine): add validateJordvarmePermit with §19 and Jupi
 ### Task 7: Completeness engine
 
 **Context — read these files first:**
+
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `TerrainLayer`, `SiteUseLayer`, `VejLayer`)
 - `src/domain/drawing/source-quality.ts` (for `DataSource`, `DataConfidence`)
 
 **Files:**
+
 - Create: `src/domain/drawing/completeness-engine.ts`
 - Create: `src/domain/drawing/completeness-engine.test.ts`
 
@@ -964,7 +1029,11 @@ describe("computeDrawingCompleteness", () => {
   });
 
   it("regnvandsløsning auto when faelles", () => {
-    const result = computeDrawingCompleteness({ ...minimalBlocking, kloakoplandType: "faelles", proposedFootprintSource: "generated" });
+    const result = computeDrawingCompleteness({
+      ...minimalBlocking,
+      kloakoplandType: "faelles",
+      proposedFootprintSource: "generated",
+    });
     expect(result.fields.regnvandsløsning.status).toBe("auto");
   });
 
@@ -987,8 +1056,37 @@ describe("computeDrawingCompleteness", () => {
       tagform: "sadeltag",
       taghaldningGrad: 35,
       rygningsKoteM: 23.75,
-      vejLayer: { vejnavn: "Testvej", centerline25832: { type: "LineString", crs: "EPSG:25832", coordinates: [[0,0],[100,0]] }, vejkant25832: null, vejbreddeM: null, source: { source: "registry", confidence: "medium", fetchedAt: "2026-06-06", requiresReview: false } },
-      terrainLayer: { verticalDatum: "DVR90", points: [], slopePercent: null, lowPointM: null, source: { source: "registry", confidence: "medium", fetchedAt: "2026-06-06", requiresReview: false } },
+      vejLayer: {
+        vejnavn: "Testvej",
+        centerline25832: {
+          type: "LineString",
+          crs: "EPSG:25832",
+          coordinates: [
+            [0, 0],
+            [100, 0],
+          ],
+        },
+        vejkant25832: null,
+        vejbreddeM: null,
+        source: {
+          source: "registry",
+          confidence: "medium",
+          fetchedAt: "2026-06-06",
+          requiresReview: false,
+        },
+      },
+      terrainLayer: {
+        verticalDatum: "DVR90",
+        points: [],
+        slopePercent: null,
+        lowPointM: null,
+        source: {
+          source: "registry",
+          confidence: "medium",
+          fetchedAt: "2026-06-06",
+          requiresReview: false,
+        },
+      },
       surveyTerrainPointCount: 0,
       kloakoplandType: "faelles",
       siteUseLayers: [],
@@ -1063,39 +1161,68 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
 
     proposedFootprint: (() => {
       if (!input.proposedFootprintSource)
-        return { status: "missing", blocksSubmission: true, displayLabel: "Bygningsfodprint mangler — angiv i Maskinrummet" };
-      if (input.proposedFootprintSource === "survey" || input.proposedFootprintSource === "cad_upload")
+        return {
+          status: "missing",
+          blocksSubmission: true,
+          displayLabel: "Bygningsfodprint mangler — angiv i Maskinrummet",
+        };
+      if (
+        input.proposedFootprintSource === "survey" ||
+        input.proposedFootprintSource === "cad_upload"
+      )
         return { status: "auto" };
       return { status: "estimated", note: "Genereret fra dimensioner" };
     })(),
 
     sokkelKote: (() => {
       if (input.sokkelKoteM === null)
-        return { status: "placeholder", responsibleParty: "kloakmester", displayLabel: "Sokkelkote DVR90 [af kloakmester]" };
-      if (input.sokkelSource === "survey")
-        return { status: "auto" };
-      return { status: "estimated", note: `ca. DVR90 +${input.sokkelKoteM.toFixed(2)} m (DHM + 0,30 m)` };
+        return {
+          status: "placeholder",
+          responsibleParty: "kloakmester",
+          displayLabel: "Sokkelkote DVR90 [af kloakmester]",
+        };
+      if (input.sokkelSource === "survey") return { status: "auto" };
+      return {
+        status: "estimated",
+        note: `ca. DVR90 +${input.sokkelKoteM.toFixed(2)} m (DHM + 0,30 m)`,
+      };
     })(),
 
     rygningsKote: (() => {
       if (!input.tagform)
-        return { status: "placeholder", responsibleParty: "arkitekt", displayLabel: "Rygningskote DVR90 [angives af arkitekt]" };
+        return {
+          status: "placeholder",
+          responsibleParty: "arkitekt",
+          displayLabel: "Rygningskote DVR90 [angives af arkitekt]",
+        };
       if (input.rygningsKoteM !== null)
-        return { status: "estimated", note: `ca. DVR90 +${input.rygningsKoteM.toFixed(2)} m (beregnet)` };
-      return { status: "placeholder", responsibleParty: "arkitekt", displayLabel: "Rygningskote DVR90 [angives af arkitekt]" };
+        return {
+          status: "estimated",
+          note: `ca. DVR90 +${input.rygningsKoteM.toFixed(2)} m (beregnet)`,
+        };
+      return {
+        status: "placeholder",
+        responsibleParty: "arkitekt",
+        displayLabel: "Rygningskote DVR90 [angives af arkitekt]",
+      };
     })(),
 
     vejGeometry: (() => {
       if (!input.vejLayer) return { status: "estimated", note: "Vejgeometri ikke hentet" };
       if (input.vejLayer.centerline25832 !== null) return { status: "auto" };
-      if (input.vejLayer.vejkant25832 !== null) return { status: "estimated", note: "Vejkant tilgængeligt, vejmidte ikke kortlagt" };
+      if (input.vejLayer.vejkant25832 !== null)
+        return { status: "estimated", note: "Vejkant tilgængeligt, vejmidte ikke kortlagt" };
       return { status: "estimated", note: "Vejnavn fra DAR — geometri ikke kortlagt" };
     })(),
 
     koterTerræn: (() => {
       if (input.surveyTerrainPointCount > 0) return { status: "auto" };
       if (input.terrainLayer) return { status: "estimated", note: "DHM estimat (SDFI)" };
-      return { status: "placeholder", responsibleParty: "landinspektør", displayLabel: "Terrænkoter [landinspektør]" };
+      return {
+        status: "placeholder",
+        responsibleParty: "landinspektør",
+        displayLabel: "Terrænkoter [landinspektør]",
+      };
     })(),
 
     kloakStikledning: {
@@ -1106,7 +1233,11 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
 
     regnvandsløsning: (() => {
       if (input.kloakoplandType === "faelles") return { status: "auto" };
-      return { status: "placeholder", responsibleParty: "kloakmester", displayLabel: "Regnvandsløsning [kloakmester]" };
+      return {
+        status: "placeholder",
+        responsibleParty: "kloakmester",
+        displayLabel: "Regnvandsløsning [kloakmester]",
+      };
     })(),
 
     overkørsel: (() => {
@@ -1114,7 +1245,11 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
         (l) => l.type === "driveway" && l.source.source !== "estimated",
       );
       if (hasDriveway) return { status: "auto" };
-      return { status: "placeholder", responsibleParty: "bruger", displayLabel: "Overkørsel [placering bekræftes af kommunen]" };
+      return {
+        status: "placeholder",
+        responsibleParty: "bruger",
+        displayLabel: "Overkørsel [placering bekræftes af kommunen]",
+      };
     })(),
 
     naturbeskyttelse: (() => {
@@ -1133,9 +1268,7 @@ export function computeDrawingCompleteness(input: CompletenessInput): DrawingCom
     (f) => f.status === "missing" && (f as { blocksSubmission: boolean }).blocksSubmission,
   ).length;
 
-  const placeholderCount = Object.values(fields).filter(
-    (f) => f.status === "placeholder",
-  ).length;
+  const placeholderCount = Object.values(fields).filter((f) => f.status === "placeholder").length;
 
   return {
     overallStatus: blockingCount === 0 ? "ready" : "draft",
@@ -1170,6 +1303,7 @@ git commit -m "feat(drawing): add computeDrawingCompleteness pure domain functio
 **Context:** No files to read. Pure SQL.
 
 **Files:**
+
 - Create: `supabase/migrations/20260606200000_drawing_params.sql`
 
 - [ ] **Step 1: Create migration file**
@@ -1225,6 +1359,7 @@ git commit -m "feat(db): add 5 typed columns for authority-grade drawing params 
 > **PROTECTED FILE — PR must include: `Rører beskyttet fil — kræver review`**
 
 **Context — read these files first:**
+
 - `src/lib/reactive-compliance.ts` (full file — 103 lines)
 - `src/domain/drawing/decision-engine.ts` (for `ReadinessReason`)
 - `src/lib/rule-engine/rules/nature-protection-rules.ts` (just created)
@@ -1234,6 +1369,7 @@ git commit -m "feat(db): add 5 typed columns for authority-grade drawing params 
 - `src/domain/contracts/rule-engine.types.ts` lines 133–143 (for `RuleEngineTerrainData` — note: field is `avgElevationM`)
 
 **Files:**
+
 - Modify: `src/lib/reactive-compliance.ts`
 
 - [ ] **Step 1: Add new imports at top of `reactive-compliance.ts`**
@@ -1241,7 +1377,10 @@ git commit -m "feat(db): add 5 typed columns for authority-grade drawing params 
 Add after the existing imports (after line 28, before `export type PartialUpdateParams`):
 
 ```typescript
-import type { GeoJsonPolygon25832, NaturbeskyttelseLayer } from "@/domain/drawing/beliggenhedsplan.types";
+import type {
+  GeoJsonPolygon25832,
+  NaturbeskyttelseLayer,
+} from "@/domain/drawing/beliggenhedsplan.types";
 import type { ReadinessReason } from "@/domain/drawing/decision-engine";
 import { validateNaturbeskyttelse } from "@/lib/rule-engine/rules/nature-protection-rules";
 import { validateKælderFeasibility } from "@/lib/rule-engine/rules/basement-rules";
@@ -1292,18 +1431,18 @@ export type PartialUpdateResult = {
 At the end of `computePartialUpdate`, before `return`, replace the return statement:
 
 ```typescript
-  const drawingReasons: ReadinessReason[] = [
-    ...validateNaturbeskyttelse(params.naturbeskyttelseZoner ?? []),
-    ...validateKælderFeasibility({
-      hasKælder: params.harKælder ?? false,
-      kælderGulvKoteM: params.kælderGulvKoteM ?? null,
-      groundwaterDepthM: geusRisk?.groundwaterDepthM ?? null,
-      terrainKoteM: terrain?.avgElevationM ?? null,
-    }),
-    ...validateJordvarmePermit({ hasJordvarme: params.harJordvarme ?? false }),
-  ];
+const drawingReasons: ReadinessReason[] = [
+  ...validateNaturbeskyttelse(params.naturbeskyttelseZoner ?? []),
+  ...validateKælderFeasibility({
+    hasKælder: params.harKælder ?? false,
+    kælderGulvKoteM: params.kælderGulvKoteM ?? null,
+    groundwaterDepthM: geusRisk?.groundwaterDepthM ?? null,
+    terrainKoteM: terrain?.avgElevationM ?? null,
+  }),
+  ...validateJordvarmePermit({ hasJordvarme: params.harJordvarme ?? false }),
+];
 
-  return { complianceMetrics, complianceFlags, ruleEngineResult, drawingReasons };
+return { complianceMetrics, complianceFlags, ruleEngineResult, drawingReasons };
 ```
 
 - [ ] **Step 5: TypeScript check**
@@ -1336,10 +1475,12 @@ Rører beskyttet fil — kræver review"
 ### Task 10: Update ports interface
 
 **Context — read these files first:**
+
 - `src/domain/drawing/ports.ts` (full file)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for new types)
 
 **Files:**
+
 - Modify: `src/domain/drawing/ports.ts`
 
 - [ ] **Step 1: Replace `DrawingGeometrySourcePort` with extended interface**
@@ -1372,7 +1513,10 @@ export interface DrawingGeometrySourcePort {
   ): Promise<TerrainLayer | null>;
   fetchNaturbeskyttelse(bbox25832: BBox25832): Promise<NaturbeskyttelseLayer[]>;
   fetchLerLedninger(bbox25832: BBox25832): Promise<LerLedning[]>;
-  fetchKloakopland(kommunekode: string, bbox25832: BBox25832): Promise<"separat" | "faelles" | null>;
+  fetchKloakopland(
+    kommunekode: string,
+    bbox25832: BBox25832,
+  ): Promise<"separat" | "faelles" | null>;
   fetchFjernvarmeDaekning(centroidLat: number, centroidLng: number): Promise<boolean | null>;
 }
 ```
@@ -1420,14 +1564,15 @@ Also add `NaturbeskyttelseLayer`, `LerLedning` to imports.
 The service currently calls `fetchRoadName` but not `fetchRoadGeometry`. Add `fetchRoadGeometry` to the parallel fetch block (around line 127):
 
 ```typescript
-const [existing, constraints, neighborParcels, roadNameResult, dhmTerrain, vejLayer] = await Promise.all([
-  geometrySource.fetchNeighborBuildings(bbox),
-  geometrySource.fetchPlandataLayers(kommunekode, bbox),
-  geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
-  geometrySource.fetchRoadName(addressId),
-  geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
-  geometrySource.fetchRoadGeometry(addressId, bbox),
-]);
+const [existing, constraints, neighborParcels, roadNameResult, dhmTerrain, vejLayer] =
+  await Promise.all([
+    geometrySource.fetchNeighborBuildings(bbox),
+    geometrySource.fetchPlandataLayers(kommunekode, bbox),
+    geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
+    geometrySource.fetchRoadName(addressId),
+    geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
+    geometrySource.fetchRoadGeometry(addressId, bbox),
+  ]);
 ```
 
 Then update the plan object to use `vejLayer`:

@@ -19,10 +19,12 @@
 > **PROTECTED FILE — PR must include: `Rører beskyttet fil — kræver review`**
 
 **Context — read these files first:**
+
 - `src/lib/project-store.ts` (full file — read all ~200+ lines to understand the State and setter pattern)
 - `supabase/migrations/20260606200000_drawing_params.sql` (for the 5 column names)
 
 **Files:**
+
 - Modify: `src/lib/project-store.ts`
 
 - [ ] **Step 1: Add 5 new fields to `State` type**
@@ -30,12 +32,12 @@
 In the `State` type, after the `budget_estimate` field (or at the end of the typed columns block, around line 98), add:
 
 ```typescript
-  // Drawing design params — typed SQL columns from 20260606200000_drawing_params.sql
-  tagform: "sadeltag" | "fladt" | "mansard" | "pulttag" | null;
-  taghaldning_grad: number | null;
-  har_jordvarme: boolean;
-  har_kaelder: boolean;
-  kaelder_gulv_kote_m: number | null;
+// Drawing design params — typed SQL columns from 20260606200000_drawing_params.sql
+tagform: "sadeltag" | "fladt" | "mansard" | "pulttag" | null;
+taghaldning_grad: number | null;
+har_jordvarme: boolean;
+har_kaelder: boolean;
+kaelder_gulv_kote_m: number | null;
 ```
 
 - [ ] **Step 2: Add corresponding setters to State type**
@@ -104,12 +106,14 @@ Rører beskyttet fil — kræver review"
 ### Task 25: Maskinrummet inputs
 
 **Context — read these files first:**
+
 - `src/routes/projekt.teknik.tsx` (full file — understand current UI and form structure)
 - `src/lib/project-store.ts` (for new setters)
 - `src/lib/reactive-compliance.ts` (for `computePartialUpdate` return type — now includes `drawingReasons`)
 - `src/domain/drawing/geometry-engine.ts` (for `computeRygningsKote`)
 
 **Files:**
+
 - Modify: `src/routes/projekt.teknik.tsx`
 
 The Maskinrummet section of `projekt.teknik.tsx` currently has `bygherre`, `sokkelKoteM`, `heightM` inputs. Add four new input groups below the existing inputs.
@@ -119,7 +123,9 @@ The Maskinrummet section of `projekt.teknik.tsx` currently has `bygherre`, `sokk
 Find the section with building dimension inputs. Add after the height input:
 
 ```tsx
-{/* Tagform */}
+{
+  /* Tagform */
+}
 <div className="space-y-2">
   <label className="text-sm font-medium text-gray-700">Tagform</label>
   <div className="flex gap-2 flex-wrap">
@@ -174,16 +180,18 @@ Find the section with building dimension inputs. Add after the height input:
   {/* Live rygningskote */}
   {tagform && taghaldningGrad !== null && sokkelKoteM !== null && buildingWidthM !== null && (
     <p className="text-xs text-gray-500 mt-1">
-      Beregnet rygningskote: DVR90 +{computeRygningsKote({
+      Beregnet rygningskote: DVR90 +
+      {computeRygningsKote({
         sokkelKoteM,
-        loftshøjdeM: 2.40,
+        loftshøjdeM: 2.4,
         fodprintBreddeM: buildingWidthM,
         tagform,
         taghaldningGrad,
-      }).toFixed(2)} m
+      }).toFixed(2)}{" "}
+      m
     </p>
   )}
-</div>
+</div>;
 ```
 
 Add the needed imports and destructure the new store values at the top of the component. The store gives `tagform`, `taghaldning_grad`, `har_kaelder`, `kaelder_gulv_kote_m`, `har_jordvarme` and their setters.
@@ -191,7 +199,9 @@ Add the needed imports and destructure the new store values at the top of the co
 - [ ] **Step 2: Add kælder toggle + input**
 
 ```tsx
-{/* Kælder */}
+{
+  /* Kælder */
+}
 <div className="space-y-2">
   <div className="flex items-center gap-3">
     <label className="text-sm font-medium text-gray-700">Kælder inkluderet</label>
@@ -204,9 +214,11 @@ Add the needed imports and destructure the new store values at the top of the co
         harKaelder ? "bg-blue-600" : "bg-gray-300"
       }`}
     >
-      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-        harKaelder ? "translate-x-5" : "translate-x-0.5"
-      }`} />
+      <span
+        className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+          harKaelder ? "translate-x-5" : "translate-x-0.5"
+        }`}
+      />
     </button>
   </div>
 
@@ -224,14 +236,20 @@ Add the needed imports and destructure the new store values at the top of the co
         />
       </div>
       {/* Live validation warnings from reactive-compliance */}
-      {drawingReasons.filter(r => r.affectedLayer === "proposed" && r.severity !== "info").map((r) => (
-        <p key={r.code} className={`text-xs ${r.severity === "blocking" ? "text-red-600" : "text-amber-600"}`}>
-          {r.severity === "blocking" ? "⛔ " : "⚠️ "}{r.message}
-        </p>
-      ))}
+      {drawingReasons
+        .filter((r) => r.affectedLayer === "proposed" && r.severity !== "info")
+        .map((r) => (
+          <p
+            key={r.code}
+            className={`text-xs ${r.severity === "blocking" ? "text-red-600" : "text-amber-600"}`}
+          >
+            {r.severity === "blocking" ? "⛔ " : "⚠️ "}
+            {r.message}
+          </p>
+        ))}
     </div>
   )}
-</div>
+</div>;
 ```
 
 `drawingReasons` comes from calling `computePartialUpdate` (already wired in the component via the compliance hook). The component needs to pass the new params to the existing compliance recomputation call.
@@ -239,7 +257,9 @@ Add the needed imports and destructure the new store values at the top of the co
 - [ ] **Step 3: Add jordvarme toggle**
 
 ```tsx
-{/* Jordvarme */}
+{
+  /* Jordvarme */
+}
 <div className="flex items-center gap-3">
   <label className="text-sm font-medium text-gray-700">Jordvarme planlagt</label>
   <button
@@ -251,16 +271,18 @@ Add the needed imports and destructure the new store values at the top of the co
       harJordvarme ? "bg-blue-600" : "bg-gray-300"
     }`}
   >
-    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-      harJordvarme ? "translate-x-5" : "translate-x-0.5"
-    }`} />
+    <span
+      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+        harJordvarme ? "translate-x-5" : "translate-x-0.5"
+      }`}
+    />
   </button>
   {harJordvarme && (
     <p className="text-xs text-blue-700">
       ℹ Kræver §19-tilladelse fra kommunen. Registreres i GEUS Jupiter efter etablering.
     </p>
   )}
-</div>
+</div>;
 ```
 
 - [ ] **Step 4: Add nedrivning checkboxes**
@@ -268,29 +290,33 @@ Add the needed imports and destructure the new store values at the top of the co
 This requires knowing which existing buildings are on the parcel. Use BBR data from `bbrData` store field:
 
 ```tsx
-{/* Nedrivning */}
-{bbrData?.buildings && bbrData.buildings.length > 0 && (
-  <div className="space-y-2">
-    <label className="text-sm font-medium text-gray-700">Eksisterende bygninger</label>
-    <p className="text-xs text-gray-500">Markér bygninger der nedrives som del af projektet</p>
-    {bbrData.buildings.map((b) => (
-      <label key={b.id} className="flex items-center gap-2 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          checked={nedrivesBbrIds.includes(b.id)}
-          onChange={(e) => {
-            setNedrivesBbrIds(
-              e.target.checked
-                ? [...nedrivesBbrIds, b.id]
-                : nedrivesBbrIds.filter((id) => id !== b.id),
-            );
-          }}
-        />
-        BBR {b.id} — {b.bebyggetAreal_m2} m² (opf. {b.byggeaar})
-      </label>
-    ))}
-  </div>
-)}
+{
+  /* Nedrivning */
+}
+{
+  bbrData?.buildings && bbrData.buildings.length > 0 && (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-gray-700">Eksisterende bygninger</label>
+      <p className="text-xs text-gray-500">Markér bygninger der nedrives som del af projektet</p>
+      {bbrData.buildings.map((b) => (
+        <label key={b.id} className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={nedrivesBbrIds.includes(b.id)}
+            onChange={(e) => {
+              setNedrivesBbrIds(
+                e.target.checked
+                  ? [...nedrivesBbrIds, b.id]
+                  : nedrivesBbrIds.filter((id) => id !== b.id),
+              );
+            }}
+          />
+          BBR {b.id} — {b.bebyggetAreal_m2} m² (opf. {b.byggeaar})
+        </label>
+      ))}
+    </div>
+  );
+}
 ```
 
 Note: `nedrivesBbrIds` is local `useState<string[]>([])` in the component — it doesn't need to persist to the DB for now (it affects the drawing generation call). Pass it to the drawing export.
@@ -343,10 +369,12 @@ git commit -m "feat(ui): add tagform, kælder, jordvarme, nedrivning inputs to M
 ### Task 26: MatrikelMap readonly prop
 
 **Context — read these files first:**
+
 - `src/components/cockpit/MatrikelMap.tsx` (full file — focus on the Translate interaction and OL layer setup)
 - `src/domain/drawing/beliggenhedsplan.types.ts` (for `VejLayer`, `NaturbeskyttelseLayer`, `LerLedning`)
 
 **Files:**
+
 - Modify: `src/components/cockpit/MatrikelMap.tsx`
 
 - [ ] **Step 1: Add `readonly` and `planLayers` to props type**
@@ -387,15 +415,18 @@ git commit -m "feat(map): add readonly prop and planLayers prop to MatrikelMap"
 ### Task 27: Myndighed document hub page
 
 **Context — read these files first:**
+
 - `src/routes/projekt.teknik.tsx` (current full file — understand existing layout and data access patterns)
 - `src/domain/drawing/completeness-engine.ts` (for `DrawingCompleteness`, `FieldStatus`)
 - `src/routes/api.drawing-readiness.ts` (for `fetchDrawingReadinessFn`)
 - `src/routes/api.drawing.ts` (for `exportBeliggenhedsplanFn`)
 
 **Files:**
+
 - Modify: `src/routes/projekt.teknik.tsx`
 
 The current page is a single form. The new layout splits into two columns:
+
 - Left: `MatrikelMap` with `readonly={true}` and completeness-based status
 - Right: document panel with completeness fields, download buttons
 
@@ -564,6 +595,7 @@ git commit -m "feat(ui): build Myndighed document hub with completeness panel an
 **Context:** Read `CLAUDE.md` sections "Protected Files" and around `analysis-orchestrator.ts`.
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 > **PROTECTED FILE — PR must include: `Rører beskyttet fil — kræver review`**
@@ -589,12 +621,14 @@ Changes to these files are allowed but require an architecture plan answer
 In the Protected Files section, add inline notes:
 
 Under `src/lib/project-store.ts`:
+
 ```
   - Drawing design params (tagform, taghaldning_grad, har_kaelder, kaelder_gulv_kote_m,
     har_jordvarme) added 2026-06-06 for authority-grade beliggenhedsplan.
 ```
 
 Under `src/lib/reactive-compliance.ts`:
+
 ```
   - Extended 2026-06-06 with optional drawing validation params (harKælder, harJordvarme,
     naturbeskyttelseZoner). Returns drawingReasons alongside existing result.

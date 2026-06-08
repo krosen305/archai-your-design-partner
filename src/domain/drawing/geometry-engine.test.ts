@@ -160,8 +160,8 @@ describe("computeRygningsKote", () => {
     // taghøjde = (9/2) × tan(35°) = 4.5 × 0.7002 = 3.151
     // rygning = 18.20 + 2.40 + 3.151 = 23.751 → rounded to 2 decimals
     const result = computeRygningsKote({
-      sokkelKoteM: 18.20,
-      loftshøjdeM: 2.40,
+      sokkelKoteM: 18.2,
+      loftshøjdeM: 2.4,
       fodprintBreddeM: 9,
       tagform: "sadeltag",
       taghaldningGrad: 35,
@@ -171,8 +171,8 @@ describe("computeRygningsKote", () => {
 
   it("fladt tag giver 0.15m taghøjde", () => {
     const result = computeRygningsKote({
-      sokkelKoteM: 10.00,
-      loftshøjdeM: 2.50,
+      sokkelKoteM: 10.0,
+      loftshøjdeM: 2.5,
       fodprintBreddeM: 8,
       tagform: "fladt",
       taghaldningGrad: 0,
@@ -182,12 +182,18 @@ describe("computeRygningsKote", () => {
 
   it("mansard er 60% af sadeltag-taghøjde", () => {
     const sadel = computeRygningsKote({
-      sokkelKoteM: 0, loftshøjdeM: 0, fodprintBreddeM: 10,
-      tagform: "sadeltag", taghaldningGrad: 40,
+      sokkelKoteM: 0,
+      loftshøjdeM: 0,
+      fodprintBreddeM: 10,
+      tagform: "sadeltag",
+      taghaldningGrad: 40,
     });
     const mansard = computeRygningsKote({
-      sokkelKoteM: 0, loftshøjdeM: 0, fodprintBreddeM: 10,
-      tagform: "mansard", taghaldningGrad: 40,
+      sokkelKoteM: 0,
+      loftshøjdeM: 0,
+      fodprintBreddeM: 10,
+      tagform: "mansard",
+      taghaldningGrad: 40,
     });
     expect(mansard).toBeCloseTo(sadel * 0.6, 1);
   });
@@ -197,17 +203,41 @@ describe("polygonsIntersect", () => {
   const square: GeoJsonPolygon25832 = {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]],
+    coordinates: [
+      [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+        [0, 0],
+      ],
+    ],
   };
   const overlapping: GeoJsonPolygon25832 = {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [[[5,5],[15,5],[15,15],[5,15],[5,5]]],
+    coordinates: [
+      [
+        [5, 5],
+        [15, 5],
+        [15, 15],
+        [5, 15],
+        [5, 5],
+      ],
+    ],
   };
   const separate: GeoJsonPolygon25832 = {
     type: "Polygon",
     crs: "EPSG:25832",
-    coordinates: [[[20,20],[30,20],[30,30],[20,30],[20,20]]],
+    coordinates: [
+      [
+        [20, 20],
+        [30, 20],
+        [30, 30],
+        [20, 30],
+        [20, 20],
+      ],
+    ],
   };
 
   it("overlapping polygons → true", () => {

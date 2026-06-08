@@ -1,24 +1,24 @@
-
 # ArchAI Frontend Alignment Plan
 
 ## 1. Backend Surface That The Frontend Must Consume
 
 ### 1.1 New / changed server functions (`createServerFn`)
 
-| Module | Function | Status in UI |
-| --- | --- | --- |
-| `src/lib/cockpit.functions.ts` | `fetchCompliance`, `runByggeanalyse` (now server-gated by `projectId` + Hard-Stop) | Used by `useCockpitAnalysis` — input shape changed (must pass `projectId`, schema-validated) |
-| `src/lib/ai-design.functions.ts` | `generateDesignProposals` (server-side Hard-Stop gate via `projectId`/`addressId`) | `useAiDesignWorkflow` already calls it; UI must surface `kilde: "placeholder"` fallback |
-| `src/lib/billede-analyse.functions.ts` | `uploadBillede`, `analyserBillederFn` | Wired via `useAiDesignWorkflow` |
-| `src/lib/br18.functions.ts` | `getBr18Compliance`, `updateBr18Evidence` | **No route consumes these yet** — `Br18KravMatrix` is orphaned |
+| Module                                       | Function                                                                                                            | Status in UI                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `src/lib/cockpit.functions.ts`               | `fetchCompliance`, `runByggeanalyse` (now server-gated by `projectId` + Hard-Stop)                                  | Used by `useCockpitAnalysis` — input shape changed (must pass `projectId`, schema-validated)    |
+| `src/lib/ai-design.functions.ts`             | `generateDesignProposals` (server-side Hard-Stop gate via `projectId`/`addressId`)                                  | `useAiDesignWorkflow` already calls it; UI must surface `kilde: "placeholder"` fallback         |
+| `src/lib/billede-analyse.functions.ts`       | `uploadBillede`, `analyserBillederFn`                                                                               | Wired via `useAiDesignWorkflow`                                                                 |
+| `src/lib/br18.functions.ts`                  | `getBr18Compliance`, `updateBr18Evidence`                                                                           | **No route consumes these yet** — `Br18KravMatrix` is orphaned                                  |
 | `src/lib/floor-plan/floor-plan.functions.ts` | `loadActiveFloorPlanFn`, `generateFloorPlanFn`, `verifyFloorPlanFn`, `applyFloorPlanCommandFn`, `exportFloorPlanFn` | Wired in `projekt.$id.plantegning` via `FloorPlanEditor` — needs verification panel + export UI |
-| `src/routes/api.drawing.ts` | `exportBeliggenhedsplanFn` (now writes `drawing_exports`) | Used in `projekt.teknik` — missing history list + readiness gating |
-| `src/lib/adresse.functions.ts` | `searchAddresses` (new `/husnummer` endpoint, deprecated DAWA) | Used in `/projekt/adresse` — verify result shape |
-| `src/lib/project-sync.ts` | `serverCreateProject/SaveProject/LoadProject/DeleteProject` | Used; `ProjectPatch` shape expanded — see § 1.3 |
+| `src/routes/api.drawing.ts`                  | `exportBeliggenhedsplanFn` (now writes `drawing_exports`)                                                           | Used in `projekt.teknik` — missing history list + readiness gating                              |
+| `src/lib/adresse.functions.ts`               | `searchAddresses` (new `/husnummer` endpoint, deprecated DAWA)                                                      | Used in `/projekt/adresse` — verify result shape                                                |
+| `src/lib/project-sync.ts`                    | `serverCreateProject/SaveProject/LoadProject/DeleteProject`                                                         | Used; `ProjectPatch` shape expanded — see § 1.3                                                 |
 
 ### 1.2 New `ComplianceResult` fields (must flow into `useProject`)
 
 Added since the overhaul, currently **not rendered**:
+
 - `tjekditnetCoverage` (bredbåndsdækning, ARCH-247)
 - `energimaerke` (EMOData, ARCH-248)
 - `plandataContext` (zone, byggefelt, spildevand, ARCH-244)
@@ -69,20 +69,24 @@ Sister tables: `site_constraints` (BR18 + jordforurening + GEUS/DHM + plandata/a
 ## 4. Phased Implementation Roadmap
 
 ### Phase 0 — Contract Sync (no UI changes)
+
 Verify `src/types/project-sync.schemas.ts` and `project-restore.schemas.ts` cover every new field in `ComplianceResult`, `ProjectPatch`, and persisted columns. Add missing entries (`tjekditnetCoverage`, `energimaerke`, `plandataContext`, `arealdataContext`, `matGeometri`, `neighborContextFacts`, `addressPatch`, `serviceStates`, `analysisRunId`) and corresponding store setters in `project-store.ts`.
 Aligns with: `cockpit.functions.ts`, `analysis-orchestrator.ts`, `project-persistence.ts`.
 
 ### Phase 1 — Cockpit Restore + Sync Pipeline
+
 - Extend `useCockpitRestore` to hydrate new typed fields and seed `dataStatus` via `deriveSourceStatus` for all new `DataSourceKind`s.
 - Extend `useCockpitAnalysis` `.then(result => ...)` to:
   - apply `result.addressPatch` to `address`,
   - write `result.serviceStates` to store,
-  - bulk-mark `dataStatus` from `serviceStates` (success/cache_hit → fresh, no_hit/skipped → missing, error → error, mock* → stale-with-warning).
+  - bulk-mark `dataStatus` from `serviceStates` (success/cache_hit → fresh, no_hit/skipped → missing, error → error, mock\* → stale-with-warning).
 - Update `syncPatch` callers to include new fields.
-Aligns with: `useCockpitAnalysis.ts`, `useCockpitRestore.ts`, `project-sync.ts`, `project-persistence.ts`.
+  Aligns with: `useCockpitAnalysis.ts`, `useCockpitRestore.ts`, `project-sync.ts`, `project-persistence.ts`.
 
 ### Phase 2 — Cockpit Surface for New Data Sources
+
 Add `DetailsSection` cards (with `PipelineServiceState` pills) to `AnalyseTab` for:
+
 - Bredbåndsdækning (`tjekditnetCoverage`)
 - Energimærke (`energimaerke`)
 - Arealdata & miljø (`arealdataContext`)
@@ -90,42 +94,49 @@ Add `DetailsSection` cards (with `PipelineServiceState` pills) to `AnalyseTab` f
 - Plandata-kontekst (zone/byggefelt/spildevand) — `plandataContext`
 - Parcelgeometri / skel-metrics — `matGeometri`
 - Stoej & omgivelser — surroundings + noise
-Extend `EjendomPanel` "Datakilder" to enumerate every kind from `DATA_SOURCE_LABELS`.
-Aligns with: `AnalyseTab.tsx`, `EjendomPanel.tsx`, `DataSourceStatus.tsx`, `CockpitStatusBar.tsx`.
+  Extend `EjendomPanel` "Datakilder" to enumerate every kind from `DATA_SOURCE_LABELS`.
+  Aligns with: `AnalyseTab.tsx`, `EjendomPanel.tsx`, `DataSourceStatus.tsx`, `CockpitStatusBar.tsx`.
 
 ### Phase 3 — AI Design + Byggeanalyse Gating
+
 - `AiDesignHero`: require `currentProjectId` before enabling "Generér"; show "Vælg adresse + opret projekt først" otherwise. Display `kilde: "placeholder"` badge when AI gateway is unavailable.
 - Wire `runByggeanalyse` (now server-gated) into cockpit with `projectId` from store; surface returned `hardStopTriggered`/`hardStopReason` via existing `HardStopBanner`.
-Aligns with: `ai-design.functions.ts`, `byggeanalyse.server.ts`, `useAiDesignWorkflow.ts`, `AiDesignHero.tsx`.
+  Aligns with: `ai-design.functions.ts`, `byggeanalyse.server.ts`, `useAiDesignWorkflow.ts`, `AiDesignHero.tsx`.
 
 ### Phase 4 — BR18 Module
+
 New route `src/routes/projekt.$id.br18.tsx`:
+
 - Calls `getBr18Compliance` with `Br18ProjectFacts` assembled from store (`bbrData`, `byggeoenske`, site_constraints fields).
 - Renders existing `Br18KravMatrix` with `applicabilityResults` + per-requirement evidence ledger.
 - `updateBr18Evidence` wired from row-level "Markér som dokumenteret" actions.
 - Show `authorityReadiness` badge + reuse `HardStopBanner` for `hardStopTriggered`.
-Aligns with: `br18.functions.ts`, `services/br18-compliance.service.server.ts`, `Br18KravMatrix.tsx`, `use-project-br18-compliance.ts`.
+  Aligns with: `br18.functions.ts`, `services/br18-compliance.service.server.ts`, `Br18KravMatrix.tsx`, `use-project-br18-compliance.ts`.
 
 ### Phase 5 — Floor Plan Editor Polish
+
 - `projekt.$id.plantegning`: surface `verifyFloorPlanFn` results via `VerificationPanel`; show `exportFloorPlanFn` downloads (SVG + PDF) and persist via existing repo.
 - Add command-history strip (read from `floor_plan_commands` via a new `listFloorPlanCommandsFn` if not present — otherwise inline in `applyFloorPlanCommandFn` result).
 - Ensure `useFloorPlanEditor` stops re-fetching active iteration when the canonical hash matches.
-Aligns with: `floor-plan.functions.ts`, `FloorPlanEditor.tsx`, `VerificationPanel.tsx`, `useFloorPlanEditor.ts`.
+  Aligns with: `floor-plan.functions.ts`, `FloorPlanEditor.tsx`, `VerificationPanel.tsx`, `useFloorPlanEditor.ts`.
 
 ### Phase 6 — Beliggenhedsplan / Myndighedstegning
+
 - Extend `projekt.teknik`:
   - Pre-flight readiness card driven by `decision-engine` (`AUTO_REVIEW` / `SURVEY_REQUIRED` / `BLOCKED_*`).
   - History list of `drawing_exports` (new server fn `listDrawingExportsFn`) with download links.
   - Surveyor attestation form (`surveyorName`, `surveyorLicenseNr`) when readiness === `SURVEY_REQUIRED`.
 - Keep export logic in `exportBeliggenhedsplanFn`; UI only orchestrates form + display.
-Aligns with: `api.drawing.ts`, `services/drawing/*`, `domain/drawing/decision-engine.ts`, `drawing.repository.ts`.
+  Aligns with: `api.drawing.ts`, `services/drawing/*`, `domain/drawing/decision-engine.ts`, `drawing.repository.ts`.
 
 ### Phase 7 — Datacheck + Tracing Transparency
+
 - Datacheck page: hook into `address_source_results` (new `listSourceResultsFn`) to show per-source `errorDetails` + cache transparency badges.
 - Add "Datakilde-detaljer"-drawer in cockpit using `analysisRunId` → list source results.
-Aligns with: `address_source_results`, `analysis-tracing.ts`, `source-result.ts`.
+  Aligns with: `address_source_results`, `analysis-tracing.ts`, `source-result.ts`.
 
 ### Phase 8 — QA + Regressions
+
 - Playwright: address → cockpit (BBR+lokalplan render < 2s from cache), hard-stop banner, BR18 evidence toggle, floor-plan generate+verify+export, beliggenhedsplan export to PDF.
 - Unit tests: pure renderers + classifiers only (per CLAUDE.md "what not to test").
 
@@ -143,6 +154,7 @@ The backend now exposes a much richer surface (10+ new data sources, BR18 engine
 Recommended order: **Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8**, with each phase shippable independently behind feature flags.
 
 Please confirm:
+
 1. Should I follow this 9-phase order, or do you want to reprioritise (e.g. BR18 before new datakilde-cards)?
 2. Should new datakilde-cards land in the existing **ANALYSE** tab or a new **DATAKILDER** tab?
 3. Phase 7 (tracing/transparency) — is this for end-users or only for internal debug? That changes the UI surface significantly.

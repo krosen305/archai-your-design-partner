@@ -4,8 +4,18 @@ import { cn } from "@/lib/utils";
 import type { DataSourceKind, DataSourceStatus } from "@/types/project-state";
 
 const HANDLINGSBARE_HEADER_KILDER: readonly DataSourceKind[] = [
-  "bbr", "lokalplaner", "kommuneplanramme", "fbb", "naturbeskyttelse",
-  "arealdata", "dkjord", "geusRisk", "terrain", "naboer", "matGeometri", "vurdering",
+  "bbr",
+  "lokalplaner",
+  "kommuneplanramme",
+  "fbb",
+  "naturbeskyttelse",
+  "arealdata",
+  "dkjord",
+  "geusRisk",
+  "terrain",
+  "naboer",
+  "matGeometri",
+  "vurdering",
 ];
 
 type DataHealth = "fresh" | "stale" | "error";

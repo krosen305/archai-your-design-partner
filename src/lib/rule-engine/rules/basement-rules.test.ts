@@ -3,7 +3,14 @@ import { validateKælderFeasibility } from "./basement-rules";
 
 describe("validateKælderFeasibility", () => {
   it("no kælder → empty", () => {
-    expect(validateKælderFeasibility({ hasKælder: false, kælderGulvKoteM: null, groundwaterDepthM: 2, terrainKoteM: 20 })).toHaveLength(0);
+    expect(
+      validateKælderFeasibility({
+        hasKælder: false,
+        kælderGulvKoteM: null,
+        groundwaterDepthM: 2,
+        terrainKoteM: 20,
+      }),
+    ).toHaveLength(0);
   });
 
   it("kælder with safe depth → empty", () => {
@@ -27,7 +34,7 @@ describe("validateKælderFeasibility", () => {
       groundwaterDepthM: 2,
       terrainKoteM: 20,
     });
-    expect(result.some(r => r.severity === "blocking")).toBe(true);
+    expect(result.some((r) => r.severity === "blocking")).toBe(true);
   });
 
   it("kælder likely below sewer → warning", () => {
@@ -38,7 +45,9 @@ describe("validateKælderFeasibility", () => {
       groundwaterDepthM: null,
       terrainKoteM: 20,
     });
-    expect(result.some(r => r.severity === "warning" && r.code === "KAELDER_PUMP_LIKELY")).toBe(true);
+    expect(result.some((r) => r.severity === "warning" && r.code === "KAELDER_PUMP_LIKELY")).toBe(
+      true,
+    );
   });
 
   it("kælder floor null → warning about missing kote", () => {
@@ -48,6 +57,6 @@ describe("validateKælderFeasibility", () => {
       groundwaterDepthM: null,
       terrainKoteM: null,
     });
-    expect(result.some(r => r.code === "KAELDER_GULVKOTE_MISSING")).toBe(true);
+    expect(result.some((r) => r.code === "KAELDER_GULVKOTE_MISSING")).toBe(true);
   });
 });

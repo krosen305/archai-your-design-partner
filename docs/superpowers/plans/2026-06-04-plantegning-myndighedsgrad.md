@@ -47,6 +47,7 @@ WS-D (validerings-UI), WS-E (PDF-finish): kan køre uafhængigt
 **Mål:** `FloorPlanCanvas` renderer de rige felter fra render-modellen i stedet for naive `<line>`/cirkel-tegninger.
 
 **Fælles cold-start kontekst for HELE WS-A:**
+
 - Læs `src/lib/floor-plan/floor-plan-render-model.ts` — typen `FloorPlanRenderModel` og dens felter (`wallPoche`, `openings`, `dimensionChains`, `interiorDimensions`, `furniture`, `zones`, `complianceOverlay`).
 - Læs `src/lib/floor-plan/render-floor-plan-svg.ts` — den STATELØSE streng-renderer der allerede tegner alt korrekt. Den er din facit/referencimplementering for hvordan hvert felt skal tegnes (poché, dørsving via `getSymbol`, dimensioner med pile, hatch, badges).
 - Læs `src/components/floor-plan/FloorPlanCanvas.tsx` — den interaktive React-canvas du skal opgradere. Bevar dens pointer/drag/selection-logik; udskift KUN tegne-outputtet.
@@ -57,6 +58,7 @@ WS-D (validerings-UI), WS-E (PDF-finish): kan køre uafhængigt
 **Depends on:** —
 **Parallel-safe med:** A5, alle WS-C/WS-F domæne-opgaver
 **Files:**
+
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx` (vægsektionen, linje ~256-280)
 - Test: `src/components/floor-plan/FloorPlanCanvas.test.tsx` (opret)
 
@@ -110,16 +112,18 @@ Expected: FAIL (ingen `[data-wall-poche]`-elementer endnu).
 Erstat `{model.walls.map((wall) => (<line .../>))}`-blokken med rendering af `model.wallPoche` som `<polygon>`-elementer. Brug `viewport.localToScreen` på hvert punkt. Behold per-væg `<line>` UDELUKKENDE som usynligt hit-mål hvis nødvendigt for selektion (eller behold eksisterende hit-testing via `pickFloorPlanElement`, som bruger `pochePolygon`). Reference-tegning: se `wallPocheEls` i `render-floor-plan-svg.ts` (fill `#1a1a1a`).
 
 ```tsx
-{model.wallPoche
-  .filter((poly) => poly.length >= 3)
-  .map((poly, i) => (
-    <polygon
-      key={`poche-${i}`}
-      data-wall-poche={i}
-      points={poly.map((p) => pointString(viewport.localToScreen(p))).join(" ")}
-      className="fill-stone-900"
-    />
-  ))}
+{
+  model.wallPoche
+    .filter((poly) => poly.length >= 3)
+    .map((poly, i) => (
+      <polygon
+        key={`poche-${i}`}
+        data-wall-poche={i}
+        points={poly.map((p) => pointString(viewport.localToScreen(p))).join(" ")}
+        className="fill-stone-900"
+      />
+    ));
+}
 ```
 
 - [ ] **Step 4: Kør testen, bekræft PASS**
@@ -139,6 +143,7 @@ git commit -m "feat(floor-plan): render poché-vægge i interaktiv canvas"
 **Depends on:** A1
 **Parallel-safe med:** A5
 **Files:**
+
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx` (åbningssektionen, linje ~281-303)
 - Test: `src/components/floor-plan/FloorPlanCanvas.test.tsx` (tilføj case)
 
@@ -180,30 +185,39 @@ Expected: FAIL.
 Erstat åbnings-blokken (cirkel + `<text>D/V`) med symbol-path-rendering, præcis som `openingEls` i `render-floor-plan-svg.ts`: hent paths via `getSymbol` (`door_left`/`window`/`sliding_door`/`garage_door`) og indsæt i en `<g transform=...>`. Importér `getSymbol` fra `@/lib/floor-plan/symbols/symbol-registry`. Transform skal bruge `viewport`-skala; udled px-per-meter fra `viewport.localDistanceToScreen(1)`.
 
 ```tsx
-{model.openings.map((op) => {
-  const c = viewport.localToScreen(op.center);
-  const s = viewport.localDistanceToScreen(1);
-  let paths: string[] = [];
-  try {
-    if (op.kind === "door") paths = getSymbol("door_left", op.widthM).paths;
-    else if (op.kind === "sliding_door") paths = getSymbol("sliding_door", op.widthM).paths;
-    else if (op.kind === "window") paths = getSymbol("window", op.widthM).paths;
-    else if (op.kind === "garage_door") paths = getSymbol("garage_door", op.widthM).paths;
-  } catch { paths = []; }
-  const selected = selectedElement?.kind === "opening" && selectedElement.id === op.id;
-  return (
-    <g
-      key={op.id}
-      data-opening-id={op.id}
-      transform={`translate(${c.x},${c.y}) rotate(${-op.angleDeg}) scale(${s},${-s})`}
-    >
-      {paths.map((d, i) => (
-        <path key={i} d={d} fill="none" strokeWidth={1.5 / s}
-          className={selected ? "stroke-sky-600" : "stroke-emerald-600"} />
-      ))}
-    </g>
-  );
-})}
+{
+  model.openings.map((op) => {
+    const c = viewport.localToScreen(op.center);
+    const s = viewport.localDistanceToScreen(1);
+    let paths: string[] = [];
+    try {
+      if (op.kind === "door") paths = getSymbol("door_left", op.widthM).paths;
+      else if (op.kind === "sliding_door") paths = getSymbol("sliding_door", op.widthM).paths;
+      else if (op.kind === "window") paths = getSymbol("window", op.widthM).paths;
+      else if (op.kind === "garage_door") paths = getSymbol("garage_door", op.widthM).paths;
+    } catch {
+      paths = [];
+    }
+    const selected = selectedElement?.kind === "opening" && selectedElement.id === op.id;
+    return (
+      <g
+        key={op.id}
+        data-opening-id={op.id}
+        transform={`translate(${c.x},${c.y}) rotate(${-op.angleDeg}) scale(${s},${-s})`}
+      >
+        {paths.map((d, i) => (
+          <path
+            key={i}
+            d={d}
+            fill="none"
+            strokeWidth={1.5 / s}
+            className={selected ? "stroke-sky-600" : "stroke-emerald-600"}
+          />
+        ))}
+      </g>
+    );
+  });
+}
 ```
 
 - [ ] **Step 4: Kør og bekræft PASS**
@@ -223,6 +237,7 @@ git commit -m "feat(floor-plan): tegn døre/vinduer som arkitekt-symboler i canv
 **Depends on:** A1
 **Parallel-safe med:** A2, A5
 **Files:**
+
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx`
 - Test: `src/components/floor-plan/FloorPlanCanvas.test.tsx` (tilføj case)
 
@@ -275,6 +290,7 @@ git commit -m "feat(floor-plan): vis målsætning i interaktiv canvas"
 **Depends on:** A1
 **Parallel-safe med:** A2, A3, A5
 **Files:**
+
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx`
 - Modify: `src/components/floor-plan/FloorPlanEditor.tsx` (videregiv `localFindings` til canvas via `buildRenderModel(..., { findings })`)
 - Test: `src/components/floor-plan/FloorPlanCanvas.test.tsx` (tilføj case)
@@ -287,11 +303,29 @@ it("renderer møbel-symboler som path-grupper når furniture findes", () => {
   const lvl = base.levels[0]!;
   const withFurniture = {
     ...base,
-    levels: [{ ...lvl, furniture: [{
-      id: "f1", levelId: lvl.id, roomId: null, furnitureKind: "sofa" as const,
-      position: { x: 2, y: 2 }, rotationDeg: 0, widthM: 2, depthM: 0.9,
-      source: { source: "manual" as const, confidence: "medium" as const, fetchedAt: null, requiresReview: false },
-    }] }],
+    levels: [
+      {
+        ...lvl,
+        furniture: [
+          {
+            id: "f1",
+            levelId: lvl.id,
+            roomId: null,
+            furnitureKind: "sofa" as const,
+            position: { x: 2, y: 2 },
+            rotationDeg: 0,
+            widthM: 2,
+            depthM: 0.9,
+            source: {
+              source: "manual" as const,
+              confidence: "medium" as const,
+              fetchedAt: null,
+              requiresReview: false,
+            },
+          },
+        ],
+      },
+    ],
   };
   const { container } = render(
     <FloorPlanCanvas
@@ -319,6 +353,7 @@ Expected: FAIL.
 - [ ] **Step 3: Implementér**
 
 Tre render-blokke, alle med reference i `render-floor-plan-svg.ts`:
+
 1. **Møbler** (`model.furniture`): `<g data-furniture-id transform="translate(cx,cy) rotate(-rot) scale(s,-s)">` med symbol-paths.
 2. **Zoner** (`model.zones`): polygon med stiplet kant + `hatchPaths`.
 3. **Compliance-badges** (`model.complianceOverlay.roomCompliance`): farvede cirkler i rummets øvre-venstre hjørne (rød=blocking, orange=warning, blå=info).
@@ -342,6 +377,7 @@ git commit -m "feat(floor-plan): møbel-symboler, zoner og compliance-badges i c
 **Depends on:** —
 **Parallel-safe med:** A1-A4 (rører primært domæne/lib + render-model; koordinér flet med A-canvas)
 **Files:**
+
 - Modify: `src/lib/floor-plan/hatch-patterns.ts` (tilføj evt. `plank`-mønster med retning)
 - Modify: `src/lib/floor-plan/floor-plan-render-model.ts` (tilføj `roomHatch` til `RenderRoom` eller en ny `roomFloorHatch`-liste)
 - Modify: `src/lib/floor-plan/render-floor-plan-svg.ts` (render rum-hatch)
@@ -358,12 +394,17 @@ import { generateSeedFloorPlan } from "@/domain/floor-plan/seed-generator";
 describe("rum-gulv-hatch", () => {
   it("giver hatch-paths pr. rum når floorFinishAssemblyId er sat", () => {
     const base = generateSeedFloorPlan({
-      projectId: "p1", targetAreaM2: 60,
+      projectId: "p1",
+      targetAreaM2: 60,
       rooms: [{ name: "Stue", roomType: "living" }],
     });
     const lvl = base.levels[0]!;
-    const withFinish = { ...base, levels: [{ ...lvl,
-      rooms: lvl.rooms.map((r) => ({ ...r, floorFinishAssemblyId: "oak_plank" })) }] };
+    const withFinish = {
+      ...base,
+      levels: [
+        { ...lvl, rooms: lvl.rooms.map((r) => ({ ...r, floorFinishAssemblyId: "oak_plank" })) },
+      ],
+    };
     const model = buildRenderModel(withFinish, lvl.id);
     const room = model.rooms[0]!;
     expect(room.floorHatchPaths.length).toBeGreaterThan(0);
@@ -399,6 +440,7 @@ git commit -m "feat(floor-plan): retningsbestemt gulv-finish-hatch pr. rum"
 **Mål:** Aktivér de deaktiverede værktøjer og kobl dem til det eksisterende kommando-vokabular. **Alle kommandoer findes allerede i `apply-command.ts`** — dette er ren UI-wiring.
 
 **Fælles cold-start kontekst for HELE WS-B:**
+
 - Læs `src/domain/floor-plan/command.schemas.ts` — `FloorPlanCommandSchema` (de eksakte kommando-former).
 - Læs `src/domain/floor-plan/apply-command.ts` — bekræft at `add_wall`, `add_opening`, `delete_wall`, `split_room`, `merge_rooms` allerede er implementeret.
 - Læs `src/hooks/useFloorPlanEditor.ts` — `commitCommand(command, baseDocument?, source?)` og `previewCommand`. UI sender kommandoer hertil.
@@ -408,8 +450,9 @@ git commit -m "feat(floor-plan): retningsbestemt gulv-finish-hatch pr. rum"
 ### Task B1: Udvid værktøjs-typen og toolbar med tegne-modes
 
 **Depends on:** —
-**Parallel-safe med:** A*-opgaver
+**Parallel-safe med:** A\*-opgaver
 **Files:**
+
 - Modify: `src/components/floor-plan/FloorPlanToolbar.tsx`
 - Test: `src/components/floor-plan/FloorPlanToolbar.test.tsx` (opret)
 
@@ -425,8 +468,14 @@ describe("FloorPlanToolbar", () => {
   it("har aktive knapper for tegn-væg og dør/vindue", () => {
     const { getByLabelText } = render(
       <FloorPlanToolbar
-        activeTool="select" snapEnabled canUndo canRedo
-        onToolChange={() => {}} onToggleSnap={() => {}} onUndo={() => {}} onRedo={() => {}}
+        activeTool="select"
+        snapEnabled
+        canUndo
+        canRedo
+        onToolChange={() => {}}
+        onToggleSnap={() => {}}
+        onUndo={() => {}}
+        onRedo={() => {}}
       />,
     );
     expect((getByLabelText("Tegn væg") as HTMLButtonElement).disabled).toBe(false);
@@ -458,6 +507,7 @@ git commit -m "feat(floor-plan): aktive tegne-værktøjer i toolbar"
 **Depends on:** B1
 **Parallel-safe med:** B4
 **Files:**
+
 - Create: `src/lib/floor-plan/draw-wall-interaction.ts` (pure: udregn snappet endepunkt + add_wall-kommando)
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx` (håndtér `activeTool === "draw_wall"`)
 - Test: `src/lib/floor-plan/draw-wall-interaction.test.ts` (opret)
@@ -501,7 +551,9 @@ export function orthoSnapEndpoint(start: Point2D, raw: Point2D): Point2D {
 }
 
 export function buildAddWallCommand(
-  levelId: string, start: Point2D, end: Point2D,
+  levelId: string,
+  start: Point2D,
+  end: Point2D,
 ): Extract<FloorPlanCommand, { type: "add_wall" }> {
   return { type: "add_wall", levelId, start, end, thicknessM: 0.1, wallKind: "interior" };
 }
@@ -523,6 +575,7 @@ git commit -m "feat(floor-plan): tegn-væg-værktøj med ortogonal-snap"
 **Depends on:** B1
 **Parallel-safe med:** B2, B4
 **Files:**
+
 - Create: `src/lib/floor-plan/add-opening-interaction.ts`
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx`
 - Test: `src/lib/floor-plan/add-opening-interaction.test.ts`
@@ -537,8 +590,14 @@ describe("add-opening", () => {
   it("bygger en dør-kommando med standard bredde/højde", () => {
     const cmd = buildAddOpeningCommand("level_0", "w1", 1.5, "door");
     expect(cmd).toEqual({
-      type: "add_opening", levelId: "level_0", wallId: "w1",
-      openingKind: "door", offsetAlongWallM: 1.5, widthM: 0.9, heightM: 2.1, swing: "left",
+      type: "add_opening",
+      levelId: "level_0",
+      wallId: "w1",
+      openingKind: "door",
+      offsetAlongWallM: 1.5,
+      widthM: 0.9,
+      heightM: 2.1,
+      swing: "left",
     });
   });
   it("bygger en vindue-kommando", () => {
@@ -557,11 +616,32 @@ describe("add-opening", () => {
 import type { FloorPlanCommand } from "@/domain/floor-plan/commands";
 
 export function buildAddOpeningCommand(
-  levelId: string, wallId: string, offsetAlongWallM: number, kind: "door" | "window",
+  levelId: string,
+  wallId: string,
+  offsetAlongWallM: number,
+  kind: "door" | "window",
 ): Extract<FloorPlanCommand, { type: "add_opening" }> {
   return kind === "door"
-    ? { type: "add_opening", levelId, wallId, openingKind: "door", offsetAlongWallM, widthM: 0.9, heightM: 2.1, swing: "left" }
-    : { type: "add_opening", levelId, wallId, openingKind: "window", offsetAlongWallM, widthM: 1.2, heightM: 1.4, swing: "none" };
+    ? {
+        type: "add_opening",
+        levelId,
+        wallId,
+        openingKind: "door",
+        offsetAlongWallM,
+        widthM: 0.9,
+        heightM: 2.1,
+        swing: "left",
+      }
+    : {
+        type: "add_opening",
+        levelId,
+        wallId,
+        openingKind: "window",
+        offsetAlongWallM,
+        widthM: 1.2,
+        heightM: 1.4,
+        swing: "none",
+      };
 }
 ```
 
@@ -581,6 +661,7 @@ git commit -m "feat(floor-plan): placér dør/vindue ved klik på væg"
 **Depends on:** —
 **Parallel-safe med:** B2, B3
 **Files:**
+
 - Modify: `src/components/floor-plan/FloorPlanInspector.tsx` (rum-panel når selection.kind === "room")
 - Modify: `src/components/floor-plan/FloorPlanEditor.tsx` (videregiv handlers)
 - Test: `src/components/floor-plan/FloorPlanInspector.test.tsx` (opret)
@@ -598,10 +679,18 @@ import { generateSeedFloorPlan } from "./seed-generator";
 
 describe("update_room", () => {
   it("omdøber rum og skifter rumtype", () => {
-    const doc = generateSeedFloorPlan({ projectId: "p1", targetAreaM2: 40,
-      rooms: [{ name: "Rum", roomType: "other" }] });
+    const doc = generateSeedFloorPlan({
+      projectId: "p1",
+      targetAreaM2: 40,
+      rooms: [{ name: "Rum", roomType: "other" }],
+    });
     const roomId = doc.levels[0]!.rooms[0]!.id;
-    const out = applyCommand(doc, { type: "update_room", roomId, name: "Køkken", roomType: "kitchen" });
+    const out = applyCommand(doc, {
+      type: "update_room",
+      roomId,
+      name: "Køkken",
+      roomType: "kitchen",
+    });
     expect(out.accepted).toBe(true);
     if (out.accepted) {
       const r = out.document.levels[0]!.rooms.find((x) => x.id === roomId)!;
@@ -648,6 +737,7 @@ git commit -m "feat(floor-plan): rum-konteksthandlinger + update_room-kommando"
 **Depends on:** —
 **Parallel-safe med:** alle B-opgaver
 **Files:**
+
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx` (keydown-handler)
 - Test: dækket af eksisterende `apply-command`-tests for `delete_wall`; tilføj en UI-test i `FloorPlanCanvas.test.tsx` der simulerer Delete på en valgt væg og forventer `onCommitCommand` kaldt med `{ type: "delete_wall" }`.
 
@@ -666,6 +756,7 @@ git commit -am "feat(floor-plan): slet valgt væg med Delete-tast"
 **Depends on:** A3 (mål skal renderes), B1
 **Parallel-safe med:** B4, B5
 **Files:**
+
 - Create: `src/lib/floor-plan/dimension-edit.ts` (pure: udregn `move_wall`-delta fra ønsket længde)
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx`
 - Test: `src/lib/floor-plan/dimension-edit.test.ts`
@@ -702,6 +793,7 @@ git commit -m "feat(floor-plan): type-to-set redigering af mål"
 **Depends on:** —
 **Parallel-safe med:** alle WS-A/WS-B-opgaver
 **Files:**
+
 - Create: `src/domain/floor-plan/layout-engine.ts`
 - Test: `src/domain/floor-plan/layout-engine.test.ts`
 - Modify (senere, C2): `src/domain/floor-plan/seed-generator.ts`
@@ -718,7 +810,8 @@ import { detectRooms } from "./topology-engine";
 describe("layout-engine", () => {
   it("producerer et lukket hylster + skillevægge der giver mindst antallet af rum", () => {
     const walls = layoutWalls({
-      widthM: 10, depthM: 8,
+      widthM: 10,
+      depthM: 8,
       rooms: [
         { name: "Stue", roomType: "living" },
         { name: "Køkken", roomType: "kitchen" },
@@ -732,7 +825,8 @@ describe("layout-engine", () => {
 
   it("giver ikke alle rum samme bredde (ikke strimler)", () => {
     const walls = layoutWalls({
-      widthM: 10, depthM: 8,
+      widthM: 10,
+      depthM: 8,
       rooms: [
         { name: "Bad", roomType: "bathroom" },
         { name: "Stue", roomType: "living" },
@@ -751,6 +845,7 @@ describe("layout-engine", () => {
 - [ ] **Step 3: Implementér**
 
 Skriv `layoutWalls(brief: { widthM: number; depthM: number; rooms: Array<{ name: string; roomType: RoomZone["roomType"] }> }): Wall[]`. Algoritme (deterministisk, ortogonal):
+
 1. Byg ydre hylster (4 vægge).
 2. Tildel hvert rum en vægtet arealandel ud fra rumtype (fx `bathroom: 0.5`, `living: 1.6`, `kitchen: 1.3`, `bedroom: 1.1`, default `1.0`).
 3. Placér en cirkulations-/gang-stribe (smal) hvis ≥4 rum.
@@ -773,6 +868,7 @@ git commit -m "feat(floor-plan): deterministisk 2D-layout-motor (erstatter strim
 **Depends on:** C1
 **Parallel-safe med:** —
 **Files:**
+
 - Modify: `src/domain/floor-plan/seed-generator.ts`
 - Modify: `src/domain/floor-plan/seed-generator.test.ts` (hvis findes; ellers opret)
 
@@ -791,6 +887,7 @@ git commit -am "feat(floor-plan): generér plan via layout-motor i stedet for st
 **Depends on:** —
 **Parallel-safe med:** alt
 **Files:**
+
 - Modify: `src/domain/floor-plan/floor-plan.schemas.ts` (`FURNITURE_KINDS`)
 - Create: `src/lib/floor-plan/symbols/landscape-symbols.ts`
 - Modify: `src/lib/floor-plan/symbols/symbol-registry.ts`
@@ -826,6 +923,7 @@ git commit -m "feat(floor-plan): symboler for bil, plante, havemøbler, walk-in"
 **Depends on:** B2
 **Parallel-safe med:** C3
 **Files:**
+
 - Modify: `src/lib/floor-plan/draw-wall-interaction.ts` (tilføj polylinje-state-reducer)
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx`
 - Test: `src/lib/floor-plan/draw-wall-interaction.test.ts` (tilføj cases)
@@ -845,6 +943,7 @@ git commit -am "feat(floor-plan): polylinje-vægtegning (klik-klik-klik)"
 **Depends on:** —
 **Parallel-safe med:** C1, C3
 **Files:**
+
 - Modify: `src/domain/floor-plan/command.schemas.ts` (`add_zone`)
 - Modify: `src/domain/floor-plan/apply-command.ts` (`applyAddZone`)
 - Test: `src/domain/floor-plan/apply-command.add-zone.test.ts`
@@ -869,6 +968,7 @@ git commit -m "feat(floor-plan): add_zone for carport/udhus/overdækkede arealer
 **Depends on:** A4 (badges i canvas) — kan dog laves uafhængigt
 **Parallel-safe med:** alt
 **Files:**
+
 - Modify: `src/components/floor-plan/VerificationPanel.tsx`
 - Test: `src/components/floor-plan/VerificationPanel.test.tsx`
 
@@ -894,6 +994,7 @@ git commit -m "feat(floor-plan): findings-panel med konsekvens og næste skridt"
 **Depends on:** —
 **Parallel-safe med:** alt
 **Files:**
+
 - Modify: `src/lib/floor-plan/floor-plan-sheet.ts`
 - Modify: `src/lib/floor-plan/render-floor-plan-sheet-pdf.ts`
 - Test: `src/lib/floor-plan/floor-plan-sheet.test.ts` (opret hvis mangler)
@@ -915,6 +1016,7 @@ git commit -am "test(floor-plan): sikr titelblok/nordpil/målestok/arealskema i 
 **Depends on:** A1-A5
 **Parallel-safe med:** —
 **Files:**
+
 - Test: `src/lib/floor-plan/wysiwyg-parity.test.ts` (opret)
 
 - [ ] **Step 1: Skriv test** — byg samme `FloorPlanDocument`, kald `buildRenderModel(doc, levelId, { findings })` én gang og assert at både den interaktive canvas og PDF-rendereren bruger SAMME model-felter (samme antal `wallPoche`-polygoner, samme antal `openings`, samme `dimensionChains`). Da begge konsumerer `buildRenderModel`, tester dette at ingen renderer dropper felter.
@@ -936,6 +1038,7 @@ git commit -m "test(floor-plan): WYSIWYG-paritet mellem editor og PDF"
 **Depends on:** —
 **Parallel-safe med:** WS-A, WS-C domæne-opgaver
 **Files:**
+
 - Modify: `src/domain/floor-plan/floor-plan.schemas.ts`
 - Test: `src/domain/floor-plan/floor-plan.schemas.test.ts` (tilføj cases)
 
@@ -950,9 +1053,17 @@ import { OpeningSchema, RoomZoneSchema } from "./floor-plan.schemas";
 describe("annotations-felter", () => {
   it("Opening har operable med default false", () => {
     const base = {
-      id: "o1", levelId: "l0", wallId: "w1", openingKind: "window",
-      offsetAlongWallM: 1, widthM: 1.2, heightM: 1.4, sillHeightM: 0.9,
-      swing: "none", productTypeId: null, locked: false,
+      id: "o1",
+      levelId: "l0",
+      wallId: "w1",
+      openingKind: "window",
+      offsetAlongWallM: 1,
+      widthM: 1.2,
+      heightM: 1.4,
+      sillHeightM: 0.9,
+      swing: "none",
+      productTypeId: null,
+      locked: false,
       source: { source: "manual", confidence: "medium", fetchedAt: null, requiresReview: false },
     };
     expect(OpeningSchema.parse(base).operable).toBe(false);
@@ -961,12 +1072,26 @@ describe("annotations-felter", () => {
 
   it("RoomZone har ceilingHeightM og floorOffsetM (nullable, default null)", () => {
     const base = {
-      id: "r1", levelId: "l0", name: "Stue", roomType: "living",
-      polygon: { vertices: [{x:0,y:0},{x:1,y:0},{x:1,y:1}] },
-      netAreaM2: 1, minAreaM2: null, targetAreaM2: null,
-      floorFinishAssemblyId: null, ceilingFinishAssemblyId: null,
-      wallFinishAssemblyByWallId: {}, ventilationNeed: "natural",
-      wetRoomZone: false, daylightRelevant: true,
+      id: "r1",
+      levelId: "l0",
+      name: "Stue",
+      roomType: "living",
+      polygon: {
+        vertices: [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+          { x: 1, y: 1 },
+        ],
+      },
+      netAreaM2: 1,
+      minAreaM2: null,
+      targetAreaM2: null,
+      floorFinishAssemblyId: null,
+      ceilingFinishAssemblyId: null,
+      wallFinishAssemblyByWallId: {},
+      ventilationNeed: "natural",
+      wetRoomZone: false,
+      daylightRelevant: true,
       source: { source: "manual", confidence: "medium", fetchedAt: null, requiresReview: false },
     };
     const parsed = RoomZoneSchema.parse(base);
@@ -991,6 +1116,7 @@ git commit -m "feat(floor-plan): additive felter for operable vinduer og rum-kot
 **Depends on:** F1
 **Parallel-safe med:** —
 **Files:**
+
 - Modify: `src/lib/floor-plan/floor-plan-render-model.ts` (tilføj `annotations`-felt til modellen)
 - Test: `src/lib/floor-plan/floor-plan-render-model.test.ts`
 
@@ -1010,6 +1136,7 @@ git commit -m "feat(floor-plan): annotations i render-model (kote/lofthøjde/opl
 **Depends on:** F2
 **Parallel-safe med:** —
 **Files:**
+
 - Modify: `src/lib/floor-plan/render-floor-plan-svg.ts`
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx`
 - Test: `src/lib/floor-plan/render-floor-plan-svg.test.ts` (tilføj case)
@@ -1030,6 +1157,7 @@ git commit -m "feat(floor-plan): render annotations-lag i canvas og PDF"
 **Depends on:** F2
 **Parallel-safe med:** F3
 **Files:**
+
 - Modify: `src/lib/floor-plan/floor-plan-render-model.ts` (label pr. fixture/furniture ud fra kind)
 - Test: `src/lib/floor-plan/floor-plan-render-model.test.ts`
 
@@ -1048,6 +1176,7 @@ git commit -am "feat(floor-plan): installations-/hvidevarelabels fra inventar-ki
 **Depends on:** F3
 **Parallel-safe med:** F4
 **Files:**
+
 - Modify: `src/domain/floor-plan/command.schemas.ts` (`add_annotation`)
 - Modify: `src/domain/floor-plan/apply-command.ts` (`applyAddAnnotation`)
 - Modify: `src/components/floor-plan/FloorPlanCanvas.tsx` + `FloorPlanToolbar.tsx` (annotations-værktøj)
@@ -1081,30 +1210,30 @@ git commit -m "feat(floor-plan): fri-annotation-værktøj"
 ## Afhængigheds- og parallel-oversigt (til fordeling på sessioner)
 
 | Opgave | Depends on | Kan starte straks |
-|---|---|---|
-| A1 | — | ✅ |
-| A2 | A1 | efter A1 |
-| A3 | A1 | efter A1 |
-| A4 | A1 | efter A1 |
-| A5 | — | ✅ |
-| B1 | — | ✅ |
-| B2 | B1 | efter B1 |
-| B3 | B1 | efter B1 |
-| B4 | — | ✅ (domæne-del) |
-| B5 | — | ✅ |
-| B6 | A3, B1 | efter A3+B1 |
-| C1 | — | ✅ |
-| C2 | C1 | efter C1 |
-| C3 | — | ✅ |
-| C4 | B2 | efter B2 |
-| C5 | — | ✅ |
-| D1 | — | ✅ |
-| E1 | — | ✅ |
-| E2 | A1-A5 | sidst |
-| F1 | — | ✅ |
-| F2 | F1 | efter F1 |
-| F3 | F2 | efter F2 |
-| F4 | F2 | efter F2 |
-| F5 | F3 | efter F3 |
+| ------ | ---------- | ----------------- |
+| A1     | —          | ✅                |
+| A2     | A1         | efter A1          |
+| A3     | A1         | efter A1          |
+| A4     | A1         | efter A1          |
+| A5     | —          | ✅                |
+| B1     | —          | ✅                |
+| B2     | B1         | efter B1          |
+| B3     | B1         | efter B1          |
+| B4     | —          | ✅ (domæne-del)   |
+| B5     | —          | ✅                |
+| B6     | A3, B1     | efter A3+B1       |
+| C1     | —          | ✅                |
+| C2     | C1         | efter C1          |
+| C3     | —          | ✅                |
+| C4     | B2         | efter B2          |
+| C5     | —          | ✅                |
+| D1     | —          | ✅                |
+| E1     | —          | ✅                |
+| E2     | A1-A5      | sidst             |
+| F1     | —          | ✅                |
+| F2     | F1         | efter F1          |
+| F3     | F2         | efter F2          |
+| F4     | F2         | efter F2          |
+| F5     | F3         | efter F3          |
 
 **Straks-startbare i parallel (ingen fil-overlap):** A1, A5, B1, B4(domæne), B5, C1, C3, C5, D1, E1, F1.

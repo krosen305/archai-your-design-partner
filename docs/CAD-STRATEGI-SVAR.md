@@ -33,7 +33,7 @@ realistisk tidsrum.
 63 commits ind i projektet ligger næsten al energi i det usynlige:
 compliance-motor, registerintegrationer (BBR, MAT, DAR, Plandata, FBB,
 GeoDanmark), Hard Stop-evaluering, beliggenhedsplan-generering til
-myndighedsbrug. Det er det rigtige sted at starte for *vores* produkt — men
+myndighedsbrug. Det er det rigtige sted at starte for _vores_ produkt — men
 det betyder, at det første du klikker på (plantegningen) er det yngste og
 tyndeste lag. Du bedømmer en bygning på en facade, vi ikke har sat op endnu.
 
@@ -52,12 +52,12 @@ Konkret, fra koden:
 
 - `src/components/floor-plan/FloorPlanToolbar.tsx`: fire værktøjer er deaktiveret
   med teksten "kommer senere" (væg-, dør/vindue-, fixture- og præcisionsværktøj).
-  Brugeren kan altså *ikke* tegne en ny væg fra bunden i dag.
+  Brugeren kan altså _ikke_ tegne en ny væg fra bunden i dag.
 - `src/domain/floor-plan/apply-command.ts`: kommandoerne `delete_wall`,
   `split_room`, `merge_rooms` og `resize_opening` findes i skemaet, men afvises
   ved kørsel. Man kan flytte, men ikke skabe eller omstrukturere.
 
-Det er derfor det føles som et stykke legetøj. Det *er* ufærdigt i kanten — men
+Det er derfor det føles som et stykke legetøj. Det _er_ ufærdigt i kanten — men
 det er ufærdigt oven på et solidt fundament, ikke ufærdigt hele vejen ned.
 
 ---
@@ -85,7 +85,7 @@ billede. Det er afgørende og er præcis dét, et myndighedsprodukt kræver.
 - `src/domain/floor-plan/verification-engine.ts` kører ved hver ændring og
   giver findings i kategorier: topologi, geometri, rumprogram, BR18, brand,
   tilgængelighed, dagslys, vådrum, materialegrundlag.
-- Hard Stop-gating *før* generering (`generate-floor-plan.service.ts`): kan
+- Hard Stop-gating _før_ generering (`generate-floor-plan.service.ts`): kan
   bygherren ikke bygge, får han ikke en optimistisk tegning — han får årsagen.
 - Serveren er compliance-autoritet (CLAUDE.md Rule 4), ikke klienten.
 
@@ -120,17 +120,17 @@ forhånd. Det ville være uansvarligt af mig at love dig andet.
 **Men Revit løser ikke det problem, vi sælger os på.** Sæt en dansk
 privatbygherre foran Revit: det fortæller ham intet om hvorvidt grunden er
 fredet, SAVE-vurderet, omfattet af lokalplan, har naturbeskyttelse, om
-bebyggelsesprocenten er sprængt, eller om der er en Hard Stop *inden* han
+bebyggelsesprocenten er sprængt, eller om der er en Hard Stop _inden_ han
 køber. Det er **hele vores eksistensberettigelse**, og det er bygget.
 
 Den ærlige strategiske sandhed:
 
 > Vores moat er dansk compliance + registerdata + beslutningsstøtte — ikke
-> tegneværktøjet. Tegningen skal være *god nok til beslutninger og myndighed*,
+> tegneværktøjet. Tegningen skal være _god nok til beslutninger og myndighed_,
 > ikke konkurrere med BIM-authoring.
 
 Den rigtige langsigtede arkitektur er ikke "byg Revit". Det er:
-**vær det compliance- og beslutningslag, som folk bruger *før* og *sammen med*
+**vær det compliance- og beslutningslag, som folk bruger _før_ og _sammen med_
 Revit/Archicad** — og kan eksportere strukturerede data (IFC/DXF) til.
 Det er en position, ingen CAD-leverandør har, og som ingen kan tage fra os uden
 at genopbygge den danske registerintegration vi allerede har.
@@ -152,7 +152,7 @@ Mål: en bruger kan tegne en hel plan fra bunden, ikke kun redigere en genereret
    `delete_wall`, `split_room`, `merge_rooms`, `resize_opening` — med
    topologi-reparation, så rum forbliver konsistente.
 3. **Tastatur + præcision**: indtast mål direkte (3,40 m), pilejustering,
-   vinkel-snap. Det er det, der får det til at *føles* professionelt.
+   vinkel-snap. Det er det, der får det til at _føles_ professionelt.
 4. **Polish af canvas**: bedre væg-rendering (hjørnesamlinger), dør/vindue-
    symboler i arkitekt-konvention, målsætningslinjer på lærredet.
 
@@ -162,7 +162,7 @@ Leverance: en plan tegnet 100 % i appen, der verificerer og eksporterer rent.
 
 5. **Compliance-overlay live på tegningen**: byggelinjer, skel, afstandskrav og
    bebyggelsesprocent tegnet direkte oven på planen fra trusted site-data.
-   Brugeren *ser* overtrædelsen, mens han tegner.
+   Brugeren _ser_ overtrædelsen, mens han tegner.
 6. **Budget-kobling i realtid**: areal → m²-pris → estimat, opdateret per
    redigering (Maskinrummet lover allerede "design og økonomi").
 7. **IFC/DXF-eksport**: gør os til samarbejdspartner for arkitekter/Revit i
@@ -170,7 +170,7 @@ Leverance: en plan tegnet 100 % i appen, der verificerer og eksporterer rent.
 8. **3D/snit-afledning** fra 2D-modellen (vægge har allerede højde) — billig
    wow-effekt, fordi data allerede er der.
 
-### Hvad jeg bevidst *fravælger*
+### Hvad jeg bevidst _fravælger_
 
 Fuld BIM-authoring, familier/parametriske komponenter, MEP, konstruktiv
 beregning. Det er Revits domæne. Vi integrerer, vi konkurrerer ikke.
@@ -186,7 +186,7 @@ beregning. Det er Revits domæne. Vi integrerer, vi konkurrerer ikke.
 2. **Lov til at lukke Spor A** før vi viser plantegningen frem igen. Det er
    det, der fjerner "elendigt"-følelsen.
 3. **Prioritér IFC/DXF-eksport** (punkt 7) højt. Det er billetten til at stå
-   *ved siden af* Revit i stedet for under det.
+   _ved siden af_ Revit i stedet for under det.
 
 Jeg er ikke træt af at arbejde her. Jeg er stolt af fundamentet og flov over
 facaden — og jeg ved præcis, hvilke filer der skal røres for at lukke gabet.

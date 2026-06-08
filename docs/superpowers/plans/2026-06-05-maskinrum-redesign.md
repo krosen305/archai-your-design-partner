@@ -9,6 +9,7 @@
 **Tech Stack:** React, TanStack Router, Zustand (`useProject`), Framer Motion, Tailwind CSS, `bun:test` for unit tests.
 
 **Data Authority (ref: docs/dataarkitektur-artefakt.md):**
+
 - Alle compliance-signaler kommer fra `ruleEngineResult` / `complianceFlags` — aldrig fra UI-beregning
 - `hard_stop` og `hard_stop_reason` er typed SQL-kolonner — source of truth for Verdict
 - `grundareal_m2` og `bebygget_areal_m2` er typed kolonner — bruges i GrundenSection
@@ -20,28 +21,28 @@
 
 ## Filer der oprettes
 
-| Fil | Ansvar |
-|-----|--------|
-| `src/lib/projekt-readiness.ts` | Ren funktion: `beregnProjektReadiness(dataStatus, complianceFlags) → number` |
-| `src/lib/projekt-readiness.test.ts` | Unit tests for readiness-beregning |
-| `src/components/cockpit/KommerSnart.tsx` | Delt placeholder-komponent — erstatter alle mock-labels |
-| `src/components/cockpit/layout/CockpitLayout.tsx` | Shell: sidebar (140 px) + scrollbart main-panel |
-| `src/components/cockpit/layout/CockpitSidebar.tsx` | Venstre nav med 6 sektioner + dot-indikator |
-| `src/components/cockpit/layout/CockpitHeader.tsx` | Top-bar: adresse + Plantegning/Del/... |
-| `src/components/cockpit/sections/VerdiktSection.tsx` | Hero-card: "Du kan bygge her." + metrics + readiness + CTA |
-| `src/components/cockpit/sections/OpmærksomhedSection.tsx` | Top-3 complianceFlags + "Vis alle (N)" |
-| `src/components/cockpit/sections/GrundenSection.tsx` | Kort + nøgletal fra MAT/BBR |
-| `src/components/cockpit/sections/PlanReguleringSection.tsx` | Lokalplaner + kommuneplanramme + servitutter |
-| `src/components/cockpit/sections/OkonomiSection.tsx` | VUR-vurdering + budget-estimat |
-| `src/components/cockpit/sections/DatakilderSection.tsx` | Status-dots for alle DataSourceKind |
+| Fil                                                         | Ansvar                                                                       |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `src/lib/projekt-readiness.ts`                              | Ren funktion: `beregnProjektReadiness(dataStatus, complianceFlags) → number` |
+| `src/lib/projekt-readiness.test.ts`                         | Unit tests for readiness-beregning                                           |
+| `src/components/cockpit/KommerSnart.tsx`                    | Delt placeholder-komponent — erstatter alle mock-labels                      |
+| `src/components/cockpit/layout/CockpitLayout.tsx`           | Shell: sidebar (140 px) + scrollbart main-panel                              |
+| `src/components/cockpit/layout/CockpitSidebar.tsx`          | Venstre nav med 6 sektioner + dot-indikator                                  |
+| `src/components/cockpit/layout/CockpitHeader.tsx`           | Top-bar: adresse + Plantegning/Del/...                                       |
+| `src/components/cockpit/sections/VerdiktSection.tsx`        | Hero-card: "Du kan bygge her." + metrics + readiness + CTA                   |
+| `src/components/cockpit/sections/OpmærksomhedSection.tsx`   | Top-3 complianceFlags + "Vis alle (N)"                                       |
+| `src/components/cockpit/sections/GrundenSection.tsx`        | Kort + nøgletal fra MAT/BBR                                                  |
+| `src/components/cockpit/sections/PlanReguleringSection.tsx` | Lokalplaner + kommuneplanramme + servitutter                                 |
+| `src/components/cockpit/sections/OkonomiSection.tsx`        | VUR-vurdering + budget-estimat                                               |
+| `src/components/cockpit/sections/DatakilderSection.tsx`     | Status-dots for alle DataSourceKind                                          |
 
 ## Filer der modificeres
 
-| Fil | Ændring |
-|-----|---------|
-| `src/routes/projekt.$id.cockpit.tsx` | Erstat 3-tab layout med `CockpitLayout` + sektioner |
-| `src/components/cockpit/AnalyseTab.tsx` | Fjern MOCK-badges (kilde === "mock"), fjern `FEATURE_FLAGS.fjernvarmeMock`-check |
-| `src/components/cockpit/RiskOverview.tsx` | Fjern `hasMockRiskSignals`-banner |
+| Fil                                       | Ændring                                                                          |
+| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| `src/routes/projekt.$id.cockpit.tsx`      | Erstat 3-tab layout med `CockpitLayout` + sektioner                              |
+| `src/components/cockpit/AnalyseTab.tsx`   | Fjern MOCK-badges (kilde === "mock"), fjern `FEATURE_FLAGS.fjernvarmeMock`-check |
+| `src/components/cockpit/RiskOverview.tsx` | Fjern `hasMockRiskSignals`-banner                                                |
 
 ---
 
@@ -52,6 +53,7 @@ Denne funktion driver progress-baren i VerdiktSection. Den beregnes udelukkende 
 **Logik:** Tæl kun de "handlingsbare" datakilder (ikke `billedanalyse`, `husDna`, `byggeanalyse` da disse er sekundære). En kilde tæller fuld score hvis `fresh`, halv score hvis `stale`, nul hvis `missing`/`error`. Compliance-komponenten: procent af flags der er `ok` vs total (ved 0 flags = 100%). Samlet = 0.6 × datakomplethed + 0.4 × complianceok, rundet til nærmeste heltal.
 
 **Files:**
+
 - Create: `src/lib/projekt-readiness.ts`
 - Create: `src/lib/projekt-readiness.test.ts`
 
@@ -64,14 +66,28 @@ import { beregnProjektReadiness } from "./projekt-readiness";
 import type { DataSourceKind, DataSourceStatus } from "@/types/project-state";
 import type { ComplianceFlag } from "@/types/project-state";
 
-function makeStatus(overrides: Partial<Record<DataSourceKind, DataSourceStatus>>): Record<DataSourceKind, DataSourceStatus> {
+function makeStatus(
+  overrides: Partial<Record<DataSourceKind, DataSourceStatus>>,
+): Record<DataSourceKind, DataSourceStatus> {
   const base: Record<DataSourceKind, DataSourceStatus> = {
-    bbr: "fresh", lokalplaner: "fresh", kommuneplanramme: "fresh",
-    fbb: "fresh", naturbeskyttelse: "fresh", arealdata: "fresh",
-    dkjord: "fresh", geusRisk: "fresh", servitutter: "fresh",
-    terrain: "fresh", fjernvarme: "fresh", naboer: "fresh",
-    matGeometri: "fresh", vurdering: "fresh", byggeanalyse: "fresh",
-    billedanalyse: "fresh", husDna: "fresh", tjekditnet: "fresh",
+    bbr: "fresh",
+    lokalplaner: "fresh",
+    kommuneplanramme: "fresh",
+    fbb: "fresh",
+    naturbeskyttelse: "fresh",
+    arealdata: "fresh",
+    dkjord: "fresh",
+    geusRisk: "fresh",
+    servitutter: "fresh",
+    terrain: "fresh",
+    fjernvarme: "fresh",
+    naboer: "fresh",
+    matGeometri: "fresh",
+    vurdering: "fresh",
+    byggeanalyse: "fresh",
+    billedanalyse: "fresh",
+    husDna: "fresh",
+    tjekditnet: "fresh",
     energimaerke: "fresh",
   };
   return { ...base, ...overrides };
@@ -84,11 +100,21 @@ describe("beregnProjektReadiness", () => {
 
   test("alle handlingsbare missing + ingen flags → 40 (compliance 100%, data 0%)", () => {
     const all: Partial<Record<DataSourceKind, DataSourceStatus>> = {
-      bbr: "missing", lokalplaner: "missing", kommuneplanramme: "missing",
-      fbb: "missing", naturbeskyttelse: "missing", arealdata: "missing",
-      dkjord: "missing", geusRisk: "missing", servitutter: "missing",
-      terrain: "missing", fjernvarme: "missing", naboer: "missing",
-      matGeometri: "missing", vurdering: "missing", tjekditnet: "missing",
+      bbr: "missing",
+      lokalplaner: "missing",
+      kommuneplanramme: "missing",
+      fbb: "missing",
+      naturbeskyttelse: "missing",
+      arealdata: "missing",
+      dkjord: "missing",
+      geusRisk: "missing",
+      servitutter: "missing",
+      terrain: "missing",
+      fjernvarme: "missing",
+      naboer: "missing",
+      matGeometri: "missing",
+      vurdering: "missing",
+      tjekditnet: "missing",
       energimaerke: "missing",
     };
     expect(beregnProjektReadiness(makeStatus(all), [])).toBe(40);
@@ -96,11 +122,21 @@ describe("beregnProjektReadiness", () => {
 
   test("alle handlingsbare stale → 70", () => {
     const all: Partial<Record<DataSourceKind, DataSourceStatus>> = {
-      bbr: "stale", lokalplaner: "stale", kommuneplanramme: "stale",
-      fbb: "stale", naturbeskyttelse: "stale", arealdata: "stale",
-      dkjord: "stale", geusRisk: "stale", servitutter: "stale",
-      terrain: "stale", fjernvarme: "stale", naboer: "stale",
-      matGeometri: "stale", vurdering: "stale", tjekditnet: "stale",
+      bbr: "stale",
+      lokalplaner: "stale",
+      kommuneplanramme: "stale",
+      fbb: "stale",
+      naturbeskyttelse: "stale",
+      arealdata: "stale",
+      dkjord: "stale",
+      geusRisk: "stale",
+      servitutter: "stale",
+      terrain: "stale",
+      fjernvarme: "stale",
+      naboer: "stale",
+      matGeometri: "stale",
+      vurdering: "stale",
+      tjekditnet: "stale",
       energimaerke: "stale",
     };
     // 0.5 datakomplethed * 0.6 + 1.0 compliance * 0.4 = 0.3 + 0.4 = 0.7 → 70
@@ -144,9 +180,21 @@ import type { ComplianceFlag } from "@/types/project-state";
 
 // Handlingsbare kilder — sekundære AI-pipeline-kilder tæller ikke med
 const HANDLINGSBARE_KILDER: readonly DataSourceKind[] = [
-  "bbr", "lokalplaner", "kommuneplanramme", "fbb", "naturbeskyttelse",
-  "arealdata", "dkjord", "geusRisk", "servitutter", "terrain",
-  "fjernvarme", "naboer", "matGeometri", "vurdering", "tjekditnet",
+  "bbr",
+  "lokalplaner",
+  "kommuneplanramme",
+  "fbb",
+  "naturbeskyttelse",
+  "arealdata",
+  "dkjord",
+  "geusRisk",
+  "servitutter",
+  "terrain",
+  "fjernvarme",
+  "naboer",
+  "matGeometri",
+  "vurdering",
+  "tjekditnet",
   "energimaerke",
 ];
 
@@ -204,6 +252,7 @@ git commit -m "feat(readiness): add beregnProjektReadiness pure function with te
 Alle steder hvor UI i dag viser "MOCK"-badge (baseret på `kilde === "mock"` eller `FEATURE_FLAGS.fjernvarmeMock`) erstattes med ingenting eller med `<KommerSnart />`. Domænelogikken bag mock-data røres ikke.
 
 **Files:**
+
 - Create: `src/components/cockpit/KommerSnart.tsx`
 - Modify: `src/components/cockpit/AnalyseTab.tsx`
 - Modify: `src/components/cockpit/RiskOverview.tsx`
@@ -225,9 +274,7 @@ export function KommerSnartCard({ title, beskrivelse }: { title: string; beskriv
   return (
     <div className="rounded-md border border-border/40 bg-[#0c0c0c] p-4">
       <p className="text-sm font-medium text-foreground mb-1">{title}</p>
-      {beskrivelse && (
-        <p className="text-xs text-muted-foreground mb-3">{beskrivelse}</p>
-      )}
+      {beskrivelse && <p className="text-xs text-muted-foreground mb-3">{beskrivelse}</p>}
       <KommerSnart />
     </div>
   );
@@ -237,6 +284,7 @@ export function KommerSnartCard({ title, beskrivelse }: { title: string; beskriv
 - [ ] **Step 2.2: Fjern MOCK-badge i `AnalyseTab.tsx` — AI byggeanalyse (linje ~218-223)**
 
 Find blokken:
+
 ```tsx
 badge:
   byggeanalyse?.kilde === "mock" ? (
@@ -247,6 +295,7 @@ badge:
 ```
 
 Erstat med:
+
 ```tsx
 badge: null,
 ```
@@ -254,12 +303,13 @@ badge: null,
 - [ ] **Step 2.3: Fjern `FEATURE_FLAGS.fjernvarmeMock`-check i `AnalyseTab.tsx` (linje ~482-486)**
 
 Find blokken:
+
 ```tsx
-{FEATURE_FLAGS.fjernvarmeMock && (
-  <span className="text-[9px] border border-warning/40 text-warning rounded px-1">
-    MOCK
-  </span>
-)}
+{
+  FEATURE_FLAGS.fjernvarmeMock && (
+    <span className="text-[9px] border border-warning/40 text-warning rounded px-1">MOCK</span>
+  );
+}
 ```
 
 Slet disse 5 linjer komplet.
@@ -267,12 +317,13 @@ Slet disse 5 linjer komplet.
 - [ ] **Step 2.4: Fjern `kilde === "mock"`-badges i `AnalyseTab.tsx` — terrain (~633-637), servitutter (~688-692), geusRisk (~761-765), byggeanalyse kort (~578-582)**
 
 For hvert af disse mønstre:
+
 ```tsx
-{data.kilde === "mock" && (
-  <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">
-    MOCK
-  </span>
-)}
+{
+  data.kilde === "mock" && (
+    <span className="ml-2 text-[9px] border border-warning/40 text-warning rounded px-1">MOCK</span>
+  );
+}
 ```
 
 Slet blokken (behold omgivende struktur).
@@ -280,12 +331,15 @@ Slet blokken (behold omgivende struktur).
 - [ ] **Step 2.5: Fjern `hasMockRiskSignals`-banner i `RiskOverview.tsx` (linje ~89-93)**
 
 Find:
+
 ```tsx
-{hasMockRiskSignals && (
-  <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
-    Geoteknik- og miljøsignaler er foreløbige mock-data, ikke live-verificeret compliance.
-  </div>
-)}
+{
+  hasMockRiskSignals && (
+    <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
+      Geoteknik- og miljøsignaler er foreløbige mock-data, ikke live-verificeret compliance.
+    </div>
+  );
+}
 ```
 
 Slet blokken. Variablen `hasMockRiskSignals` kan også fjernes fra komponentens scope.
@@ -310,6 +364,7 @@ git commit -m "feat(ui): add KommerSnart component, remove all MOCK badges from 
 Shell-komponenter der styrer det nye layout. Datahentning sker stadig i `projekt.$id.cockpit.tsx` — layout-komponenterne modtager alt via props.
 
 **Files:**
+
 - Create: `src/components/cockpit/layout/CockpitHeader.tsx`
 - Create: `src/components/cockpit/layout/CockpitSidebar.tsx`
 - Create: `src/components/cockpit/layout/CockpitLayout.tsx`
@@ -481,9 +536,7 @@ export function CockpitLayout({ adresse, adresseId, projectId, children }: Cockp
       <CockpitHeader adresse={adresse} adresseId={adresseId} projectId={projectId} />
       <div className="flex flex-1 overflow-hidden">
         <CockpitSidebar active={active} onNavigate={scrollTo} />
-        <main className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
-          {children(scrollTo)}
-        </main>
+        <main className="flex-1 overflow-y-auto px-8 py-8 space-y-8">{children(scrollTo)}</main>
       </div>
     </div>
   );
@@ -520,11 +573,13 @@ git commit -m "feat(layout): add CockpitLayout, CockpitSidebar, CockpitHeader sh
 Anvender `hard_stop` (typed kolonne), `hard_stop_reason`, `complianceMetrics.maxEtager`, `maxBygningsareal` (beregnet) og `beregnProjektReadiness`.
 
 **Data mapping (ref: dataarkitektur-artefakt.md):**
+
 - `hard_stop` → `projects.hard_stop` typed kolonne (source of truth)
 - `maxBygningsareal` = `grundareal_m2 × (maxBebyggelsesprocent / 100)` — afledt i `complianceMetrics`
 - `maxEtager` → `complianceMetrics.maxEtager` fra regelmotor
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/VerdiktSection.tsx`
 
 - [ ] **Step 4.1: Opret `VerdiktSection.tsx`**
@@ -577,9 +632,7 @@ export function VerdiktSection({ metrics }: VerdiktSectionProps) {
           className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`}
         />
 
-        {metrikLinje && (
-          <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>
-        )}
+        {metrikLinje && <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>}
 
         {!kanBygge && hard_stop_reason && (
           <p className="mt-3 text-sm text-danger/90 leading-relaxed">{hard_stop_reason}</p>
@@ -640,9 +693,11 @@ git commit -m "feat(cockpit): add VerdiktSection with readiness bar and hard-sto
 Viser de tre vigtigste `complianceFlags` sorteret efter alvorlighed (blocker → advarsel → ok). Brugeren kan ekspandere til alle flags.
 
 **Data mapping (ref: dataarkitektur-artefakt.md):**
+
 - `complianceFlags` = afledt af `ruleEngineResult` + registerdata — source of truth for hvad brugeren skal handle på
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/OpmærksomhedSection.tsx`
 
 - [ ] **Step 5.1: Opret `OpmærksomhedSection.tsx`**
@@ -756,12 +811,14 @@ git commit -m "feat(cockpit): add OpmærksomhedSection with top-3 compliance fla
 Genbruger `MatrikelMap`. Viser `grundareal_m2`, `bebygget_areal_m2`, `maxBygningsareal`, `zoneType`. `northOrientation` (hardkodet til "S" i kodebasen — se dataarkitektur-artefakt governance) vises IKKE.
 
 **Data mapping (ref: dataarkitektur-artefakt.md):**
+
 - `grundareal_m2` → `projects.grundareal_m2` typed kolonne (MAT SSOT)
 - `bebygget_areal_m2` → `projects.bebygget_areal_m2` typed kolonne (BBR SSOT)
 - `maxBygningsareal` → `complianceMetrics.maxBygningsareal` (beregnet: `grundareal × maxPct / 100`)
 - `zoneType` → `compliance_data.plandataContext.zoneType` (Plandata SSOT)
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/GrundenSection.tsx`
 
 - [ ] **Step 6.1: Opret `GrundenSection.tsx`**
@@ -809,27 +866,15 @@ export function GrundenSection({ bbr, metrics, naboer }: GrundenSectionProps) {
         <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
           {/* Kort */}
           <div className="rounded-lg overflow-hidden aspect-video max-h-[240px]">
-            <MatrikelMap
-              bbr={bbr}
-              naboer={naboer}
-              jordstykkeLokalId={jordstykkeId}
-            />
+            <MatrikelMap bbr={bbr} naboer={naboer} jordstykkeLokalId={jordstykkeId} />
           </div>
 
           {/* Nøgletal */}
           <div className="space-y-5 min-w-[140px]">
-            {grundareal != null && (
-              <Måletal label="Grundareal" value={`${grundareal} m²`} />
-            )}
-            {zone && (
-              <Måletal label="" value={zone} />
-            )}
-            {bebygget != null && (
-              <Måletal label="Bebygget i dag" value={`${bebygget} m²`} />
-            )}
-            {maksAreal != null && (
-              <Måletal label="Maks tilladt" value={`${maksAreal} m²`} />
-            )}
+            {grundareal != null && <Måletal label="Grundareal" value={`${grundareal} m²`} />}
+            {zone && <Måletal label="" value={zone} />}
+            {bebygget != null && <Måletal label="Bebygget i dag" value={`${bebygget} m²`} />}
+            {maksAreal != null && <Måletal label="Maks tilladt" value={`${maksAreal} m²`} />}
           </div>
         </div>
 
@@ -853,7 +898,10 @@ export function GrundenSection({ bbr, metrics, naboer }: GrundenSectionProps) {
                 {[
                   { label: "Byggeår", value: bbr.byggeaar?.toString() },
                   { label: "Ombygningsår", value: bbr.ombygningsaar?.toString() },
-                  { label: "Samlet areal", value: bbr.samlet_areal != null ? `${bbr.samlet_areal} m²` : undefined },
+                  {
+                    label: "Samlet areal",
+                    value: bbr.samlet_areal != null ? `${bbr.samlet_areal} m²` : undefined,
+                  },
                   { label: "Antal etager", value: bbr.antal_etager?.toString() },
                   { label: "Anvendelse", value: bbr.anvendelse_tekst },
                   { label: "Varmeinstallation", value: bbr.varmeinstallation },
@@ -864,7 +912,10 @@ export function GrundenSection({ bbr, metrics, naboer }: GrundenSectionProps) {
                 ]
                   .filter((r) => r.value != null)
                   .map(({ label, value }) => (
-                    <div key={label} className="flex justify-between border-b border-border/20 py-1.5">
+                    <div
+                      key={label}
+                      className="flex justify-between border-b border-border/20 py-1.5"
+                    >
                       <dt className="text-muted-foreground">{label}</dt>
                       <dd className="text-foreground">{value}</dd>
                     </div>
@@ -899,12 +950,14 @@ git commit -m "feat(cockpit): add GrundenSection with map and progressive BBR di
 Viser lokalplaner, kommuneplanramme og servitutter. Servitutter er Tinglysning (Blokeret i dataarkitektur) — vis `KommerSnart` hvis `kilde === "mock"` eller data er null.
 
 **Data mapping (ref: dataarkitektur-artefakt.md):**
+
 - `lokalplaner[]` → `compliance_data.lokalplaner` (Plandata SSOT, Live)
 - `kommuneplanramme` → `compliance_data.kommuneplanramme` (Plandata SSOT, Live)
 - `plandokumentLink` → bruges til PDF-link (ikke compliance-sandhed)
 - `servitutter[]` → Tinglysning (Blokeret) — mock i nuværende miljø → `KommerSnart`
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/PlanReguleringSection.tsx`
 
 - [ ] **Step 7.1: Opret `PlanReguleringSection.tsx`**
@@ -913,7 +966,10 @@ Viser lokalplaner, kommuneplanramme og servitutter. Servitutter er Tinglysning (
 // src/components/cockpit/sections/PlanReguleringSection.tsx
 import { ExternalLink } from "lucide-react";
 import { KommerSnartCard } from "@/components/cockpit/KommerSnart";
-import type { RuleEngineLokalplan, RuleEngineTinglysningResult } from "@/domain/contracts/rule-engine.types";
+import type {
+  RuleEngineLokalplan,
+  RuleEngineTinglysningResult,
+} from "@/domain/contracts/rule-engine.types";
 
 type PlanRegularingSectionProps = {
   lokalplaner: RuleEngineLokalplan[];
@@ -922,9 +978,7 @@ type PlanRegularingSectionProps = {
 
 export function PlanReguleringSection({ lokalplaner, servitutter }: PlanRegularingSectionProps) {
   const harServitutter =
-    servitutter &&
-    servitutter.kilde !== "mock" &&
-    servitutter.servitutter.length > 0;
+    servitutter && servitutter.kilde !== "mock" && servitutter.servitutter.length > 0;
 
   return (
     <section aria-label="Plan og regulering">
@@ -986,7 +1040,10 @@ export function PlanReguleringSection({ lokalplaner, servitutter }: PlanRegulari
           {harServitutter ? (
             <ul className="space-y-2">
               {servitutter.servitutter.map((s, i) => (
-                <li key={i} className="text-sm text-foreground border-b border-border/20 pb-2 last:border-0">
+                <li
+                  key={i}
+                  className="text-sm text-foreground border-b border-border/20 pb-2 last:border-0"
+                >
                   {s.tekst ?? s.type ?? "Ukendt servitut"}
                 </li>
               ))}
@@ -1024,12 +1081,14 @@ git commit -m "feat(cockpit): add PlanReguleringSection with lokalplaner and Kom
 Refaktorér indholdet fra `OekonomiPanel` til `OkonomiSection` med det nye designsprog. Energimærke (EMOData Blokeret) vises som `KommerSnart`.
 
 **Data mapping (ref: dataarkitektur-artefakt.md):**
+
 - `ejendomsvaerdi`, `grundvaerdi` → VUR (Live)
 - `vurderingsaar`, `vurderetAreal` → VUR (Live)
 - `budget_estimate` → `projects.budget_estimate` typed kolonne
 - `energimaerke_klasse` → EMOData (Blokeret) → `KommerSnart`
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/OkonomiSection.tsx`
 
 - [ ] **Step 8.1: Opret `OkonomiSection.tsx`**
@@ -1162,6 +1221,7 @@ Erstatter `CockpitStatusBar`. Viser en enkelt statuslinje per `DataSourceKind` m
 **Data mapping:** `dataStatus` og `dataLastFetchedAt` fra project-store.
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/DatakilderSection.tsx`
 
 - [ ] **Step 9.1: Opret `DatakilderSection.tsx`**
@@ -1170,7 +1230,11 @@ Erstatter `CockpitStatusBar`. Viser en enkelt statuslinje per `DataSourceKind` m
 // src/components/cockpit/sections/DatakilderSection.tsx
 import { RefreshCw } from "lucide-react";
 import { useProject } from "@/lib/project-store";
-import { DATA_SOURCE_LABELS, type DataSourceKind, type DataSourceStatus } from "@/types/project-state";
+import {
+  DATA_SOURCE_LABELS,
+  type DataSourceKind,
+  type DataSourceStatus,
+} from "@/types/project-state";
 import { cn } from "@/lib/utils";
 
 // Blokerede kilder i nuværende miljø — vises med grå dot
@@ -1253,9 +1317,7 @@ export function DatakilderSection({ onRefreshAll, isRefreshing }: DatakilderSect
                     isBlokeret ? "bg-muted-foreground/30" : DOT[status],
                   )}
                 />
-                <span className="text-xs text-muted-foreground">
-                  {DATA_SOURCE_LABELS[kind]}
-                </span>
+                <span className="text-xs text-muted-foreground">{DATA_SOURCE_LABELS[kind]}</span>
                 {isBlokeret && (
                   <span className="text-[10px] font-mono text-muted-foreground/50">
                     KOMMER SNART
@@ -1291,6 +1353,7 @@ git commit -m "feat(cockpit): add DatakilderSection replacing CockpitStatusBar"
 Erstat 3-tab-layout + `AnalyseTab` med `CockpitLayout` + de seks sektioner. Al data-fetching via `useCockpitAnalysis` + `useCockpitRestore` bibeholdes uændret. `CockpitStatusBar` og `StatusStripe` fjernes (erstattet af hhv. `DatakilderSection` og `VerdiktSection`).
 
 **Files:**
+
 - Modify: `src/routes/projekt.$id.cockpit.tsx` — **beskyttet fil, kræver review**
 
 - [ ] **Step 10.1: Erstat `CockpitContent` med ny implementation**
@@ -1321,14 +1384,8 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
     onSnapshotRestored: (patch) => setSnapshotPatchRef.current?.(patch),
   });
 
-  const {
-    status,
-    fetchError,
-    analysisSnapshot,
-    isRecomputing,
-    setSnapshotPatch,
-    triggerRefresh,
-  } = useCockpitAnalysis({ adresseId, restorePhase });
+  const { status, fetchError, analysisSnapshot, isRecomputing, setSnapshotPatch, triggerRefresh } =
+    useCockpitAnalysis({ adresseId, restorePhase });
 
   setSnapshotPatchRef.current = setSnapshotPatch;
 
@@ -1385,6 +1442,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
 - [ ] **Step 10.2: Fjern ubrugte imports fra `projekt.$id.cockpit.tsx`**
 
 Fjern disse imports da de ikke længere bruges:
+
 - `CockpitStatusBar`
 - `AnalyseTab`, `type AnalyseTabData`, `type AnalyseTabCallbacks`
 - `EjendomPanel`
@@ -1414,23 +1472,25 @@ git commit -m "feat(cockpit): replace tab layout with sidebar sections — røre
 ## Selvreview mod spec
 
 ### Spec-dækning
-| Krav | Dækket | Task |
-|------|--------|------|
-| Sidebar-navigation med 6 sektioner | ✅ | Task 3 |
-| "Du kan bygge her." verdict hero | ✅ | Task 4 |
-| Projekt-readiness progress bar | ✅ | Task 1 + 4 |
-| Åbn plantegning CTA i header | ✅ | Task 3 |
-| Top-3 opmærksomhed med "Vis alle (N)" | ✅ | Task 5 |
-| Grunden: kort + grundareal/bebygget/maks | ✅ | Task 6 |
-| "Vis alle felter" progressive disclosure | ✅ | Task 6 |
-| Datakilder med status-dots | ✅ | Task 9 |
-| Ingen mock-labels til brugeren | ✅ | Task 2 |
-| KommerSnart for EMOData (Blokeret) | ✅ | Task 8 |
-| KommerSnart for Tinglysning (Blokeret) | ✅ | Task 7 |
-| `northOrientation` vises ikke | ✅ | Task 6 (udeladt fra feltliste) |
-| `fortidsminde` vises ikke | ✅ | Ikke inkluderet i nogen sektion |
+
+| Krav                                     | Dækket | Task                            |
+| ---------------------------------------- | ------ | ------------------------------- |
+| Sidebar-navigation med 6 sektioner       | ✅     | Task 3                          |
+| "Du kan bygge her." verdict hero         | ✅     | Task 4                          |
+| Projekt-readiness progress bar           | ✅     | Task 1 + 4                      |
+| Åbn plantegning CTA i header             | ✅     | Task 3                          |
+| Top-3 opmærksomhed med "Vis alle (N)"    | ✅     | Task 5                          |
+| Grunden: kort + grundareal/bebygget/maks | ✅     | Task 6                          |
+| "Vis alle felter" progressive disclosure | ✅     | Task 6                          |
+| Datakilder med status-dots               | ✅     | Task 9                          |
+| Ingen mock-labels til brugeren           | ✅     | Task 2                          |
+| KommerSnart for EMOData (Blokeret)       | ✅     | Task 8                          |
+| KommerSnart for Tinglysning (Blokeret)   | ✅     | Task 7                          |
+| `northOrientation` vises ikke            | ✅     | Task 6 (udeladt fra feltliste)  |
+| `fortidsminde` vises ikke                | ✅     | Ikke inkluderet i nogen sektion |
 
 ### Governance-observationer fra dataarkitektur-artefakt
+
 - `adgangsadresseid` mangler stadig ofte i første UI-state — ingen ny risiko introduceret
 - `hard_stop` bruges kun fra typed kolonne — Rule 4 overholdt
 - Ingen nye direkte Supabase-kald i UI-komponenter — Rule 2 overholdt

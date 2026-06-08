@@ -43,6 +43,7 @@ analyser kørt på samme adresse/projekt på samme bruger 29.5 sek apart, begge 
 ## Implementation
 
 `src/hooks/useCockpitRestore.ts`:
+
 - Subscribe også til `bbrData` fra store.
 - Initial `restorePhase = "checked"` kun hvis address matcher OG `bbrData`
   er sat.

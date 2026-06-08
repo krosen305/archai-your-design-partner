@@ -10,7 +10,10 @@ const mockLayer = (
   geometry25832: {
     type: "LineString",
     crs: "EPSG:25832",
-    coordinates: [[0, 0], [100, 0]],
+    coordinates: [
+      [0, 0],
+      [100, 0],
+    ],
   },
   bufferDistanceM: 300,
   intersectsProposedBuilding: intersects,

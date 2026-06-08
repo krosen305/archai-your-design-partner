@@ -51,13 +51,13 @@ genbrug de pure domænefunktioner. UI er en adapter (CLAUDE.md Rule 2).
 
 Importér fra `@/lib/floor-plan/floor-plan.functions`:
 
-| Function | Input (`data`) | Output |
-| --- | --- | --- |
-| `generateFloorPlanFn` | `{ projectId(uuid), designIterationId(uuid\|null=null), targetAreaM2(>0), rooms:[{name, roomType}], footprint?:{widthM,depthM}, token }` | `{ generated:true, floorPlanIterationId, document } \| { generated:false, blockers:string[] }` |
-| `loadActiveFloorPlanFn` | `{ projectId(uuid), token }` | `{ iterationId, document } \| null` |
-| `verifyFloorPlanFn` | `{ projectId(uuid), floorPlanIterationId(uuid), token }` | `FloorPlanVerificationResult` (status, findings, metrics, materialBasis, inputHash, …) |
-| `applyFloorPlanCommandFn` | `{ projectId(uuid), floorPlanIterationId(uuid), command:FloorPlanCommand, source("drag"\|"keyboard"\|"ai"\|"system")="drag", token }` | `{ accepted:true, floorPlanIterationId, changedElementIds, liveFindings } \| { accepted:false, reasonCode, message, suggestedCommands }` |
-| `exportFloorPlanFn` | `{ projectId(uuid), floorPlanIterationId(uuid), levelId?:string, token }` | `{ exportId, svgPath, svgContent, pdfPath, pdfUrl, readinessStatus }` |
+| Function                  | Input (`data`)                                                                                                                           | Output                                                                                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `generateFloorPlanFn`     | `{ projectId(uuid), designIterationId(uuid\|null=null), targetAreaM2(>0), rooms:[{name, roomType}], footprint?:{widthM,depthM}, token }` | `{ generated:true, floorPlanIterationId, document } \| { generated:false, blockers:string[] }`                                           |
+| `loadActiveFloorPlanFn`   | `{ projectId(uuid), token }`                                                                                                             | `{ iterationId, document } \| null`                                                                                                      |
+| `verifyFloorPlanFn`       | `{ projectId(uuid), floorPlanIterationId(uuid), token }`                                                                                 | `FloorPlanVerificationResult` (status, findings, metrics, materialBasis, inputHash, …)                                                   |
+| `applyFloorPlanCommandFn` | `{ projectId(uuid), floorPlanIterationId(uuid), command:FloorPlanCommand, source("drag"\|"keyboard"\|"ai"\|"system")="drag", token }`    | `{ accepted:true, floorPlanIterationId, changedElementIds, liveFindings } \| { accepted:false, reasonCode, message, suggestedCommands }` |
+| `exportFloorPlanFn`       | `{ projectId(uuid), floorPlanIterationId(uuid), levelId?:string, token }`                                                                | `{ exportId, svgPath, svgContent, pdfPath, pdfUrl, readinessStatus }`                                                                    |
 
 `roomType` enum: `entrance|hall|living|kitchen|bedroom|bathroom|utility|office|storage|technical|stair|garage|other`.
 
@@ -93,7 +93,7 @@ const result = await applyFloorPlanCommandFn({
 ## 3. Arkitektur- og state-regler (NON-NEGOTIABLE)
 
 1. **`FloorPlanDocument` er sandheden — ikke React/canvas-state.** Hold det aktive dokument i ét
-   sted (en hook/`useState` er ok som *interaktionscache*, men det er en kopi af server-modellen,
+   sted (en hook/`useState` er ok som _interaktionscache_, men det er en kopi af server-modellen,
    ikke en konkurrerende sandhed). Compliance/areal/verifikation ejes af domæne/server.
 2. **Drag-flow:** pointer-event → byg `FloorPlanCommand` → kør `applyCommand` lokalt for instant
    preview → ved drag-slut: send command til `applyFloorPlanCommandFn` → erstat lokalt dokument med
@@ -138,6 +138,7 @@ src/routes/
 ```
 
 ### UX-krav (spec §16)
+
 - Central plantegning, venstre værktøjslinje, højre inspector, nederste statuslinje (arealer/status),
   verification-panel som sidepanel, undo/redo, zoom/pan, snap-settings, etage-tabs.
 - Klik væg → vælg. Træk væg → flyt. Træk endpoint → ændr længde (hvor tilladt). Træk dør/vindue langs
@@ -147,6 +148,7 @@ src/routes/
   vis bare `reasonCode` pænt: `ELEMENT_LOCKED`, `OPENING_OUTSIDE_PARENT_WALL`, osv.).
 
 ### Koordinatmapping (vigtigt)
+
 Render-modellen er i LOCAL_METER (y-up, arkitektonisk). SVG er y-down. Brug samme konvention som
 `renderFloorPlanSvg`: `screenX = (x - minX)*scale`, `screenY = (maxY - y)*scale`, hvor
 `maxY = viewBox.minY + viewBox.height`. Læg zoom/pan ovenpå. Saml dette i `editor-viewport.ts` (pure).
@@ -223,4 +225,7 @@ Render-modellen er i LOCAL_METER (y-up, arkitektonisk). SVG er y-down. Brug samm
 - Afviste commands må ALDRIG efterlade brugeren med en muteret model — rul den optimistiske preview tilbage.
 - `verifyFloorPlanFn` har et `verifiedAt`-timestamp (ikke-deterministisk) — forvent ikke idempotente
   outputs på tværs af kald; `inputHash` er derimod reproducerbar for samme model.
+
+```
+
 ```

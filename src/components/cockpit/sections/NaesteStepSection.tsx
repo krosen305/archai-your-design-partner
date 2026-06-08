@@ -29,8 +29,7 @@ const NAESTE_TRIN: Array<{
   {
     nummer: "03",
     titel: "Generer beliggenhedsplan",
-    beskrivelse:
-      "Lav myndighedstegningen til byggetilladelsesansøgningen direkte fra dit design.",
+    beskrivelse: "Lav myndighedstegningen til byggetilladelsesansøgningen direkte fra dit design.",
     href: "/projekt/teknik",
     kommerSnart: false,
   },
@@ -88,8 +87,8 @@ export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
 
         {!hard_stop && (
           <div className="mt-6 rounded-lg border border-border/30 bg-[#111] px-4 py-3 text-sm text-muted-foreground">
-            Analyse-readiness:{" "}
-            <span className="text-foreground font-medium">{readiness}%</span> — du er godt på vej.
+            Analyse-readiness: <span className="text-foreground font-medium">{readiness}%</span> —
+            du er godt på vej.
           </div>
         )}
       </div>

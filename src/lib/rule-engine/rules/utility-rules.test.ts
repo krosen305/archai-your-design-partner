@@ -9,8 +9,8 @@ describe("validateJordvarmePermit", () => {
   it("jordvarme → two info reasons", () => {
     const result = validateJordvarmePermit({ hasJordvarme: true });
     expect(result).toHaveLength(2);
-    expect(result.every(r => r.severity === "info")).toBe(true);
-    expect(result.some(r => r.code === "JORDVARME_PARAGRAPH19_PERMIT")).toBe(true);
-    expect(result.some(r => r.code === "JORDVARME_JUPITER_REGISTRATION")).toBe(true);
+    expect(result.every((r) => r.severity === "info")).toBe(true);
+    expect(result.some((r) => r.code === "JORDVARME_PARAGRAPH19_PERMIT")).toBe(true);
+    expect(result.some((r) => r.code === "JORDVARME_JUPITER_REGISTRATION")).toBe(true);
   });
 });

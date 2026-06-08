@@ -46,7 +46,11 @@ describe("computeDrawingCompleteness", () => {
   });
 
   it("regnvandsløsning auto when faelles", () => {
-    const result = computeDrawingCompleteness({ ...minimalBlocking, kloakoplandType: "faelles", proposedFootprintSource: "generated" });
+    const result = computeDrawingCompleteness({
+      ...minimalBlocking,
+      kloakoplandType: "faelles",
+      proposedFootprintSource: "generated",
+    });
     expect(result.fields.regnvandsløsning.status).toBe("auto");
   });
 
@@ -71,17 +75,34 @@ describe("computeDrawingCompleteness", () => {
       rygningsKoteM: 23.75,
       vejLayer: {
         vejnavn: "Testvej",
-        centerline25832: { type: "LineString", crs: "EPSG:25832", coordinates: [[0,0],[100,0]] },
+        centerline25832: {
+          type: "LineString",
+          crs: "EPSG:25832",
+          coordinates: [
+            [0, 0],
+            [100, 0],
+          ],
+        },
         vejkant25832: [],
         vejbreddeM: null,
-        source: { source: "registry", confidence: "medium", fetchedAt: "2026-06-06", requiresReview: false },
+        source: {
+          source: "registry",
+          confidence: "medium",
+          fetchedAt: "2026-06-06",
+          requiresReview: false,
+        },
       },
       terrainLayer: {
         verticalDatum: "DVR90",
         points: [],
         slopePercent: null,
         lowPointM: null,
-        source: { source: "registry", confidence: "medium", fetchedAt: "2026-06-06", requiresReview: false },
+        source: {
+          source: "registry",
+          confidence: "medium",
+          fetchedAt: "2026-06-06",
+          requiresReview: false,
+        },
       },
       surveyTerrainPointCount: 0,
       kloakoplandType: "faelles",

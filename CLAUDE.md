@@ -6,7 +6,6 @@ This file is the architectural operating contract for Claude Code. It is not a
 general project wiki. Keep it short, normative and hard to misunderstand.
 
 For implementation rules shared with Codex, see `AGENTS.md`.
-For the current refactoring backlog, see `ROADMAP2.md`.
 For integration details, see `docs/INTEGRATIONS.md`.
 
 ---

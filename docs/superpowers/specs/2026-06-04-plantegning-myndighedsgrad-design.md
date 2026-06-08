@@ -14,13 +14,13 @@
 Et fuldt byggetilladelses-tegningssæt i Danmark er dekomponeret i fem
 delprojekter, hver med egen spec → plan → implementering:
 
-| # | Delprojekt | Status |
-|---|---|---|
-| **1** | **Plantegning → myndighedsgrad** | **Denne spec** |
-| 2 | Snit (sektioner) | Senere — kræver lodret højdedata |
-| 3 | Facader | Senere — kræver lodret højdedata |
-| 4 | Situationsplan / beliggenhedsplan | Eget eksisterende spor |
-| 5 | Ansøgningspakke (samler 1–4 + arealskema + BR18-evidens) | Senere |
+| #     | Delprojekt                                               | Status                           |
+| ----- | -------------------------------------------------------- | -------------------------------- |
+| **1** | **Plantegning → myndighedsgrad**                         | **Denne spec**                   |
+| 2     | Snit (sektioner)                                         | Senere — kræver lodret højdedata |
+| 3     | Facader                                                  | Senere — kræver lodret højdedata |
+| 4     | Situationsplan / beliggenhedsplan                        | Eget eksisterende spor           |
+| 5     | Ansøgningspakke (samler 1–4 + arealskema + BR18-evidens) | Senere                           |
 
 Snit og facader er projektioner af plantegningens geometri; derfor er en stærk
 plantegning fundamentet, og den bygges først.
@@ -63,14 +63,14 @@ Problemerne er **ikke** fire manglende features. De har én fælles rod:
 
 **Der findes allerede to renderere, og kun den ene er myndighedsgrad.**
 
-| Aspekt | `renderFloorPlanSvg` (lib → PDF) | `FloorPlanCanvas.tsx` (interaktiv editor) |
-|---|---|---|
-| Vægge | Poché-polygoner med åbningshuller skåret ud | Simple `<line>`-streger |
-| Døre | Dørsving-bue (`getSymbol("door_left")`) | Cirkel med "D" |
-| Vinduer | Vinduesbrud i væglinjen | Cirkel med "V" |
-| Mål | Facademål (pile + vidnelinjer) + indvendige mål | Ingen |
-| Inventar | Rigtige symboler fra symbol-registret | Tomme firkanter |
-| BR18 | Compliance-badges + arealskema | Ingen |
+| Aspekt   | `renderFloorPlanSvg` (lib → PDF)                | `FloorPlanCanvas.tsx` (interaktiv editor) |
+| -------- | ----------------------------------------------- | ----------------------------------------- |
+| Vægge    | Poché-polygoner med åbningshuller skåret ud     | Simple `<line>`-streger                   |
+| Døre     | Dørsving-bue (`getSymbol("door_left")`)         | Cirkel med "D"                            |
+| Vinduer  | Vinduesbrud i væglinjen                         | Cirkel med "V"                            |
+| Mål      | Facademål (pile + vidnelinjer) + indvendige mål | Ingen                                     |
+| Inventar | Rigtige symboler fra symbol-registret           | Tomme firkanter                           |
+| BR18     | Compliance-badges + arealskema                  | Ingen                                     |
 
 Render-modellen (`src/lib/floor-plan/floor-plan-render-model.ts`) bærer allerede
 `wallPoche`, `dimensionChains`, `interiorDimensions`, `furniture`, `zones` og
@@ -258,6 +258,7 @@ adskiller "skitse" fra "arkitekt-tegning".
 ## 8. Teststrategi (bun:test, tre tiers)
 
 **Tier 1 — domæne (højest værdi):**
+
 - Layout-motor: korrekt rumantal, proportioner pr. type, døre mellem rum,
   vinduer mod facade, deterministisk output.
 - X-krydsnings-topologi: faces detekteres korrekt ved krydsende skillevægge.
@@ -269,10 +270,12 @@ adskiller "skitse" fra "arkitekt-tegning".
   fri tekst; nye symbol-kinds returnerer paths.
 
 **Tier 2 — service:**
+
 - Verify-loop pr. kommando returnerer findings.
 - Hard-Stop-gate blokerer generering før optimistisk output.
 
 **Tier 3 — Playwright (én journey):**
+
 - Generér plan → tegn væg → placér dør → annotér rum → se mål → eksportér PDF.
 
 **Testes ikke:** pixels/visuelt udseende, trivielle React-renders, alle

@@ -15,11 +15,13 @@
 ## Filstruktur
 
 **Nye filer:**
+
 - `src/components/cockpit/ReadinessDetail.tsx` — viser konkret hvad der mangler (max 3 chips)
 - `src/components/cockpit/sections/ByggeønskerSection.tsx` — brugerintent-input med byggeønsker fra store
 - `src/components/cockpit/sections/NaesteStepSection.tsx` — journey-afslutning med næste-skridt guidance
 
 **Ændrede filer:**
+
 - `src/components/cockpit/layout/CockpitSidebar.tsx` — omdøb "Verdict"→"Oversigt", tilføj nye sektioner
 - `src/components/cockpit/layout/CockpitLayout.tsx` — fix IntersectionObserver threshold, pass dataStatus til header
 - `src/components/cockpit/layout/CockpitHeader.tsx` — tilføj data-freshness statusbadge
@@ -33,6 +35,7 @@
 ## Task 1: Omdøb "Verdict" → "Oversigt" og fix IntersectionObserver
 
 **Files:**
+
 - Modify: `src/components/cockpit/layout/CockpitSidebar.tsx`
 - Modify: `src/components/cockpit/layout/CockpitLayout.tsx`
 
@@ -41,10 +44,13 @@ Ingen tests nødvendige for disse to renaming/config-ændringer — det er ren U
 - [ ] **Step 1: Omdøb sidebar-label**
 
 I `src/components/cockpit/layout/CockpitSidebar.tsx`, erstat linjen:
+
 ```ts
 { id: "verdict", label: "Verdict" },
 ```
+
 med:
+
 ```ts
 { id: "verdict", label: "Oversigt" },
 ```
@@ -52,13 +58,17 @@ med:
 - [ ] **Step 2: Fix IntersectionObserver threshold**
 
 I `src/components/cockpit/layout/CockpitLayout.tsx`, erstat:
+
 ```ts
 { threshold: 0.3 },
 ```
+
 med:
+
 ```ts
 { threshold: [0.1, 0.3], rootMargin: "-10% 0px -60% 0px" },
 ```
+
 `rootMargin: "-10% 0px -60% 0px"` betyder at sektionen markeres aktiv når dens top er 10% fra toppen af viewport — præcis hvad man forventer af en sticky nav.
 
 - [ ] **Step 3: Commit**
@@ -73,6 +83,7 @@ git commit -m "ux(cockpit): rename Verdict→Oversigt, fix IntersectionObserver 
 ## Task 2: Wire VerdiktSection "Åbn plantegning" CTA
 
 **Files:**
+
 - Modify: `src/components/cockpit/sections/VerdiktSection.tsx`
 - Modify: `src/routes/projekt.$id.cockpit.tsx`
 
@@ -99,46 +110,55 @@ type VerdiktSectionProps = {
 - [ ] **Step 2: Erstat button med Link**
 
 Find blokken:
+
 ```tsx
-{kanBygge && (
-  <div className="mt-6">
-    <button
-      type="button"
-      className="inline-flex items-center gap-2 rounded-lg bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
-      onClick={() => {
-        // Navigation håndteres af CockpitHeader-knappen
-        // Denne knap er et visuelt anker — routenavigation kobles på i Task 10
-      }}
-    >
-      Åbn plantegning →
-    </button>
-  </div>
-)}
+{
+  kanBygge && (
+    <div className="mt-6">
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 rounded-lg bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
+        onClick={() => {
+          // Navigation håndteres af CockpitHeader-knappen
+          // Denne knap er et visuelt anker — routenavigation kobles på i Task 10
+        }}
+      >
+        Åbn plantegning →
+      </button>
+    </div>
+  );
+}
 ```
 
 Erstat med:
+
 ```tsx
-{kanBygge && (
-  <div className="mt-6">
-    <Link
-      to="/projekt/$id/plantegning"
-      params={{ id: adresseId }}
-      search={{ projectId }}
-      className="inline-flex items-center gap-2 rounded-md bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
-    >
-      Åbn plantegning →
-    </Link>
-  </div>
-)}
+{
+  kanBygge && (
+    <div className="mt-6">
+      <Link
+        to="/projekt/$id/plantegning"
+        params={{ id: adresseId }}
+        search={{ projectId }}
+        className="inline-flex items-center gap-2 rounded-md bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
+      >
+        Åbn plantegning →
+      </Link>
+    </div>
+  );
+}
 ```
 
 - [ ] **Step 3: Pass props fra route**
 
 I `src/routes/projekt.$id.cockpit.tsx`, erstat:
+
 ```tsx
 <VerdiktSection metrics={complianceMetrics} registerSection={registerSection} />
 ```
+
 med:
+
 ```tsx
 <VerdiktSection
   metrics={complianceMetrics}
@@ -153,6 +173,7 @@ med:
 ```bash
 bunx tsc --noEmit
 ```
+
 Forventet output: ingen fejl.
 
 - [ ] **Step 5: Commit**
@@ -167,6 +188,7 @@ git commit -m "fix(cockpit): wire Åbn plantegning CTA til plantegning-route"
 ## Task 3: VerdiktSection hero-behandling + ReadinessDetail
 
 **Files:**
+
 - Create: `src/components/cockpit/ReadinessDetail.tsx`
 - Modify: `src/components/cockpit/sections/VerdiktSection.tsx`
 
@@ -177,13 +199,30 @@ ReadinessDetail viser konkret hvad der holder readiness nede — max 3 chips, pr
 Opret `src/components/cockpit/ReadinessDetail.tsx`:
 
 ```tsx
-import { DATA_SOURCE_LABELS, type DataSourceKind, type DataSourceStatus } from "@/types/project-state";
+import {
+  DATA_SOURCE_LABELS,
+  type DataSourceKind,
+  type DataSourceStatus,
+} from "@/types/project-state";
 import type { ComplianceFlag } from "@/types/project-state";
 
 const HANDLINGSBARE_KILDER: readonly DataSourceKind[] = [
-  "bbr", "lokalplaner", "kommuneplanramme", "fbb", "naturbeskyttelse",
-  "arealdata", "dkjord", "geusRisk", "servitutter", "terrain",
-  "fjernvarme", "naboer", "matGeometri", "vurdering", "tjekditnet", "energimaerke",
+  "bbr",
+  "lokalplaner",
+  "kommuneplanramme",
+  "fbb",
+  "naturbeskyttelse",
+  "arealdata",
+  "dkjord",
+  "geusRisk",
+  "servitutter",
+  "terrain",
+  "fjernvarme",
+  "naboer",
+  "matGeometri",
+  "vurdering",
+  "tjekditnet",
+  "energimaerke",
 ];
 
 type ReadinessDetailProps = {
@@ -248,7 +287,12 @@ type VerdiktSectionProps = {
   projectId: string | undefined;
 };
 
-export function VerdiktSection({ metrics, registerSection, adresseId, projectId }: VerdiktSectionProps) {
+export function VerdiktSection({
+  metrics,
+  registerSection,
+  adresseId,
+  projectId,
+}: VerdiktSectionProps) {
   const { hard_stop, hard_stop_reason, complianceFlags, dataStatus } = useProject();
 
   const readiness = beregnProjektReadiness(dataStatus, complianceFlags);
@@ -267,8 +311,12 @@ export function VerdiktSection({ metrics, registerSection, adresseId, projectId 
   return (
     <section ref={(el) => registerSection("verdict", el)} aria-label="Oversigt">
       {/* Hero-behandling: ingen card-border, fuld bredde, gradient-baggrund */}
-      <div className="relative overflow-hidden rounded-xl p-10"
-        style={{ background: "radial-gradient(ellipse at 15% 50%, rgba(200,255,0,0.05) 0%, transparent 65%), #0d0d0d" }}
+      <div
+        className="relative overflow-hidden rounded-xl p-10"
+        style={{
+          background:
+            "radial-gradient(ellipse at 15% 50%, rgba(200,255,0,0.05) 0%, transparent 65%), #0d0d0d",
+        }}
       >
         <motion.h1
           initial={{ opacity: 0, y: 8 }}
@@ -281,11 +329,11 @@ export function VerdiktSection({ metrics, registerSection, adresseId, projectId 
           {kanBygge ? "Du kan bygge her." : "Du kan ikke bygge her."}
         </motion.h1>
 
-        <div className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`} />
+        <div
+          className={`mt-2 h-[3px] w-16 rounded-full ${kanBygge ? "bg-[#c8ff00]" : "bg-danger"}`}
+        />
 
-        {metrikLinje && (
-          <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>
-        )}
+        {metrikLinje && <p className="mt-4 text-base text-muted-foreground">{metrikLinje}</p>}
 
         {!kanBygge && hard_stop_reason && (
           <p className="mt-3 text-sm text-danger/90 leading-relaxed">{hard_stop_reason}</p>
@@ -331,6 +379,7 @@ export function VerdiktSection({ metrics, registerSection, adresseId, projectId 
 ```bash
 bunx tsc --noEmit
 ```
+
 Forventet output: ingen fejl.
 
 - [ ] **Step 4: Commit**
@@ -345,6 +394,7 @@ git commit -m "ux(cockpit): hero-behandling af VerdiktSection + ReadinessDetail 
 ## Task 4: OpmærksomhedSection — inline flag-detaljer
 
 **Files:**
+
 - Modify: `src/components/cockpit/sections/OpmærksomhedSection.tsx`
 
 `ComplianceFlag` har allerede felterne `detalje`, `aktuelVærdi`, `tilladt`, `dispensationMulig` og `dispensationMyndighed`. Vi viser dem inline ved klik — ingen modal, ingen prop-callbacks.
@@ -417,9 +467,7 @@ function FlagRow({ flag }: { flag: ComplianceFlag }) {
 
       {expanded && hasDetalje && (
         <div className="mt-3 ml-5 space-y-2 text-sm">
-          {flag.detalje && (
-            <p className="text-muted-foreground leading-relaxed">{flag.detalje}</p>
-          )}
+          {flag.detalje && <p className="text-muted-foreground leading-relaxed">{flag.detalje}</p>}
           <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
             {flag.aktuelVærdi != null && (
               <>
@@ -446,7 +494,10 @@ function FlagRow({ flag }: { flag: ComplianceFlag }) {
   );
 }
 
-export function OpmærksomhedSection({ onOpenDetails: _onOpenDetails, registerSection }: OpmærksomhedSectionProps) {
+export function OpmærksomhedSection({
+  onOpenDetails: _onOpenDetails,
+  registerSection,
+}: OpmærksomhedSectionProps) {
   const { complianceFlags } = useProject();
   const [visAlle, setVisAlle] = useState(false);
 
@@ -506,6 +557,7 @@ export function OpmærksomhedSection({ onOpenDetails: _onOpenDetails, registerSe
 ```bash
 bunx tsc --noEmit
 ```
+
 Forventet output: ingen fejl.
 
 - [ ] **Step 3: Commit**
@@ -520,6 +572,7 @@ git commit -m "ux(cockpit): inline flag-detaljer i OpmærksomhedSection — deta
 ## Task 5: GrundenSection — full-width MatrikelMap
 
 **Files:**
+
 - Modify: `src/components/cockpit/sections/GrundenSection.tsx`
 
 MatrikelMap er allerede en komplet komponent med lag-toggle, parcel-outline, HARD STOP overlay og rotation. Den fortjener fuld bredde. Nøgletallene flyttes til en 4-kolonne grid under kortet.
@@ -527,6 +580,7 @@ MatrikelMap er allerede en komplet komponent med lag-toggle, parcel-outline, HAR
 - [ ] **Step 1: Erstat layout i GrundenSection.tsx**
 
 Find layout-blokken (linje 59–105 i original):
+
 ```tsx
 <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
   <div className="rounded-lg overflow-hidden" style={{ minHeight: 180 }}>
@@ -540,24 +594,24 @@ Find layout-blokken (linje 59–105 i original):
 ```
 
 Erstat med:
-```tsx
-{/* Kort i fuld bredde */}
-<div className="rounded-lg overflow-hidden" style={{ minHeight: 340 }}>
-  <MatrikelMap
-    bbr={bbr}
-    metrics={metrics}
-    naboer={naboer}
-    jordstykkeLokalId={jordstykkeId}
-  />
-</div>
 
-{/* Nøgletal i grid under kortet */}
+```tsx
+{
+  /* Kort i fuld bredde */
+}
+<div className="rounded-lg overflow-hidden" style={{ minHeight: 340 }}>
+  <MatrikelMap bbr={bbr} metrics={metrics} naboer={naboer} jordstykkeLokalId={jordstykkeId} />
+</div>;
+
+{
+  /* Nøgletal i grid under kortet */
+}
 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
   {grundareal != null && <Måletal label="Grundareal" value={`${grundareal} m²`} />}
   {zone && <Måletal label="Zone" value={zone} />}
   {bebygget != null && <Måletal label="Bebygget i dag" value={`${bebygget} m²`} />}
   {maksAreal != null && <Måletal label="Maks tilladt" value={`${maksAreal} m²`} />}
-</div>
+</div>;
 ```
 
 - [ ] **Step 2: Verificér TypeScript**
@@ -565,6 +619,7 @@ Erstat med:
 ```bash
 bunx tsc --noEmit
 ```
+
 Forventet output: ingen fejl.
 
 - [ ] **Step 3: Commit**
@@ -579,6 +634,7 @@ git commit -m "ux(cockpit): full-width MatrikelMap i GrundenSection, metrics-gri
 ## Task 6: ByggeønskerSection
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/ByggeønskerSection.tsx`
 - Modify: `src/components/cockpit/layout/CockpitSidebar.tsx`
 - Modify: `src/routes/projekt.$id.cockpit.tsx`
@@ -693,9 +749,7 @@ export function ByggeønskerSection({ registerSection }: ByggeønskerSectionProp
                 value={value as number}
                 current={byggeoenske.antalEtager}
                 label={label}
-                onSelect={(v) =>
-                  setByggeoenske({ antalEtager: v as Byggeoenske["antalEtager"] })
-                }
+                onSelect={(v) => setByggeoenske({ antalEtager: v as Byggeoenske["antalEtager"] })}
               />
             ))}
           </div>
@@ -718,9 +772,7 @@ export function ByggeønskerSection({ registerSection }: ByggeønskerSectionProp
                 value={value as string}
                 current={byggeoenske.budget}
                 label={label}
-                onSelect={(v) =>
-                  setByggeoenske({ budget: v as Byggeoenske["budget"] })
-                }
+                onSelect={(v) => setByggeoenske({ budget: v as Byggeoenske["budget"] })}
               />
             ))}
           </div>
@@ -736,6 +788,7 @@ export function ByggeønskerSection({ registerSection }: ByggeønskerSectionProp
 I `src/components/cockpit/layout/CockpitSidebar.tsx`:
 
 Erstat:
+
 ```ts
 export type SidebarSection =
   | "verdict"
@@ -756,6 +809,7 @@ export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
 ```
 
 med:
+
 ```ts
 export type SidebarSection =
   | "verdict"
@@ -780,11 +834,13 @@ export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
 - [ ] **Step 3: Tilføj ByggeønskerSection i route**
 
 I `src/routes/projekt.$id.cockpit.tsx`, tilføj import:
+
 ```tsx
 import { ByggeønskerSection } from "@/components/cockpit/sections/ByggeønskerSection";
 ```
 
 Tilføj sektionen i `CockpitContent` JSX, efter `<GrundenSection ...>` og før `<PlanReguleringSection ...>`:
+
 ```tsx
 <ByggeønskerSection registerSection={registerSection} />
 ```
@@ -794,6 +850,7 @@ Tilføj sektionen i `CockpitContent` JSX, efter `<GrundenSection ...>` og før `
 ```bash
 bunx tsc --noEmit
 ```
+
 Forventet output: ingen fejl.
 
 - [ ] **Step 5: Commit**
@@ -808,6 +865,7 @@ git commit -m "feat(cockpit): tilføj ByggeønskerSection med byggetype, areal, 
 ## Task 7: DatakilderSection — tilføj status-badge i CockpitHeader
 
 **Files:**
+
 - Modify: `src/components/cockpit/layout/CockpitHeader.tsx`
 - Modify: `src/components/cockpit/layout/CockpitLayout.tsx`
 - Modify: `src/routes/projekt.$id.cockpit.tsx`
@@ -822,13 +880,25 @@ I `src/components/cockpit/layout/CockpitHeader.tsx`, tilføj øverst (efter impo
 import type { DataSourceKind, DataSourceStatus } from "@/types/project-state";
 
 const HANDLINGSBARE_HEADER_KILDER: readonly DataSourceKind[] = [
-  "bbr", "lokalplaner", "kommuneplanramme", "fbb", "naturbeskyttelse",
-  "arealdata", "dkjord", "geusRisk", "terrain", "naboer", "matGeometri", "vurdering",
+  "bbr",
+  "lokalplaner",
+  "kommuneplanramme",
+  "fbb",
+  "naturbeskyttelse",
+  "arealdata",
+  "dkjord",
+  "geusRisk",
+  "terrain",
+  "naboer",
+  "matGeometri",
+  "vurdering",
 ];
 
 type DataHealth = "fresh" | "stale" | "error";
 
-function dataHealthSummary(dataStatus: Record<DataSourceKind, DataSourceStatus> | undefined): DataHealth {
+function dataHealthSummary(
+  dataStatus: Record<DataSourceKind, DataSourceStatus> | undefined,
+): DataHealth {
   if (!dataStatus) return "stale";
   const hasError = HANDLINGSBARE_HEADER_KILDER.some((k) => dataStatus[k] === "error");
   if (hasError) return "error";
@@ -860,8 +930,18 @@ import { cn } from "@/lib/utils";
 import type { DataSourceKind, DataSourceStatus } from "@/types/project-state";
 
 const HANDLINGSBARE_HEADER_KILDER: readonly DataSourceKind[] = [
-  "bbr", "lokalplaner", "kommuneplanramme", "fbb", "naturbeskyttelse",
-  "arealdata", "dkjord", "geusRisk", "terrain", "naboer", "matGeometri", "vurdering",
+  "bbr",
+  "lokalplaner",
+  "kommuneplanramme",
+  "fbb",
+  "naturbeskyttelse",
+  "arealdata",
+  "dkjord",
+  "geusRisk",
+  "terrain",
+  "naboer",
+  "matGeometri",
+  "vurdering",
 ];
 
 type DataHealth = "fresh" | "stale" | "error";
@@ -945,19 +1025,26 @@ export function CockpitHeader({ adresse, adresseId, projectId, dataStatus }: Coc
 - [ ] **Step 3: Pass dataStatus fra CockpitLayout til CockpitHeader**
 
 I `src/components/cockpit/layout/CockpitLayout.tsx`, udvid `CockpitLayoutProps`:
+
 ```tsx
 import { useProject } from "@/lib/project-store";
 ```
 
 Hent dataStatus i CockpitLayout:
+
 ```tsx
 export function CockpitLayout({ adresse, adresseId, projectId, children }: CockpitLayoutProps) {
   const dataStatus = useProject((s) => s.dataStatus);
   // ... eksisterende kode ...
-  
+
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <CockpitHeader adresse={adresse} adresseId={adresseId} projectId={projectId} dataStatus={dataStatus} />
+      <CockpitHeader
+        adresse={adresse}
+        adresseId={adresseId}
+        projectId={projectId}
+        dataStatus={dataStatus}
+      />
       {/* ... resten uændret */}
     </div>
   );
@@ -969,6 +1056,7 @@ export function CockpitLayout({ adresse, adresseId, projectId, children }: Cockp
 ```bash
 bunx tsc --noEmit
 ```
+
 Forventet output: ingen fejl.
 
 - [ ] **Step 5: Commit**
@@ -983,6 +1071,7 @@ git commit -m "ux(cockpit): data-sundhed statusbadge i CockpitHeader"
 ## Task 8: NaesteStepSection — journey-afslutning
 
 **Files:**
+
 - Create: `src/components/cockpit/sections/NaesteStepSection.tsx`
 - Modify: `src/components/cockpit/layout/CockpitSidebar.tsx`
 - Modify: `src/routes/projekt.$id.cockpit.tsx`
@@ -1058,8 +1147,8 @@ export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
 
         {!hard_stop && (
           <div className="mt-6 rounded-lg border border-border/30 bg-[#111] px-4 py-3 text-sm text-muted-foreground">
-            Analyse-readiness:{" "}
-            <span className="text-foreground font-medium">{readiness}%</span> — du er godt på vej.
+            Analyse-readiness: <span className="text-foreground font-medium">{readiness}%</span> —
+            du er godt på vej.
           </div>
         )}
       </div>
@@ -1071,6 +1160,7 @@ export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
 - [ ] **Step 2: Tilføj "næste" til SidebarSection og SIDEBAR_ITEMS**
 
 I `src/components/cockpit/layout/CockpitSidebar.tsx`, udvid type:
+
 ```ts
 export type SidebarSection =
   | "verdict"
@@ -1084,11 +1174,13 @@ export type SidebarSection =
 ```
 
 Tilføj item (efter økonomi, før datakilder):
+
 ```ts
 { id: "næste", label: "Næste skridt" },
 ```
 
 Den fulde SIDEBAR_ITEMS er nu:
+
 ```ts
 export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
   { id: "verdict", label: "Oversigt" },
@@ -1105,11 +1197,13 @@ export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
 - [ ] **Step 3: Tilføj NaesteStepSection i route**
 
 I `src/routes/projekt.$id.cockpit.tsx`, tilføj import:
+
 ```tsx
 import { NaesteStepSection } from "@/components/cockpit/sections/NaesteStepSection";
 ```
 
 Tilføj sektionen efter `<OkonomiSection ...>` og før `<DatakilderSection ...>`:
+
 ```tsx
 <NaesteStepSection registerSection={registerSection} />
 ```
@@ -1119,6 +1213,7 @@ Tilføj sektionen efter `<OkonomiSection ...>` og før `<DatakilderSection ...>`
 ```bash
 bunx tsc --noEmit
 ```
+
 Forventet output: ingen fejl.
 
 - [ ] **Step 5: Commit**
@@ -1133,6 +1228,7 @@ git commit -m "feat(cockpit): tilføj NaesteStepSection med journey-afslutning"
 ## Task 9: Polish — tilgængelighed og konsistens
 
 **Files:**
+
 - Modify: `src/components/cockpit/layout/CockpitSidebar.tsx`
 - Modify: `src/components/cockpit/sections/ByggeønskerSection.tsx`
 
@@ -1143,12 +1239,14 @@ Minimale justeringer der giver stor tilgængelighed-gevinst.
 I `src/components/cockpit/layout/CockpitSidebar.tsx`, find `className` på sidebar-knapperne og tilføj focus-visible:
 
 Find:
+
 ```ts
 "flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors w-full",
 isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/70",
 ```
 
 Erstat med:
+
 ```ts
 "flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors w-full",
 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#c8ff00]/60 rounded-sm",
@@ -1158,10 +1256,13 @@ isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/70",
 - [ ] **Step 2: Bump MASKINRUMMET label fra 9px til 11px**
 
 I `src/components/cockpit/layout/CockpitSidebar.tsx`, erstat:
+
 ```tsx
 <div className="px-4 mb-4 font-mono text-[9px] tracking-[0.2em] text-muted-foreground/60">
 ```
+
 med:
+
 ```tsx
 <div className="px-4 mb-4 font-mono text-[11px] tracking-[0.15em] text-muted-foreground/60">
 ```
@@ -1171,12 +1272,17 @@ med:
 `ByggeønskerSection.tsx` input har allerede `focus:border-[#c8ff00]/60 focus:outline-none`. Tilføj `focus-visible:ring-1 focus-visible:ring-[#c8ff00]/40`:
 
 Find:
+
 ```tsx
-className="w-40 rounded-md border border-border/40 bg-[#111] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[#c8ff00]/60 focus:outline-none transition-colors"
+className =
+  "w-40 rounded-md border border-border/40 bg-[#111] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[#c8ff00]/60 focus:outline-none transition-colors";
 ```
+
 Erstat med:
+
 ```tsx
-className="w-40 rounded-md border border-border/40 bg-[#111] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[#c8ff00]/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#c8ff00]/40 transition-colors"
+className =
+  "w-40 rounded-md border border-border/40 bg-[#111] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[#c8ff00]/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#c8ff00]/40 transition-colors";
 ```
 
 - [ ] **Step 4: Verificér alt**
@@ -1199,6 +1305,7 @@ git commit -m "a11y(cockpit): focus-visible styles og font-size bump på sidebar
 ## Definition of Done
 
 Alle tasks er færdige når:
+
 - [ ] `bunx tsc --noEmit` — ingen fejl
 - [ ] `bun test src` — ingen regressions
 - [ ] `bunx eslint .` — ingen nye fejl

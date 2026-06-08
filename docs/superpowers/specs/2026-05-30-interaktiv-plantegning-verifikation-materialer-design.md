@@ -411,20 +411,20 @@ src/integrations/supabase/repositories/
 
 De følgende defaults skal gælde, medmindre architecture review eksplicit vælger noget andet.
 
-| Område | Default | Begrundelse |
-| --- | --- | --- |
-| Editor-renderer | Native SVG i v1 | Boligplantegninger har få nok elementer til SVG, og det matcher eksisterende SVG/PDF-tegningspipeline. |
-| Hit testing | Domain geometry, ikke DOM som sandhed | DOM/SVG kan bruges til pointer events, men valgt element og snap beregnes mod `FloorPlanDocument`. |
-| Canvas/Konva | Udskydes | Indføres kun hvis SVG performance bliver dokumenteret flaskehals. |
-| Canonical state | `FloorPlanDocument` i domain model | Ingen React/canvas state som sandhed. |
-| Persistence | Separat `floor_plan_iterations`, reference til `design_iterations` | Plantegninger har versionering, commands og exports nok til egen lifecycle. |
-| Shared geometry | `src/domain/geometry/` | Forhindrer import-cycles mellem `domain/drawing` og `domain/floor-plan`. |
-| Rooms | Derived from walls, men persisted som reconciled snapshot | Geometri udledes fra vægge, men stabile rum-ID'er, labels og materialefelter skal overleve edits. |
-| Geometry scope | Primært ortogonale vægge i v1 | Reducerer topology-risiko og matcher mange enfamiliehuse. Ikke-ortogonal geometri markeres `review_required`. |
-| Multi-level | 1-2 niveauer i v1, simple trapper | Første release skal understøtte almindelige 1-2 plans huse, men ikke avancerede split-levels. |
-| Product catalogs | Minimal project-local snapshot | Dør/vindue/assembly data gemmes projektlokalt i første version, global katalogisering kan komme senere. |
-| Material takeoff | Geometry-only summary i v1 | Endelig materialeberegning er ude af scope, men datafelter og summary skal være klar. |
-| BR18 checks | Kun sikre deterministic checks som facts; resten `review_required` | Undgår falsk myndighedssikkerhed. |
+| Område           | Default                                                            | Begrundelse                                                                                                   |
+| ---------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Editor-renderer  | Native SVG i v1                                                    | Boligplantegninger har få nok elementer til SVG, og det matcher eksisterende SVG/PDF-tegningspipeline.        |
+| Hit testing      | Domain geometry, ikke DOM som sandhed                              | DOM/SVG kan bruges til pointer events, men valgt element og snap beregnes mod `FloorPlanDocument`.            |
+| Canvas/Konva     | Udskydes                                                           | Indføres kun hvis SVG performance bliver dokumenteret flaskehals.                                             |
+| Canonical state  | `FloorPlanDocument` i domain model                                 | Ingen React/canvas state som sandhed.                                                                         |
+| Persistence      | Separat `floor_plan_iterations`, reference til `design_iterations` | Plantegninger har versionering, commands og exports nok til egen lifecycle.                                   |
+| Shared geometry  | `src/domain/geometry/`                                             | Forhindrer import-cycles mellem `domain/drawing` og `domain/floor-plan`.                                      |
+| Rooms            | Derived from walls, men persisted som reconciled snapshot          | Geometri udledes fra vægge, men stabile rum-ID'er, labels og materialefelter skal overleve edits.             |
+| Geometry scope   | Primært ortogonale vægge i v1                                      | Reducerer topology-risiko og matcher mange enfamiliehuse. Ikke-ortogonal geometri markeres `review_required`. |
+| Multi-level      | 1-2 niveauer i v1, simple trapper                                  | Første release skal understøtte almindelige 1-2 plans huse, men ikke avancerede split-levels.                 |
+| Product catalogs | Minimal project-local snapshot                                     | Dør/vindue/assembly data gemmes projektlokalt i første version, global katalogisering kan komme senere.       |
+| Material takeoff | Geometry-only summary i v1                                         | Endelig materialeberegning er ude af scope, men datafelter og summary skal være klar.                         |
+| BR18 checks      | Kun sikre deterministic checks som facts; resten `review_required` | Undgår falsk myndighedssikkerhed.                                                                             |
 
 ### 8.2 Første Leverbare Vertical Slice
 
@@ -757,28 +757,28 @@ Server function må ikke acceptere client-derived compliance booleans som autori
 
 Verifikationsmotoren skal implementeres som en rule matrix med stabile rule IDs. Første version skal mindst dække nedenstående regler.
 
-| Rule ID | Kategori | Input | Check | Severity default | Output |
-| --- | --- | --- | --- | --- | --- |
-| `FP-TOPO-001` | topology | walls, rooms | Alle persisted room polygons kan reconciles fra wall graph. | blocking | Affected rooms/walls |
-| `FP-TOPO-002` | topology | walls | Wall graph har ingen dangling wall endpoints, medmindre endpoint er markeret som åbent/eksternt. | blocking | Affected wall endpoints |
-| `FP-TOPO-003` | topology | openings | Alle openings har gyldigt `wallId`. | blocking | Affected openings |
-| `FP-TOPO-004` | topology | openings | Openings overlapper ikke hinanden på samme væg. | warning | Affected openings |
-| `FP-GEO-001` | geometry | rooms | Alle rumarealer er positive og over minimum geometry tolerance. | blocking | Affected rooms |
-| `FP-GEO-002` | geometry | floor plan | Nettoareal er plausibelt i forhold til bruttoareal. | warning | Area summary |
-| `FP-GEO-003` | geometry | floor plan, footprint | Planens udvendige vægge ligger inden for eller matcher active footprint tolerance. | review_required | Affected exterior walls |
-| `FP-GEO-004` | geometry | openings, walls | Openings holder minimum afstand til wall endpoints. | warning | Affected openings |
-| `FP-ROOM-001` | room_program | rooms, roomProgram | Krævede rumtyper fra room program findes. | warning | Missing room types |
-| `FP-ROOM-002` | room_program | rooms | Rum under minimum eller target area markeres. | warning | Affected rooms |
-| `FP-ROOM-003` | room_program | fixtures | Vådrum har relevante fixtures eller markeres ufuldstændige. | review_required | Affected rooms/fixtures |
-| `FP-SITE-001` | site_compliance | floor area, site_constraints | Samlet areal sammenholdes med bebyggelsesprocent. | review_required/blocking efter rule-engine | Rule-engine result |
-| `FP-SITE-002` | site_compliance | levels, site_constraints | Antal etager sammenholdes med typed constraints. | review_required/blocking efter rule-engine | Rule-engine result |
-| `FP-SITE-003` | site_compliance | height, site_constraints | Højde sammenholdes med typed constraints, hvis højde kendes. | review_required | Rule-engine result |
-| `FP-BR18-001` | accessibility | doors, rooms | Dørbredder og adgangsforhold markeres til review, indtil detaljeret BR18-modul findes. | review_required | Affected doors/rooms |
-| `FP-BR18-002` | fire | rooms, stairs, escape routes | Flugtvej/brandforhold markeres til review, hvis modellen mangler branddata. | review_required | Documentation gap |
-| `FP-DAY-001` | daylight | windows, rooms | Dagslysrelevante rum uden vinduer eller med ukendt vinduesdata markeres. | review_required | Affected rooms/windows |
-| `FP-TECH-001` | technical_installation | fixtures | Teknikskab/ventilation/VVS fixtures har gyldigt rum og discipline review. | warning | Affected fixtures |
-| `FP-MAT-001` | material_basis | walls | Vægge mangler `assemblyId`. | info | Missing material data |
-| `FP-MAT-002` | material_basis | walls, openings | Wall gross/net area kan beregnes eller forklarer manglende højde/åbninger. | warning | Material basis summary |
+| Rule ID       | Kategori               | Input                        | Check                                                                                            | Severity default                           | Output                  |
+| ------------- | ---------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------ | ----------------------- |
+| `FP-TOPO-001` | topology               | walls, rooms                 | Alle persisted room polygons kan reconciles fra wall graph.                                      | blocking                                   | Affected rooms/walls    |
+| `FP-TOPO-002` | topology               | walls                        | Wall graph har ingen dangling wall endpoints, medmindre endpoint er markeret som åbent/eksternt. | blocking                                   | Affected wall endpoints |
+| `FP-TOPO-003` | topology               | openings                     | Alle openings har gyldigt `wallId`.                                                              | blocking                                   | Affected openings       |
+| `FP-TOPO-004` | topology               | openings                     | Openings overlapper ikke hinanden på samme væg.                                                  | warning                                    | Affected openings       |
+| `FP-GEO-001`  | geometry               | rooms                        | Alle rumarealer er positive og over minimum geometry tolerance.                                  | blocking                                   | Affected rooms          |
+| `FP-GEO-002`  | geometry               | floor plan                   | Nettoareal er plausibelt i forhold til bruttoareal.                                              | warning                                    | Area summary            |
+| `FP-GEO-003`  | geometry               | floor plan, footprint        | Planens udvendige vægge ligger inden for eller matcher active footprint tolerance.               | review_required                            | Affected exterior walls |
+| `FP-GEO-004`  | geometry               | openings, walls              | Openings holder minimum afstand til wall endpoints.                                              | warning                                    | Affected openings       |
+| `FP-ROOM-001` | room_program           | rooms, roomProgram           | Krævede rumtyper fra room program findes.                                                        | warning                                    | Missing room types      |
+| `FP-ROOM-002` | room_program           | rooms                        | Rum under minimum eller target area markeres.                                                    | warning                                    | Affected rooms          |
+| `FP-ROOM-003` | room_program           | fixtures                     | Vådrum har relevante fixtures eller markeres ufuldstændige.                                      | review_required                            | Affected rooms/fixtures |
+| `FP-SITE-001` | site_compliance        | floor area, site_constraints | Samlet areal sammenholdes med bebyggelsesprocent.                                                | review_required/blocking efter rule-engine | Rule-engine result      |
+| `FP-SITE-002` | site_compliance        | levels, site_constraints     | Antal etager sammenholdes med typed constraints.                                                 | review_required/blocking efter rule-engine | Rule-engine result      |
+| `FP-SITE-003` | site_compliance        | height, site_constraints     | Højde sammenholdes med typed constraints, hvis højde kendes.                                     | review_required                            | Rule-engine result      |
+| `FP-BR18-001` | accessibility          | doors, rooms                 | Dørbredder og adgangsforhold markeres til review, indtil detaljeret BR18-modul findes.           | review_required                            | Affected doors/rooms    |
+| `FP-BR18-002` | fire                   | rooms, stairs, escape routes | Flugtvej/brandforhold markeres til review, hvis modellen mangler branddata.                      | review_required                            | Documentation gap       |
+| `FP-DAY-001`  | daylight               | windows, rooms               | Dagslysrelevante rum uden vinduer eller med ukendt vinduesdata markeres.                         | review_required                            | Affected rooms/windows  |
+| `FP-TECH-001` | technical_installation | fixtures                     | Teknikskab/ventilation/VVS fixtures har gyldigt rum og discipline review.                        | warning                                    | Affected fixtures       |
+| `FP-MAT-001`  | material_basis         | walls                        | Vægge mangler `assemblyId`.                                                                      | info                                       | Missing material data   |
+| `FP-MAT-002`  | material_basis         | walls, openings              | Wall gross/net area kan beregnes eller forklarer manglende højde/åbninger.                       | warning                                    | Material basis summary  |
 
 Severity må gerne skærpes af rule-engine eller trusted constraints, men må ikke nedtones af klienten.
 
@@ -814,85 +814,85 @@ type FloorPlanVerificationResult = {
 
 ### 11.1 Generation
 
-| ID | Krav |
-| --- | --- |
-| FR-GEN-001 | Systemet skal kunne generere mindst 2 plantegningsforslag fra et struktureret byggeønske. |
+| ID         | Krav                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| FR-GEN-001 | Systemet skal kunne generere mindst 2 plantegningsforslag fra et struktureret byggeønske.     |
 | FR-GEN-002 | Forslag skal overholde valgt antal etager og ønsket areal inden for konfigurerede tolerancer. |
-| FR-GEN-003 | Forslag skal kunne begrænses af et eksisterende/proposed footprint. |
-| FR-GEN-004 | AI-output skal valideres med Zod, før det bliver til domain data. |
-| FR-GEN-005 | Hvis AI-output er ugyldigt, skal systemet returnere degraded state og ikke gemme planen. |
-| FR-GEN-006 | Alle genererede elementer skal have `source.source = "generated"` og confidence. |
+| FR-GEN-003 | Forslag skal kunne begrænses af et eksisterende/proposed footprint.                           |
+| FR-GEN-004 | AI-output skal valideres med Zod, før det bliver til domain data.                             |
+| FR-GEN-005 | Hvis AI-output er ugyldigt, skal systemet returnere degraded state og ikke gemme planen.      |
+| FR-GEN-006 | Alle genererede elementer skal have `source.source = "generated"` og confidence.              |
 
 ### 11.2 Interactive Editing
 
-| ID | Krav |
-| --- | --- |
-| FR-EDIT-001 | Brugeren skal kunne vælge og trække vægge. |
-| FR-EDIT-002 | Brugeren skal kunne vælge og trække døre langs gyldige vægge. |
-| FR-EDIT-003 | Brugeren skal kunne vælge og trække vinduer langs gyldige ydervægge. |
-| FR-EDIT-004 | Brugeren skal kunne tilføje, flytte, resize og slette døre. |
-| FR-EDIT-005 | Brugeren skal kunne tilføje, flytte, resize og slette vinduer. |
-| FR-EDIT-006 | Brugeren skal kunne tilføje og flytte fixtures, herunder teknikskab og vådrumsobjekter. |
-| FR-EDIT-007 | Brugeren skal kunne låse elementer mod ændring. |
-| FR-EDIT-008 | Editor skal understøtte undo/redo baseret på command history. |
-| FR-EDIT-009 | Editor skal understøtte snap til grid, vægforlængelse, parallelle vægge og hjørner. |
+| ID          | Krav                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| FR-EDIT-001 | Brugeren skal kunne vælge og trække vægge.                                                       |
+| FR-EDIT-002 | Brugeren skal kunne vælge og trække døre langs gyldige vægge.                                    |
+| FR-EDIT-003 | Brugeren skal kunne vælge og trække vinduer langs gyldige ydervægge.                             |
+| FR-EDIT-004 | Brugeren skal kunne tilføje, flytte, resize og slette døre.                                      |
+| FR-EDIT-005 | Brugeren skal kunne tilføje, flytte, resize og slette vinduer.                                   |
+| FR-EDIT-006 | Brugeren skal kunne tilføje og flytte fixtures, herunder teknikskab og vådrumsobjekter.          |
+| FR-EDIT-007 | Brugeren skal kunne låse elementer mod ændring.                                                  |
+| FR-EDIT-008 | Editor skal understøtte undo/redo baseret på command history.                                    |
+| FR-EDIT-009 | Editor skal understøtte snap til grid, vægforlængelse, parallelle vægge og hjørner.              |
 | FR-EDIT-010 | Editor skal forhindre operationer der ødelægger modellen uden at kunne repareres deterministisk. |
-| FR-EDIT-011 | Alle edits skal gemmes som typed commands, ikke som raw SVG/canvas mutations. |
+| FR-EDIT-011 | Alle edits skal gemmes som typed commands, ikke som raw SVG/canvas mutations.                    |
 
 ### 11.3 Room And Topology
 
-| ID | Krav |
-| --- | --- |
-| FR-TOPO-001 | Systemet skal kunne detektere lukkede rum fra vægge. |
-| FR-TOPO-002 | Systemet skal bevare rum-identitet ved mindre vægflytninger. |
-| FR-TOPO-003 | Systemet skal markere åbne eller selvkrydsende rum som invalid. |
-| FR-TOPO-004 | Systemet skal håndtere merge af rum ved sletning af intern væg. |
-| FR-TOPO-005 | Systemet skal håndtere split af rum ved ny intern væg. |
+| ID          | Krav                                                                |
+| ----------- | ------------------------------------------------------------------- |
+| FR-TOPO-001 | Systemet skal kunne detektere lukkede rum fra vægge.                |
+| FR-TOPO-002 | Systemet skal bevare rum-identitet ved mindre vægflytninger.        |
+| FR-TOPO-003 | Systemet skal markere åbne eller selvkrydsende rum som invalid.     |
+| FR-TOPO-004 | Systemet skal håndtere merge af rum ved sletning af intern væg.     |
+| FR-TOPO-005 | Systemet skal håndtere split af rum ved ny intern væg.              |
 | FR-TOPO-006 | Døre, vinduer og fixtures skal knyttes til gyldige parent entities. |
 
 ### 11.4 Measurement And Drawing
 
-| ID | Krav |
-| --- | --- |
-| FR-DRAW-001 | Systemet skal vise mål på vægge, rum og åbninger. |
-| FR-DRAW-002 | Systemet skal vise rumstempler med navn og nettoareal. |
-| FR-DRAW-003 | Systemet skal vise dørslag/sving, hvor relevant. |
-| FR-DRAW-004 | Systemet skal vise vinduesbredde og placering på ydervæg. |
-| FR-DRAW-005 | Systemet skal kunne eksportere SVG og PDF fra samme render model. |
+| ID          | Krav                                                                     |
+| ----------- | ------------------------------------------------------------------------ |
+| FR-DRAW-001 | Systemet skal vise mål på vægge, rum og åbninger.                        |
+| FR-DRAW-002 | Systemet skal vise rumstempler med navn og nettoareal.                   |
+| FR-DRAW-003 | Systemet skal vise dørslag/sving, hvor relevant.                         |
+| FR-DRAW-004 | Systemet skal vise vinduesbredde og placering på ydervæg.                |
+| FR-DRAW-005 | Systemet skal kunne eksportere SVG og PDF fra samme render model.        |
 | FR-DRAW-006 | Myndighedsnær eksport skal have målestok, titleblok, revision og status. |
 
 ### 11.5 Verification
 
-| ID | Krav |
-| --- | --- |
-| FR-VER-001 | Systemet skal kunne køre live validation efter hver edit operation. |
-| FR-VER-002 | Systemet skal kunne køre formal verification server-side. |
-| FR-VER-003 | Formal verification skal gemme input-hash og verification snapshot. |
-| FR-VER-004 | Formal verification skal returnere konkrete affected element IDs. |
-| FR-VER-005 | Verifikation skal skelne mellem blocking, review_required, warning og info. |
-| FR-VER-006 | Verifikation må ikke stole på client-provided compliance state. |
+| ID         | Krav                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| FR-VER-001 | Systemet skal kunne køre live validation efter hver edit operation.                      |
+| FR-VER-002 | Systemet skal kunne køre formal verification server-side.                                |
+| FR-VER-003 | Formal verification skal gemme input-hash og verification snapshot.                      |
+| FR-VER-004 | Formal verification skal returnere konkrete affected element IDs.                        |
+| FR-VER-005 | Verifikation skal skelne mellem blocking, review_required, warning og info.              |
+| FR-VER-006 | Verifikation må ikke stole på client-provided compliance state.                          |
 | FR-VER-007 | Verifikation skal kunne returnere manglende dokumentation som path-baserede datapunkter. |
 
 ### 11.6 AI Commands
 
-| ID | Krav |
-| --- | --- |
-| FR-AI-001 | Brugerens tekstkommandoer skal oversættes til `FloorPlanCommand` eller afvises. |
+| ID        | Krav                                                                                 |
+| --------- | ------------------------------------------------------------------------------------ |
+| FR-AI-001 | Brugerens tekstkommandoer skal oversættes til `FloorPlanCommand` eller afvises.      |
 | FR-AI-002 | AI-command parseren må maksimalt modtage relevant plan-slice, ikke hele historikken. |
-| FR-AI-003 | AI-output skal valideres med command schema. |
-| FR-AI-004 | Ved tvetydighed skal AI returnere clarification candidates fremfor at gætte. |
-| FR-AI-005 | En AI-kommando skal gennem samme command pipeline som drag operationer. |
+| FR-AI-003 | AI-output skal valideres med command schema.                                         |
+| FR-AI-004 | Ved tvetydighed skal AI returnere clarification candidates fremfor at gætte.         |
+| FR-AI-005 | En AI-kommando skal gennem samme command pipeline som drag operationer.              |
 
 ### 11.7 Future Material Basis
 
-| ID | Krav |
-| --- | --- |
-| FR-MAT-001 | Vægge skal have længde, tykkelse, højde og `assemblyId` felt. |
-| FR-MAT-002 | Åbninger skal være knyttet til vægge, så fradrag kan beregnes senere. |
-| FR-MAT-003 | Rum skal have gulv- og loftfinish assembly fields. |
-| FR-MAT-004 | Vægge skal kunne relatere side A og side B til rum. |
-| FR-MAT-005 | Materialegrundlag skal kunne afledes deterministisk uden AI. |
-| FR-MAT-006 | Første version skal kunne markere `materialBasisReadiness`. |
+| ID         | Krav                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------- |
+| FR-MAT-001 | Vægge skal have længde, tykkelse, højde og `assemblyId` felt.                           |
+| FR-MAT-002 | Åbninger skal være knyttet til vægge, så fradrag kan beregnes senere.                   |
+| FR-MAT-003 | Rum skal have gulv- og loftfinish assembly fields.                                      |
+| FR-MAT-004 | Vægge skal kunne relatere side A og side B til rum.                                     |
+| FR-MAT-005 | Materialegrundlag skal kunne afledes deterministisk uden AI.                            |
+| FR-MAT-006 | Første version skal kunne markere `materialBasisReadiness`.                             |
 | FR-MAT-007 | Systemet skal kunne fortælle hvad der mangler, før materialeberegning kan blive præcis. |
 
 ---
@@ -1141,17 +1141,17 @@ Fixtures:
 
 Før materialeberegneren bygges, skal første version kunne beregne disse basisformler deterministisk:
 
-| Quantity | Formel | Kræver | Readiness |
-| --- | --- | --- | --- |
-| Væglængde | `wall.centerline.lengthM` | Valid wall geometry | `GEOMETRY_ONLY` |
-| Brutto vægareal | `wall.lengthM * wall.heightM` | Wall height | `GEOMETRY_ONLY` eller højere |
-| Åbningsareal | `opening.widthM * opening.heightM` | Opening dimensions | `GEOMETRY_ONLY` |
-| Netto vægareal | `grossWallAreaM2 - sum(openingAreaM2)` | Wall/opening relation | `GEOMETRY_ONLY` |
-| Gulvareal | `room.netAreaM2` | Valid room polygon | `GEOMETRY_ONLY` |
-| Loftareal | `room.netAreaM2` med loftfinish | Valid room polygon | `ASSEMBLIES_ASSIGNED` |
-| Fodpanel længde | Room perimeter minus door openings | Room/wall/opening relation | `READY_FOR_ESTIMATE` |
-| Dør/vindue antal | Count by `openingKind` and `productTypeId` | Product type optional | `GEOMETRY_ONLY` |
-| Vådzone areal | Wet room wall/floor zones | Wet room metadata | `READY_FOR_ESTIMATE` |
+| Quantity         | Formel                                     | Kræver                     | Readiness                    |
+| ---------------- | ------------------------------------------ | -------------------------- | ---------------------------- |
+| Væglængde        | `wall.centerline.lengthM`                  | Valid wall geometry        | `GEOMETRY_ONLY`              |
+| Brutto vægareal  | `wall.lengthM * wall.heightM`              | Wall height                | `GEOMETRY_ONLY` eller højere |
+| Åbningsareal     | `opening.widthM * opening.heightM`         | Opening dimensions         | `GEOMETRY_ONLY`              |
+| Netto vægareal   | `grossWallAreaM2 - sum(openingAreaM2)`     | Wall/opening relation      | `GEOMETRY_ONLY`              |
+| Gulvareal        | `room.netAreaM2`                           | Valid room polygon         | `GEOMETRY_ONLY`              |
+| Loftareal        | `room.netAreaM2` med loftfinish            | Valid room polygon         | `ASSEMBLIES_ASSIGNED`        |
+| Fodpanel længde  | Room perimeter minus door openings         | Room/wall/opening relation | `READY_FOR_ESTIMATE`         |
+| Dør/vindue antal | Count by `openingKind` and `productTypeId` | Product type optional      | `GEOMETRY_ONLY`              |
+| Vådzone areal    | Wet room wall/floor zones                  | Wet room metadata          | `READY_FOR_ESTIMATE`         |
 
 Regler:
 
@@ -1530,22 +1530,22 @@ Deliverables:
 
 Følgende P0 backlog er den anbefalede nedbrydning for første implementeringsrunde.
 
-| Epic | Leverance | Accept |
-| --- | --- | --- |
-| FP-CORE-001 | `FloorPlanDocument` + Zod schemas | Invalid wall/room/opening payloads afvises i tests. |
-| FP-CORE-002 | Command schemas og command result contract | `move_wall`, `move_opening`, `move_fixture` valideres og kan afvises uden mutation. |
-| FP-CORE-003 | Geometry helpers | Længde, areal, perimeter, opening projection og local meter transforms er deterministic. |
-| FP-CORE-004 | Topology reconciliation | Lukkede rum kan udledes fra ortogonale vægge med stabile room IDs. |
-| FP-RENDER-001 | Read-only SVG render model | Plan kan vises med vægge, rumstempler, døre, vinduer og fixtures. |
-| FP-EDITOR-001 | Selection + drag wall | Intern væg kan trækkes og opdaterer tilstødende rumarealer. |
-| FP-EDITOR-002 | Door/window drag | Opening kan flyttes langs parent wall med endpoint/overlap constraints. |
-| FP-EDITOR-003 | Fixture drag | Teknikskab kan flyttes mellem rum og bevarer room relation. |
-| FP-VERIFY-001 | Live validation | Invalid topology, invalid openings og room-program warnings vises efter edit. |
-| FP-PERSIST-001 | Floor plan repository | Aktiv version og command history kan gemmes/hentes uden direkte Supabase i UI. |
-| FP-VERIFY-002 | Formal verification service | Rule matrix P0-regler returnerer findings med affected element IDs. |
-| FP-EXPORT-001 | SVG/PDF export | Export bruger samme render model og viser verification status. |
-| FP-MAT-001 | Material basis summary | Geometry-only summary returnerer væglængder, rumarealer og opening counts. |
-| FP-AI-001 | AI command parser | Tekstkommando returnerer validated command candidate eller clarification. |
+| Epic           | Leverance                                  | Accept                                                                                   |
+| -------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| FP-CORE-001    | `FloorPlanDocument` + Zod schemas          | Invalid wall/room/opening payloads afvises i tests.                                      |
+| FP-CORE-002    | Command schemas og command result contract | `move_wall`, `move_opening`, `move_fixture` valideres og kan afvises uden mutation.      |
+| FP-CORE-003    | Geometry helpers                           | Længde, areal, perimeter, opening projection og local meter transforms er deterministic. |
+| FP-CORE-004    | Topology reconciliation                    | Lukkede rum kan udledes fra ortogonale vægge med stabile room IDs.                       |
+| FP-RENDER-001  | Read-only SVG render model                 | Plan kan vises med vægge, rumstempler, døre, vinduer og fixtures.                        |
+| FP-EDITOR-001  | Selection + drag wall                      | Intern væg kan trækkes og opdaterer tilstødende rumarealer.                              |
+| FP-EDITOR-002  | Door/window drag                           | Opening kan flyttes langs parent wall med endpoint/overlap constraints.                  |
+| FP-EDITOR-003  | Fixture drag                               | Teknikskab kan flyttes mellem rum og bevarer room relation.                              |
+| FP-VERIFY-001  | Live validation                            | Invalid topology, invalid openings og room-program warnings vises efter edit.            |
+| FP-PERSIST-001 | Floor plan repository                      | Aktiv version og command history kan gemmes/hentes uden direkte Supabase i UI.           |
+| FP-VERIFY-002  | Formal verification service                | Rule matrix P0-regler returnerer findings med affected element IDs.                      |
+| FP-EXPORT-001  | SVG/PDF export                             | Export bruger samme render model og viser verification status.                           |
+| FP-MAT-001     | Material basis summary                     | Geometry-only summary returnerer væglængder, rumarealer og opening counts.               |
+| FP-AI-001      | AI command parser                          | Tekstkommando returnerer validated command candidate eller clarification.                |
 
 P0 skal ikke inkludere:
 
@@ -1643,15 +1643,15 @@ Mitigation:
 
 ### 23.1 Besluttet Default
 
-| Spørgsmål | Default |
-| --- | --- |
-| Første editor-renderer | Native SVG |
-| Relation til `design_iterations` | Separat `floor_plan_iterations` med reference til aktiv design iteration |
-| Room persistence | Rooms er derived fra walls, men persisteres som reconciled snapshot med stabile IDs |
-| Multi-level | 1-2 niveauer med simple trapper i første store release |
-| Product catalogs | Minimal project-local snapshot |
-| Assemblies | Project-local snapshot i v1, global catalog senere |
-| BR18 scope | Sikre deterministic checks som facts, usikre forhold som `review_required` |
+| Spørgsmål                        | Default                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------------- |
+| Første editor-renderer           | Native SVG                                                                          |
+| Relation til `design_iterations` | Separat `floor_plan_iterations` med reference til aktiv design iteration            |
+| Room persistence                 | Rooms er derived fra walls, men persisteres som reconciled snapshot med stabile IDs |
+| Multi-level                      | 1-2 niveauer med simple trapper i første store release                              |
+| Product catalogs                 | Minimal project-local snapshot                                                      |
+| Assemblies                       | Project-local snapshot i v1, global catalog senere                                  |
+| BR18 scope                       | Sikre deterministic checks som facts, usikre forhold som `review_required`          |
 
 ### 23.2 Stadig Åbent Til Architecture Review
 
@@ -1757,15 +1757,15 @@ Denne feature krydser compliance, AI, persistence, project state og fremtidig AP
 
 ### 24.1 Gatekeeper Protocol Mapping
 
-| Gatekeeper-spørgsmål | Svar for denne feature |
-| --- | --- |
-| Hvilken boundary krydses? | UI/editor input, AI responses, Supabase JSONB, verification snapshots, SVG/PDF storage og trusted project/site data. |
-| Hvilket schema validerer data? | `FloorPlanDocumentSchema`, `FloorPlanCommandSchema`, `FloorPlanVerificationResultSchema`, `MaterialBasisSummarySchema` og repository decoders for persisted JSONB. |
-| Hvor lever business logic? | `src/domain/floor-plan/` og shared pure geometry i `src/domain/geometry/`. |
-| Hvilken application service ejer workflowet? | `generate-floor-plan.service.ts`, `apply-floor-plan-command.service.ts`, `verify-floor-plan.service.ts`, `export-floor-plan.service.ts`. |
-| Hvilken adapter håndterer Supabase/Datafordeler/AI/storage? | Supabase repositories, AI adapters under `src/integrations/ai/`, storage/export repository og existing trusted site/compliance services. |
-| Hvordan forhindres UI i at eje domain logic? | UI må kun producere candidate commands og vise render output. Commands, topology, verification og persistence ejes af services/domain. |
-| Hvilke tests beviser boundary og domain behavior? | Tier 1 domain tests, Tier 2 service tests med fake repositories/AI, og få Tier 3 acceptance flows for generate/edit/verify/export. |
+| Gatekeeper-spørgsmål                                        | Svar for denne feature                                                                                                                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Hvilken boundary krydses?                                   | UI/editor input, AI responses, Supabase JSONB, verification snapshots, SVG/PDF storage og trusted project/site data.                                               |
+| Hvilket schema validerer data?                              | `FloorPlanDocumentSchema`, `FloorPlanCommandSchema`, `FloorPlanVerificationResultSchema`, `MaterialBasisSummarySchema` og repository decoders for persisted JSONB. |
+| Hvor lever business logic?                                  | `src/domain/floor-plan/` og shared pure geometry i `src/domain/geometry/`.                                                                                         |
+| Hvilken application service ejer workflowet?                | `generate-floor-plan.service.ts`, `apply-floor-plan-command.service.ts`, `verify-floor-plan.service.ts`, `export-floor-plan.service.ts`.                           |
+| Hvilken adapter håndterer Supabase/Datafordeler/AI/storage? | Supabase repositories, AI adapters under `src/integrations/ai/`, storage/export repository og existing trusted site/compliance services.                           |
+| Hvordan forhindres UI i at eje domain logic?                | UI må kun producere candidate commands og vise render output. Commands, topology, verification og persistence ejes af services/domain.                             |
+| Hvilke tests beviser boundary og domain behavior?           | Tier 1 domain tests, Tier 2 service tests med fake repositories/AI, og få Tier 3 acceptance flows for generate/edit/verify/export.                                 |
 
 ### 24.2 Persistence Og Migration Review
 

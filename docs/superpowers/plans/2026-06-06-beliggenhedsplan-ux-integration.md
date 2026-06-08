@@ -12,12 +12,12 @@
 
 ## File map
 
-| File | Action | Responsibility after change |
-|------|--------|-----------------------------|
-| `src/routes/projekt.teknik.tsx` | Rewrite | Full TeknikPage — dark shell, two-column layout, map preview, actionable errors, pre-fill, download UX |
-| `src/components/cockpit/sections/NaesteStepSection.tsx` | Modify | Add Beliggenhedsplan as navigation step with a real link |
-| `src/components/floor-plan/VerificationPanel.tsx` | Modify | Accept optional `beliggenhedsplanHref` prop, show next-step link after export |
-| `src/components/floor-plan/FloorPlanEditor.tsx` | Modify | Compute and pass `beliggenhedsplanHref` down to VerificationPanel |
+| File                                                    | Action  | Responsibility after change                                                                            |
+| ------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| `src/routes/projekt.teknik.tsx`                         | Rewrite | Full TeknikPage — dark shell, two-column layout, map preview, actionable errors, pre-fill, download UX |
+| `src/components/cockpit/sections/NaesteStepSection.tsx` | Modify  | Add Beliggenhedsplan as navigation step with a real link                                               |
+| `src/components/floor-plan/VerificationPanel.tsx`       | Modify  | Accept optional `beliggenhedsplanHref` prop, show next-step link after export                          |
+| `src/components/floor-plan/FloorPlanEditor.tsx`         | Modify  | Compute and pass `beliggenhedsplanHref` down to VerificationPanel                                      |
 
 ---
 
@@ -26,6 +26,7 @@
 **Finding addressed:** Finding 1 (🔴 Critical — visual design language inconsistency)
 
 **Files:**
+
 - Modify: `src/routes/projekt.teknik.tsx`
 
 The current page uses `bg-stone-50`, white cards, and `bg-stone-900` buttons — completely different from the rest of the app. This task rewrites the visual shell while keeping all existing logic intact.
@@ -75,6 +76,7 @@ return (
 ```
 
 Close the new wrappers at the bottom:
+
 ```tsx
     </main>
   </div>
@@ -84,6 +86,7 @@ Close the new wrappers at the bottom:
 - [ ] **Step 2: Update card containers to dark style**
 
 Replace the white tegningsdata card:
+
 ```tsx
 // OLD:
 <div className="rounded-xl border border-stone-200 bg-white p-5 space-y-4">
@@ -97,6 +100,7 @@ Replace the white tegningsdata card:
 - [ ] **Step 3: Update all input fields to dark style**
 
 Replace every `className` on `<input>` elements inside the tegningsdata card and dimensions card:
+
 ```tsx
 // OLD:
 className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm
@@ -109,6 +113,7 @@ className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-s
 ```
 
 Also replace `border-blue-200` input variant (dimensions card) with:
+
 ```tsx
 className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm
            text-foreground placeholder:text-muted-foreground/50
@@ -118,6 +123,7 @@ className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-s
 - [ ] **Step 4: Update all label text tokens**
 
 Replace:
+
 - `text-stone-600` → `text-muted-foreground`
 - `text-stone-700` → `text-foreground`
 - `text-stone-500` → `text-muted-foreground`
@@ -138,6 +144,7 @@ className="inline-flex items-center gap-1.5 rounded-md border border-border/60 b
 ```
 
 Also update the inline "Tegning genereret" success text:
+
 ```tsx
 // OLD: className="text-sm text-green-700 font-medium"
 // NEW: className="font-mono text-[11px] text-emerald-400"
@@ -146,6 +153,7 @@ Also update the inline "Tegning genereret" success text:
 - [ ] **Step 6: Update alert cards to use dark-compatible colors**
 
 For the "footprint fra designværktøjet" status, replace:
+
 ```tsx
 // OLD border-green-200 bg-green-50 p-3:
 <div className="rounded-lg border border-green-200 bg-green-50 p-3">
@@ -179,6 +187,7 @@ git commit -m "style(beliggenhedsplan): apply dark design system tokens and app 
 **Findings addressed:** Finding 3 (🔴 Critical — missing spatial visualization), Finding 4 (🟡 Moderate — form vs workflow pattern)
 
 **Files:**
+
 - Modify: `src/routes/projekt.teknik.tsx`
 
 This restructures the page from a single scrolling column to a two-column split: map on the left, input panel on the right — matching the spatial workflow of Maskinrummet and Plantegning.
@@ -186,6 +195,7 @@ This restructures the page from a single scrolling column to a two-column split:
 - [ ] **Step 1: Add MatrikelMap import**
 
 At the top of `src/routes/projekt.teknik.tsx`, add:
+
 ```tsx
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
@@ -194,6 +204,7 @@ import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.type
 - [ ] **Step 2: Read bbrData from project-store**
 
 `bbrData` is already imported via `useProject`. Verify the destructure includes it:
+
 ```tsx
 const bbrData = useProject((s) => s.bbrData);
 ```
@@ -203,6 +214,7 @@ This gives us `RuleEngineBbrData | null` — the exact type that `MatrikelMap` e
 - [ ] **Step 3: Compute the footprint for map preview**
 
 After the existing state declarations, add:
+
 ```tsx
 // Convert designPlacement footprint to 25832-typed polygon for MatrikelMap.
 // designPlacement.footprintGeojson uses 25832 coordinates without the crs tag.
@@ -216,44 +228,42 @@ const footprintForMap: GeoJsonPolygon25832 | null = designPlacement?.footprintGe
 Replace the current `<main className="flex-1 overflow-y-auto p-8 space-y-6">` section with a two-column flex split. The new `<main>` becomes a flex row:
 
 ```tsx
-    <main className="flex flex-1 overflow-hidden">
-      {/* Left: map fills remaining space */}
-      <div className="flex-1 overflow-hidden">
-        <MatrikelMap
-          bbr={bbrData}
-          metrics={null}
-          naboer={null}
-          jordstykkeLokalId={matrikelId}
-          footprintGeojson={footprintForMap}
-        />
-      </div>
+<main className="flex flex-1 overflow-hidden">
+  {/* Left: map fills remaining space */}
+  <div className="flex-1 overflow-hidden">
+    <MatrikelMap
+      bbr={bbrData}
+      metrics={null}
+      naboer={null}
+      jordstykkeLokalId={matrikelId}
+      footprintGeojson={footprintForMap}
+    />
+  </div>
 
-      {/* Right: input panel 360px wide */}
-      <aside className="w-[360px] shrink-0 border-l border-border/40 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* All existing alert/input/result content moves here */}
-        </div>
+  {/* Right: input panel 360px wide */}
+  <aside className="w-[360px] shrink-0 border-l border-border/40 flex flex-col overflow-hidden">
+    <div className="flex-1 overflow-y-auto p-5 space-y-5">
+      {/* All existing alert/input/result content moves here */}
+    </div>
 
-        {/* Sticky generate button at bottom of panel */}
-        <div className="shrink-0 border-t border-border/40 p-4">
-          <button
-            onClick={handleGenerate}
-            disabled={!canGenerate || loading || (!hasFootprint && !canGenerateWithDimensions)}
-            className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border
+    {/* Sticky generate button at bottom of panel */}
+    <div className="shrink-0 border-t border-border/40 p-4">
+      <button
+        onClick={handleGenerate}
+        disabled={!canGenerate || loading || (!hasFootprint && !canGenerateWithDimensions)}
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border
                        border-border/60 bg-[#111] px-4 py-2.5 font-mono text-[11px]
                        tracking-[0.1em] text-foreground hover:bg-[#1a1a1a]
                        disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? "Genererer…" : "Generer beliggenhedsplan"}
-          </button>
-          {result && !loading && (
-            <p className="mt-2 text-center font-mono text-[10px] text-emerald-400">
-              Tegning genereret
-            </p>
-          )}
-        </div>
-      </aside>
-    </main>
+      >
+        {loading ? "Genererer…" : "Generer beliggenhedsplan"}
+      </button>
+      {result && !loading && (
+        <p className="mt-2 text-center font-mono text-[10px] text-emerald-400">Tegning genereret</p>
+      )}
+    </div>
+  </aside>
+</main>
 ```
 
 Move all existing content blocks (alerts, dimension inputs, footprint status, tegningsdata card, error, result) into `<div className="flex-1 overflow-y-auto p-5 space-y-5">`. Remove the old standalone generate button (it is now in the sticky footer).
@@ -288,6 +298,7 @@ git commit -m "feat(beliggenhedsplan): two-column layout with MatrikelMap parcel
 **Finding addressed:** Finding 5 (🟡 Moderate — technical, handlingsløse fejlbeskeder)
 
 **Files:**
+
 - Modify: `src/routes/projekt.teknik.tsx`
 
 Replace the amber bullet-list with structured dark cards that each carry a direct navigation link.
@@ -298,81 +309,86 @@ Find and replace the entire `{!canGenerate && ( ... )}` block:
 
 ```tsx
 // OLD:
-{!canGenerate && (
-  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-    <p className="text-sm font-medium text-amber-800 mb-2">Mangler data for at generere:</p>
-    <ul className="list-disc list-inside space-y-1">
-      {missingFields.map((f) => (
-        <li key={f} className="text-sm text-amber-700">
-          {f}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+{
+  !canGenerate && (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <p className="text-sm font-medium text-amber-800 mb-2">Mangler data for at generere:</p>
+      <ul className="list-disc list-inside space-y-1">
+        {missingFields.map((f) => (
+          <li key={f} className="text-sm text-amber-700">
+            {f}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 // NEW:
-{!canGenerate && (
-  <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-4 space-y-2">
-    <p className="font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase mb-3">
-      Mangler data
-    </p>
+{
+  !canGenerate && (
+    <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-4 space-y-2">
+      <p className="font-mono text-[11px] tracking-[0.1em] text-muted-foreground uppercase mb-3">
+        Mangler data
+      </p>
 
-    {!currentProjectId && (
-      <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
-        <p className="text-sm text-amber-300">Projekt ikke gemt</p>
-        <Link
-          to="/projekt/start"
-          className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
-        >
-          Start projekt →
-        </Link>
-      </div>
-    )}
-
-    {!address?.adresseid && (
-      <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
-        <p className="text-sm text-amber-300">Adresse ikke valgt</p>
-        <Link
-          to="/projekt/adresse"
-          className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
-        >
-          Vælg adresse →
-        </Link>
-      </div>
-    )}
-
-    {!address?.kommunekode && !!address?.adresseid && (
-      <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
-        <p className="text-sm text-amber-300">Kommunekode mangler</p>
-        <Link
-          to={backTo}
-          className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
-        >
-          Åbn cockpit →
-        </Link>
-      </div>
-    )}
-
-    {!matrikelId && (
-      <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
-        <div>
-          <p className="text-sm text-amber-300">Matrikeldata ikke hentet</p>
-          <p className="text-xs text-amber-400/70 mt-0.5">Kør adresseanalysen i cockpit</p>
+      {!currentProjectId && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+          <p className="text-sm text-amber-300">Projekt ikke gemt</p>
+          <Link
+            to="/projekt/start"
+            className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+          >
+            Start projekt →
+          </Link>
         </div>
-        <Link
-          to={backTo}
-          className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
-        >
-          Åbn cockpit →
-        </Link>
-      </div>
-    )}
-  </div>
-)}
+      )}
+
+      {!address?.adresseid && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+          <p className="text-sm text-amber-300">Adresse ikke valgt</p>
+          <Link
+            to="/projekt/adresse"
+            className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+          >
+            Vælg adresse →
+          </Link>
+        </div>
+      )}
+
+      {!address?.kommunekode && !!address?.adresseid && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+          <p className="text-sm text-amber-300">Kommunekode mangler</p>
+          <Link
+            to={backTo}
+            className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+          >
+            Åbn cockpit →
+          </Link>
+        </div>
+      )}
+
+      {!matrikelId && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-950/20 px-3 py-2">
+          <div>
+            <p className="text-sm text-amber-300">Matrikeldata ikke hentet</p>
+            <p className="text-xs text-amber-400/70 mt-0.5">Kør adresseanalysen i cockpit</p>
+          </div>
+          <Link
+            to={backTo}
+            className="shrink-0 font-mono text-[10px] text-amber-400 hover:text-amber-200 transition-colors"
+          >
+            Åbn cockpit →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 ```
 
 Remove the `missingFields` array — it's no longer needed:
+
 ```tsx
 // Delete these lines:
 const missingFields: string[] = [];
@@ -385,6 +401,7 @@ if (!matrikelId) missingFields.push("Matrikeldata ikke hentet (kør adresseanaly
 - [ ] **Step 2: Update readiness status cards to dark style**
 
 Replace all `READINESS_COLORS` values:
+
 ```tsx
 // OLD:
 const READINESS_COLORS: Record<DrawingReadinessStatus, string> = {
@@ -407,20 +424,24 @@ const READINESS_COLORS: Record<DrawingReadinessStatus, string> = {
 
 ```tsx
 // OLD:
-{error && (
-  <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-    <p className="text-sm font-medium text-red-800">Fejl ved generering</p>
-    <p className="text-sm text-red-700 mt-1 font-mono">{error}</p>
-  </div>
-)}
+{
+  error && (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+      <p className="text-sm font-medium text-red-800">Fejl ved generering</p>
+      <p className="text-sm text-red-700 mt-1 font-mono">{error}</p>
+    </div>
+  );
+}
 
 // NEW:
-{error && (
-  <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4">
-    <p className="text-sm font-medium text-red-300">Fejl ved generering</p>
-    <p className="text-sm text-red-400/80 mt-1 font-mono">{error}</p>
-  </div>
-)}
+{
+  error && (
+    <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4">
+      <p className="text-sm font-medium text-red-300">Fejl ved generering</p>
+      <p className="text-sm text-red-400/80 mt-1 font-mono">{error}</p>
+    </div>
+  );
+}
 ```
 
 - [ ] **Step 4: TypeScript + build check**
@@ -445,6 +466,7 @@ git commit -m "ux(beliggenhedsplan): actionable error cards with navigation link
 **Finding addressed:** Finding 2 (🔴 Critical — ingen navigationsvej ind i Beliggenhedsplan)
 
 **Files:**
+
 - Modify: `src/components/cockpit/sections/NaesteStepSection.tsx`
 - Modify: `src/components/floor-plan/VerificationPanel.tsx`
 - Modify: `src/components/floor-plan/FloorPlanEditor.tsx`
@@ -484,8 +506,7 @@ const NAESTE_TRIN: Array<{
   {
     nummer: "03",
     titel: "Generer beliggenhedsplan",
-    beskrivelse:
-      "Lav myndighedstegningen til byggetilladelsesansøgningen direkte fra dit design.",
+    beskrivelse: "Lav myndighedstegningen til byggetilladelsesansøgningen direkte fra dit design.",
     href: "/projekt/teknik",
     kommerSnart: false,
   },
@@ -556,11 +577,12 @@ type VerificationPanelProps = {
   exportResult: ExportFloorPlanResult | null;
   onVerify: () => Promise<void>;
   onExport: () => Promise<void>;
-  beliggenhedsplanHref?: string;   // ← new optional prop
+  beliggenhedsplanHref?: string; // ← new optional prop
 };
 ```
 
 Destructure it in the function signature:
+
 ```tsx
 export function VerificationPanel({
   busy,
@@ -579,21 +601,23 @@ export function VerificationPanel({
 After the closing `}` of `{exportResult && ( ... )}` block, add:
 
 ```tsx
-{beliggenhedsplanHref && exportResult && (
-  <div className="mt-3 rounded-md border border-border/40 bg-surface-elevated p-3">
-    <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-      Næste trin
-    </p>
-    <Link
-      to={beliggenhedsplanHref}
-      className="inline-flex items-center gap-1.5 font-mono text-[11px]
+{
+  beliggenhedsplanHref && exportResult && (
+    <div className="mt-3 rounded-md border border-border/40 bg-surface-elevated p-3">
+      <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        Næste trin
+      </p>
+      <Link
+        to={beliggenhedsplanHref}
+        className="inline-flex items-center gap-1.5 font-mono text-[11px]
                  tracking-[0.1em] text-foreground hover:text-[#c8ff00] transition-colors"
-    >
-      <Map size={12} />
-      Generer beliggenhedsplan →
-    </Link>
-  </div>
-)}
+      >
+        <Map size={12} />
+        Generer beliggenhedsplan →
+      </Link>
+    </div>
+  );
+}
 ```
 
 - [ ] **Step 7: Pass the prop from FloorPlanEditor**
@@ -606,6 +630,7 @@ const beliggenhedsplanHref = projectId ? "/projekt/teknik" : undefined;
 ```
 
 Then in the JSX where `<VerificationPanel .../>` is rendered (around line 316):
+
 ```tsx
 <VerificationPanel
   busy={busy}
@@ -615,7 +640,7 @@ Then in the JSX where `<VerificationPanel .../>` is rendered (around line 316):
   exportResult={editor.exportResult}
   onVerify={editor.verify}
   onExport={editor.exportPlan}
-  beliggenhedsplanHref={beliggenhedsplanHref}   // ← new
+  beliggenhedsplanHref={beliggenhedsplanHref} // ← new
 />
 ```
 
@@ -641,6 +666,7 @@ git commit -m "feat(plantegning): add Beliggenhedsplan next-step link in Verific
 **Findings addressed:** Finding 6 (🟢 Minor — pre-fill Tegningsdata), Finding 7 (🟢 Minor — download UX)
 
 **Files:**
+
 - Modify: `src/routes/projekt.teknik.tsx`
 
 ### Subtask 5a — Pre-fill heightM from designPlacement
@@ -655,7 +681,7 @@ const [heightM, setHeightM] = useState<string>("");
 
 // NEW:
 const [heightM, setHeightM] = useState<string>(() =>
-  designPlacement?.heightM != null ? String(designPlacement.heightM) : ""
+  designPlacement?.heightM != null ? String(designPlacement.heightM) : "",
 );
 ```
 
@@ -666,6 +692,7 @@ Note: `sokkelKoteM` has no equivalent in `DesignPlacement` — leave it as `useS
 - [ ] **Step 2: Add Download icon import**
 
 Add `Download` to the lucide import at the top of the file:
+
 ```tsx
 // Ensure the import includes Download, e.g.:
 import { Download } from "lucide-react";
@@ -676,69 +703,65 @@ import { Download } from "lucide-react";
 Find the `{result && ( ... )}` block. Replace the download buttons and add guidance:
 
 ```tsx
-{result && (
-  <div className="space-y-4">
-    {/* Readiness status */}
-    <div className={`rounded-lg border p-3 ${READINESS_COLORS[result.readinessStatus]}`}>
-      <p className="text-sm font-semibold">
-        Status: {READINESS_LABELS[result.readinessStatus]}
-      </p>
-    </div>
+{
+  result && (
+    <div className="space-y-4">
+      {/* Readiness status */}
+      <div className={`rounded-lg border p-3 ${READINESS_COLORS[result.readinessStatus]}`}>
+        <p className="text-sm font-semibold">Status: {READINESS_LABELS[result.readinessStatus]}</p>
+      </div>
 
-    {/* Downloads */}
-    <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-4 space-y-3">
-      <p className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
-        Download
-      </p>
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() =>
-            downloadSvg(
-              result.svgContent,
-              `beliggenhedsplan-${result.exportId.slice(0, 8)}.svg`,
-            )
-          }
-          className="inline-flex items-center gap-2 rounded-md border border-border/60
+      {/* Downloads */}
+      <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-4 space-y-3">
+        <p className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
+          Download
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() =>
+              downloadSvg(result.svgContent, `beliggenhedsplan-${result.exportId.slice(0, 8)}.svg`)
+            }
+            className="inline-flex items-center gap-2 rounded-md border border-border/60
                      bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground
                      hover:bg-[#1a1a1a] transition-colors"
-        >
-          <Download size={12} />
-          SVG
-          <span className="text-muted-foreground text-[10px]">vektorgrafik</span>
-        </button>
-
-        {result.pdfUrl !== null && (
-          <a
-            href={result.pdfUrl}
-            download={`beliggenhedsplan-${result.exportId.slice(0, 8)}.pdf`}
-            className="inline-flex items-center gap-2 rounded-md border border-border/60
-                       bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground
-                       hover:bg-[#1a1a1a] transition-colors"
           >
             <Download size={12} />
-            PDF
-            <span className="text-muted-foreground text-[10px]">til print</span>
-          </a>
-        )}
+            SVG
+            <span className="text-muted-foreground text-[10px]">vektorgrafik</span>
+          </button>
+
+          {result.pdfUrl !== null && (
+            <a
+              href={result.pdfUrl}
+              download={`beliggenhedsplan-${result.exportId.slice(0, 8)}.pdf`}
+              className="inline-flex items-center gap-2 rounded-md border border-border/60
+                       bg-[#111] px-3 py-2 font-mono text-[11px] text-foreground
+                       hover:bg-[#1a1a1a] transition-colors"
+            >
+              <Download size={12} />
+              PDF
+              <span className="text-muted-foreground text-[10px]">til print</span>
+            </a>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground border-t border-border/20 pt-3">
+          Upload filen til kommunens byggesagsportal (Byg og Miljø) som bilag til byggeansøgningen.
+        </p>
       </div>
 
-      <p className="text-xs text-muted-foreground border-t border-border/20 pt-3">
-        Upload filen til kommunens byggesagsportal (Byg og Miljø) som bilag til
-        byggeansøgningen.
-      </p>
-    </div>
-
-    {/* SVG preview */}
-    <div className="rounded-xl border border-border/40 bg-[#0d0d0d] overflow-auto shadow-sm">
-      <div className="p-3 border-b border-border/20">
-        <span className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
-          Preview — beliggenhedsplan
-        </span>
+      {/* SVG preview */}
+      <div className="rounded-xl border border-border/40 bg-[#0d0d0d] overflow-auto shadow-sm">
+        <div className="p-3 border-b border-border/20">
+          <span className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
+            Preview — beliggenhedsplan
+          </span>
+        </div>
+        <div className="p-4" dangerouslySetInnerHTML={{ __html: result.svgContent }} />
       </div>
-      <div className="p-4" dangerouslySetInnerHTML={{ __html: result.svgContent }} />
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 - [ ] **Step 4: Final verification**
@@ -767,15 +790,15 @@ git commit -m "ux(beliggenhedsplan): pre-fill height, improved download UX with 
 
 ### Spec coverage check
 
-| Finding | Task | Covered |
-|---------|------|---------|
-| F1: Visual design language (🔴) | Task 1 | ✅ Dark theme, consistent tokens, app header |
-| F2: Navigation bridges (🔴) | Task 4 | ✅ NaesteStepSection + VerificationPanel entry points |
-| F3: Missing spatial visualization (🔴) | Task 2 | ✅ MatrikelMap with footprint overlay |
-| F4: Form vs workflow layout (🟡) | Task 2 | ✅ Two-column layout, sticky generate button |
-| F5: Actionable error messages (🟡) | Task 3 | ✅ Per-error cards with navigation links |
-| F6: Pre-fill Tegningsdata (🟢) | Task 5a | ✅ heightM pre-filled from designPlacement |
-| F7: Download UX (🟢) | Task 5b | ✅ Format labels + "hvad nu?" guidance |
+| Finding                                | Task    | Covered                                               |
+| -------------------------------------- | ------- | ----------------------------------------------------- |
+| F1: Visual design language (🔴)        | Task 1  | ✅ Dark theme, consistent tokens, app header          |
+| F2: Navigation bridges (🔴)            | Task 4  | ✅ NaesteStepSection + VerificationPanel entry points |
+| F3: Missing spatial visualization (🔴) | Task 2  | ✅ MatrikelMap with footprint overlay                 |
+| F4: Form vs workflow layout (🟡)       | Task 2  | ✅ Two-column layout, sticky generate button          |
+| F5: Actionable error messages (🟡)     | Task 3  | ✅ Per-error cards with navigation links              |
+| F6: Pre-fill Tegningsdata (🟢)         | Task 5a | ✅ heightM pre-filled from designPlacement            |
+| F7: Download UX (🟢)                   | Task 5b | ✅ Format labels + "hvad nu?" guidance                |
 
 ### Placeholder scan
 
