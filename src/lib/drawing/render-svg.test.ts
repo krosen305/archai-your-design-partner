@@ -30,6 +30,7 @@ const model: DrawingModel = {
     revision: "A",
     disclaimer: "FORELOEBIG - ikke til myndighedsbrug",
     sourceList: ["MAT WFS 2026-05-25"],
+    completenessStatus: null,
   },
   legend: [],
   northArrowRotationDeg: 0,

@@ -25,7 +25,12 @@ export type DrawingLayerKind =
   | "nature_protection"
   | "scale_bar"
   | "mandatory_annotations"
-  | "north_arrow";
+  | "north_arrow"
+  | "road_fill"
+  | "naturbeskyttelse_zones"
+  | "ler_lines"
+  | "placeholder"
+  | "watermark";
 
 export type DrawingFeature = {
   id: string;
@@ -49,6 +54,7 @@ export type DrawingTitleBlock = {
   revision: string;
   disclaimer: string | null;
   sourceList: string[];
+  completenessStatus: string | null; // e.g. "UDKAST — 2 placeholders"
 };
 
 export type DrawingModel = {

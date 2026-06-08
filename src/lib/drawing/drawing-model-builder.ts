@@ -145,6 +145,20 @@ function naturbeskyttelseStyle(
   }
 }
 
+function fjernvarmeSourceLine(plan: BeliggenhedsplanInput): string | null {
+  const fjernvarme = plan.fjernvarme;
+  if (!fjernvarme) return null;
+  if (fjernvarme.fjernvarmeDaekket === true) return "Fjernvarme: forsyningsomraade";
+  if (fjernvarme.fjernvarmePlanlagt === true) {
+    const start = fjernvarme.konverteringStartAar
+      ? ` fra ${fjernvarme.konverteringStartAar}`
+      : "";
+    return `Fjernvarme: planlagt${start}`;
+  }
+  if (fjernvarme.fjernvarmeDaekket === false) return "Fjernvarme: ikke bekraeftet";
+  return "Fjernvarme: ukendt";
+}
+
 export function buildDrawingModel(
   plan: BeliggenhedsplanInput,
   readiness: DrawingReadinessDecision,
@@ -512,7 +526,9 @@ export function buildDrawingModel(
         ...(plan.naturbeskyttelse.length > 0
           ? [`Naturbeskyttelse: ${plan.naturbeskyttelse.length} lag`]
           : []),
+        ...(fjernvarmeSourceLine(plan) ? [fjernvarmeSourceLine(plan)!] : []),
       ],
+      completenessStatus: null,
     },
     legend: [
       {

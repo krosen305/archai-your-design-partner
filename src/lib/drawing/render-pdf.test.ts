@@ -30,6 +30,7 @@ function makeMinimalModel(): DrawingModel {
       revision: "A",
       disclaimer: "UDKAST",
       sourceList: ["MAT WFS"],
+      completenessStatus: null,
     },
     legend: [],
     northArrowRotationDeg: 0,
