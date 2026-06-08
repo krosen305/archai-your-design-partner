@@ -364,6 +364,23 @@ function deriveSewerAreaType(entry: WastewaterPlan | null): string | null {
 }
 
 export class PlandataService {
+  static async fetchKloakoplandForPoint(
+    latWgs84: number,
+    lngWgs84: number,
+  ): Promise<"separat" | "faelles" | null> {
+    const { normalizeKloakoplandType } = await import("./normalize-kloakopland");
+    const cqlFilter = `INTERSECTS(geometri,SRID=4326;POINT(${lngWgs84} ${latWgs84}))`;
+    const features = await fetchFeatures(KLOAKOPLAND_TYPE, cqlFilter, 10);
+    const entries = features.map(mapWastewaterPlan);
+    const selected = selectPreferredWastewaterPlan(
+      entries.map((e) => ({ ...e, sourceId: e.uuid ?? e.objektId })),
+    );
+    if (!selected) return null;
+    return (
+      normalizeKloakoplandType(selected.valueA) ?? normalizeKloakoplandType(selected.valueB) ?? null
+    );
+  }
+
   static async getLokalplanerForKoordinat(
     lngWgs84: number,
     latWgs84: number,

@@ -315,4 +315,40 @@ describe("assembleBeliggenhedsplan", () => {
     expect(result.plan?.naturbeskyttelse[0]?.type).toBe("skovbyggelinje");
     expect(result.plan?.naturbeskyttelse[0]?.intersectsProposedBuilding).toBe(true);
   });
+
+  it("plan.kloakoplandType sættes fra port naar den returnerer faelles", async () => {
+    const sourceWithKloakopland: DrawingGeometrySourcePort = {
+      ...fakeSource,
+      fetchKloakopland: async () => "faelles",
+    };
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: sourceWithKloakopland,
+      survey: null,
+    });
+    expect(result.plan?.kloakoplandType).toBe("faelles");
+  });
+
+  it("plan.kloakoplandType er null naar port returnerer null", async () => {
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: fakeSource,
+      survey: null,
+    });
+    expect(result.plan?.kloakoplandType).toBeNull();
+  });
 });

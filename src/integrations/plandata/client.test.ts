@@ -48,6 +48,64 @@ describe("PlandataService", () => {
   });
 });
 
+describe("PlandataService.fetchKloakoplandForPoint", () => {
+  beforeEach(() => {
+    mock.restore();
+    resetMockedFetch();
+  });
+
+  it("returnerer null naar der ikke er kloakopland-features", async () => {
+    installSequentialJsonFetch([{ features: [] }]);
+    const result = await PlandataService.fetchKloakoplandForPoint(55.7, 12.5);
+    expect(result).toBeNull();
+  });
+
+  it("genkender 'Fælles' fra Plandata og returnerer faelles", async () => {
+    installSequentialJsonFetch([
+      {
+        features: [
+          {
+            id: "kl1",
+            properties: { uuid: "abc", vaerd1201a: "Fælleskloak", status: "V", datovedt: "20230101" },
+          },
+        ],
+      },
+    ]);
+    const result = await PlandataService.fetchKloakoplandForPoint(55.7, 12.5);
+    expect(result).toBe("faelles");
+  });
+
+  it("genkender 'Separat' fra Plandata og returnerer separat", async () => {
+    installSequentialJsonFetch([
+      {
+        features: [
+          {
+            id: "kl2",
+            properties: { uuid: "def", vaerd1201a: "Separatkloak", status: "V", datovedt: "20230101" },
+          },
+        ],
+      },
+    ]);
+    const result = await PlandataService.fetchKloakoplandForPoint(55.7, 12.5);
+    expect(result).toBe("separat");
+  });
+
+  it("returnerer null naar vaerd ikke kan normaliseres", async () => {
+    installSequentialJsonFetch([
+      {
+        features: [
+          {
+            id: "kl3",
+            properties: { uuid: "ghi", vaerd1201a: "Renseanlæg", status: "V" },
+          },
+        ],
+      },
+    ]);
+    const result = await PlandataService.fetchKloakoplandForPoint(55.7, 12.5);
+    expect(result).toBeNull();
+  });
+});
+
 describe("selectKommuneplanrammeForCompliance (ARCH-228)", () => {
   const ramme = (bebygpct: number | null, maxetager: number | null = null): Kommuneplanramme => ({
     planid: String(bebygpct),

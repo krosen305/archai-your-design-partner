@@ -1,4 +1,6 @@
 import type { DrawingGeometrySourcePort } from "@/domain/drawing/ports";
+import { PlandataService } from "@/integrations/plandata/client";
+import { utm32ToWgs84 } from "@/lib/geometry-utils";
 import type {
   ParcelLayer,
   ExistingFeaturesLayer,
@@ -259,9 +261,12 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
 
   async fetchKloakopland(
     _kommunekode: string,
-    _bbox25832: BBox25832,
+    bbox25832: BBox25832,
   ): Promise<"separat" | "faelles" | null> {
-    return null;
+    const cx = (bbox25832[0] + bbox25832[2]) / 2;
+    const cy = (bbox25832[1] + bbox25832[3]) / 2;
+    const { lat, lng } = utm32ToWgs84(cx, cy);
+    return PlandataService.fetchKloakoplandForPoint(lat, lng);
   }
 
   async fetchFjernvarmeDaekning(
