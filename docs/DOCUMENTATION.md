@@ -11,12 +11,8 @@ historical implementation plans must not look like instructions.
 | --------------------------------------------- | -------------------------------------------------------------------------- |
 | `AGENTS.md`                                   | Codex-facing rules, protected boundaries and established patterns.         |
 | `CLAUDE.md`                                   | Claude Code architecture context and current operating model.              |
-| `ROADMAP.md`                                  | Architecture backlog — accepted items drive AGENTS.md/CLAUDE.md contracts. |
 | `README.md`                                   | Product, setup and high-level architecture onboarding.                     |
 | `docs/INTEGRATIONS.md`                        | Current integration matrix and Datafordeler/DAWA policy.                   |
-| `docs/data-ingestion-contract.md`             | Contract for new public-data sources.                                      |
-| `docs/offentlige-datakilder-gap-analyse.md`   | Current public-data gap analysis.                                          |
-| `docs/domain/journey-demolition-new-build.md` | Domain journey reference.                                                  |
 
 ## What Does Not Belong In Active Docs
 
