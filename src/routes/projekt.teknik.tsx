@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Download } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { exportBeliggenhedsplanFn } from "@/routes/api.drawing";
+import { fetchDrawingReadinessFn } from "@/routes/api.drawing-readiness";
 import type { ExportResult } from "@/services/drawing/export-drawing.service";
 import type { DrawingReadinessStatus } from "@/domain/drawing/decision-engine";
+import type { DrawingCompleteness, FieldStatus } from "@/domain/drawing/completeness-engine";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
 import { computeRygningsKote } from "@/domain/drawing/geometry-engine";
@@ -31,6 +33,58 @@ function downloadSvg(svgContent: string, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  parcelPolygon: "Matrikelpolygon",
+  proposedFootprint: "Bygningsfodprint",
+  sokkelKote: "Sokkelkote",
+  rygningsKote: "Rygningskote",
+  vejGeometry: "Vejgeometri",
+  "koterTerræn": "Terrænkoter",
+  kloakStikledning: "Kloakstikledning",
+  "regnvandsløsning": "Regnvandsløsning",
+  "overkørsel": "Overkørsel",
+  naturbeskyttelse: "Naturbeskyttelse",
+  tinglysteServitutter: "Tinglyste servitutter",
+};
+
+function FieldStatusIcon({ status }: { status: FieldStatus["status"] }) {
+  if (status === "auto") return <span className="text-emerald-400 font-bold text-xs">✓</span>;
+  if (status === "estimated") return <span className="text-muted-foreground text-xs">~</span>;
+  if (status === "placeholder") return <span className="text-amber-400 text-xs">○</span>;
+  if (status === "missing") return <span className="text-red-400 font-bold text-xs">!</span>;
+  return null;
+}
+
+function CompletenessPanel({ completeness }: { completeness: DrawingCompleteness }) {
+  return (
+    <div className="space-y-1.5">
+      {Object.entries(completeness.fields).map(([key, fieldStatus]) => (
+        <div key={key} className="flex items-start gap-2 text-xs">
+          <FieldStatusIcon status={fieldStatus.status} />
+          <span
+            className={
+              fieldStatus.status === "missing" ? "text-red-400" : "text-muted-foreground"
+            }
+          >
+            {FIELD_LABELS[key] ?? key}
+          </span>
+          {fieldStatus.status === "estimated" && (
+            <span className="text-muted-foreground/60">{fieldStatus.note}</span>
+          )}
+          {fieldStatus.status === "placeholder" && (
+            <span className="text-amber-400/80">{fieldStatus.displayLabel}</span>
+          )}
+        </div>
+      ))}
+      {completeness.permanentWarnings.map((w, i) => (
+        <p key={i} className="text-xs text-amber-400 mt-2 border-t border-border/20 pt-2">
+          ⚠ {w}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 function TeknikPage() {
@@ -61,6 +115,19 @@ function TeknikPage() {
   const [buildingDepthM, setBuildingDepthM] = useState<string>("");
   const [rotationDeg, setRotationDeg] = useState<string>("0");
   const [nedrivesBbrIds, setNedrivesBbrIds] = useState<string[]>([]);
+  const [completeness, setCompleteness] = useState<DrawingCompleteness | null>(null);
+  const [isLoadingReadiness, setIsLoadingReadiness] = useState(false);
+
+  useEffect(() => {
+    if (!currentProjectId || !address?.adresseid) return;
+    setIsLoadingReadiness(true);
+    fetchDrawingReadinessFn({
+      data: { projectId: currentProjectId, addressId: address.adresseid },
+    })
+      .then(setCompleteness)
+      .catch(() => {})
+      .finally(() => setIsLoadingReadiness(false));
+  }, [currentProjectId, address?.adresseid]);
 
   const backTo = address?.adresseid ? `/projekt/${address.adresseid}/cockpit` : "/projekt/start";
 
@@ -502,6 +569,45 @@ function TeknikPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Myndighed — completeness status */}
+            <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-foreground">Beliggenhedsplan</h2>
+                {completeness && (
+                  <span
+                    className={`text-xs px-2 py-1 rounded font-mono ${
+                      completeness.overallStatus === "ready"
+                        ? "bg-emerald-950/40 text-emerald-400 border border-emerald-500/20"
+                        : "bg-amber-950/40 text-amber-400 border border-amber-500/20"
+                    }`}
+                  >
+                    {completeness.overallStatus === "ready" ? "Klar" : "UDKAST"}
+                  </span>
+                )}
+              </div>
+
+              {completeness ? (
+                <CompletenessPanel completeness={completeness} />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {isLoadingReadiness ? "Indlæser…" : "Kør adresseanalyse for at se status"}
+                </p>
+              )}
+
+              {completeness && completeness.blockingCount > 0 && (
+                <p className="text-xs text-amber-400 border-t border-border/20 pt-2">
+                  {completeness.blockingCount} manglende felt(er) — tegning genereres som UDKAST
+                </p>
+              )}
+              {completeness && completeness.placeholderCount > 0 && (
+                <p className="text-xs text-muted-foreground/70">
+                  <span className="text-amber-400">○</span>{" "}
+                  {completeness.placeholderCount} placeholders udfyldes af fagfolk under
+                  byggeprocessen
+                </p>
+              )}
             </div>
 
             {error && (

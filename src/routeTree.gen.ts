@@ -17,6 +17,7 @@ import { Route as ProjektDatacheckRouteImport } from './routes/projekt.datacheck
 import { Route as ProjektAdresseRouteImport } from './routes/projekt.adresse'
 import { Route as DebugAnalyseRouteImport } from './routes/debug.analyse'
 import { Route as ApiMapTilesRouteImport } from './routes/api.map-tiles'
+import { Route as ApiDrawingReadinessRouteImport } from './routes/api.drawing-readiness'
 import { Route as ApiDrawingRouteImport } from './routes/api.drawing'
 import { Route as ProjektIdPlantegningRouteImport } from './routes/projekt.$id.plantegning'
 import { Route as ProjektIdCockpitRouteImport } from './routes/projekt.$id.cockpit'
@@ -61,6 +62,11 @@ const ApiMapTilesRoute = ApiMapTilesRouteImport.update({
   path: '/api/map-tiles',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDrawingReadinessRoute = ApiDrawingReadinessRouteImport.update({
+  id: '/api/drawing-readiness',
+  path: '/api/drawing-readiness',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDrawingRoute = ApiDrawingRouteImport.update({
   id: '/api/drawing',
   path: '/api/drawing',
@@ -80,6 +86,7 @@ const ProjektIdCockpitRoute = ProjektIdCockpitRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/drawing': typeof ApiDrawingRoute
+  '/api/drawing-readiness': typeof ApiDrawingReadinessRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
   '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/drawing': typeof ApiDrawingRoute
+  '/api/drawing-readiness': typeof ApiDrawingReadinessRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
   '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/drawing': typeof ApiDrawingRoute
+  '/api/drawing-readiness': typeof ApiDrawingReadinessRoute
   '/api/map-tiles': typeof ApiMapTilesRoute
   '/debug/analyse': typeof DebugAnalyseRoute
   '/projekt/adresse': typeof ProjektAdresseRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/drawing'
+    | '/api/drawing-readiness'
     | '/api/map-tiles'
     | '/debug/analyse'
     | '/projekt/adresse'
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/drawing'
+    | '/api/drawing-readiness'
     | '/api/map-tiles'
     | '/debug/analyse'
     | '/projekt/adresse'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/api/drawing'
+    | '/api/drawing-readiness'
     | '/api/map-tiles'
     | '/debug/analyse'
     | '/projekt/adresse'
@@ -162,6 +174,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiDrawingRoute: typeof ApiDrawingRoute
+  ApiDrawingReadinessRoute: typeof ApiDrawingReadinessRoute
   ApiMapTilesRoute: typeof ApiMapTilesRoute
   DebugAnalyseRoute: typeof DebugAnalyseRoute
   ProjektAdresseRoute: typeof ProjektAdresseRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMapTilesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/drawing-readiness': {
+      id: '/api/drawing-readiness'
+      path: '/api/drawing-readiness'
+      fullPath: '/api/drawing-readiness'
+      preLoaderRoute: typeof ApiDrawingReadinessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/drawing': {
       id: '/api/drawing'
       path: '/api/drawing'
@@ -258,6 +278,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiDrawingRoute: ApiDrawingRoute,
+  ApiDrawingReadinessRoute: ApiDrawingReadinessRoute,
   ApiMapTilesRoute: ApiMapTilesRoute,
   DebugAnalyseRoute: DebugAnalyseRoute,
   ProjektAdresseRoute: ProjektAdresseRoute,
