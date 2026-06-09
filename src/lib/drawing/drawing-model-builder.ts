@@ -82,13 +82,12 @@ export function buildDrawingModel(
   readiness: DrawingReadinessDecision,
 ): DrawingModel {
   const coords = plan.parcel.polygon25832.coordinates[0] as [number, number][];
-  const roadLines = [
-    ...(plan.vej?.centerline25832 ? [plan.vej.centerline25832] : []),
-    ...(plan.vej?.vejkant25832 ?? []),
-  ];
   const bboxCoords = [
     ...coords,
-    ...roadLines.flatMap((line) => line.coordinates as [number, number][]),
+    ...(plan.proposed.footprint25832.coordinates[0] as [number, number][]),
+    ...plan.existing.buildings.flatMap(
+      (building) => building.footprint25832.coordinates[0] as [number, number][],
+    ),
   ];
   const xs = bboxCoords.map((c) => c[0]);
   const ys = bboxCoords.map((c) => c[1]);

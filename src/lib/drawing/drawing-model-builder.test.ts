@@ -246,6 +246,31 @@ describe("buildDrawingModel — label-rendering", () => {
     expect(roadLabel?.svgElement).toContain("Testvej");
   });
 
+  it("long road geometry does not control drawing scale", () => {
+    const planWithLongRoad = {
+      ...minimalPlan,
+      vej: {
+        vejnavn: "Langvej",
+        centerline25832: {
+          type: "LineString" as const,
+          crs: "EPSG:25832" as const,
+          coordinates: [
+            [719000, 6169000],
+            [722000, 6172000],
+          ] as [number, number][],
+        },
+        vejkant25832: [],
+        vejbreddeM: null,
+        source: sourceMeta,
+      },
+    };
+
+    const model = buildDrawingModel(planWithLongRoad, autoReadiness);
+
+    expect(model.features.find((feat) => feat.kind === "road_centerline")).toBeDefined();
+    expect(Number(model.titleBlock.scale.replace("1:", ""))).toBeLessThan(500);
+  });
+
   it("naturbeskyttelse emits drawing features, legend and source summary", () => {
     const planWithNature: BeliggenhedsplanInput = {
       ...minimalPlan,

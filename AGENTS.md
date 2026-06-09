@@ -425,6 +425,26 @@ If a test can be a unit test instead, make it a unit test.
 - `tests/live/` — live Supabase integration, requires `RUN_LIVE_SUPABASE_TESTS=true`
 - `tests/*.spec.ts` — Playwright E2E acceptance tests
 
+### Local UI Smoke On Windows/Codex
+
+- If `bun dev` fails in sandbox with Vite config/read access errors, rerun it
+  with approval outside the sandbox. If PowerShell `Start-Process` hits duplicate
+  `Path`/`PATH`, start a detached PowerShell process that runs `bun dev --host
+  127.0.0.1` and writes logs to `C:\tmp`.
+- Vite may choose `http://127.0.0.1:8080/` when 5173 is busy. Read the dev log
+  before opening the browser.
+- If the in-app Browser/Node REPL fails with Windows sandbox spawn errors, use
+  Playwright from `node` with approval. On Windows, `bun` may hang launching
+  Chromium; `node` has been more reliable.
+- Authenticated register flows require `.env.local` test credentials
+  (`PLAYWRIGHT_TEST_EMAIL`, `PLAYWRIGHT_TEST_PASSWORD`) and Supabase env. Inject a
+  Supabase session into browser localStorage using `tests/helpers/session.ts` as
+  the pattern. Do not print secrets.
+- Guest mode is not enough for address -> cockpit -> drawing smoke tests; it
+  stops at the auth/project gate.
+- Put screenshots, generated SVG/PDF and temporary scripts under `C:\tmp`; never
+  commit those artifacts.
+
 ### Rules
 
 - `mock.module` on `@/lib/project-store` or `@/lib/project-sync` is forbidden
