@@ -754,6 +754,11 @@ export const persistedProjectSchema = z.object({
   design_placement: designPlacementSchema.nullable(),
   neighbor_context_facts: neighborContextFactsSchema.nullable(),
   updated_at: z.string().nullable(),
+  tagform: z.enum(["sadeltag", "fladt", "mansard", "pulttag"]).nullable(),
+  taghaldning_grad: z.number().nullable(),
+  har_jordvarme: z.boolean(),
+  har_kaelder: z.boolean(),
+  kaelder_gulv_kote_m: z.number().nullable(),
 });
 
 export const existingProjectSnapshotSchema = z.object({

@@ -149,6 +149,21 @@ export function buildProjectUpdate(
   if (patch.budget_estimate !== undefined) {
     update.budget_estimate = patch.budget_estimate ?? null;
   }
+  if (patch.tagform !== undefined) {
+    update.tagform = patch.tagform ?? null;
+  }
+  if (patch.taghaldning_grad !== undefined) {
+    update.taghaldning_grad = patch.taghaldning_grad ?? null;
+  }
+  if (patch.har_jordvarme !== undefined) {
+    update.har_jordvarme = patch.har_jordvarme;
+  }
+  if (patch.har_kaelder !== undefined) {
+    update.har_kaelder = patch.har_kaelder;
+  }
+  if (patch.kaelder_gulv_kote_m !== undefined) {
+    update.kaelder_gulv_kote_m = patch.kaelder_gulv_kote_m ?? null;
+  }
 
   return update;
 }

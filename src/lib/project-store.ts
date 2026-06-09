@@ -97,6 +97,13 @@ type State = {
   hard_stop_reason: string | null; // menneskelæsbar årsag
   budget_estimate: number | null; // ARCH-163: projektbudget estimat
   bfe_nr: string | null; // BFE-nummer (Bestemt Fast Ejendom) via EBR
+
+  // Drawing design params — typed SQL columns from 20260606200000_drawing_params.sql
+  tagform: "sadeltag" | "fladt" | "mansard" | "pulttag" | null;
+  taghaldning_grad: number | null;
+  har_jordvarme: boolean;
+  har_kaelder: boolean;
+  kaelder_gulv_kote_m: number | null;
   neighborContextFacts: NeighborContextFacts | null; // GeoDanmark typed nabofakta fra site_constraints
 
   // Datakilde-status — bruges af cockpittet til at vise fresh/stale/missing
@@ -171,6 +178,12 @@ type State = {
   setEnergimaerke: (v: EnergyLabelData | null) => void;
   setAnalysisRunId: (v: string | null) => void;
 
+  setTagform: (v: "sadeltag" | "fladt" | "mansard" | "pulttag" | null) => void;
+  setTaghaldningGrad: (v: number | null) => void;
+  setHarJordvarme: (v: boolean) => void;
+  setHarKaelder: (v: boolean) => void;
+  setKaelderGulvKoteM: (v: number | null) => void;
+
   reset: () => void;
 };
 
@@ -244,6 +257,11 @@ export const useProject = create<State>((set) => ({
   tjekditnetCoverage: null,
   energimaerke: null,
   analysisRunId: null,
+  tagform: null,
+  taghaldning_grad: null,
+  har_jordvarme: false,
+  har_kaelder: false,
+  kaelder_gulv_kote_m: null,
 
   setAddress: (address) => set({ address }),
   setBbrData: (bbrData) => set({ bbrData }),
@@ -290,6 +308,12 @@ export const useProject = create<State>((set) => ({
   setEnergimaerke: (energimaerke) => set({ energimaerke }),
   setAnalysisRunId: (analysisRunId) => set({ analysisRunId }),
 
+  setTagform: (v) => set({ tagform: v }),
+  setTaghaldningGrad: (v) => set({ taghaldning_grad: v }),
+  setHarJordvarme: (v) => set({ har_jordvarme: v }),
+  setHarKaelder: (v) => set({ har_kaelder: v }),
+  setKaelderGulvKoteM: (v) => set({ kaelder_gulv_kote_m: v }),
+
   reset: () =>
     set({
       address: null,
@@ -331,5 +355,10 @@ export const useProject = create<State>((set) => ({
       tjekditnetCoverage: null,
       energimaerke: null,
       analysisRunId: null,
+      tagform: null,
+      taghaldning_grad: null,
+      har_jordvarme: false,
+      har_kaelder: false,
+      kaelder_gulv_kote_m: null,
     }),
 }));

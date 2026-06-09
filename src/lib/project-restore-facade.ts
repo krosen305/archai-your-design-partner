@@ -171,6 +171,11 @@ export function hydrateProjectIntoStore(
   if (project.bebygget_areal_m2 != null) store.setBebyggetAreal(project.bebygget_areal_m2);
   if (project.budget_estimate != null) store.setBudgetEstimate(project.budget_estimate);
   store.setBfeNr(project.bfe_nr ?? null);
+  store.setTagform(project.tagform ?? null);
+  store.setTaghaldningGrad(project.taghaldning_grad ?? null);
+  store.setHarJordvarme(project.har_jordvarme ?? false);
+  store.setHarKaelder(project.har_kaelder ?? false);
+  store.setKaelderGulvKoteM(project.kaelder_gulv_kote_m ?? null);
   store.setNeighborContextFacts(
     decodeWithSchema(project.neighbor_context_facts, neighborContextFactsSchema),
   );

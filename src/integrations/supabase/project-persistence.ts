@@ -88,6 +88,11 @@ export type ProjectPatch = {
   projectDataStatus?: Json | null;
   analysisRunId?: string | null;
   budget_estimate?: number | null;
+  tagform?: "sadeltag" | "fladt" | "mansard" | "pulttag" | null;
+  taghaldning_grad?: number | null;
+  har_jordvarme?: boolean;
+  har_kaelder?: boolean;
+  kaelder_gulv_kote_m?: number | null;
 };
 
 export type PersistedProject = {
@@ -121,6 +126,11 @@ export type PersistedProject = {
   design_placement: Json | null;
   neighbor_context_facts: NeighborContextFacts | null;
   updated_at: string | null;
+  tagform: "sadeltag" | "fladt" | "mansard" | "pulttag" | null;
+  taghaldning_grad: number | null;
+  har_jordvarme: boolean;
+  har_kaelder: boolean;
+  kaelder_gulv_kote_m: number | null;
 };
 
 // ---------------------------------------------------------------------------
