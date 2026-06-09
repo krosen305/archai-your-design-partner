@@ -359,9 +359,12 @@ Do not edit these casually:
 - `vite.config.ts` - delegated to `@lovable.dev/vite-tanstack-config`.
 - `src/server.ts` - must not be deleted; Cloudflare/Sentry entry wrapper.
 - `src/lib/project-store.ts`
-- `src/lib/analysis-orchestrator.ts`
+  - Drawing design params (tagform, taghaldning_grad, har_kaelder, kaelder_gulv_kote_m,
+    har_jordvarme) added 2026-06-06 for authority-grade beliggenhedsplan.
 - `src/lib/pre-check-adresse.ts`
 - `src/lib/reactive-compliance.ts`
+  - Extended 2026-06-06 with optional drawing validation params (harKælder, harJordvarme,
+    naturbeskyttelseZoner). Returns drawingReasons alongside existing result.
 - `src/integrations/supabase/project-persistence.ts`
 - `AGENTS.md`
 - `CLAUDE.md`
@@ -371,6 +374,16 @@ Do not edit these casually:
 If a protected file must be changed, the PR/summary must say:
 
 `Rører beskyttet fil - kræver review`
+
+---
+
+## Files Requiring Gatekeeper Review (Not Untouchable)
+
+Changes to these files are allowed but require an architecture plan answer
+(Gatekeeper Protocol) and explicit human review call-out in the PR:
+
+- `src/lib/analysis-orchestrator.ts` — orchestrates compliance pipeline; changes
+  must not break existing source results or introduce circular dependencies
 
 ---
 
