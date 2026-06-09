@@ -33,6 +33,11 @@ const ExportBeliggenhedsplanInputSchema = z.object({
   buildingWidthM: z.number().min(0.5).max(60).optional().nullable(),
   buildingDepthM: z.number().min(0.5).max(60).optional().nullable(),
   rotationDeg: z.number().min(0).max(360).optional().nullable(),
+  tagform: z.enum(["sadeltag", "fladt", "mansard", "pulttag"]).nullable().optional(),
+  taghaldningGrad: z.number().min(0).max(60).nullable().optional(),
+  harKaelder: z.boolean().optional(),
+  kaelderGulvKoteM: z.number().nullable().optional(),
+  harJordvarme: z.boolean().optional(),
 });
 
 type ExportInput = z.infer<typeof ExportBeliggenhedsplanInputSchema>;

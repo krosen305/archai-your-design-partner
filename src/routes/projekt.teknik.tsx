@@ -7,6 +7,7 @@ import type { ExportResult } from "@/services/drawing/export-drawing.service";
 import type { DrawingReadinessStatus } from "@/domain/drawing/decision-engine";
 import { MatrikelMap } from "@/components/cockpit/MatrikelMap";
 import type { GeoJsonPolygon25832 } from "@/domain/drawing/beliggenhedsplan.types";
+import { computeRygningsKote } from "@/domain/drawing/geometry-engine";
 
 const READINESS_LABELS: Record<DrawingReadinessStatus, string> = {
   AUTO_DRAFT: "Udkast (mangler data)",
@@ -37,6 +38,16 @@ function TeknikPage() {
   const bbrData = useProject((s) => s.bbrData);
   const currentProjectId = useProject((s) => s.currentProjectId);
   const designPlacement = useProject((s) => s.designPlacement);
+  const tagform = useProject((s) => s.tagform);
+  const taghaldningGrad = useProject((s) => s.taghaldning_grad);
+  const harJordvarme = useProject((s) => s.har_jordvarme);
+  const harKaelder = useProject((s) => s.har_kaelder);
+  const kaelderGulvKoteM = useProject((s) => s.kaelder_gulv_kote_m);
+  const setTagform = useProject((s) => s.setTagform);
+  const setTaghaldningGrad = useProject((s) => s.setTaghaldningGrad);
+  const setHarJordvarme = useProject((s) => s.setHarJordvarme);
+  const setHarKaelder = useProject((s) => s.setHarKaelder);
+  const setKaelderGulvKoteM = useProject((s) => s.setKaelderGulvKoteM);
 
   const [result, setResult] = useState<ExportResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +60,7 @@ function TeknikPage() {
   const [buildingWidthM, setBuildingWidthM] = useState<string>("");
   const [buildingDepthM, setBuildingDepthM] = useState<string>("");
   const [rotationDeg, setRotationDeg] = useState<string>("0");
+  const [nedrivesBbrIds, setNedrivesBbrIds] = useState<string[]>([]);
 
   const backTo = address?.adresseid ? `/projekt/${address.adresseid}/cockpit` : "/projekt/start";
 
@@ -94,6 +106,11 @@ function TeknikPage() {
           buildingDepthM:
             !hasFootprint && buildingDepthM !== "" ? parseFloat(buildingDepthM) : null,
           rotationDeg: rotationDeg !== "" ? parseFloat(rotationDeg) : null,
+          tagform: tagform ?? null,
+          taghaldningGrad: taghaldningGrad ?? null,
+          harKaelder,
+          kaelderGulvKoteM: kaelderGulvKoteM ?? null,
+          harJordvarme,
         },
       });
       setResult(res);
@@ -306,6 +323,184 @@ function TeknikPage() {
                     className="w-full rounded-lg border border-border/40 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-border"
                   />
                 </div>
+
+                {/* Tagform */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Tagform
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {(["sadeltag", "fladt", "mansard", "pulttag"] as const).map((tf) => (
+                      <button
+                        key={tf}
+                        type="button"
+                        onClick={() => {
+                          setTagform(tf === tagform ? null : tf);
+                          if (tf === "fladt") setTaghaldningGrad(0);
+                        }}
+                        className={`px-3 py-1.5 rounded-md text-xs border transition-colors ${
+                          tagform === tf
+                            ? "bg-foreground text-background border-foreground"
+                            : "bg-surface text-muted-foreground border-border/40 hover:border-border"
+                        }`}
+                      >
+                        {tf.charAt(0).toUpperCase() + tf.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {tagform && tagform !== "fladt" && (
+                    <div className="flex items-center gap-3 mt-2">
+                      <label className="text-xs text-muted-foreground min-w-24">Taghaldning</label>
+                      <div className="flex gap-1">
+                        {[25, 35, 45].map((deg) => (
+                          <button
+                            key={deg}
+                            type="button"
+                            onClick={() => setTaghaldningGrad(deg)}
+                            className={`px-2 py-1 text-xs rounded border transition-colors ${
+                              taghaldningGrad === deg
+                                ? "bg-foreground/10 border-border text-foreground"
+                                : "border-border/40 text-muted-foreground"
+                            }`}
+                          >
+                            {deg}°
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        max={60}
+                        value={taghaldningGrad ?? ""}
+                        onChange={(e) =>
+                          setTaghaldningGrad(e.target.value ? Number(e.target.value) : null)
+                        }
+                        className="w-16 rounded border border-border/40 bg-surface px-2 py-1 text-xs text-foreground"
+                        placeholder="°"
+                      />
+                    </div>
+                  )}
+
+                  {tagform &&
+                    taghaldningGrad !== null &&
+                    sokkelKoteM !== "" &&
+                    buildingWidthM !== "" && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Beregnet rygningskote: DVR90 +
+                        {computeRygningsKote({
+                          sokkelKoteM: parseFloat(sokkelKoteM),
+                          loftshøjdeM: 2.4,
+                          fodprintBreddeM: parseFloat(buildingWidthM),
+                          tagform,
+                          taghaldningGrad,
+                        }).toFixed(2)}{" "}
+                        m
+                      </p>
+                    )}
+                </div>
+
+                {/* Kælder */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Kælder inkluderet
+                    </label>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={harKaelder}
+                      onClick={() => setHarKaelder(!harKaelder)}
+                      className={`relative w-9 h-5 rounded-full transition-colors ${
+                        harKaelder ? "bg-foreground/80" : "bg-border/40"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-4 h-4 bg-background rounded-full shadow transition-transform ${
+                          harKaelder ? "translate-x-4" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {harKaelder && (
+                    <div className="ml-3 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs text-muted-foreground">
+                          Gulvkote DVR90 (m)
+                        </label>
+                        <input
+                          type="number"
+                          step={0.05}
+                          value={kaelderGulvKoteM ?? ""}
+                          onChange={(e) =>
+                            setKaelderGulvKoteM(e.target.value ? Number(e.target.value) : null)
+                          }
+                          className="w-20 rounded border border-border/40 bg-surface px-2 py-1 text-xs text-foreground"
+                          placeholder="f.eks. 15.20"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Jordvarme */}
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Jordvarme planlagt
+                  </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={harJordvarme}
+                    onClick={() => setHarJordvarme(!harJordvarme)}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${
+                      harJordvarme ? "bg-foreground/80" : "bg-border/40"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 bg-background rounded-full shadow transition-transform ${
+                        harJordvarme ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                  {harJordvarme && (
+                    <p className="text-xs text-blue-400">
+                      Kræver §19-tilladelse fra kommunen
+                    </p>
+                  )}
+                </div>
+
+                {/* Nedrivning */}
+                {bbrData?.alle_bygning_lokal_ids && bbrData.alle_bygning_lokal_ids.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Eksisterende bygninger
+                    </label>
+                    <p className="text-xs text-muted-foreground/70">
+                      Markér bygninger der nedrives som del af projektet
+                    </p>
+                    {bbrData.alle_bygning_lokal_ids.map((bbrId) => (
+                      <label
+                        key={bbrId}
+                        className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={nedrivesBbrIds.includes(bbrId)}
+                          onChange={(e) => {
+                            setNedrivesBbrIds(
+                              e.target.checked
+                                ? [...nedrivesBbrIds, bbrId]
+                                : nedrivesBbrIds.filter((id) => id !== bbrId),
+                            );
+                          }}
+                        />
+                        BBR {bbrId.slice(0, 8)}…
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
