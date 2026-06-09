@@ -11,6 +11,9 @@ import { buildLerFeatures, buildLerLegendEntries } from "./layers/render-ler-lay
 import { buildPlaceholderFeatures } from "./layers/render-placeholder-layer";
 import { buildWatermarkFeature } from "./layers/render-watermark";
 import { computeDrawingCompleteness } from "@/domain/drawing/completeness-engine";
+import { buildInfoPanel } from "@/domain/drawing/info-panel";
+import { findLabelPosition, type PlacedLabel } from "./label-placement";
+import { INFO_COL_MM, PX_PER_MM } from "./sheet-layout";
 
 function esc(s: string): string {
   return s
@@ -61,22 +64,6 @@ function polygonFeature(
   };
 }
 
-function fjernvarmeSourceLine(plan: BeliggenhedsplanInput): string | null {
-  const varme = plan.fjernvarme;
-  if (!varme) return null;
-
-  const status =
-    varme.fjernvarmeDaekket === true
-      ? "bekraeftet"
-      : varme.fjernvarmePlanlagt === true
-        ? "planlagt"
-        : varme.fjernvarmeDaekket === false
-          ? "ikke bekraeftet"
-          : "ukendt";
-  const planName = varme.planNavn ? ` (${varme.planNavn})` : "";
-  return `Fjernvarme: ${status}${planName}`;
-}
-
 export function buildDrawingModel(
   plan: BeliggenhedsplanInput,
   readiness: DrawingReadinessDecision,
@@ -100,9 +87,10 @@ export function buildDrawingModel(
   const page = PAGE_SIZES[plan.metadata.paperSize];
   const paperWidthMm = page.widthMm;
   const paperHeightMm = page.heightMm;
-  const titleBlockMm = 60;
-  const PX_PER_MM = 3.7795;
-  const drawWidthPx = (paperWidthMm - titleBlockMm) * PX_PER_MM;
+  // The left info column reserves INFO_COL_MM; the situation plan fills the rest.
+  // Parcel + buildings drive the scale here (bboxCoords excludes road/neighbors),
+  // so a long road centerline can never blow up the drawing scale.
+  const drawWidthPx = (paperWidthMm - INFO_COL_MM) * PX_PER_MM;
   const drawHeightPx = paperHeightMm * PX_PER_MM;
   const scaleX = drawWidthPx / (bboxMaxX - bboxMinX);
   const scaleY = drawHeightPx / (bboxMaxY - bboxMinY);
@@ -253,22 +241,60 @@ export function buildDrawingModel(
   );
   naturFeatures.forEach((f) => features.push(f));
 
-  // Mål-linjer
-  const dimLines = buildDimensionLines(plan.proposed.footprint25832);
-  dimLines.forEach((dl, i) => {
+  // --- Mål, afstande og koter med simpel label-kollisionsundgåelse ---
+  const placedLabels: PlacedLabel[] = [];
+  const placeLabel = (
+    anchorX: number,
+    anchorY: number,
+    text: string,
+    fontPx: number,
+  ): PlacedLabel => {
+    const pos = findLabelPosition({
+      anchorX,
+      anchorY,
+      text,
+      existingLabels: placedLabels,
+      charWidthPx: fontPx * 0.6,
+      fontHeightPx: fontPx,
+    });
+    placedLabels.push(pos);
+    return pos;
+  };
+
+  // Parcel-sidemål — matrikelgrænsens kantlængder (dæmpet, uden for huskroppen)
+  buildDimensionLines(plan.parcel.polygon25832).forEach((dl, i) => {
     const x1 = (dl.fromPoint.coordinates[0] - bboxMinX) * scale;
     const y1 = (bboxMaxY - dl.fromPoint.coordinates[1]) * scale;
     const x2 = (dl.toPoint.coordinates[0] - bboxMinX) * scale;
     const y2 = (bboxMaxY - dl.toPoint.coordinates[1]) * scale;
-    const mx = (x1 + x2) / 2;
-    const my = (y1 + y2) / 2;
+    const text = `${dl.labelM.toFixed(2)} m`;
+    const pos = placeLabel((x1 + x2) / 2, (y1 + y2) / 2, text, 5.5);
+    features.push({
+      id: `parcel-dim-${i}`,
+      kind: "dimension_lines",
+      svgElement: `<g><line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#777" stroke-width="0.3" stroke-dasharray="2,2"/><text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="5.5" fill="#555">${text}</text></g>`,
+      label: text,
+      labelX: pos.x,
+      labelY: pos.y,
+      zIndex: 34,
+    });
+  });
+
+  // Bygningens sidemål
+  buildDimensionLines(plan.proposed.footprint25832).forEach((dl, i) => {
+    const x1 = (dl.fromPoint.coordinates[0] - bboxMinX) * scale;
+    const y1 = (bboxMaxY - dl.fromPoint.coordinates[1]) * scale;
+    const x2 = (dl.toPoint.coordinates[0] - bboxMinX) * scale;
+    const y2 = (bboxMaxY - dl.toPoint.coordinates[1]) * scale;
+    const text = dl.labelM.toFixed(2);
+    const pos = placeLabel((x1 + x2) / 2, (y1 + y2) / 2 - 3, text, 6);
     features.push({
       id: `dim-${i}`,
       kind: "dimension_lines",
-      svgElement: `<g><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#00f" stroke-width="0.4"/><text x="${mx}" y="${my - 3}" text-anchor="middle" font-family="Arial" font-size="6" fill="#00f">${dl.labelM.toFixed(2)}</text></g>`,
+      svgElement: `<g><line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#00f" stroke-width="0.4"/><text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#00f">${text}</text></g>`,
       label: null,
-      labelX: null,
-      labelY: null,
+      labelX: pos.x,
+      labelY: pos.y,
       zIndex: 35,
     });
   });
@@ -283,81 +309,43 @@ export function buildDrawingModel(
     const by = (bboxMaxY - ann.buildingPt[1]) * scale;
     const px = (ann.parcelPt[0] - bboxMinX) * scale;
     const py = (bboxMaxY - ann.parcelPt[1]) * scale;
-    const mx = (bx + px) / 2;
-    const my = (by + py) / 2;
     const label = `${ann.distanceM.toFixed(2)} m`;
+    const pos = placeLabel((bx + px) / 2, (by + py) / 2 - 2, label, 5.5);
     features.push({
       id: `setback-ann-${i}`,
       kind: "dimension_lines",
       svgElement: `<g>
         <line x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="#b00" stroke-width="0.5" stroke-dasharray="3,1.5"/>
-        <text x="${mx.toFixed(1)}" y="${(my - 2).toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="5.5" fill="#b00" font-weight="bold">${label}</text>
+        <text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="5.5" fill="#b00" font-weight="bold">${label}</text>
       </g>`,
       label,
-      labelX: mx,
-      labelY: my,
+      labelX: pos.x,
+      labelY: pos.y,
       zIndex: 36,
     });
   });
 
-  // Terrain-koter fra survey
+  // Terrain-koter fra survey (kollisionsundgåede labels)
   if (plan.survey) {
     plan.survey.terrainPoints.forEach((tp, i) => {
       const px = (tp.x - bboxMinX) * scale;
       const py = (bboxMaxY - tp.y) * scale;
+      const text = tp.z.toFixed(2);
+      const pos = placeLabel(px + 4, py - 2, text, 6);
       features.push({
         id: `kote-${i}`,
         kind: "terrain_labels",
-        svgElement: `<g><circle cx="${px}" cy="${py}" r="1.5" fill="#555"/><text x="${px + 4}" y="${py - 2}" font-family="Arial" font-size="6" fill="#333">${tp.z.toFixed(2)}</text></g>`,
-        label: String(tp.z),
-        labelX: px,
-        labelY: py,
+        svgElement: `<g><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.5" fill="#555"/><text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-family="Arial" font-size="6" fill="#333">${text}</text></g>`,
+        label: text,
+        labelX: pos.x,
+        labelY: pos.y,
         zIndex: 40,
       });
     });
   }
 
-  // Obligatoriske noter
-  const annots = plan.mandatoryAnnotations;
-  const annotLines = [
-    annots.koteDatum,
-    annots.terrainSurveyedBy,
-    annots.sewerResponsibility,
-    annots.ratBarrierNote,
-  ].filter(Boolean) as string[];
-
-  if (annotLines.length > 0) {
-    const annotSvg = annotLines
-      .map(
-        (line, i) =>
-          `<text x="4" y="${drawHeightPx - 20 + i * 10}" font-family="Arial" font-size="5" fill="#333">${esc(line)}</text>`,
-      )
-      .join("\n");
-    features.push({
-      id: "mandatory-annotations",
-      kind: "mandatory_annotations",
-      svgElement: `<g>${annotSvg}</g>`,
-      label: null,
-      labelX: null,
-      labelY: null,
-      zIndex: 50,
-    });
-  }
-
-  // Nordpil — fast SVG position øverst til venstre i tegnefeltet
-  features.push({
-    id: "north-arrow",
-    kind: "north_arrow",
-    svgElement: `<g transform="translate(24,24) rotate(0)">
-    <polygon points="0,-14 5,4 0,0 -5,4" fill="#222" stroke="none"/>
-    <polygon points="0,14 5,-4 0,0 -5,-4" fill="#fff" stroke="#222" stroke-width="0.5"/>
-    <text x="0" y="-18" text-anchor="middle" font-family="Arial" font-size="7" font-weight="bold" fill="#222">N</text>
-  </g>`,
-    label: "N",
-    labelX: 24,
-    labelY: 10,
-    zIndex: 60,
-  });
+  // Obligatoriske noter, nordpil og målestok ejes af rendererens info-kolonne
+  // og præsentationslag — ikke af plan-features.
 
   // LER ledninger (zIndex 4)
   const lerFeatures = buildLerFeatures(plan.lerLedninger, bboxMinX, bboxMaxY, scale);
@@ -378,21 +366,10 @@ export function buildDrawingModel(
   const watermarkFeature = buildWatermarkFeature(isDraft, drawWidthPx, drawHeightPx);
   if (watermarkFeature) features.push(watermarkFeature);
 
-  const areaTable = plan.metadata.areaTable ?? {
-    grundarealM2: plan.parcel.areaRegisteredM2,
-    groundFloorM2: plan.proposed.footprintAreaM2,
-    firstFloorM2: null,
-    doubleHeightDeductionM2: 0,
-    totalResidentialM2: plan.proposed.footprintAreaM2,
-    coveragePercent: (plan.proposed.footprintAreaM2 / plan.parcel.areaRegisteredM2) * 100,
-    calculationBasis: "BR18 §452",
-  };
-
   const revisions =
     plan.metadata.revisions.length > 0
       ? plan.metadata.revisions
       : [{ nr: "A", description: "Udgivelse", date: plan.metadata.date, by: "" }];
-  const fjernvarmeLine = fjernvarmeSourceLine(plan);
 
   return {
     page: {
@@ -405,35 +382,25 @@ export function buildDrawingModel(
     features,
     titleBlock: {
       title: plan.metadata.title,
+      drawingType: "Beliggenhedsplan",
+      tegnNr: "1",
       address: plan.metadata.address,
       matrikel: plan.metadata.matrikel,
+      bfeNr: plan.metadata.bfeNr,
       bygherre: plan.metadata.bygherre,
       sagNr: plan.metadata.sagNr,
+      buildingCode: plan.metadata.buildingCode,
       scale: `1:${actualScaleRounded}`,
       paperSize: plan.metadata.paperSize,
       date: plan.metadata.date,
       revision: revisions[0]?.nr ?? "A",
-      disclaimer: readiness.status === "AUTO_DRAFT" ? "FORELOEBIG — ikke til myndighedsbrug" : null,
-      sourceList: [
-        `Grundareal: ${areaTable.grundarealM2} m²`,
-        `Bebyg.%: ${areaTable.coveragePercent.toFixed(2)}% (${areaTable.calculationBasis})`,
-        ...(plan.metadata.buildingCode ? [`Opføres efter: ${plan.metadata.buildingCode}`] : []),
-        ...(plan.metadata.bygherre ? [`Bygherre: ${plan.metadata.bygherre}`] : []),
-        ...(plan.metadata.sagNr ? [`Sagsnr.: ${plan.metadata.sagNr}`] : []),
-        ...(readiness.reviewRequiredBy.length > 0
-          ? [`Review: ${readiness.reviewRequiredBy.join(", ")}`]
-          : []),
-        ...(plan.naturbeskyttelse.length > 0
-          ? [`Naturbeskyttelse: ${plan.naturbeskyttelse.length} lag`]
-          : []),
-        ...(fjernvarmeLine ? [fjernvarmeLine] : []),
-      ],
-      completenessStatus: isDraft ? `UDKAST — ${completeness.placeholderCount} placeholders` : null,
+      disclaimer: readiness.status === "AUTO_DRAFT" ? "FORELØBIG — ikke til myndighedsbrug" : null,
     },
+    infoPanel: buildInfoPanel({ plan, completeness }),
     legend: [
       {
         symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>',
-        label: "Parcel",
+        label: "Matrikelskel",
       },
       {
         symbol: '<rect width="12" height="8" fill="#d4e8ff" stroke="#00f" stroke-width="1"/>',
@@ -449,12 +416,21 @@ export function buildDrawingModel(
       },
       {
         symbol:
+          '<line x1="0" y1="4" x2="12" y2="4" stroke="#b00" stroke-width="0.6" stroke-dasharray="3,1.5"/>',
+        label: "Skelafstand",
+      },
+      {
+        symbol:
           '<line x1="0" y1="4" x2="12" y2="4" stroke="#6b7280" stroke-width="0.5" stroke-dasharray="4,3"/>',
         label: "Vejmidte",
       },
       {
         symbol: '<line x1="0" y1="4" x2="12" y2="4" stroke="#9ca3af" stroke-width="0.7"/>',
         label: "Vejkant",
+      },
+      {
+        symbol: '<circle cx="6" cy="4" r="1.5" fill="#555"/>',
+        label: "Terrænkote (DVR90)",
       },
       ...(plan.naturbeskyttelse.length > 0
         ? [

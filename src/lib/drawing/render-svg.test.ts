@@ -1,7 +1,61 @@
 // src/lib/drawing/render-svg.test.ts
 import { describe, it, expect } from "bun:test";
 import { renderSvg } from "./render-svg";
-import type { DrawingModel } from "@/domain/drawing/drawing-model";
+import type { DrawingModel, InfoPanel } from "@/domain/drawing/drawing-model";
+
+const infoPanel: InfoPanel = {
+  siteMetrics: {
+    grundarealM2: 1086,
+    bebyggetArealM2: 140.57,
+    etagearealM2: 271.24,
+    bebyggelsesprocent: 24.98,
+    calculationBasis: "BR18",
+    rows: [
+      { label: "Grundareal", value: 1086, display: "1.086 m²", documented: true },
+      {
+        label: "Bebygget areal (fodaftryk)",
+        value: 140.57,
+        display: "140,57 m²",
+        documented: true,
+      },
+      { label: "Samlet etageareal", value: 271.24, display: "271,24 m²", documented: true },
+      { label: "Bebyggelsesprocent", value: 24.98, display: "24,98 %", documented: true },
+    ],
+  },
+  sourceRegister: [
+    {
+      label: "Matrikel (MAT WFS)",
+      source: "registry",
+      confidence: "high",
+      fetchedAt: "2026-05-25T00:00:00Z",
+      documented: true,
+    },
+  ],
+  terrain: {
+    koteDatum: "DVR90",
+    sokkelKoteDisplay: "angives af kloakmester",
+    gulvKoteDisplay: "ikke dokumenteret",
+    rygningsKoteDisplay: "angives af arkitekt",
+    terrainPointCount: 0,
+    documented: false,
+    note: "Koter ikke dokumenteret i tilgængelige datakilder",
+  },
+  technicalNotes: [
+    {
+      category: "ledning",
+      text: "Ledningsdata ikke hentet (LER). Regnvand/spildevand vist som principforslag.",
+    },
+  ],
+  missingDataWarnings: [
+    {
+      label: "Sokkelkote DVR90",
+      responsibleParty: "kloakmester",
+      blocksSubmission: false,
+      severity: "placeholder",
+    },
+  ],
+  completenessStatus: "UDKAST — 4 punkter mangler",
+};
 
 const model: DrawingModel = {
   page: { size: "A3", orientation: "landscape", scale: 250, widthMm: 420, heightMm: 297 },
@@ -20,18 +74,21 @@ const model: DrawingModel = {
   ],
   titleBlock: {
     title: "Beliggenhedsplan",
+    drawingType: "Beliggenhedsplan",
+    tegnNr: "1",
     address: "Testvej 1, 2000 Frederiksberg",
     matrikel: "1a Frederiksberg",
+    bfeNr: null,
     bygherre: null,
     sagNr: null,
+    buildingCode: "BR18",
     scale: "1:250",
     paperSize: "A3",
     date: "2026-05-25",
     revision: "A",
-    disclaimer: "FORELOEBIG - ikke til myndighedsbrug",
-    sourceList: ["MAT WFS 2026-05-25"],
-    completenessStatus: null,
+    disclaimer: "FORELØBIG — ikke til myndighedsbrug",
   },
+  infoPanel,
   legend: [],
   northArrowRotationDeg: 0,
   readinessStatus: "AUTO_DRAFT",
@@ -50,11 +107,33 @@ describe("renderSvg", () => {
   it("indeholder nordpil (N)", () => {
     expect(renderSvg(model)).toContain(">N<");
   });
-  it("indeholder FORELOEBIG disclaimer for AUTO_DRAFT", () => {
-    expect(renderSvg(model)).toContain("FORELOEBIG");
+  it("indeholder FORELØBIG disclaimer for AUTO_DRAFT", () => {
+    expect(renderSvg(model)).toContain("FORELØBIG");
   });
-  it("indeholder kildeangivelse", () => {
-    expect(renderSvg(model)).toContain("MAT WFS");
+  it("indeholder datagrundlag-kilde fra sourceRegister", () => {
+    const svg = renderSvg(model);
+    expect(svg).toMatch(/datagrundlag/i);
+    expect(svg).toContain("Matrikel (MAT WFS)");
+  });
+
+  it("indeholder bebyggelsesprocent fra siteMetrics", () => {
+    expect(renderSvg(model)).toContain("24,98 %");
+  });
+
+  it("indeholder grundareal fra siteMetrics", () => {
+    expect(renderSvg(model)).toContain("1.086 m²");
+  });
+
+  it("indeholder manglende-data-note om koter", () => {
+    expect(renderSvg(model)).toContain("Koter ikke dokumenteret");
+  });
+
+  it("indeholder completeness-status UDKAST", () => {
+    expect(renderSvg(model)).toContain("UDKAST");
+  });
+
+  it("indeholder skalastav-tekst", () => {
+    expect(renderSvg(model)).toContain("1:250");
   });
 
   it("indeholder BR18-byggelinje hvis constraints har br18_setback", () => {
@@ -77,28 +156,13 @@ describe("renderSvg", () => {
     expect(renderSvg(modelWithConstraint)).toContain("br18-1");
   });
 
-  it("indeholder bebyggelsesprocent i kildelist", () => {
-    const modelWithArea: DrawingModel = {
-      ...model,
-      titleBlock: {
-        ...model.titleBlock,
-        sourceList: ["Grundareal: 1086 m²", "Bebyg.%: 24.98% (BR18 §452)"],
-      },
-    };
-    expect(renderSvg(modelWithArea)).toContain("Bebyg.%");
-  });
-
-  it("indeholder skalastav-tekst", () => {
-    expect(renderSvg(model)).toContain("1:250");
-  });
-
-  it("indeholder legend-items fra model.legend", () => {
+  it("indeholder legend-items (signaturforklaring) fra model.legend", () => {
     const modelWithLegend: DrawingModel = {
       ...model,
       legend: [
         {
           symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>',
-          label: "Parcel",
+          label: "Matrikelskel",
         },
         {
           symbol: '<rect width="12" height="8" fill="#d4e8ff" stroke="#00f" stroke-width="1"/>',
@@ -107,7 +171,8 @@ describe("renderSvg", () => {
       ],
     };
     const svg = renderSvg(modelWithLegend);
-    expect(svg).toContain("Parcel");
+    expect(svg).toMatch(/signaturforklaring/i);
+    expect(svg).toContain("Matrikelskel");
     expect(svg).toContain("Nyt byggeri");
   });
 });
