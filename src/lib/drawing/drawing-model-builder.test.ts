@@ -271,6 +271,36 @@ describe("buildDrawingModel — label-rendering", () => {
     expect(Number(model.titleBlock.scale.replace("1:", ""))).toBeLessThan(500);
   });
 
+  it("REGRESSION: a long road does not change the viewport scale at all", () => {
+    const baseline = buildDrawingModel(minimalPlan, autoReadiness);
+
+    const kilometreLongRoad = {
+      ...minimalPlan,
+      parcel: { ...minimalPlan.parcel, roadName: "Motorvejen" },
+      vej: {
+        vejnavn: "Motorvejen",
+        // A 4+ km centerline that dwarfs the parcel; must not affect scale.
+        centerline25832: {
+          type: "LineString" as const,
+          crs: "EPSG:25832" as const,
+          coordinates: [
+            [716000, 6166000],
+            [724000, 6174000],
+          ] as [number, number][],
+        },
+        vejkant25832: [],
+        vejbreddeM: null,
+        source: sourceMeta,
+      },
+    };
+
+    const withRoad = buildDrawingModel(kilometreLongRoad, autoReadiness);
+
+    // Parcel + buildings drive the viewport; the road is excluded from the bbox.
+    expect(withRoad.viewport.metersPerMm).toBeCloseTo(baseline.viewport.metersPerMm, 6);
+    expect(withRoad.titleBlock.scale).toBe(baseline.titleBlock.scale);
+  });
+
   it("naturbeskyttelse emits drawing features, legend and source summary", () => {
     const planWithNature: BeliggenhedsplanInput = {
       ...minimalPlan,
@@ -303,6 +333,8 @@ describe("buildDrawingModel — label-rendering", () => {
     expect(natureFeature).toBeDefined();
     expect(natureFeature?.label).toContain("Fortidsminde");
     expect(model.legend.some((item) => item.label === "Naturbeskyttelse")).toBe(true);
-    expect(model.titleBlock.sourceList).toContain("Naturbeskyttelse: 1 lag");
+    expect(model.infoPanel.sourceRegister.some((e) => e.label.includes("Naturbeskyttelse"))).toBe(
+      true,
+    );
   });
 });
