@@ -32,6 +32,12 @@ export type MatrikelMapProps = {
   footprintGeojson?: GeoJsonPolygon25832 | null;
   onPlacementChange?: (patch: { centroid: { lat: number; lng: number } }) => void;
   onFootprintChange?: (geojson: GeoJsonPolygon25832) => void;
+  readonly?: boolean;
+  planLayers?: {
+    vej: import("@/domain/drawing/beliggenhedsplan.types").VejLayer | null;
+    naturbeskyttelse: import("@/domain/drawing/beliggenhedsplan.types").NaturbeskyttelseLayer[];
+    lerLedninger: import("@/domain/drawing/beliggenhedsplan.types").LerLedning[];
+  } | null;
 };
 
 export function MatrikelMap({
@@ -42,6 +48,7 @@ export function MatrikelMap({
   footprintGeojson,
   onPlacementChange,
   onFootprintChange,
+  readonly = false,
 }: MatrikelMapProps) {
   const { address, complianceFlags, designPlacement } = useProject();
   const geo = designPlacement?.centroid ?? address?.koordinater ?? null;
@@ -254,6 +261,7 @@ export function MatrikelMap({
         controls: [],
       });
 
+      if (!readonly) {
       const translate = new Translate({
         features: footprintSource.getFeaturesCollection() ?? undefined,
       });
@@ -288,6 +296,7 @@ export function MatrikelMap({
         });
         onFootprintChange?.(newFootprint);
       });
+      } // end if (!readonly)
 
       const marker = new Feature({
         geometry: new Point(fromLonLat(baseCenter as [number, number])),
@@ -531,6 +540,7 @@ export function MatrikelMap({
 
         {hasAddress && (
           <div className="absolute bottom-3 left-3 right-3 z-20 grid gap-2 md:grid-cols-[1fr_auto]">
+            {!readonly && (
             <div className="rounded-md border border-border/60 bg-black/70 p-3 backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <Move3D size={14} className="text-accent" />
@@ -540,6 +550,7 @@ export function MatrikelMap({
               </div>
               <p className="mt-1 text-xs text-foreground/80">{dragHint}</p>
             </div>
+          )}
 
             <div className="rounded-md border border-border/60 bg-black/70 p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between gap-3">
