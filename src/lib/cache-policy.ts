@@ -21,6 +21,7 @@ const SOURCE_RESULT_TTL_OVERRIDES: Partial<Record<string, number>> = {
   arealdata_ext: 30,
   arealdata_ext_v2: 30,
   plandata_ext: 14,
+  plandata_heat: 14,
   geodanmark_nabo: 90,
   mat_neighbor_parcels: 90,
   plandata_surroundings: 30,

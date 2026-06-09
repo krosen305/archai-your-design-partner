@@ -352,6 +352,43 @@ describe("assembleBeliggenhedsplan", () => {
     expect(result.plan?.kloakoplandType).toBeNull();
   });
 
+  it("plan.fjernvarme saettes fra port", async () => {
+    const sourceWithFjernvarme: DrawingGeometrySourcePort = {
+      ...fakeSource,
+      fetchFjernvarmeDaekning: async () => ({
+        fjernvarmeDaekket: true,
+        fjernvarmePlanlagt: false,
+        tilslutningspligt: false,
+        forsyningsforbud: false,
+        forsyningsselskabNavn: null,
+        forsyningsselskabCvr: null,
+        planNavn: "Etape 1",
+        delomraadeNavn: null,
+        vedtagetDato: null,
+        konverteringStartAar: null,
+        konverteringSlutAar: null,
+        dokumentUrl: null,
+        sourceKinds: ["forsyningsomraade"],
+        confidence: "confirmed",
+        hits: [],
+        fejl: null,
+      }),
+    };
+    const result = await assembleBeliggenhedsplan({
+      matrikelId: "test-id",
+      kommunekode: "0101",
+      addressId: "addr-1",
+      proposedFootprint25832: fakeFootprint,
+      projectId: "proj-1",
+      sokkelKoteM: null,
+      heightM: null,
+      metadata: baseMeta,
+      geometrySource: sourceWithFjernvarme,
+      survey: null,
+    });
+    expect(result.plan?.fjernvarme?.planNavn).toBe("Etape 1");
+  });
+
   it("sewerResponsibility-note er altid til stede (kloakmester er altid ansvarlig for stikledning)", async () => {
     const result = await assembleBeliggenhedsplan({
       matrikelId: "test-id",

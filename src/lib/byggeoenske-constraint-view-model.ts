@@ -15,7 +15,7 @@ export type StepConstraintViewModel = {
     graense: string;
     beregnetPct: number | null;
   } | null;
-  fjernvarme: "tilgaengelig" | "mismatch" | "unknown" | null;
+  fjernvarme: "tilgaengelig" | "planlagt" | "mismatch" | "unknown" | null;
   lokalplanHint: string | null;
 };
 
@@ -80,10 +80,17 @@ export function buildStepConstraintViewModel(
 
   if (stepKey === "varmekilde") {
     const hasTilslutning = complianceFlags.some((f) => f.id === "fjernvarme-tilslutningspligt");
+    const hasPlanlagt = complianceFlags.some((f) => f.id === "fjernvarme-planlagt");
     const hasMismatch = complianceFlags.some((f) => f.id === "fjernvarme-mismatch-ingen-daekning");
     return {
       ...NONE,
-      fjernvarme: hasTilslutning ? "tilgaengelig" : hasMismatch ? "mismatch" : "unknown",
+      fjernvarme: hasTilslutning
+        ? "tilgaengelig"
+        : hasPlanlagt
+          ? "planlagt"
+          : hasMismatch
+            ? "mismatch"
+            : "unknown",
     };
   }
 

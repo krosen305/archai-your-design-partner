@@ -10,6 +10,7 @@ import type {
   NaturbeskyttelseLayer,
   LerLedning,
 } from "./beliggenhedsplan.types";
+import type { FjernvarmeResultat } from "@/domain/contracts/analysis.types";
 
 export interface DrawingGeometrySourcePort {
   fetchParcelLayers(matrikelId: string): Promise<ParcelLayer | null>;
@@ -29,7 +30,10 @@ export interface DrawingGeometrySourcePort {
     kommunekode: string,
     bbox25832: BBox25832,
   ): Promise<"separat" | "faelles" | null>;
-  fetchFjernvarmeDaekning(centroidLat: number, centroidLng: number): Promise<boolean | null>;
+  fetchFjernvarmeDaekning(
+    centroidLat: number,
+    centroidLng: number,
+  ): Promise<FjernvarmeResultat | null>;
 }
 
 export interface SurveyUploadDecoderPort {

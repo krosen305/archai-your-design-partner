@@ -28,6 +28,7 @@ import type {
 } from "@/domain/contracts/rule-engine.types";
 import type { DataSourceKind, PipelineServiceState } from "@/types/project-state";
 import {
+  fjernvarmeResultatSchema,
   ruleEngineArealdataContextSchema,
   ruleEngineGeusRiskDataSchema,
   ruleEnginePlandataContextSchema,
@@ -35,6 +36,7 @@ import {
 } from "@/types/project-restore.schemas";
 
 const AREALDATA_EXT_SOURCE_KIND = "arealdata_ext_v2";
+const FJERNVARME_SOURCE_KIND = "plandata_heat";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -501,19 +503,55 @@ export async function runGeoRiskStep(
       })(),
 
       // fjernvarme
-      import("@/integrations/plandata/fjernvarme")
-        .then(({ FjernvarmeService }) =>
-          traceStep(
+      Promise.all([
+        import("@/integrations/plandata/fjernvarme"),
+        import("@/integrations/cache/client"),
+      ])
+        .then(async ([{ FjernvarmeService }, { getCachedSourceResult, setCachedSourceResult }]) => {
+          const cached = await traceCacheRead(
+            trace,
+            {
+              service: "Cache",
+              operation: `getCachedSourceResult(${FJERNVARME_SOURCE_KIND})`,
+              phase: "layer4",
+            },
+            () =>
+              getCachedSourceResult(addressId, FJERNVARME_SOURCE_KIND, fjernvarmeResultatSchema),
+          );
+
+          if (cached) {
+            return { result: cached, cacheHit: true as const };
+          }
+
+          const result = await traceStep(
             trace,
             {
               eventType: "api_call",
               phase: "layer4",
               service: "Plandata WFS",
-              operation: "fjernvarme.getDaekning",
+              operation: "fjernvarme.getHeatSupplyContext",
             },
-            () => FjernvarmeService.getDaekning(koordinater),
-          ),
-        )
+            () => FjernvarmeService.getHeatSupplyContext(koordinater),
+            {
+              outputSummary: (r) =>
+                summarizeSourceResult(
+                  r,
+                  (d) =>
+                    `daekket=${d.fjernvarmeDaekket} planlagt=${d.fjernvarmePlanlagt} tilslutning=${d.tilslutningspligt}`,
+                ),
+              metadata: (r) => ({
+                source: r.kilde,
+                feature_count: r.rawFeatureCount,
+                confidence: r.confidence,
+              }),
+            },
+          );
+
+          await setCachedSourceResult(addressId, FJERNVARME_SOURCE_KIND, result).catch(
+            () => undefined,
+          );
+          return { result, cacheHit: false as const };
+        })
         .catch((e: Error) => {
           logServerEvent({
             module: "geo-risk-step",
@@ -694,7 +732,8 @@ export async function runGeoRiskStep(
     states.terrain = deriveSourceState(terr?.result ?? null, terr?.cacheHit ?? false);
     naboer = nabo?.legacyResult.data ?? null;
     states.naboer = deriveSourceState(nabo?.legacyResult ?? null, nabo?.cacheHit ?? false);
-    fjernvarme = varme;
+    fjernvarme = varme?.result.data ?? null;
+    states.fjernvarme = deriveSourceState(varme?.result ?? null, varme?.cacheHit ?? false);
     plandataContext = plandataExt?.result.data ?? null;
     arealdataContext = arealdataExt?.result.data ?? null;
     states.arealdata = deriveSourceState(
@@ -709,8 +748,8 @@ export async function runGeoRiskStep(
   // geus and terrain are IS_MOCK=true services.
   // servitutter is IS_MOCK=true (TingbogenV2 — feature flag).
   states.servitutter = "mock";
-  // fjernvarme is live.
-  states.fjernvarme = fjernvarme ? "success" : "no_hit";
+  // states.fjernvarme is set from the SourceResult in the parallel block.
+  states.fjernvarme ??= "no_hit";
 
   return {
     naturbeskyttelse,

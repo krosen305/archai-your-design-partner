@@ -204,6 +204,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     dhmTerrain,
     naturbeskyttelseRaw,
     kloakoplandType,
+    fjernvarme,
   ] = await Promise.all([
     geometrySource.fetchNeighborBuildings(bbox),
     geometrySource.fetchPlandataLayers(kommunekode, bbox),
@@ -213,6 +214,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
     fetchNaturbeskyttelseWithCache({ addressId, bbox25832: bbox, geometrySource }),
     geometrySource.fetchKloakopland(kommunekode, bbox),
+    geometrySource.fetchFjernvarmeDaekning(centroidLat, centroidLng),
   ]);
   const naturbeskyttelse = applyNaturbeskyttelseIntersections(
     naturbeskyttelseRaw,
@@ -281,6 +283,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     naturbeskyttelse,
     lerLedninger: [],
     kloakoplandType,
+    fjernvarme,
   };
 
   const readiness = classifyDrawingReadiness({

@@ -159,6 +159,24 @@ export function deriveSiteConstraintsPatch(
   }
 
   // ARCH-247: Tjekditnet bredbåndscoverage
+  if (patch.fjernvarme !== undefined) {
+    hasConstraintField = true;
+    const varme = patch.fjernvarme;
+    sitePatch.fjernvarme_daekket = varme?.fjernvarmeDaekket ?? null;
+    sitePatch.fjernvarme_planlagt = varme?.fjernvarmePlanlagt ?? null;
+    sitePatch.fjernvarme_tilslutningspligt = varme?.tilslutningspligt ?? null;
+    sitePatch.fjernvarme_forsyningsforbud = varme?.forsyningsforbud ?? null;
+    sitePatch.fjernvarme_forsyningsselskab_navn = varme?.forsyningsselskabNavn ?? null;
+    sitePatch.fjernvarme_forsyningsselskab_cvr = varme?.forsyningsselskabCvr ?? null;
+    sitePatch.fjernvarme_plan_navn = varme?.planNavn ?? null;
+    sitePatch.fjernvarme_plan_start_aar = varme?.konverteringStartAar ?? null;
+    sitePatch.fjernvarme_plan_slut_aar = varme?.konverteringSlutAar ?? null;
+    sitePatch.fjernvarme_dokument_url = varme?.dokumentUrl ?? null;
+    sitePatch.fjernvarme_confidence = varme?.confidence ?? null;
+    sitePatch.fjernvarme_source_kinds = varme?.sourceKinds ?? null;
+    sitePatch.fjernvarme_fetched_at = varme ? new Date().toISOString() : null;
+  }
+
   if (patch.tjekditnetCoverage !== undefined) {
     hasConstraintField = true;
     const cov = patch.tjekditnetCoverage;

@@ -9,12 +9,7 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function toSvg(
-  coords: [number, number][],
-  minX: number,
-  maxY: number,
-  scale: number,
-): string {
+function toSvg(coords: [number, number][], minX: number, maxY: number, scale: number): string {
   return coords
     .map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`)
     .join(" ");

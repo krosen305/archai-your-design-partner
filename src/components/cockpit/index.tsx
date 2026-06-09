@@ -287,17 +287,21 @@ function StepExtras({
           className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[10px] ${
             vm.fjernvarme === "tilgaengelig"
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-              : vm.fjernvarme === "mismatch"
+              : vm.fjernvarme === "planlagt"
                 ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-                : "border-border/60 bg-[#111] text-muted-foreground"
+                : vm.fjernvarme === "mismatch"
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                  : "border-border/60 bg-[#111] text-muted-foreground"
           }`}
         >
           <Flame size={10} />
           {vm.fjernvarme === "tilgaengelig"
             ? "Fjernvarme tilgængeligt (mulig tilslutningspligt)"
-            : vm.fjernvarme === "mismatch"
-              ? "Fjernvarme: Ikke bekræftet på adressen"
-              : "Fjernvarme: Status ukendt"}
+            : vm.fjernvarme === "planlagt"
+              ? "Fjernvarme planlagt - afklar tidsplan"
+              : vm.fjernvarme === "mismatch"
+                ? "Fjernvarme: Ikke bekræftet på adressen"
+                : "Fjernvarme: Status ukendt"}
         </div>
       )}
 

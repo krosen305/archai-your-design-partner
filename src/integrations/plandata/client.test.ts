@@ -66,7 +66,12 @@ describe("PlandataService.fetchKloakoplandForPoint", () => {
         features: [
           {
             id: "kl1",
-            properties: { uuid: "abc", vaerd1201a: "Fælleskloak", status: "V", datovedt: "20230101" },
+            properties: {
+              uuid: "abc",
+              vaerd1201a: "Fælleskloak",
+              status: "V",
+              datovedt: "20230101",
+            },
           },
         ],
       },
@@ -81,7 +86,12 @@ describe("PlandataService.fetchKloakoplandForPoint", () => {
         features: [
           {
             id: "kl2",
-            properties: { uuid: "def", vaerd1201a: "Separatkloak", status: "V", datovedt: "20230101" },
+            properties: {
+              uuid: "def",
+              vaerd1201a: "Separatkloak",
+              status: "V",
+              datovedt: "20230101",
+            },
           },
         ],
       },

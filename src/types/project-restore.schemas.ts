@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { RuleEngineBbrData } from "@/domain/contracts/rule-engine.types";
 import type { BbrDueDiligenceData } from "@/domain/contracts/bbr-due-diligence.types";
+import type { FjernvarmeResultat } from "@/domain/contracts/analysis.types";
 import { dataStatusMapSchema } from "@/lib/datacheck";
 
 const complianceFlagSourceValues = [
@@ -46,9 +47,65 @@ export const vurDataSchema = z
 export const fjernvarmeResultatSchema = z
   .object({
     fjernvarmeDaekket: z.boolean().nullable(),
+    fjernvarmePlanlagt: z.boolean().nullable().catch(null).default(null),
+    tilslutningspligt: z.boolean().nullable().catch(null).default(null),
+    forsyningsforbud: z.boolean().nullable().catch(null).default(null),
+    forsyningsselskabNavn: z.string().nullable().catch(null).default(null),
+    forsyningsselskabCvr: z.string().nullable().catch(null).default(null),
+    planNavn: z.string().nullable().catch(null).default(null),
+    delomraadeNavn: z.string().nullable().catch(null).default(null),
+    vedtagetDato: z.string().nullable().catch(null).default(null),
+    konverteringStartAar: z.number().nullable().catch(null).default(null),
+    konverteringSlutAar: z.number().nullable().catch(null).default(null),
+    dokumentUrl: z.string().nullable().catch(null).default(null),
+    sourceKinds: z
+      .array(
+        z.enum([
+          "forsyningsomraade",
+          "tilslutningspligtomraade",
+          "forsyningsforbudomraade",
+          "varmeplansomraade",
+        ]),
+      )
+      .catch([])
+      .default([]),
+    confidence: z
+      .enum(["confirmed", "estimated", "missing", "unknown"])
+      .catch("unknown")
+      .default("unknown"),
+    hits: z
+      .array(
+        z
+          .object({
+            sourceKind: z.enum([
+              "forsyningsomraade",
+              "tilslutningspligtomraade",
+              "forsyningsforbudomraade",
+              "varmeplansomraade",
+            ]),
+            featureId: z.string().nullable().catch(null).default(null),
+            planId: z.string().nullable().catch(null).default(null),
+            planNavn: z.string().nullable().catch(null).default(null),
+            delomraadeNavn: z.string().nullable().catch(null).default(null),
+            status: z.string().nullable().catch(null).default(null),
+            typeCode: z.number().nullable().catch(null).default(null),
+            typeLabel: z.string().nullable().catch(null).default(null),
+            vedtagetDato: z.string().nullable().catch(null).default(null),
+            ikraftDato: z.string().nullable().catch(null).default(null),
+            konverteringStartAar: z.number().nullable().catch(null).default(null),
+            konverteringSlutAar: z.number().nullable().catch(null).default(null),
+            forsyningsselskabNavn: z.string().nullable().catch(null).default(null),
+            forsyningsselskabCvr: z.string().nullable().catch(null).default(null),
+            dokumentUrl: z.string().nullable().catch(null).default(null),
+            webUrl: z.string().nullable().catch(null).default(null),
+          })
+          .passthrough(),
+      )
+      .catch([])
+      .default([]),
     fejl: z.string().nullable(),
   })
-  .passthrough();
+  .passthrough() as z.ZodType<FjernvarmeResultat>;
 
 const neighborBuildingSchema = z
   .object({

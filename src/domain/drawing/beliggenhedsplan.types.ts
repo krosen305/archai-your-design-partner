@@ -1,4 +1,6 @@
 // src/domain/drawing/beliggenhedsplan.types.ts
+import type { FjernvarmeResultat } from "@/domain/contracts/analysis.types";
+
 export type Crs25832 = "EPSG:25832";
 export type BBox25832 = [number, number, number, number];
 
@@ -288,4 +290,5 @@ export type BeliggenhedsplanInput = {
   naturbeskyttelse: NaturbeskyttelseLayer[];
   lerLedninger: LerLedning[];
   kloakoplandType: "separat" | "faelles" | null;
+  fjernvarme?: FjernvarmeResultat | null;
 };

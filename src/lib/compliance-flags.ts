@@ -187,11 +187,17 @@ export function deriveComplianceFlags(
   }
 
   // ── Fjernvarme-mismatch (ARCH-117) ──────────────────────────────────────
-  // Sammenligner BBR byg056 med Plandata fjernvarmedækning (live data)
-  if (bbr && fjernvarme && fjernvarme.fjernvarmeDaekket !== null) {
+  // Sammenligner BBR byg056 med Plandata heat context (live data).
+  // Et varmeplansområde er planlagt potentiale; kun forsyningsområde er
+  // bekræftet fjernvarmedækning.
+  if (bbr && fjernvarme) {
     const harFjernvarmeBbr =
       bbr.varmeinstallation !== null && bbr.varmeinstallation.toLowerCase().includes("fjernvarme");
-    if (harFjernvarmeBbr && !fjernvarme.fjernvarmeDaekket) {
+    const actualCoverage = fjernvarme.fjernvarmeDaekket === true;
+    const plannedCoverage = fjernvarme.fjernvarmePlanlagt === true;
+    const hasConnectionObligation = fjernvarme.tilslutningspligt === true;
+
+    if (fjernvarme.fjernvarmeDaekket !== null && harFjernvarmeBbr && !actualCoverage) {
       flags.push({
         id: "fjernvarme-mismatch-ingen-daekning",
         label: "Mulig fejlregistrering: fjernvarme",
@@ -202,7 +208,7 @@ export function deriveComplianceFlags(
         tilladt: null,
         kilde: "bbr",
       });
-    } else if (!harFjernvarmeBbr && fjernvarme.fjernvarmeDaekket) {
+    } else if (!harFjernvarmeBbr && (actualCoverage || hasConnectionObligation)) {
       flags.push({
         id: "fjernvarme-tilslutningspligt",
         label: "Mulig tilslutningspligt: fjernvarme",
@@ -212,6 +218,17 @@ export function deriveComplianceFlags(
         aktuelVærdi: bbr.varmeinstallation ?? "Ingen fjernvarme",
         tilladt: null,
         kilde: "bbr",
+      });
+    } else if (!harFjernvarmeBbr && !actualCoverage && plannedCoverage) {
+      flags.push({
+        id: "fjernvarme-planlagt",
+        label: "Fjernvarme planlagt",
+        status: "advarsel",
+        detalje:
+          "Plandata viser planlagt fjernvarme i området, men ikke et bekræftet forsyningsområde endnu - afklar tidsplan og varmevalg med forsyningsselskabet",
+        aktuelVærdi: bbr.varmeinstallation ?? "Ingen fjernvarme",
+        tilladt: null,
+        kilde: "plandata",
       });
     }
   }

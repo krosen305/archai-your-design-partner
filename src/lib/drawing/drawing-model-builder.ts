@@ -61,6 +61,21 @@ function polygonFeature(
   };
 }
 
+function fjernvarmeSourceLine(plan: BeliggenhedsplanInput): string | null {
+  const varme = plan.fjernvarme;
+  if (!varme) return null;
+
+  const status =
+    varme.fjernvarmeDaekket === true
+      ? "bekraeftet"
+      : varme.fjernvarmePlanlagt === true
+        ? "planlagt"
+        : varme.fjernvarmeDaekket === false
+          ? "ikke bekraeftet"
+          : "ukendt";
+  const planName = varme.planNavn ? ` (${varme.planNavn})` : "";
+  return `Fjernvarme: ${status}${planName}`;
+}
 
 export function buildDrawingModel(
   plan: BeliggenhedsplanInput,
@@ -231,7 +246,12 @@ export function buildDrawingModel(
   });
 
   // Naturbeskyttelseszoner (zIndex 5)
-  const naturFeatures = buildNaturbeskyttelseFeatures(plan.naturbeskyttelse, bboxMinX, bboxMaxY, scale);
+  const naturFeatures = buildNaturbeskyttelseFeatures(
+    plan.naturbeskyttelse,
+    bboxMinX,
+    bboxMaxY,
+    scale,
+  );
   naturFeatures.forEach((f) => features.push(f));
 
   // Mål-linjer
@@ -356,11 +376,7 @@ export function buildDrawingModel(
   placeholderFeatures.forEach((f) => features.push(f));
 
   // Watermark (zIndex 19)
-  const watermarkFeature = buildWatermarkFeature(
-    isDraft,
-    drawWidthPx,
-    drawHeightPx,
-  );
+  const watermarkFeature = buildWatermarkFeature(isDraft, drawWidthPx, drawHeightPx);
   if (watermarkFeature) features.push(watermarkFeature);
 
   const areaTable = plan.metadata.areaTable ?? {
@@ -377,6 +393,7 @@ export function buildDrawingModel(
     plan.metadata.revisions.length > 0
       ? plan.metadata.revisions
       : [{ nr: "A", description: "Udgivelse", date: plan.metadata.date, by: "" }];
+  const fjernvarmeLine = fjernvarmeSourceLine(plan);
 
   return {
     page: {
@@ -410,11 +427,9 @@ export function buildDrawingModel(
         ...(plan.naturbeskyttelse.length > 0
           ? [`Naturbeskyttelse: ${plan.naturbeskyttelse.length} lag`]
           : []),
-
+        ...(fjernvarmeLine ? [fjernvarmeLine] : []),
       ],
-      completenessStatus: isDraft
-        ? `UDKAST — ${completeness.placeholderCount} placeholders`
-        : null,
+      completenessStatus: isDraft ? `UDKAST — ${completeness.placeholderCount} placeholders` : null,
     },
     legend: [
       {

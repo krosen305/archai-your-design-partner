@@ -156,6 +156,13 @@ describe("buildStepConstraintViewModel — varmekilde", () => {
     expect(vm.fjernvarme).toBe("mismatch");
   });
 
+  it("returns fjernvarme=planlagt when planned district heating flag present", () => {
+    const vm = buildStepConstraintViewModel("varmekilde", "varmepumpe", null, null, [
+      makeFlag("fjernvarme-planlagt"),
+    ]);
+    expect(vm.fjernvarme).toBe("planlagt");
+  });
+
   it("returns fjernvarme=unknown when no relevant flags", () => {
     const vm = buildStepConstraintViewModel("varmekilde", "varmepumpe", null, null, []);
     expect(vm.fjernvarme).toBe("unknown");

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { deriveComplianceFlags } from "./compliance-flags";
+import type { FjernvarmeResultat } from "@/domain/contracts/analysis.types";
 import type {
   RuleEngineBbrData,
   RuleEngineKommuneplanramme,
@@ -53,6 +54,28 @@ const baseRamme: RuleEngineKommuneplanramme = {
   plandokumentLink: null,
 };
 
+function makeFjernvarme(overrides: Partial<FjernvarmeResultat> = {}): FjernvarmeResultat {
+  return {
+    fjernvarmeDaekket: false,
+    fjernvarmePlanlagt: false,
+    tilslutningspligt: false,
+    forsyningsforbud: false,
+    forsyningsselskabNavn: null,
+    forsyningsselskabCvr: null,
+    planNavn: null,
+    delomraadeNavn: null,
+    vedtagetDato: null,
+    konverteringStartAar: null,
+    konverteringSlutAar: null,
+    dokumentUrl: null,
+    sourceKinds: [],
+    confidence: "missing",
+    hits: [],
+    fejl: null,
+    ...overrides,
+  };
+}
+
 describe("deriveComplianceFlags", () => {
   it("returns empty array when bbr is null", () => {
     const flags = deriveComplianceFlags(null, null);
@@ -103,6 +126,47 @@ describe("deriveComplianceFlags", () => {
   it("returns advarsel when no kommuneplanramme available", () => {
     const flags = deriveComplianceFlags(baseBbr, null);
     const flag = flags.find((f) => f.id === "bebyggelsesprocent");
+    expect(flag).toBeDefined();
+    expect(flag?.status).toBe("advarsel");
+  });
+
+  it("returns planned fjernvarme flag without treating it as tilslutningspligt", () => {
+    const bbr: RuleEngineBbrData = { ...baseBbr, varmeinstallation: "Naturgas" };
+    const flags = deriveComplianceFlags(
+      bbr,
+      baseRamme,
+      null,
+      null,
+      null,
+      null,
+      makeFjernvarme({
+        fjernvarmePlanlagt: true,
+        confidence: "estimated",
+        sourceKinds: ["varmeplansomraade"],
+      }),
+    );
+
+    expect(flags.some((f) => f.id === "fjernvarme-planlagt")).toBe(true);
+    expect(flags.some((f) => f.id === "fjernvarme-tilslutningspligt")).toBe(false);
+  });
+
+  it("returns tilslutningspligt flag for confirmed district-heating supply area", () => {
+    const bbr: RuleEngineBbrData = { ...baseBbr, varmeinstallation: "Naturgas" };
+    const flags = deriveComplianceFlags(
+      bbr,
+      baseRamme,
+      null,
+      null,
+      null,
+      null,
+      makeFjernvarme({
+        fjernvarmeDaekket: true,
+        confidence: "confirmed",
+        sourceKinds: ["forsyningsomraade"],
+      }),
+    );
+
+    const flag = flags.find((f) => f.id === "fjernvarme-tilslutningspligt");
     expect(flag).toBeDefined();
     expect(flag?.status).toBe("advarsel");
   });

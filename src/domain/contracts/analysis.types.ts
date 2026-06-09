@@ -25,8 +25,49 @@ export type MatParcelGeometryPayload = {
   hasCanonicalPolygon: boolean;
 };
 
+export type FjernvarmeConfidence = "confirmed" | "estimated" | "missing" | "unknown";
+
+export type FjernvarmeSourceKind =
+  | "forsyningsomraade"
+  | "tilslutningspligtomraade"
+  | "forsyningsforbudomraade"
+  | "varmeplansomraade";
+
+export type FjernvarmePlanHit = {
+  sourceKind: FjernvarmeSourceKind;
+  featureId: string | null;
+  planId: string | null;
+  planNavn: string | null;
+  delomraadeNavn: string | null;
+  status: string | null;
+  typeCode: number | null;
+  typeLabel: string | null;
+  vedtagetDato: string | null;
+  ikraftDato: string | null;
+  konverteringStartAar: number | null;
+  konverteringSlutAar: number | null;
+  forsyningsselskabNavn: string | null;
+  forsyningsselskabCvr: string | null;
+  dokumentUrl: string | null;
+  webUrl: string | null;
+};
+
 export type FjernvarmeResultat = {
   fjernvarmeDaekket: boolean | null;
+  fjernvarmePlanlagt: boolean | null;
+  tilslutningspligt: boolean | null;
+  forsyningsforbud: boolean | null;
+  forsyningsselskabNavn: string | null;
+  forsyningsselskabCvr: string | null;
+  planNavn: string | null;
+  delomraadeNavn: string | null;
+  vedtagetDato: string | null;
+  konverteringStartAar: number | null;
+  konverteringSlutAar: number | null;
+  dokumentUrl: string | null;
+  sourceKinds: FjernvarmeSourceKind[];
+  confidence: FjernvarmeConfidence;
+  hits: FjernvarmePlanHit[];
   fejl: string | null;
 };
 

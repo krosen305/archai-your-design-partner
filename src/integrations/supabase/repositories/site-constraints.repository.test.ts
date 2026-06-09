@@ -351,6 +351,49 @@ describe("deriveSiteConstraintsPatch", () => {
     expect(result!.raw_material_area).toBe(true);
   });
 
+  it("maps fjernvarme fields to typed site constraints", () => {
+    const patch: ProjectPatch = {
+      fjernvarme: {
+        fjernvarmeDaekket: true,
+        fjernvarmePlanlagt: false,
+        tilslutningspligt: true,
+        forsyningsforbud: false,
+        forsyningsselskabNavn: "Test Varme",
+        forsyningsselskabCvr: "12345678",
+        planNavn: "Etape 1",
+        delomraadeNavn: null,
+        vedtagetDato: "2026-01-15",
+        konverteringStartAar: 2026,
+        konverteringSlutAar: 2027,
+        dokumentUrl: "https://example.test/plan.pdf",
+        sourceKinds: ["forsyningsomraade", "tilslutningspligtomraade"],
+        confidence: "confirmed",
+        hits: [],
+        fejl: null,
+      },
+    };
+
+    const result = deriveSiteConstraintsPatch("addr-1", patch, emptyUpdate);
+
+    expect(result).not.toBe(null);
+    expect(result!.fjernvarme_daekket).toBe(true);
+    expect(result!.fjernvarme_planlagt).toBe(false);
+    expect(result!.fjernvarme_tilslutningspligt).toBe(true);
+    expect(result!.fjernvarme_forsyningsforbud).toBe(false);
+    expect(result!.fjernvarme_forsyningsselskab_navn).toBe("Test Varme");
+    expect(result!.fjernvarme_forsyningsselskab_cvr).toBe("12345678");
+    expect(result!.fjernvarme_plan_navn).toBe("Etape 1");
+    expect(result!.fjernvarme_plan_start_aar).toBe(2026);
+    expect(result!.fjernvarme_plan_slut_aar).toBe(2027);
+    expect(result!.fjernvarme_dokument_url).toBe("https://example.test/plan.pdf");
+    expect(result!.fjernvarme_confidence).toBe("confirmed");
+    expect(result!.fjernvarme_source_kinds).toEqual([
+      "forsyningsomraade",
+      "tilslutningspligtomraade",
+    ]);
+    expect(typeof result!.fjernvarme_fetched_at).toBe("string");
+  });
+
   it("sets address_id and confidence on result", () => {
     const patch: ProjectPatch = { kommuneplanramme: null };
     const result = deriveSiteConstraintsPatch("my-addr", patch, emptyUpdate);

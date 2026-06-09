@@ -458,9 +458,12 @@ function AnalyseTab({
 // ---------------------------------------------------------------------------
 
 function FjernvarmeSektion({ data }: { data: FjernvarmeResultat }) {
-  const badge =
-    data.fjernvarmeDaekket === true
-      ? { label: "FJERNVARME TILGÆNGELIGT", color: "text-success border-success/40 bg-success/10" }
+  const isCovered = data.fjernvarmeDaekket === true;
+  const isPlanned = !isCovered && data.fjernvarmePlanlagt === true;
+  const badge = isCovered
+    ? { label: "FJERNVARME TILGÆNGELIGT", color: "text-success border-success/40 bg-success/10" }
+    : isPlanned
+      ? { label: "FJERNVARME PLANLAGT", color: "text-warning border-warning/40 bg-warning/10" }
       : data.fjernvarmeDaekket === false
         ? {
             label: "INGEN FJERNVARME",
@@ -480,16 +483,40 @@ function FjernvarmeSektion({ data }: { data: FjernvarmeResultat }) {
         {badge.label}
       </span>
       {data.fejl && <p className="text-xs text-muted-foreground mt-2">{data.fejl}</p>}
-      {data.fjernvarmeDaekket === true && (
+      {isCovered && (
         <p className="text-sm text-foreground/80 mt-3">
-          Adressen ligger inden for et vedtaget fjernvarmeforsyningsområde – tilslutningspligt kan
-          være gældende.
+          Adressen ligger inden for et vedtaget fjernvarmeforsyningsområde. Kontroller
+          varmeforsyning og eventuel tilslutningspligt ved byggeansøgning.
         </p>
       )}
-      {data.fjernvarmeDaekket === false && (
+      {isPlanned && (
         <p className="text-sm text-foreground/80 mt-3">
-          Ingen fjernvarmeforsyning på adressen – varmepumpe eller anden lokal løsning.
+          Plandata viser et varmeplansområde for fjernvarme, men ikke et bekræftet forsyningsområde
+          endnu. Afklar tidsplan og gravearbejde med forsyningsselskabet.
         </p>
+      )}
+      {data.fjernvarmeDaekket === false && !isPlanned && (
+        <p className="text-sm text-foreground/80 mt-3">
+          Ingen bekræftet fjernvarmeforsyning på adressen i Plandata.
+        </p>
+      )}
+      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+        <div>Plan: {data.planNavn ?? "—"}</div>
+        <div>Selskab: {data.forsyningsselskabNavn ?? "—"}</div>
+        <div>Tilslutningspligt: {data.tilslutningspligt === true ? "Ja" : "Nej/ukendt"}</div>
+        <div>Fjernvarmeforbud: {data.forsyningsforbud === true ? "Ja" : "Nej/ukendt"}</div>
+        <div>Confidence: {data.confidence}</div>
+        <div>Kilder: {data.sourceKinds.length > 0 ? data.sourceKinds.join(", ") : "—"}</div>
+      </div>
+      {data.dokumentUrl && (
+        <a
+          href={data.dokumentUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-1 rounded border border-accent/40 bg-accent/5 px-2 py-1 font-mono text-[11px] text-accent hover:bg-accent/10 transition-colors"
+        >
+          Plandokument <ExternalLink size={10} />
+        </a>
       )}
     </Card>
   );

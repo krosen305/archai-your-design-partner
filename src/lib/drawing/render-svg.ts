@@ -64,7 +64,10 @@ export function renderSvg(model: DrawingModel): string {
       ? [
           `<rect x="${tx}" y="${lineY}" width="${titleBlockW}" height="10" fill="#fef3c7"/>`,
           `<text x="${(tx + 5).toFixed(1)}" y="${(lineY + 7).toFixed(1)}" font-family="Arial" font-size="6" fill="#92400e" font-weight="bold">${esc(tb.completenessStatus)}</text>`,
-          ...((): string[] => { lineY += 12; return []; })(),
+          ...((): string[] => {
+            lineY += 12;
+            return [];
+          })(),
         ]
       : []),
     ...(tb.disclaimer

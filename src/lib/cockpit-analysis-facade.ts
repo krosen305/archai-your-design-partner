@@ -98,6 +98,8 @@ export function buildComplianceApplication(params: {
     result.naturbeskyttelse,
     result.dkjord,
     result.geusRisk,
+    result.ruleEngine ?? null,
+    result.fjernvarme ?? null,
   );
   const complianceMetrics = calculateComplianceMetrics(result.bbr, result.kommuneplanramme);
   const heritageSaveValue = result.fbbData?.fbb_bedste_bygning?.bevaringsvaerdi ?? null;

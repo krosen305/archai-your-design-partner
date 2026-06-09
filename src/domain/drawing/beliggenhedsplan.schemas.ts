@@ -240,6 +240,34 @@ export const LerLedningSchema = z.object({
   source: LayerSourceMetaSchema,
 });
 
+const FjernvarmeSourceKindSchema = z.enum([
+  "forsyningsomraade",
+  "tilslutningspligtomraade",
+  "forsyningsforbudomraade",
+  "varmeplansomraade",
+]);
+
+const FjernvarmeSchema = z
+  .object({
+    fjernvarmeDaekket: z.boolean().nullable(),
+    fjernvarmePlanlagt: z.boolean().nullable(),
+    tilslutningspligt: z.boolean().nullable(),
+    forsyningsforbud: z.boolean().nullable(),
+    forsyningsselskabNavn: z.string().nullable(),
+    forsyningsselskabCvr: z.string().nullable(),
+    planNavn: z.string().nullable(),
+    delomraadeNavn: z.string().nullable(),
+    vedtagetDato: z.string().nullable(),
+    konverteringStartAar: z.number().nullable(),
+    konverteringSlutAar: z.number().nullable(),
+    dokumentUrl: z.string().nullable(),
+    sourceKinds: z.array(FjernvarmeSourceKindSchema),
+    confidence: z.enum(["confirmed", "estimated", "missing", "unknown"]),
+    hits: z.array(z.unknown()),
+    fejl: z.string().nullable(),
+  })
+  .passthrough();
+
 const RevisionEntrySchema = z.object({
   nr: z.string(),
   description: z.string(),
@@ -297,4 +325,5 @@ export const BeliggenhedsplanInputSchema = z.object({
   naturbeskyttelse: z.array(NaturbeskyttelseLayerSchema),
   lerLedninger: z.array(LerLedningSchema),
   kloakoplandType: z.enum(["separat", "faelles"]).nullable(),
+  fjernvarme: FjernvarmeSchema.nullable().optional().default(null),
 });

@@ -270,9 +270,14 @@ export class GeoDanmarkDrawingLayersAdapter implements DrawingGeometrySourcePort
   }
 
   async fetchFjernvarmeDaekning(
-    _centroidLat: number,
-    _centroidLng: number,
-  ): Promise<boolean | null> {
-    return null;
+    centroidLat: number,
+    centroidLng: number,
+  ): Promise<import("@/domain/contracts/analysis.types").FjernvarmeResultat | null> {
+    const { FjernvarmeService } = await import("@/integrations/plandata/fjernvarme");
+    const result = await FjernvarmeService.getHeatSupplyContext({
+      lat: centroidLat,
+      lng: centroidLng,
+    });
+    return result.data;
   }
 }
