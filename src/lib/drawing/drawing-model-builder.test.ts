@@ -273,10 +273,10 @@ describe("buildDrawingModel — label-rendering", () => {
     };
 
     const model = buildDrawingModel(planWithNature, autoReadiness);
-    const natureFeature = model.features.find((feat) => feat.kind === "nature_protection");
+    const natureFeature = model.features.find((feat) => feat.kind === "naturbeskyttelse_zones");
 
     expect(natureFeature).toBeDefined();
-    expect(natureFeature?.svgElement).toContain("Fortidsmindebeskyttelse");
+    expect(natureFeature?.label).toContain("Fortidsminde");
     expect(model.legend.some((item) => item.label === "Naturbeskyttelse")).toBe(true);
     expect(model.titleBlock.sourceList).toContain("Naturbeskyttelse: 1 lag");
   });

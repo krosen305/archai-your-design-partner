@@ -60,6 +60,13 @@ export function renderSvg(model: DrawingModel): string {
     tbLine(`Dato: ${tb.date}`, 6),
     tbLine(`Mål: ${tb.scale}  Ark: ${tb.paperSize}`, 6),
     tbLine(`Rev.: ${tb.revision}`, 6),
+    ...(tb.completenessStatus
+      ? [
+          `<rect x="${tx}" y="${lineY}" width="${titleBlockW}" height="10" fill="#fef3c7"/>`,
+          `<text x="${(tx + 5).toFixed(1)}" y="${(lineY + 7).toFixed(1)}" font-family="Arial" font-size="6" fill="#92400e" font-weight="bold">${esc(tb.completenessStatus)}</text>`,
+          ...((): string[] => { lineY += 12; return []; })(),
+        ]
+      : []),
     ...(tb.disclaimer
       ? [
           `<text x="${tx + 5}" y="${lineY + 4}" font-family="Arial" font-size="6" fill="#c00" font-weight="bold">${esc(tb.disclaimer)}</text>`,

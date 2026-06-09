@@ -5,6 +5,12 @@ import type { DrawingModel, DrawingFeature } from "@/domain/drawing/drawing-mode
 import { PAGE_SIZES, computeViewport } from "@/domain/drawing/drawing-model";
 import { buildDimensionLines } from "./dimension-lines";
 import { buildSetbackAnnotations } from "@/domain/drawing/geometry-engine";
+import { buildRoadFeatures } from "./layers/render-road-layer";
+import { buildNaturbeskyttelseFeatures } from "./layers/render-naturbeskyttelse-layer";
+import { buildLerFeatures, buildLerLegendEntries } from "./layers/render-ler-layer";
+import { buildPlaceholderFeatures } from "./layers/render-placeholder-layer";
+import { buildWatermarkFeature } from "./layers/render-watermark";
+import { computeDrawingCompleteness } from "@/domain/drawing/completeness-engine";
 
 function esc(s: string): string {
   return s
@@ -55,96 +61,6 @@ function polygonFeature(
   };
 }
 
-function lineFeature(
-  id: string,
-  kind: DrawingFeature["kind"],
-  coords: [number, number][],
-  minX: number,
-  maxY: number,
-  scale: number,
-  style: string,
-  label: string | null = null,
-  zIndex = 10,
-): DrawingFeature {
-  const pts = coordsToSvgPoints(coords, minX, maxY, scale);
-  return {
-    id,
-    kind,
-    svgElement: `<polyline points="${pts}" fill="none" ${style}/>`,
-    label,
-    labelX: null,
-    labelY: null,
-    zIndex,
-  };
-}
-
-function lineLabelFeature(
-  id: string,
-  label: string,
-  coords: [number, number][],
-  minX: number,
-  maxY: number,
-  scale: number,
-): DrawingFeature | null {
-  const first = coords[0];
-  const last = coords[coords.length - 1];
-  if (!first || !last) return null;
-
-  const mid = coords[Math.floor(coords.length / 2)] ?? first;
-  const x = (mid[0] - minX) * scale;
-  const y = (maxY - mid[1]) * scale - 4;
-  const angle = (-Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
-
-  return {
-    id,
-    kind: "road_label",
-    svgElement: `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" transform="rotate(${angle.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(label)}</text>`,
-    label,
-    labelX: x,
-    labelY: y,
-    zIndex: 45,
-  };
-}
-
-function naturbeskyttelseLabel(
-  type: BeliggenhedsplanInput["naturbeskyttelse"][number]["type"],
-): string {
-  switch (type) {
-    case "strandbeskyttelse":
-      return "Strandbeskyttelse";
-    case "skovbyggelinje":
-      return "Skovbyggelinje";
-    case "åbeskyttelse":
-      return "Åbeskyttelse";
-    case "fortidsmindebeskyttelse":
-      return "Fortidsmindebeskyttelse";
-    case "klitfredning":
-      return "Klitfredning";
-  }
-}
-
-function naturbeskyttelseStyle(
-  type: BeliggenhedsplanInput["naturbeskyttelse"][number]["type"],
-  intersectsProposedBuilding: boolean,
-): string {
-  if (intersectsProposedBuilding) {
-    return 'fill="#fee2e2" fill-opacity="0.28" stroke="#dc2626" stroke-width="1" stroke-dasharray="5,2"';
-  }
-
-  switch (type) {
-    case "strandbeskyttelse":
-      return 'fill="#dbeafe" fill-opacity="0.24" stroke="#2563eb" stroke-width="0.7" stroke-dasharray="5,3"';
-    case "skovbyggelinje":
-      return 'fill="#dcfce7" fill-opacity="0.22" stroke="#16a34a" stroke-width="0.7" stroke-dasharray="5,3"';
-    case "åbeskyttelse":
-      return 'fill="#ccfbf1" fill-opacity="0.22" stroke="#0f766e" stroke-width="0.7" stroke-dasharray="5,3"';
-    case "fortidsmindebeskyttelse":
-      return 'fill="#fef3c7" fill-opacity="0.25" stroke="#b45309" stroke-width="0.7" stroke-dasharray="5,3"';
-    case "klitfredning":
-      return 'fill="#fef9c3" fill-opacity="0.24" stroke="#a16207" stroke-width="0.7" stroke-dasharray="5,3"';
-  }
-}
-
 
 export function buildDrawingModel(
   plan: BeliggenhedsplanInput,
@@ -177,6 +93,24 @@ export function buildDrawingModel(
   const scaleX = drawWidthPx / (bboxMaxX - bboxMinX);
   const scaleY = drawHeightPx / (bboxMaxY - bboxMinY);
   const scale = Math.min(scaleX, scaleY) * 0.9;
+
+  const completeness = computeDrawingCompleteness({
+    hasParcelPolygon: true,
+    proposedFootprintSource: plan.proposed.source.source,
+    sokkelKoteM: plan.proposed.sokkelKoteM,
+    sokkelSource: plan.proposed.source.source,
+    tagform: plan.proposed.tagform,
+    taghaldningGrad: plan.proposed.taghaldningGrad,
+    rygningsKoteM: plan.proposed.rygningsKoteM,
+    vejLayer: plan.vej,
+    terrainLayer: plan.terrain,
+    surveyTerrainPointCount: plan.survey?.terrainPoints.length ?? 0,
+    kloakoplandType: plan.kloakoplandType,
+    siteUseLayers: plan.siteUse,
+    naturbeskyttelseFetchedAt:
+      plan.naturbeskyttelse.length > 0 ? plan.naturbeskyttelse[0]!.source.fetchedAt : null,
+  });
+  const isDraft = completeness.overallStatus === "draft";
 
   // Actual scale: PX_PER_MM / (px per UTM-meter) = meters per mm of paper
   const actualMetersPerMm = PX_PER_MM / scale;
@@ -217,55 +151,27 @@ export function buildDrawingModel(
     );
   });
 
-  // Vejgeometri
-  plan.vej?.vejkant25832.forEach((edge, i) => {
-    features.push(
-      lineFeature(
-        `road-edge-${i}`,
-        "road_edge",
-        edge.coordinates as [number, number][],
-        bboxMinX,
-        bboxMaxY,
-        scale,
-        'stroke="#9ca3af" stroke-width="0.7"',
-        "Vejkant",
-        8,
-      ),
-    );
-  });
+  // Road layer (behind parcel, zIndex 1-4)
+  const roadFeatures = buildRoadFeatures(plan.vej, bboxMinX, bboxMaxY, scale);
+  roadFeatures.forEach((f) => features.push(f));
 
-  let roadLabelRendered = false;
-  if (plan.vej?.centerline25832) {
-    const centerlineCoords = plan.vej.centerline25832.coordinates as [number, number][];
-    features.push(
-      lineFeature(
-        "road-centerline",
-        "road_centerline",
-        centerlineCoords,
-        bboxMinX,
-        bboxMaxY,
-        scale,
-        'stroke="#6b7280" stroke-width="0.5" stroke-dasharray="4,3"',
-        "Vejmidte",
-        9,
-      ),
-    );
-
-    const roadName = plan.vej.vejnavn ?? plan.parcel.roadName;
-    if (roadName) {
-      const labelFeature = lineLabelFeature(
-        "road-name",
-        roadName,
-        centerlineCoords,
-        bboxMinX,
-        bboxMaxY,
-        scale,
-      );
-      if (labelFeature) {
-        features.push(labelFeature);
-        roadLabelRendered = true;
-      }
-    }
+  // Fallback road name label — emitted when parcel has a roadName but vej layer
+  // produced no road_label (no vejnavn or no centerline in vej layer)
+  const hasRoadLabel = roadFeatures.some((f) => f.kind === "road_label");
+  if (plan.parcel.roadName && !hasRoadLabel) {
+    const centerX = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+    const southY = Math.min(...coords.map((c) => c[1]));
+    const labelPxX = (centerX - bboxMinX) * scale;
+    const labelPxY = (bboxMaxY - southY) * scale + 14;
+    features.push({
+      id: "road-name",
+      kind: "road_label",
+      svgElement: `<text x="${labelPxX.toFixed(1)}" y="${labelPxY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(plan.parcel.roadName)}</text>`,
+      label: plan.parcel.roadName,
+      labelX: labelPxX,
+      labelY: labelPxY,
+      zIndex: 45,
+    });
   }
 
   // Eksisterende bygninger
@@ -324,41 +230,9 @@ export function buildDrawingModel(
     }
   });
 
-  // Naturbeskyttelseszoner
-  plan.naturbeskyttelse.forEach((layer, i) => {
-    if (layer.geometry25832.type !== "Polygon") return;
-    const label = layer.intersectsProposedBuilding ? naturbeskyttelseLabel(layer.type) : null;
-    features.push(
-      polygonFeature(
-        `nature-protection-${i}`,
-        "nature_protection",
-        layer.geometry25832.coordinates[0] as [number, number][],
-        bboxMinX,
-        bboxMaxY,
-        scale,
-        naturbeskyttelseStyle(layer.type, layer.intersectsProposedBuilding),
-        label,
-        6,
-      ),
-    );
-  });
-
-  // Vejnavn-label — placeret syd for parcelpolygon
-  if (plan.parcel.roadName && !roadLabelRendered) {
-    const centerX = coords.reduce((s, c) => s + c[0], 0) / coords.length;
-    const southY = Math.min(...coords.map((c) => c[1]));
-    const labelPxX = (centerX - bboxMinX) * scale;
-    const labelPxY = (bboxMaxY - southY) * scale + 14;
-    features.push({
-      id: "road-name",
-      kind: "road_label",
-      svgElement: `<text x="${labelPxX.toFixed(1)}" y="${labelPxY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6.5" fill="#555" font-style="italic">${esc(plan.parcel.roadName)}</text>`,
-      label: plan.parcel.roadName,
-      labelX: labelPxX,
-      labelY: labelPxY,
-      zIndex: 45,
-    });
-  }
+  // Naturbeskyttelseszoner (zIndex 5)
+  const naturFeatures = buildNaturbeskyttelseFeatures(plan.naturbeskyttelse, bboxMinX, bboxMaxY, scale);
+  naturFeatures.forEach((f) => features.push(f));
 
   // Mål-linjer
   const dimLines = buildDimensionLines(plan.proposed.footprint25832);
@@ -466,6 +340,29 @@ export function buildDrawingModel(
     zIndex: 60,
   });
 
+  // LER ledninger (zIndex 4)
+  const lerFeatures = buildLerFeatures(plan.lerLedninger, bboxMinX, bboxMaxY, scale);
+  lerFeatures.forEach((f) => features.push(f));
+
+  // Placeholder elements (zIndex 13-15)
+  const placeholderFeatures = buildPlaceholderFeatures(
+    completeness,
+    plan.parcel,
+    plan.proposed,
+    bboxMinX,
+    bboxMaxY,
+    scale,
+  );
+  placeholderFeatures.forEach((f) => features.push(f));
+
+  // Watermark (zIndex 19)
+  const watermarkFeature = buildWatermarkFeature(
+    isDraft,
+    drawWidthPx,
+    drawHeightPx,
+  );
+  if (watermarkFeature) features.push(watermarkFeature);
+
   const areaTable = plan.metadata.areaTable ?? {
     grundarealM2: plan.parcel.areaRegisteredM2,
     groundFloorM2: plan.proposed.footprintAreaM2,
@@ -515,7 +412,9 @@ export function buildDrawingModel(
           : []),
 
       ],
-      completenessStatus: null,
+      completenessStatus: isDraft
+        ? `UDKAST — ${completeness.placeholderCount} placeholders`
+        : null,
     },
     legend: [
       {
@@ -552,6 +451,7 @@ export function buildDrawingModel(
             },
           ]
         : []),
+      ...buildLerLegendEntries(plan.lerLedninger),
     ],
     northArrowRotationDeg: 0,
     readinessStatus: readiness.status,
