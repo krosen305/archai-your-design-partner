@@ -11,16 +11,12 @@ type ReadinessInput = {
   userId: string;
 };
 
-export async function computeDrawingReadiness(
-  input: ReadinessInput,
-): Promise<DrawingCompleteness> {
+export async function computeDrawingReadiness(input: ReadinessInput): Promise<DrawingCompleteness> {
   const { projectId, userId } = input;
 
   const { data: row } = await supabaseAdmin
     .from("projects")
-    .select(
-      "address_matrikel, tagform, taghaldning_grad, compliance_data",
-    )
+    .select("address_matrikel, tagform, taghaldning_grad, compliance_data")
     .eq("id", projectId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -32,11 +28,10 @@ export async function computeDrawingReadiness(
     .eq("is_active", true)
     .maybeSingle();
 
-  const hasParcelPolygon = !!(row?.address_matrikel);
-  const hasFootprint = !!(iterRow?.placement_footprint_geojson);
+  const hasParcelPolygon = !!row?.address_matrikel;
+  const hasFootprint = !!iterRow?.placement_footprint_geojson;
 
-  const tagform =
-    (row?.tagform as "sadeltag" | "fladt" | "mansard" | "pulttag" | null) ?? null;
+  const tagform = (row?.tagform as "sadeltag" | "fladt" | "mansard" | "pulttag" | null) ?? null;
   const taghaldningGrad = (row?.taghaldning_grad as number | null) ?? null;
 
   const complianceData =

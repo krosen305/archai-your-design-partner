@@ -41,10 +41,10 @@ const FIELD_LABELS: Record<string, string> = {
   sokkelKote: "Sokkelkote",
   rygningsKote: "Rygningskote",
   vejGeometry: "Vejgeometri",
-  "koterTerræn": "Terrænkoter",
+  koterTerræn: "Terrænkoter",
   kloakStikledning: "Kloakstikledning",
-  "regnvandsløsning": "Regnvandsløsning",
-  "overkørsel": "Overkørsel",
+  regnvandsløsning: "Regnvandsløsning",
+  overkørsel: "Overkørsel",
   naturbeskyttelse: "Naturbeskyttelse",
   tinglysteServitutter: "Tinglyste servitutter",
 };
@@ -64,9 +64,7 @@ function CompletenessPanel({ completeness }: { completeness: DrawingCompleteness
         <div key={key} className="flex items-start gap-2 text-xs">
           <FieldStatusIcon status={fieldStatus.status} />
           <span
-            className={
-              fieldStatus.status === "missing" ? "text-red-400" : "text-muted-foreground"
-            }
+            className={fieldStatus.status === "missing" ? "text-red-400" : "text-muted-foreground"}
           >
             {FIELD_LABELS[key] ?? key}
           </span>
@@ -493,9 +491,7 @@ function TeknikPage() {
                   {harKaelder && (
                     <div className="ml-3 space-y-2">
                       <div className="flex items-center gap-3">
-                        <label className="text-xs text-muted-foreground">
-                          Gulvkote DVR90 (m)
-                        </label>
+                        <label className="text-xs text-muted-foreground">Gulvkote DVR90 (m)</label>
                         <input
                           type="number"
                           step={0.05}
@@ -532,9 +528,7 @@ function TeknikPage() {
                     />
                   </button>
                   {harJordvarme && (
-                    <p className="text-xs text-blue-400">
-                      Kræver §19-tilladelse fra kommunen
-                    </p>
+                    <p className="text-xs text-blue-400">Kræver §19-tilladelse fra kommunen</p>
                   )}
                 </div>
 
@@ -603,9 +597,8 @@ function TeknikPage() {
               )}
               {completeness && completeness.placeholderCount > 0 && (
                 <p className="text-xs text-muted-foreground/70">
-                  <span className="text-amber-400">○</span>{" "}
-                  {completeness.placeholderCount} placeholders udfyldes af fagfolk under
-                  byggeprocessen
+                  <span className="text-amber-400">○</span> {completeness.placeholderCount}{" "}
+                  placeholders udfyldes af fagfolk under byggeprocessen
                 </p>
               )}
             </div>

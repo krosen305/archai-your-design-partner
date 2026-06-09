@@ -20,9 +20,8 @@ export const fetchDrawingReadinessFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: DrawingReadinessInput) => DrawingReadinessInputSchema.parse(data))
   .handler(async ({ data, context }): Promise<DrawingCompleteness> => {
-    const { computeDrawingReadiness } = await import(
-      "@/services/drawing/drawing-readiness.service"
-    );
+    const { computeDrawingReadiness } =
+      await import("@/services/drawing/drawing-readiness.service");
     return computeDrawingReadiness({
       projectId: data.projectId,
       userId: context.userId,
