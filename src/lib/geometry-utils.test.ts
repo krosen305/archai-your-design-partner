@@ -8,6 +8,8 @@ import {
   wgs84ToUtm32,
   polygonToPolygonDistanceM,
   polygonToLineStringDistanceM,
+  gridConvergenceDeg,
+  northUpRotationDeg,
 } from "./geometry-utils";
 import type * as GeoJSON from "geojson";
 
@@ -205,5 +207,34 @@ describe("polygonToLineStringDistanceM", () => {
       ],
     };
     expect(polygonToLineStringDistanceM(polygon, lines)).toBeCloseTo(2, 3);
+  });
+});
+
+describe("gridConvergenceDeg (UTM32N)", () => {
+  it("is ~0 on the central meridian (9°E)", () => {
+    expect(Math.abs(gridConvergenceDeg(56.0, 9.0))).toBeLessThan(0.05);
+  });
+  it("is positive east of 9°E (e.g. København ~+2.9°)", () => {
+    const g = gridConvergenceDeg(55.68, 12.57);
+    expect(g).toBeGreaterThan(2.5);
+    expect(g).toBeLessThan(3.4);
+  });
+  it("is negative west of 9°E (e.g. Esbjerg ~-0.45°)", () => {
+    expect(gridConvergenceDeg(55.47, 8.45)).toBeLessThan(0);
+  });
+});
+
+describe("northUpRotationDeg", () => {
+  it("rotates a grid-north-up drawing so true north points up", () => {
+    // København centroid in 25832
+    const { x, y } = wgs84ToUtm32(55.68, 12.57);
+    const rot = northUpRotationDeg(x, y);
+    // Equal in magnitude to the convergence at that point.
+    expect(Math.abs(rot)).toBeGreaterThan(2.5);
+    expect(Math.abs(rot)).toBeLessThan(3.4);
+  });
+  it("is ~0 on the central meridian", () => {
+    const { x, y } = wgs84ToUtm32(56.0, 9.0);
+    expect(Math.abs(northUpRotationDeg(x, y))).toBeLessThan(0.05);
   });
 });
