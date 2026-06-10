@@ -16,6 +16,14 @@ import { findLabelPosition, type PlacedLabel } from "./label-placement";
 import { INFO_COL_MM, PX_PER_MM } from "./sheet-layout";
 import { createProjector, rotateWorld, type Projector } from "./projector";
 import { northUpRotationDeg } from "@/lib/geometry-utils";
+import {
+  selectLayerAKoter,
+  selectLayerBKoter,
+  neighbourWithin,
+  type TerrainSample,
+  type KotePlacement,
+} from "@/domain/drawing/kote-engine";
+import { selectGridKoter, type PaperBox } from "./kote-grid";
 
 function esc(s: string): string {
   return s
@@ -227,10 +235,7 @@ export function buildDrawingModel(
     const stroke = isSetback ? "#c00" : "#f80";
     const dash = isSetback ? "" : 'stroke-dasharray="6,3"';
     if (c.geometry25832.type === "Polygon") {
-      const pts = coordsToSvgPoints(
-        c.geometry25832.coordinates[0] as [number, number][],
-        project,
-      );
+      const pts = coordsToSvgPoints(c.geometry25832.coordinates[0] as [number, number][], project);
       features.push({
         id: `constraint-${i}`,
         kind: "setback_lines",
@@ -244,10 +249,7 @@ export function buildDrawingModel(
   });
 
   // Naturbeskyttelseszoner (zIndex 5)
-  const naturFeatures = buildNaturbeskyttelseFeatures(
-    plan.naturbeskyttelse,
-    project,
-  );
+  const naturFeatures = buildNaturbeskyttelseFeatures(plan.naturbeskyttelse, project);
   naturFeatures.forEach((f) => features.push(f));
 
   // --- Mål, afstande og koter med simpel label-kollisionsundgåelse ---
@@ -328,21 +330,100 @@ export function buildDrawingModel(
     });
   });
 
-  // Terrain-koter fra survey (kollisionsundgåede labels)
-  if (plan.survey) {
-    plan.survey.terrainPoints.forEach((tp, i) => {
-      const [px, py] = project(tp.x, tp.y);
-      const text = tp.z.toFixed(2);
-      const pos = placeLabel(px + 4, py - 2, text, 6);
+  // Terrænkoter — layered kote-motor. Survey-punkter foretrækkes; ellers bruges
+  // DHM-koter fra plan.terrain. Lag A: bygnings-/skelhjørner. Lag B: vej + ekstrema.
+  // Lag C: adaptivt gitter i åbent terræn med collision-unclutter (lavest prioritet).
+  const terrainSamples: TerrainSample[] = (
+    plan.survey?.terrainPoints.length ? plan.survey.terrainPoints : (plan.terrain?.points ?? [])
+  ).map((p) => ({ x: p.x, y: p.y, z: p.z }));
+
+  if (terrainSamples.length > 0) {
+    const parcelRing = plan.parcel.polygon25832.coordinates[0] as [number, number][];
+    const buildingRing = plan.proposed.footprint25832.coordinates[0] as [number, number][];
+
+    const priorityKoter: KotePlacement[] = [
+      ...selectLayerAKoter({
+        building: buildingRing,
+        parcel: parcelRing,
+        terrain: terrainSamples,
+        cornerOffsetM: 0.15,
+        maxRadiusM: 3,
+      }),
+      ...selectLayerBKoter({
+        parcel: parcelRing,
+        terrain: terrainSamples,
+        centerline:
+          (plan.vej?.centerline25832?.coordinates as [number, number][] | undefined) ?? null,
+        edges: (plan.vej?.vejkant25832 ?? []).map((e) => e.coordinates as [number, number][]),
+        maxRadiusM: 4,
+      }),
+    ];
+
+    const pushKote = (k: KotePlacement): void => {
+      const [px, py] = project(k.x, k.y);
+      const fontPx = k.layer === "C" ? 5 : 6;
+      const pos = placeLabel(px + 4, py - 2, k.label, fontPx);
       features.push({
-        id: `kote-${i}`,
+        id: `kote-${k.layer}-${k.kind}-${features.length}`,
         kind: "terrain_labels",
-        svgElement: `<g><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.5" fill="#555"/><text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-family="Arial" font-size="6" fill="#333">${text}</text></g>`,
-        label: text,
+        svgElement: `<g><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.3" fill="#555"/><text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-family="Arial" font-size="${fontPx}" fill="#333">${k.label}</text></g>`,
+        label: k.label,
         labelX: pos.x,
         labelY: pos.y,
         zIndex: 40,
       });
+    };
+
+    // Plot priority koter first so their labels join the occupancy set for Lag C.
+    priorityKoter.forEach(pushKote);
+
+    const ringToBox = (ring: [number, number][]): PaperBox => {
+      const pts = ring.map(([x, y]) => project(x, y));
+      const xsP = pts.map((p) => p[0]);
+      const ysP = pts.map((p) => p[1]);
+      const minXP = Math.min(...xsP);
+      const minYP = Math.min(...ysP);
+      return {
+        x: minXP,
+        y: minYP,
+        width: Math.max(...xsP) - minXP,
+        height: Math.max(...ysP) - minYP,
+      };
+    };
+    // Occupancy: buildings + all text already placed (dimensions, setbacks, A/B koter).
+    const occupancy: PaperBox[] = [
+      ringToBox(buildingRing),
+      ...plan.existing.buildings.map((b) =>
+        ringToBox(b.footprint25832.coordinates[0] as [number, number][]),
+      ),
+      ...placedLabels.map((l) => ({ x: l.x, y: l.y, width: l.width, height: l.height })),
+    ];
+
+    selectGridKoter({
+      terrain: terrainSamples,
+      project,
+      minSpacingMm: 35,
+      occupancy,
+      alreadyPlaced: priorityKoter,
+    }).forEach(pushKote);
+  }
+
+  // Sokkel-/gulvkote som centertekst i huskroppen — kun når dokumenteret (aldrig opdigtet).
+  if (plan.proposed.sokkelKoteM !== null) {
+    const ring = plan.proposed.footprint25832.coordinates[0] as [number, number][];
+    const corners = ring.slice(0, -1);
+    const cxw = corners.reduce((s, c) => s + c[0], 0) / corners.length;
+    const cyw = corners.reduce((s, c) => s + c[1], 0) / corners.length;
+    const [bx, by] = project(cxw, cyw);
+    const gulv = plan.proposed.finishedFloorKoteM;
+    features.push({
+      id: "kote-center-text",
+      kind: "terrain_labels",
+      svgElement: `<g><text x="${bx.toFixed(1)}" y="${by.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#111">Sokkel ${plan.proposed.sokkelKoteM.toFixed(2)}</text>${gulv !== null ? `<text x="${bx.toFixed(1)}" y="${(by + 8).toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#111">Gulv ${gulv.toFixed(2)}</text>` : ""}</g>`,
+      label: null,
+      labelX: bx,
+      labelY: by,
+      zIndex: 41,
     });
   }
 
@@ -377,6 +458,25 @@ export function buildDrawingModel(
     infoPanel.technicalNotes.push({
       category: "generel",
       text: `Tegningen er orienteret mod geografisk nord (EPSG:25832 drejet ${rotationDeg.toFixed(1)}° for meridiankonvergens).`,
+    });
+  }
+
+  // Flag (never fabricate) a missing neighbour sokkelkote when a neighbour building
+  // sits within 2.5 m of the skel — the registry does not carry neighbour foundation levels.
+  const neighbourParcelRing = plan.parcel.polygon25832.coordinates[0] as [number, number][];
+  const hasCloseNeighbour = plan.existing.buildings.some((b) =>
+    neighbourWithin(
+      b.footprint25832.coordinates[0] as [number, number][],
+      neighbourParcelRing,
+      2.5,
+    ),
+  );
+  if (hasCloseNeighbour) {
+    infoPanel.missingDataWarnings.push({
+      label: "Nabosokkel < 2,5 m fra skel — opmåles af landinspektør",
+      responsibleParty: "landinspektør",
+      blocksSubmission: false,
+      severity: "placeholder",
     });
   }
 
