@@ -91,6 +91,7 @@ function makeMinimalModel(): DrawingModel {
       },
     ],
     northArrowRotationDeg: 0,
+    projectionRotationDeg: 0,
     readinessStatus: "AUTO_DRAFT",
   };
 }

@@ -1,5 +1,6 @@
 import type { DrawingFeature } from "@/domain/drawing/drawing-model";
 import type { VejLayer } from "@/domain/drawing/beliggenhedsplan.types";
+import type { Projector } from "@/lib/drawing/projector";
 
 function esc(s: string): string {
   return s
@@ -9,16 +10,18 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function toSvg(coords: [number, number][], minX: number, maxY: number, scale: number): string {
+function toSvg(coords: [number, number][], project: Projector): string {
   return coords
-    .map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`)
+    .map(([x, y]) => {
+      const [sx, sy] = project(x, y);
+      return `${sx.toFixed(1)},${sy.toFixed(1)}`;
+    })
     .join(" ");
 }
 
 export function buildRoadFeatures(
   vej: VejLayer | null,
-  minX: number,
-  maxY: number,
+  project: Projector,
   scale: number,
 ): DrawingFeature[] {
   if (!vej) return [];
@@ -27,7 +30,7 @@ export function buildRoadFeatures(
 
   // Road fill (grey band — requires centerline + width)
   if (vej.centerline25832 && vej.vejbreddeM) {
-    const pts = toSvg(vej.centerline25832.coordinates, minX, maxY, scale);
+    const pts = toSvg(vej.centerline25832.coordinates, project);
     const halfW = (vej.vejbreddeM / 2) * scale;
     features.push({
       id: "road-fill",
@@ -42,7 +45,7 @@ export function buildRoadFeatures(
 
   // Road centerline
   if (vej.centerline25832) {
-    const pts = toSvg(vej.centerline25832.coordinates, minX, maxY, scale);
+    const pts = toSvg(vej.centerline25832.coordinates, project);
     features.push({
       id: "road-centerline",
       kind: "road_centerline",
@@ -56,7 +59,7 @@ export function buildRoadFeatures(
 
   // Vejkant (road edge lines — array)
   vej.vejkant25832.forEach((edge, i) => {
-    const pts = toSvg(edge.coordinates, minX, maxY, scale);
+    const pts = toSvg(edge.coordinates, project);
     features.push({
       id: `road-edge-${i}`,
       kind: "road_edge",
@@ -73,12 +76,13 @@ export function buildRoadFeatures(
   if (lineCoords.length >= 2 && vej.vejnavn) {
     const mid = Math.floor(lineCoords.length / 2);
     const [mx, my] = lineCoords[mid]!;
-    const svgX = (mx - minX) * scale;
-    const svgY = (maxY - my) * scale;
+    const [svgX, svgY] = project(mx, my);
 
     const [x1, y1] = lineCoords[mid - 1] ?? lineCoords[0]!;
     const [x2, y2] = lineCoords[mid + 1] ?? lineCoords[lineCoords.length - 1]!;
-    const angleDeg = Math.atan2(-(y2 - y1), x2 - x1) * (180 / Math.PI);
+    const [px1, py1] = project(x1, y1);
+    const [px2, py2] = project(x2, y2);
+    const angleDeg = Math.atan2(py2 - py1, px2 - px1) * (180 / Math.PI);
 
     features.push({
       id: "road-name-label",

@@ -128,10 +128,15 @@ function renderInfoColumn(lines: InfoLine[], colW: number, pageH: number): strin
   return parts.join("\n");
 }
 
-function northArrow(cx: number, cy: number): string {
+function northArrow(cx: number, cy: number, rotationDeg: number): string {
+  // The needle rotates by northArrowRotationDeg; the "N" stays upright at the top.
+  // In the default true-north-up mode the geometry is pre-rotated, so rotationDeg
+  // is 0 and the arrow points straight up = geographic north.
   return `<g transform="translate(${cx},${cy})">
-    <polygon points="0,-15 5,5 0,1 -5,5" fill="#222"/>
-    <polygon points="0,15 5,-5 0,-1 -5,-5" fill="#fff" stroke="#222" stroke-width="0.5"/>
+    <g transform="rotate(${rotationDeg.toFixed(1)})">
+      <polygon points="0,-15 5,5 0,1 -5,5" fill="#222"/>
+      <polygon points="0,15 5,-5 0,-1 -5,-5" fill="#fff" stroke="#222" stroke-width="0.5"/>
+    </g>
     <text x="0" y="-19" text-anchor="middle" font-family="Arial" font-size="8" font-weight="bold" fill="#222">N</text>
   </g>`;
 }
@@ -171,7 +176,7 @@ export function renderSvg(model: DrawingModel): string {
       <g transform="translate(${offset.x.toFixed(1)},${offset.y.toFixed(1)})">
         ${featuresSvg}
       </g>
-      ${northArrow(30, 32)}
+      ${northArrow(30, 32, model.northArrowRotationDeg)}
       ${scaleBar(14, h - 24, model.page.scale, metersPerMm)}
     </g>
   </g>

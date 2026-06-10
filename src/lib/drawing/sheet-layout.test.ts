@@ -68,6 +68,7 @@ const model: DrawingModel = {
   infoPanel,
   legend: [{ symbol: "<rect/>", label: "Matrikelskel" }],
   northArrowRotationDeg: 0,
+  projectionRotationDeg: 0,
   readinessStatus: "AUTO_DRAFT",
 };
 

@@ -147,7 +147,10 @@ export type DrawingModel = {
   titleBlock: DrawingTitleBlock;
   infoPanel: InfoPanel;
   legend: Array<{ symbol: string; label: string }>;
+  /** Rotation of the north arrow itself (deg). 0 when geometry is pre-rotated to true north. */
   northArrowRotationDeg: number;
+  /** How far the EPSG:25832 grid was rotated about the centroid to reach geographic north. */
+  projectionRotationDeg: number;
   readinessStatus: string;
 };
 

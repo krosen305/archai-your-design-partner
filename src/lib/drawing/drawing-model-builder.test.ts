@@ -1,6 +1,7 @@
 // src/lib/drawing/drawing-model-builder.test.ts
 import { describe, it, expect } from "bun:test";
 import { buildDrawingModel } from "./drawing-model-builder";
+import { northUpRotationDeg } from "@/lib/geometry-utils";
 import type {
   BeliggenhedsplanInput,
   GeoJsonPolygon25832,
@@ -299,6 +300,26 @@ describe("buildDrawingModel — label-rendering", () => {
     // Parcel + buildings drive the viewport; the road is excluded from the bbox.
     expect(withRoad.viewport.metersPerMm).toBeCloseTo(baseline.viewport.metersPerMm, 6);
     expect(withRoad.titleBlock.scale).toBe(baseline.titleBlock.scale);
+  });
+
+  it("orients the drawing toward geographic north (arrow up, geometry pre-rotated by convergence)", () => {
+    const model = buildDrawingModel(minimalPlan, autoReadiness);
+    const [ex, ny] = minimalPlan.parcel.labelPoint25832.coordinates;
+    // The sheet is rotated by the site's grid convergence so true north points up.
+    expect(model.projectionRotationDeg).toBeCloseTo(northUpRotationDeg(ex, ny), 5);
+    // The fixture sits near Copenhagen ⇒ convergence ≈ +2.9°, clearly non-trivial.
+    expect(Math.abs(model.projectionRotationDeg)).toBeGreaterThan(2);
+    // Geometry is rotated to true north ⇒ the arrow itself points straight up.
+    expect(model.northArrowRotationDeg).toBe(0);
+    // The orientation basis is disclosed to the authority.
+    expect(model.infoPanel.technicalNotes.some((n) => /geografisk nord/i.test(n.text))).toBe(true);
+  });
+
+  it("rotating to true north does not change parcel side-lengths (rigid transform)", () => {
+    const model = buildDrawingModel(minimalPlan, autoReadiness);
+    // The 20 m parcel edges must still measure 20.00 m after rotation.
+    const dimFeatures = model.features.filter((f) => f.id.startsWith("parcel-dim"));
+    expect(dimFeatures.some((f) => f.label === "20.00 m")).toBe(true);
   });
 
   it("naturbeskyttelse emits drawing features, legend and source summary", () => {
