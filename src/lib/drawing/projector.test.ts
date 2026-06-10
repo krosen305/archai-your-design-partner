@@ -9,7 +9,13 @@ describe("createProjector", () => {
   });
 
   it("rotation is rigid: preserves distances between points", () => {
-    const p = createProjector({ pivot: [500, 500], rotationDeg: 30, minX: 0, maxY: 1000, scale: 1 });
+    const p = createProjector({
+      pivot: [500, 500],
+      rotationDeg: 30,
+      minX: 0,
+      maxY: 1000,
+      scale: 1,
+    });
     const a = p(500, 500);
     const b = p(510, 500); // 10 m east of pivot
     const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
