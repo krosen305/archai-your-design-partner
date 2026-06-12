@@ -1,22 +1,22 @@
-# BR18 compliance- og myndighedsplan for ArchAI
+# BR18 screening- og evidensplan for ArchAI
 
 Dato: 2026-05-25  
-Status: Plan til Claude/human architecture review. Ingen implementation er
-paabegyndt i denne fil.
+Status: Strategisk plan for BR18-screening og evidens. Myndighedspakke er
+senere scope og ikke MVP-retning.
 
 ## Executive summary
 
-ArchAI boer behandle BR18 som et versioneret compliance- og
-dokumentationssystem, ikke som en AI-chat eller en flad regel-liste.
+ArchAI boer behandle BR18 som et versioneret screening-, compliance- og
+evidenssystem, ikke som en AI-chat eller en flad regel-liste.
 
 Maalet er, at ArchAI kan:
 
 - identificere hvilke BR18-krav der er relevante for et konkret projekt
 - skelne mellem maskinelt kontrollerbare krav, dokumentationskrav,
   fagreviewkrav og myndighedsskoen
-- generere en transparent krav- og evidenslog til bruger, raadgiver og kommune
-- danne en myndighedspakke til Byg og Miljoe/kommunal byggesag
-- understotte faerdigmelding med teknisk dokumentation
+- generere en transparent krav- og evidenslog til bruger og raadgiver
+- markere hvilke forhold der kraever specialist, myndighed eller manuel kontrol
+- senere danne grundlag for myndighedspakke til Byg og Miljoe/kommunal byggesag
 
 AI maa forklare, opsummere og skrive udkast. AI maa ikke vaere compliance
 source of truth. Den autoritative sandhed skal komme fra versionerede BR18-krav,
@@ -25,18 +25,20 @@ dokumentation.
 
 ## Produktprincip
 
-BR18-flowet skal styrke ArchAI som "The Builder's Cockpit":
+BR18-flowet skal styrke ArchAI som en professionel screening- og
+due-diligence-platform:
 
-- I `Sandkassen` giver BR18 trygge rammer for inspiration, uden at kvaele ideer.
-- I `Matriklen` finder BR18 og registerdata de tidlige hard stops og ukendte
+- I `Screening` bruges BR18 til at finde tidlige krav, konflikter og ukendte
   forhold.
-- I `Maskinrummet` koerer BR18 som live feasibility- og dokumentationsmotor for
-  designvalg, budget og BIM-retning.
-- I `Myndighed` bliver BR18 til en kravmatrix, dokumentationspakke,
-  ansogningsmanifest og faerdigmeldingscheckliste.
+- I `Kildebog` vises hvilke BR18-felter, projektfakta og datakilder vurderingen
+  bygger paa.
+- I `Risikoregister` skelnes der mellem maskinelt kontrollerbare krav,
+  dispensation, specialistreview, myndighedsskoen og manglende data.
+- I `Rapport` indgaar BR18 som foreloebig screening og dokumenteret
+  kontrol-liste, ikke som endelig myndighedsafgoerelse.
 
 Pre-purchase due diligence er central: systemet skal kunne sige "koeb ikke foer
-dette er afklaret", ikke kun "her er en flot ide".
+dette er afklaret", ikke "projektet er juridisk godkendt".
 
 ## Hovedgreb
 
@@ -165,9 +167,10 @@ type EvidenceItem = {
 JSONB maa kun bruges som arkiv eller secondary payload. Domain-kritiske
 compliance-vaerdier skal have typed columns eller typed tabeller.
 
-### 5. Myndighed Package Generator
+### 5. Later: Myndighed Package Generator
 
-ArchAI skal kunne generere en myndighedspakke, men ikke love at den er klar til
+Dette er post-MVP scope. ArchAI skal foerst bevise screeningrapporten. Senere
+kan systemet generere en myndighedspakke, men ikke love at den er klar til
 indsendelse uden review.
 
 Pakken boer indeholde:
@@ -242,8 +245,8 @@ Foreslaaede services:
   applicability + regelmotor.
 - `br18-documentation.service.server.ts`: opdaterer evidence ledger og udleder
   dokumentationsstatus.
-- `authority-package.service.server.ts`: samler manifest, filer og
-  myndighedspakke.
+- Later `authority-package.service.server.ts`: samler manifest, filer og
+  myndighedspakke efter screening-MVP er valideret.
 - `br18-catalog.service.server.ts`: laeser versioneret kravkatalog og validerer
   katalogversion.
 
@@ -301,14 +304,14 @@ Tier 1:
 Tier 2:
 
 - Application service tests med fake repositories og fake BR18 catalog.
-- Authority manifest tests uden real Supabase, storage eller AI.
+- Report/evidence manifest tests uden real Supabase, storage eller AI.
 - AI extraction tests med schema-valid og schema-invalid payload.
 
 Tier 3:
 
 - Address -> cockpit -> BR18 kravmatrix.
-- Hard stop gate foer design/AI-output.
-- Myndighedspakke smoke med seeded project og fake dokumentation.
+- Screeningrapport smoke med seeded project og fake dokumentation.
+- Later: myndighedspakke smoke med seeded project og fake dokumentation.
 
 ## Datamodelretning
 
@@ -423,7 +426,9 @@ Ikke tilladt:
 
 Alle AI-svar der gemmes eller bruges i dokumentationsflowet skal schema-valideres.
 
-## Myndighedsflow
+## Later: Myndighedsflow
+
+Dette afsnit beskriver et senere produktspor. Det er ikke aktiv MVP-retning.
 
 ### Foer ansogning
 
@@ -482,14 +487,14 @@ ArchAI skal tracke:
 - Opret typed service tests.
 - Ingen UI-logik endnu.
 
-### Fase 3 - Cockpit read model
+### Fase 3 - Screening report read model
 
-- Vis BR18 kravmatrix i cockpit.
+- Vis BR18 kravmatrix i screeningrapporten.
 - Vis missing evidence og next actions.
 - Brug `building_tasks` til opgaver.
 - UI viser kun typed resultater.
 
-### Fase 4 - Myndighed package MVP
+### Fase 4 - Later authority package
 
 - Lav authority manifest.
 - Generer foreloebig PDF/Markdown/ZIP-struktur.
@@ -523,7 +528,7 @@ P0-krav:
 - energy-documentation-required classification
 - LCA-required unknown/relevant classification
 - D&V/faerdigmeldingsdokumentation checklist
-- authority package manifest
+- report/evidence manifest
 
 Dette giver hurtigt reel vaerdi uden at paastaa, at ArchAI automatisk kan
 godkende alle BR18-kapitler.
@@ -557,6 +562,6 @@ godkende alle BR18-kapitler.
 - Ingen client-provided compliance-signaler som server-authority.
 - Alle AI-payloads schema-valideres.
 - Katalogregler har version, kilde og reviewbar tekst.
-- Myndighedspakke markerer tydeligt readiness og mangler.
+- Screeningrapport markerer tydeligt readiness, kilder og mangler.
 - `bunx tsc --noEmit`, `bun test`, `bunx eslint .` og `bun run build` passer,
   medmindre en kendt baseline-fejl eksplicit accepteres.

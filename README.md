@@ -1,54 +1,62 @@
-# ArchAI — The Builder's Cockpit
+# ArchAI - Automated Building Screening For Denmark
 
-**We eliminate the fear and complexity of building a dream home in Denmark.** ArchAI replaces uncertainty with a real-time, data-driven cockpit where private homeowners move from inspiration to building permit with full transparency on compliance, budget, and risk.
+ArchAI is being built to become Denmark's best automated building screening and
+feasibility platform for villa and residential projects.
 
----
+The product is not an AI design toy and does not start by drawing a house. It
+starts with the question professional advisors ask before design begins:
 
-## The Four Phases of The Builder's Journey
+> Can a project realistically be built on this property, and what risks,
+> constraints and unknowns must be checked before money is committed?
 
-### Phase 1 — Sandkassen (Inspiration)
+ArchAI is for architects, building advisors, type-house companies, contractors
+and small residential developers who need faster, better documented early-stage
+due diligence.
 
-Upload inspiration images. An AI generates buildable 3D concepts anchored to your architectural style preferences and budget envelope. Every design option is constrained from the first pixel by real plot data — no fantasy sketches that can't be permitted.
+## Product Position
 
-### Phase 2 — Matriklen (Site Analysis)
+Primary workflow:
 
-Enter any Danish address. The Compliance Engine fetches and cross-references 10+ authoritative Danish datasets (BBR, MAT, DAR, Plandata, FBB/SAVE, naturbeskyttelse, geoteknik, VUR) and surfaces every Hard Stop before you invest in an architect. This phase is the due-diligence layer — equally useful for pre-purchase evaluation as for active project planning.
+1. Enter a Danish address.
+2. Fetch and validate relevant public register and planning data.
+3. Produce a preliminary screening of the property, planning context, building
+   rights, risks, source quality and missing manual checks.
+4. Generate a report that can be used in advisory meetings and pre-purchase
+   feasibility discussions.
 
-### Phase 3 — Maskinrummet (Detailed Design / BIM)
+ArchAI must never present itself as a final legal or municipal decision. The
+system must show sources, confidence, degraded data states and issues requiring
+manual review.
 
-Parametric guardrails keep creative iteration inside the compliance envelope. Change roof pitch → budget updates live. Add a dormer → bebyggelsesprocent recalculates instantly. The Compliance Engine runs client-side on every Byggeoenske change with zero server round-trips. When constraints permit it, a BIM export feeds directly into structural calculations and LCA.
+Trust is more important than automation. Documentation is more important than
+AI magic.
 
-### Phase 4 — Myndighed (Permitting)
+## Strategic Product Surfaces
 
-One-click generation of demolition and building permit applications, pre-filled with verified data from the prior phases. Statics documentation and LCA calculations are assembled from the parametric model. Nabopartshøring risk is scored before submission.
+| Surface | Purpose |
+| --- | --- |
+| Address screening | Start from an address and assemble property, plot and planning context. |
+| Evidence ledger | Show source, timestamp, status, confidence, mock/error/skipped state and links. |
+| Risk register | Classify findings as blocker, dispensation, manual review, cost risk or unknown. |
+| Local plan screening | Extract relevant planning constraints with citations and confidence. |
+| Building rights screening | Estimate core feasibility constraints without pretending to be a legal ruling. |
+| Screening report | Produce a professional, shareable preliminary report with clear caveats. |
 
----
-
-## Product Pillars
-
-| Pillar                 | What It Does                                                                                       |
-| ---------------------- | -------------------------------------------------------------------------------------------------- |
-| **Dream to Draft**     | Upload inspiration → AI generates buildable 3D models based on architectural traits                |
-| **Compliance Engine**  | Hard Stop validation against BR18, local plans (Plandata.dk), and heritage values (FBB/SAVE)       |
-| **Live Financials**    | Real-time budget updates driven by design choices and local site data (soil, forsyning, nabosager) |
-| **Bureaucracy Killer** | Automated permit applications, statics docs, and LCA — pre-filled from verified project data       |
-
----
+Design generation, floor plans, BIM, permit packages and tender workflows are
+paused until the screening product has been validated with professional users.
 
 ## Tech Stack
 
-| Layer           | Technology                                                                                               |
-| --------------- | -------------------------------------------------------------------------------------------------------- |
-| Framework       | TanStack Start (React SSR)                                                                               |
-| Runtime         | Cloudflare Workers                                                                                       |
-| Language        | TypeScript, Bun                                                                                          |
-| Database / Auth | Supabase (PostgreSQL + RLS) — Single Source of Truth for all project and compliance state                |
-| AI              | Anthropic Claude (Sonnet / Haiku) — design generation, PDF extraction, AI analysis                       |
-| Danish Data     | Datafordeler (BBR, MAT, DAR, EBR, VUR), Plandata (WFS), SDFI (DHM, naturbeskyttelse), FBB, GEUS, DK-Jord |
-| Styling         | Tailwind CSS + shadcn/ui                                                                                 |
-| Tests           | Bun test (unit/integration) + Playwright (E2E) + eval-framework                                          |
-
----
+| Layer | Technology |
+| --- | --- |
+| Framework | TanStack Start (React SSR) |
+| Runtime | Cloudflare Workers |
+| Language | TypeScript, Bun |
+| Database / Auth | Supabase (PostgreSQL + RLS) |
+| AI | Anthropic Claude for bounded extraction and explanation, never as compliance authority |
+| Danish Data | Datafordeler, Plandata WFS, SDFI, FBB/Kulturarv, GEUS, DK-Jord, VUR and approved authoritative sources |
+| Styling | Tailwind CSS + shadcn/ui |
+| Tests | Bun test, Playwright and eval tooling |
 
 ## Local Setup
 
@@ -56,83 +64,78 @@ One-click generation of demolition and building permit applications, pre-filled 
 # Prerequisites: Bun, Wrangler CLI, Supabase CLI
 
 bun install
-cp .dev.vars.example .dev.vars   # Fill in API keys (see below)
-bun dev                           # http://localhost:3000
+cp .env.example .env.local
+bun dev
 ```
 
-Required `.dev.vars`:
-
-```
-DATAFORDELER_API_KEY=...
-ANTHROPIC_API_KEY=...
-DATAFORSYNINGEN_TOKEN=...   # optional — rate-limits apply without it
-SUPABASE_URL=...
-SUPABASE_PUBLISHABLE_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-```
+Important environment variables are documented in `.env.example` and
+`CLAUDE.md`.
 
 ## Commands
 
 ```bash
-bun dev                     # Dev server
-bun run build               # Production build (Cloudflare Workers)
-bun test                    # Unit tests (src/)
-bun run test:live           # Live integration tests (kræver env vars)
-bunx playwright test        # E2E tests
-bun run evals               # AI eval-suite (mock mode)
-bunx tsc --noEmit           # Type-check
-bunx eslint .               # Lint
-bunx prettier --write .     # Format
+bun dev
+bun run build
+bun test
+bun run test:live
+bunx playwright test
+bun run evals
+bunx tsc --noEmit
+bunx eslint .
+bunx prettier --write .
 ```
 
-## Integrations
+Before declaring implementation work complete, run:
 
-| Service                   | File                                      | Status          | Description                                                  |
-| ------------------------- | ----------------------------------------- | --------------- | ------------------------------------------------------------ |
-| `GsearchService`          | `integrations/gsearch/client.ts`          | ✅ Live         | Adresse-autocomplete via Dataforsyningen GSearch v2. UX-only |
-| `DarService`              | `integrations/dar/client.ts`              | ✅ Live         | Adresse, husnummer, matrikel-nøgler og koordinater via DAR   |
-| `BbrService`              | `integrations/bbr/client.ts`              | ✅ Live         | Bygninger, arealer, materialer, varme og BBR-fredningsflag   |
-| `MatService`              | `integrations/mat/client.ts`              | ✅ Live         | Grundareal og MAT-beskyttelsesflader                         |
-| `GrundarealResolver`      | `integrations/mat/grundareal-resolver.ts` | ✅ Live         | Datafordeler-only fallback via EBR/BFE/SFE                   |
-| `EbrService`              | `integrations/ebr/client.ts`              | ✅ Live         | BFE-nøgle fra adresse/husnummer                              |
-| `VurService`              | `integrations/vur/client.ts`              | ✅ Live         | Ejendoms- og grundvurdering via VUR                          |
-| `PlandataService`         | `integrations/plandata/client.ts`         | ✅ Live         | Lokalplaner og kommuneplanrammer via WFS                     |
-| `FjernvarmeService`       | `integrations/plandata/fjernvarme.ts`     | ✅ Live         | Fjernvarmedækning via Plandata WFS                           |
-| `NaturbeskyttelseService` | `integrations/sdfi/naturbeskyttelse.ts`   | ✅ Live         | DAI naturbeskyttelseslinjer                                  |
-| `FbbService`              | `integrations/fbb/client.ts`              | ✅ Live         | SAVE/fredning via Kulturarv/FBB WFS                          |
-| `CacheService`            | `integrations/cache/client.ts`            | ✅ Live         | Supabase-cache for compliance og source-resultater           |
-| `NaboService`             | `integrations/bbr/neighbor-client.ts`     | ⏸️ Disabled     | DAWA-frit hul: returnerer tom liste indtil ny kilde findes   |
-| `TinglysningService`      | `integrations/tinglysning/client.ts`      | 🟡 IS_MOCK=true | Servitutter fra TingbogenV2 kræver særskilt adgang           |
-| `DkJordService`           | `integrations/miljoe/dkjord.ts`           | 🟡 IS_MOCK=true | Jordforurening via DK-Jord WFS                               |
-| `GeusService`             | `integrations/geus/client.ts`             | 🟡 IS_MOCK=true | Geoteknisk/radon/grundvandsrisiko via GEUS                   |
-| `DhmService`              | `integrations/sdfi/dhm-client.ts`         | 🟡 IS_MOCK=true | Terrændata via DHM WCS                                       |
-| `PdfExtractorService`     | `integrations/ai/pdf-extractor.ts`        | ✅ Live         | Lokalplan PDF → strukturerede regler via Claude              |
-| `HusDnaGeneratorService`  | `integrations/ai/hus-dna-generator.ts`    | ✅ Live         | Inspiration + tekst → Hus-DNA via Claude vision              |
-| `BilledeAnalyseService`   | `integrations/ai/billede-analyse.ts`      | ✅ Live         | Inspirationsbilleder → stil- og materialetags via Claude     |
-| `ByggeanalyseService`     | `integrations/ai/byggeanalyse.ts`         | ✅ Live         | AI byggeanalyse med regelkerne-integration                   |
+```bash
+bunx tsc --noEmit
+bun test
+bunx eslint .
+bun run build
+```
 
 ## Architecture
 
+ArchAI uses pragmatic Ports & Adapters around compliance, public register data,
+persistence, AI and project state.
+
+```txt
+UI / routes / server functions
+  -> application services
+  -> domain core
+
+application services
+  -> ports
+  -> adapters implementing ports
 ```
-src/
-├── routes/          # TanStack Start SSR routes — four-phase cockpit flow
-├── lib/             # Domain logic (orchestrator, rule engine, project store, reactive compliance)
-├── integrations/    # All external API clients (server-side only)
-└── components/      # React UI components
-```
 
-**Server boundary**: All Datafordeler/Supabase code lives in `createServerFn`. Never import server modules directly in route files.
+Core rules:
 
-**Single Source of Truth**: The `projects` table in Supabase is the canonical record for all project state. Domain-critical compliance values (bebyggelsesprocent, etager, SAVE-value, Hard Stop flags) must be stored as typed columns, not buried in JSONB blobs.
-
-## CI/CD
-
-GitHub Actions: type-check → lint → test → build → evals (mock) → E2E → deploy to Cloudflare Workers.
-
-See `.github/workflows/` for details.
+- Data crossing a boundary must be validated with Zod schemas or explicit
+  decoders.
+- React is an inbound adapter. It must not own compliance policy or register
+  interpretation.
+- Server functions stay thin: validate, authenticate, import service, return
+  result.
+- The rule engine and typed site constraints are the source of compliance truth.
+- AI may extract, summarize and explain. AI must not invent compliance truth.
+- Public-data uncertainty must be represented explicitly, not hidden.
 
 ## Documentation
 
-See `docs/DOCUMENTATION.md` for the documentation hierarchy and drift checks.
+Start here:
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+- `docs/LLM_OPERATING_BRIEF.md` - one-page brief for independent LLM agents.
+- `docs/PRODUCT_STRATEGY.md` - current product strategy and MVP direction.
+- `docs/NOW_NEXT_LATER.md` - active roadmap framing.
+- `docs/LLM_TASK_TEMPLATE.md` - task template for LLM handoffs.
+- `docs/STRATEGY_LABELS.md` - recommended Linear/GitHub strategy labels.
+- `docs/DOCUMENTATION.md` - documentation hierarchy and archive policy.
+- `docs/INTEGRATIONS.md` - integration matrix and data-source policy.
+- `docs/data-ingestion-contract.md` - contract for public-data ingestion.
+- `docs/offentlige-datakilder-gap-analyse.md` - public-data gap analysis.
+
+Historical design, drawing and permit-package plans are archived and must not be
+used as current implementation direction.
+
+See `CHANGELOG.md` for historical version notes.

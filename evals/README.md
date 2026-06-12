@@ -2,6 +2,10 @@
 
 Regression-testing og kvalitetsmåling af AI-workflows.
 
+Strategisk status: evals skal prioritere screening, source extraction,
+compliance/risk classification og rapportkvalitet. Legacy Hus-DNA/design evals
+kan blive som historisk regressionsdækning, men de er ikke aktuel produktretning.
+
 ## Kør evals
 
 ```bash
@@ -35,7 +39,7 @@ evals/
 ├── fixtures/
 │   ├── bbr/bbr.fixture.ts       # BBR-testdata (4 scenarier)
 │   └── lokalplan/
-│       └── lokalplan.fixture.ts # Lokalplan + Hus-DNA inputs
+│       └── lokalplan.fixture.ts # Lokalplan extraction inputs; legacy Hus-DNA data may exist
 ├── cases/
 │   ├── compliance-flags.eval.ts # Deterministic, kræver ikke live
 │   ├── pdf-extractor.eval.ts    # Semantic, kræver EVAL_LIVE
@@ -136,7 +140,7 @@ Prioriteret rækkefølge baseret på risiko og impact:
 | 1         | `compliance-flags`      | Deterministic, ingen API-afhængighed — kør altid            |
 | 2         | `pdf-extractor`         | Blokerer ARCH-25 (IS_MOCK=true) — høj risiko ved aktivering |
 | 3         | `analysis-orchestrator` | End-to-end signal — opdager integrationsfejl                |
-| 4         | `hus-dna-generator`     | Kreativt output — lavere kritikalitet                       |
+| 4         | `hus-dna-generator`     | Legacy paused design workflow — lav kritikalitet             |
 
 ## CI/CD integration
 

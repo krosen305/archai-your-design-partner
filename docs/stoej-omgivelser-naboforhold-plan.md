@@ -4,6 +4,10 @@ Dato: 2026-05-25
 Rolle: forretnings- og IT-analyse  
 Område: due diligence for støj, nabogeometri, omgivelser, konfliktrisiko og myndighedsnære naboforhold.
 
+Strategisk status: dette er et screeningsmodul til den professionelle
+byggescreeningsrapport. Designplacering, myndighedspakke og downstream
+projektering er later/paused scope, ikke aktiv MVP-retning.
+
 ## 1. Formål
 
 ArchAI skal kunne advare en privat bygherre eller køber om forhold, der kan gøre
@@ -16,14 +20,12 @@ en ellers attraktiv parcel dyrere, langsommere eller mere usikker:
 - omgivelser som tekniske anlæg, produktionsvirksomheder, landbrug, større veje,
   landskabskiler og grønne arealer
 
-Området hører primært hjemme i `Matriklen`, men påvirker også `Maskinrummet`
-og `Myndighed`:
+Området hører primært hjemme i de nuværende produktflader:
 
-- `Matriklen`: adresse- og parcelbaseret screening.
-- `Maskinrummet`: placering, bygningsvolumen, varmepumpe, opholdsarealer og
-  støjfølsomme disponeringer.
-- `Myndighed`: dokumentationsbehov, naboorientering, partshøring,
-  rådgiverbriefs og høringspakker.
+- `Screening`: adresse- og parcelbaseret støj-, nabo- og omgivelserisiko.
+- `Kildebog`: kilde, dækning, status, confidence og link til lag/dokumentation.
+- `Risikoregister`: manuel review, cost risk, nabokonflikt og ukendte forhold.
+- `Rapport`: rådgiverbrief og anbefalede manuelle checks.
 
 Planen er skrevet, så den ikke strider mod `CLAUDE.md` eller `AGENTS.md`:
 
@@ -403,8 +405,8 @@ export type NeighborParcel = {
 Persistence:
 
 - Rå resultater i `address_source_results`, `source_kind = "mat_neighbor_parcels"`.
-- Hvis bruges til myndighedsflow, bør en separat fremtidig tabel over
-  høringskandidater overvejes. Første version kan nøjes med cache, fordi
+- Hvis bruges til senere myndighedsflow, bør en separat fremtidig tabel over
+  høringskandidater overvejes. Screeningversionen kan nøjes med cache, fordi
   parterne skal valideres manuelt.
 
 Prioritet: P0.
@@ -416,7 +418,7 @@ Status i ArchAI: mangler og kræver review.
 Formål:
 
 - potentielt identificere ejere på berørte nabomatrikler
-- støtte myndighedspakke ved dispensation eller partshøring
+- støtte senere myndighedspakke ved dispensation eller partshøring
 
 Kilde:
 
@@ -663,7 +665,8 @@ Persistence:
 - Ikke i `site_constraints` som registerdata.
 - Bør høre til design iteration/evidence ledger, når dette modul findes.
 
-Prioritet: P2 for `Maskinrummet`.
+Prioritet: post-MVP design/evidence scope. Ikke en del af den nuværende
+screeningrapport.
 
 ## 5. Foreslået Arkitektur
 
@@ -856,7 +859,10 @@ Eksempler:
   blive relevant".
 - Ukendt støjdækning -> "Støjkort dækker ikke sikkert området".
 
-## 8. Myndighed Og Naboorientering
+## 8. Later: Myndighed Og Naboorientering
+
+Dette afsnit er senere scope. Screeningrapporten skal kunne pege på mulig
+naboorientering og manuel review, men ikke drive en egentlig myndighedsproces.
 
 Planlovens § 20 betyder, at dispensationer efter § 19 som udgangspunkt først
 kan meddeles efter skriftlig orientering og frist på 2 uger til relevante parter,
@@ -966,7 +972,7 @@ Acceptkriterier:
 - thresholds findes kun i domain/rule engine
 - WMS-only kilde giver ikke pseudo-dB
 
-### Fase 4 - Myndighedsworkflow
+### Fase 4 - Later myndighedsworkflow
 
 Leverancer:
 

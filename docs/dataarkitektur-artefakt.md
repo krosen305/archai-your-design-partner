@@ -3,6 +3,10 @@
 Formaal: formelt datakatalog over de datapunkter ArchAI henter fra
 integrationer og selv beregner.
 
+Strategisk brug: datakataloget er grundlaget for den professionelle
+screeningrapport, kildebogen, risikoregisteret og manuel-kontrol-listen. Det er
+ikke en roadmap for AI-design, CAD, BIM eller myndighedspakker.
+
 Verifikationsbaseline:
 
 - kodegennemgang i `src/integrations/`, `src/lib/analysis-orchestrator.ts`,
@@ -38,7 +42,7 @@ Statusnoegle:
 | Tjekditnet                    | bredbaandsdaekning                          | digital forsyning                        | `Live`     | Lookup virkede, men 0 raekker paa testadressen |
 | EMOData                       | energimaerke                                | energimaerkedata                         | `Blokeret` | Manglende credentials                          |
 | Tinglysning                   | servitutter og pant                         | juridiske bindinger                      | `Blokeret` | Kraever separat adgang                         |
-| Anthropic                     | PDF-udtraek og AI-forklaring                | AI-afledte forklaringer                  | `Kode`     | Ikke live koert i auditen                      |
+| Anthropic                     | PDF-udtraek og AI-forklaring                | AI-afledte forklaringer, ikke compliance | `Kode`     | Ikke live koert i auditen                      |
 | Supabase                      | persistence, cache og typed kolonner        | intern lagring                           | `Live`     | Ikke registerkilde                             |
 
 ## Importerede datapunkter

@@ -1,5 +1,9 @@
 # Changelog
 
+Historical log only. Entries below may mention retired or paused strategy
+tracks such as inspiration images, Hus-DNA, floor plans or authority drawings.
+Current product direction is defined in `docs/PRODUCT_STRATEGY.md`.
+
 ## 2026-06-10
 
 ### Forbedringer
