@@ -14,6 +14,16 @@ import { computeDrawingCompleteness } from "@/domain/drawing/completeness-engine
 import { buildInfoPanel } from "@/domain/drawing/info-panel";
 import { findLabelPosition, type PlacedLabel } from "./label-placement";
 import { INFO_COL_MM, PX_PER_MM } from "./sheet-layout";
+import { createProjector, rotateWorld, type Projector } from "./projector";
+import { northUpRotationDeg } from "@/lib/geometry-utils";
+import {
+  selectLayerAKoter,
+  selectLayerBKoter,
+  neighbourWithin,
+  type TerrainSample,
+  type KotePlacement,
+} from "@/domain/drawing/kote-engine";
+import { selectGridKoter, type PaperBox } from "./kote-grid";
 
 function esc(s: string): string {
   return s
@@ -23,31 +33,28 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function coordsToSvgPoints(
-  coords: [number, number][],
-  minX: number,
-  maxY: number,
-  scale: number,
-): string {
-  return coords.map(([x, y]) => `${(x - minX) * scale},${(maxY - y) * scale}`).join(" ");
+function coordsToSvgPoints(coords: [number, number][], project: Projector): string {
+  return coords
+    .map(([x, y]) => {
+      const [sx, sy] = project(x, y);
+      return `${sx},${sy}`;
+    })
+    .join(" ");
 }
 
 function polygonFeature(
   id: string,
   kind: DrawingFeature["kind"],
   coords: [number, number][],
-  minX: number,
-  maxY: number,
-  scale: number,
+  project: Projector,
   style: string,
   label: string | null = null,
   zIndex = 10,
 ): DrawingFeature {
-  const pts = coordsToSvgPoints(coords, minX, maxY, scale);
+  const pts = coordsToSvgPoints(coords, project);
   const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
   const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
-  const labelX = (cx - minX) * scale;
-  const labelY = (maxY - cy) * scale;
+  const [labelX, labelY] = project(cx, cy);
   const labelSvg = label
     ? `<text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#444">${esc(label)}</text>`
     : "";
@@ -76,8 +83,20 @@ export function buildDrawingModel(
       (building) => building.footprint25832.coordinates[0] as [number, number][],
     ),
   ];
-  const xs = bboxCoords.map((c) => c[0]);
-  const ys = bboxCoords.map((c) => c[1]);
+  // Rotate the whole drawing about the parcel centroid by the site's grid
+  // (meridian) convergence so the matrikel is oriented to geographic north —
+  // matching the in-app matrikelkort (Web Mercator, true-north-up). The rotation
+  // is rigid: all distances and areas are preserved, only the orientation changes.
+  const pivot: [number, number] = [
+    plan.parcel.labelPoint25832.coordinates[0],
+    plan.parcel.labelPoint25832.coordinates[1],
+  ];
+  const rotationDeg = northUpRotationDeg(pivot[0], pivot[1]);
+
+  // The sheet must fit the ROTATED footprint, so derive the bbox from rotated coords.
+  const rotatedBboxCoords = bboxCoords.map(([x, y]) => rotateWorld(x, y, pivot, rotationDeg));
+  const xs = rotatedBboxCoords.map((c) => c[0]);
+  const ys = rotatedBboxCoords.map((c) => c[1]);
   const pad = 20;
   const bboxMinX = Math.min(...xs) - pad;
   const bboxMinY = Math.min(...ys) - pad;
@@ -95,6 +114,16 @@ export function buildDrawingModel(
   const scaleX = drawWidthPx / (bboxMaxX - bboxMinX);
   const scaleY = drawHeightPx / (bboxMaxY - bboxMinY);
   const scale = Math.min(scaleX, scaleY) * 0.9;
+
+  // Every coordinate is mapped through one Projector so the north-alignment
+  // rotation applies uniformly while labels stay upright.
+  const project: Projector = createProjector({
+    pivot,
+    rotationDeg,
+    minX: bboxMinX,
+    maxY: bboxMaxY,
+    scale,
+  });
 
   const completeness = computeDrawingCompleteness({
     hasParcelPolygon: true,
@@ -126,9 +155,7 @@ export function buildDrawingModel(
       "parcel",
       "parcel_boundary",
       plan.parcel.polygon25832.coordinates[0] as [number, number][],
-      bboxMinX,
-      bboxMaxY,
-      scale,
+      project,
       'fill="none" stroke="#000" stroke-width="1.5"',
       plan.parcel.matrikelnummer,
       30,
@@ -143,9 +170,7 @@ export function buildDrawingModel(
         `neighbor-${i}`,
         "neighbor_parcels",
         np.polygon25832.coordinates[0] as [number, number][],
-        bboxMinX,
-        bboxMaxY,
-        scale,
+        project,
         'fill="none" stroke="#888" stroke-width="0.8" stroke-dasharray="3,2"',
         np.matrikelnummer,
         5,
@@ -154,7 +179,7 @@ export function buildDrawingModel(
   });
 
   // Road layer (behind parcel, zIndex 1-4)
-  const roadFeatures = buildRoadFeatures(plan.vej, bboxMinX, bboxMaxY, scale);
+  const roadFeatures = buildRoadFeatures(plan.vej, project, scale);
   roadFeatures.forEach((f) => features.push(f));
 
   // Fallback road name label — emitted when parcel has a roadName but vej layer
@@ -163,8 +188,8 @@ export function buildDrawingModel(
   if (plan.parcel.roadName && !hasRoadLabel) {
     const centerX = coords.reduce((s, c) => s + c[0], 0) / coords.length;
     const southY = Math.min(...coords.map((c) => c[1]));
-    const labelPxX = (centerX - bboxMinX) * scale;
-    const labelPxY = (bboxMaxY - southY) * scale + 14;
+    const [labelPxX, labelBaseY] = project(centerX, southY);
+    const labelPxY = labelBaseY + 14;
     features.push({
       id: "road-name",
       kind: "road_label",
@@ -183,9 +208,7 @@ export function buildDrawingModel(
         `existing-${i}`,
         "existing_buildings",
         b.footprint25832.coordinates[0] as [number, number][],
-        bboxMinX,
-        bboxMaxY,
-        scale,
+        project,
         'fill="#e8e8e8" stroke="#555" stroke-width="0.8"',
         null,
         15,
@@ -199,9 +222,7 @@ export function buildDrawingModel(
       "proposed",
       "proposed_buildings",
       plan.proposed.footprint25832.coordinates[0] as [number, number][],
-      bboxMinX,
-      bboxMaxY,
-      scale,
+      project,
       'fill="#d4e8ff" stroke="#00f" stroke-width="1"',
       null,
       20,
@@ -214,12 +235,7 @@ export function buildDrawingModel(
     const stroke = isSetback ? "#c00" : "#f80";
     const dash = isSetback ? "" : 'stroke-dasharray="6,3"';
     if (c.geometry25832.type === "Polygon") {
-      const pts = coordsToSvgPoints(
-        c.geometry25832.coordinates[0] as [number, number][],
-        bboxMinX,
-        bboxMaxY,
-        scale,
-      );
+      const pts = coordsToSvgPoints(c.geometry25832.coordinates[0] as [number, number][], project);
       features.push({
         id: `constraint-${i}`,
         kind: "setback_lines",
@@ -233,12 +249,7 @@ export function buildDrawingModel(
   });
 
   // Naturbeskyttelseszoner (zIndex 5)
-  const naturFeatures = buildNaturbeskyttelseFeatures(
-    plan.naturbeskyttelse,
-    bboxMinX,
-    bboxMaxY,
-    scale,
-  );
+  const naturFeatures = buildNaturbeskyttelseFeatures(plan.naturbeskyttelse, project);
   naturFeatures.forEach((f) => features.push(f));
 
   // --- Mål, afstande og koter med simpel label-kollisionsundgåelse ---
@@ -263,10 +274,8 @@ export function buildDrawingModel(
 
   // Parcel-sidemål — matrikelgrænsens kantlængder (dæmpet, uden for huskroppen)
   buildDimensionLines(plan.parcel.polygon25832).forEach((dl, i) => {
-    const x1 = (dl.fromPoint.coordinates[0] - bboxMinX) * scale;
-    const y1 = (bboxMaxY - dl.fromPoint.coordinates[1]) * scale;
-    const x2 = (dl.toPoint.coordinates[0] - bboxMinX) * scale;
-    const y2 = (bboxMaxY - dl.toPoint.coordinates[1]) * scale;
+    const [x1, y1] = project(dl.fromPoint.coordinates[0], dl.fromPoint.coordinates[1]);
+    const [x2, y2] = project(dl.toPoint.coordinates[0], dl.toPoint.coordinates[1]);
     const text = `${dl.labelM.toFixed(2)} m`;
     const pos = placeLabel((x1 + x2) / 2, (y1 + y2) / 2, text, 5.5);
     features.push({
@@ -282,10 +291,8 @@ export function buildDrawingModel(
 
   // Bygningens sidemål
   buildDimensionLines(plan.proposed.footprint25832).forEach((dl, i) => {
-    const x1 = (dl.fromPoint.coordinates[0] - bboxMinX) * scale;
-    const y1 = (bboxMaxY - dl.fromPoint.coordinates[1]) * scale;
-    const x2 = (dl.toPoint.coordinates[0] - bboxMinX) * scale;
-    const y2 = (bboxMaxY - dl.toPoint.coordinates[1]) * scale;
+    const [x1, y1] = project(dl.fromPoint.coordinates[0], dl.fromPoint.coordinates[1]);
+    const [x2, y2] = project(dl.toPoint.coordinates[0], dl.toPoint.coordinates[1]);
     const text = dl.labelM.toFixed(2);
     const pos = placeLabel((x1 + x2) / 2, (y1 + y2) / 2 - 3, text, 6);
     features.push({
@@ -305,10 +312,8 @@ export function buildDrawingModel(
     plan.parcel.polygon25832,
   );
   setbackAnnotations.forEach((ann, i) => {
-    const bx = (ann.buildingPt[0] - bboxMinX) * scale;
-    const by = (bboxMaxY - ann.buildingPt[1]) * scale;
-    const px = (ann.parcelPt[0] - bboxMinX) * scale;
-    const py = (bboxMaxY - ann.parcelPt[1]) * scale;
+    const [bx, by] = project(ann.buildingPt[0], ann.buildingPt[1]);
+    const [px, py] = project(ann.parcelPt[0], ann.parcelPt[1]);
     const label = `${ann.distanceM.toFixed(2)} m`;
     const pos = placeLabel((bx + px) / 2, (by + py) / 2 - 2, label, 5.5);
     features.push({
@@ -325,22 +330,100 @@ export function buildDrawingModel(
     });
   });
 
-  // Terrain-koter fra survey (kollisionsundgåede labels)
-  if (plan.survey) {
-    plan.survey.terrainPoints.forEach((tp, i) => {
-      const px = (tp.x - bboxMinX) * scale;
-      const py = (bboxMaxY - tp.y) * scale;
-      const text = tp.z.toFixed(2);
-      const pos = placeLabel(px + 4, py - 2, text, 6);
+  // Terrænkoter — layered kote-motor. Survey-punkter foretrækkes; ellers bruges
+  // DHM-koter fra plan.terrain. Lag A: bygnings-/skelhjørner. Lag B: vej + ekstrema.
+  // Lag C: adaptivt gitter i åbent terræn med collision-unclutter (lavest prioritet).
+  const terrainSamples: TerrainSample[] = (
+    plan.survey?.terrainPoints.length ? plan.survey.terrainPoints : (plan.terrain?.points ?? [])
+  ).map((p) => ({ x: p.x, y: p.y, z: p.z }));
+
+  if (terrainSamples.length > 0) {
+    const parcelRing = plan.parcel.polygon25832.coordinates[0] as [number, number][];
+    const buildingRing = plan.proposed.footprint25832.coordinates[0] as [number, number][];
+
+    const priorityKoter: KotePlacement[] = [
+      ...selectLayerAKoter({
+        building: buildingRing,
+        parcel: parcelRing,
+        terrain: terrainSamples,
+        cornerOffsetM: 0.15,
+        maxRadiusM: 3,
+      }),
+      ...selectLayerBKoter({
+        parcel: parcelRing,
+        terrain: terrainSamples,
+        centerline:
+          (plan.vej?.centerline25832?.coordinates as [number, number][] | undefined) ?? null,
+        edges: (plan.vej?.vejkant25832 ?? []).map((e) => e.coordinates as [number, number][]),
+        maxRadiusM: 4,
+      }),
+    ];
+
+    const pushKote = (k: KotePlacement): void => {
+      const [px, py] = project(k.x, k.y);
+      const fontPx = k.layer === "C" ? 5 : 6;
+      const pos = placeLabel(px + 4, py - 2, k.label, fontPx);
       features.push({
-        id: `kote-${i}`,
+        id: `kote-${k.layer}-${k.kind}-${features.length}`,
         kind: "terrain_labels",
-        svgElement: `<g><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.5" fill="#555"/><text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-family="Arial" font-size="6" fill="#333">${text}</text></g>`,
-        label: text,
+        svgElement: `<g><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.3" fill="#555"/><text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-family="Arial" font-size="${fontPx}" fill="#333">${k.label}</text></g>`,
+        label: k.label,
         labelX: pos.x,
         labelY: pos.y,
         zIndex: 40,
       });
+    };
+
+    // Plot priority koter first so their labels join the occupancy set for Lag C.
+    priorityKoter.forEach(pushKote);
+
+    const ringToBox = (ring: [number, number][]): PaperBox => {
+      const pts = ring.map(([x, y]) => project(x, y));
+      const xsP = pts.map((p) => p[0]);
+      const ysP = pts.map((p) => p[1]);
+      const minXP = Math.min(...xsP);
+      const minYP = Math.min(...ysP);
+      return {
+        x: minXP,
+        y: minYP,
+        width: Math.max(...xsP) - minXP,
+        height: Math.max(...ysP) - minYP,
+      };
+    };
+    // Occupancy: buildings + all text already placed (dimensions, setbacks, A/B koter).
+    const occupancy: PaperBox[] = [
+      ringToBox(buildingRing),
+      ...plan.existing.buildings.map((b) =>
+        ringToBox(b.footprint25832.coordinates[0] as [number, number][]),
+      ),
+      ...placedLabels.map((l) => ({ x: l.x, y: l.y, width: l.width, height: l.height })),
+    ];
+
+    selectGridKoter({
+      terrain: terrainSamples,
+      project,
+      minSpacingMm: 35,
+      occupancy,
+      alreadyPlaced: priorityKoter,
+    }).forEach(pushKote);
+  }
+
+  // Sokkel-/gulvkote som centertekst i huskroppen — kun når dokumenteret (aldrig opdigtet).
+  if (plan.proposed.sokkelKoteM !== null) {
+    const ring = plan.proposed.footprint25832.coordinates[0] as [number, number][];
+    const corners = ring.slice(0, -1);
+    const cxw = corners.reduce((s, c) => s + c[0], 0) / corners.length;
+    const cyw = corners.reduce((s, c) => s + c[1], 0) / corners.length;
+    const [bx, by] = project(cxw, cyw);
+    const gulv = plan.proposed.finishedFloorKoteM;
+    features.push({
+      id: "kote-center-text",
+      kind: "terrain_labels",
+      svgElement: `<g><text x="${bx.toFixed(1)}" y="${by.toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#111">Sokkel ${plan.proposed.sokkelKoteM.toFixed(2)}</text>${gulv !== null ? `<text x="${bx.toFixed(1)}" y="${(by + 8).toFixed(1)}" text-anchor="middle" font-family="Arial" font-size="6" fill="#111">Gulv ${gulv.toFixed(2)}</text>` : ""}</g>`,
+      label: null,
+      labelX: bx,
+      labelY: by,
+      zIndex: 41,
     });
   }
 
@@ -348,7 +431,7 @@ export function buildDrawingModel(
   // og præsentationslag — ikke af plan-features.
 
   // LER ledninger (zIndex 4)
-  const lerFeatures = buildLerFeatures(plan.lerLedninger, bboxMinX, bboxMaxY, scale);
+  const lerFeatures = buildLerFeatures(plan.lerLedninger, project);
   lerFeatures.forEach((f) => features.push(f));
 
   // Placeholder elements (zIndex 13-15)
@@ -356,9 +439,7 @@ export function buildDrawingModel(
     completeness,
     plan.parcel,
     plan.proposed,
-    bboxMinX,
-    bboxMaxY,
-    scale,
+    project,
   );
   placeholderFeatures.forEach((f) => features.push(f));
 
@@ -370,6 +451,34 @@ export function buildDrawingModel(
     plan.metadata.revisions.length > 0
       ? plan.metadata.revisions
       : [{ nr: "A", description: "Udgivelse", date: plan.metadata.date, by: "" }];
+
+  const infoPanel = buildInfoPanel({ plan, completeness });
+  // Disclose the orientation basis so an authority can trust the north reference.
+  if (Math.abs(rotationDeg) >= 0.1) {
+    infoPanel.technicalNotes.push({
+      category: "generel",
+      text: `Tegningen er orienteret mod geografisk nord (EPSG:25832 drejet ${rotationDeg.toFixed(1)}° for meridiankonvergens).`,
+    });
+  }
+
+  // Flag (never fabricate) a missing neighbour sokkelkote when a neighbour building
+  // sits within 2.5 m of the skel — the registry does not carry neighbour foundation levels.
+  const neighbourParcelRing = plan.parcel.polygon25832.coordinates[0] as [number, number][];
+  const hasCloseNeighbour = plan.existing.buildings.some((b) =>
+    neighbourWithin(
+      b.footprint25832.coordinates[0] as [number, number][],
+      neighbourParcelRing,
+      2.5,
+    ),
+  );
+  if (hasCloseNeighbour) {
+    infoPanel.missingDataWarnings.push({
+      label: "Nabosokkel < 2,5 m fra skel — opmåles af landinspektør",
+      responsibleParty: "landinspektør",
+      blocksSubmission: false,
+      severity: "placeholder",
+    });
+  }
 
   return {
     page: {
@@ -396,7 +505,7 @@ export function buildDrawingModel(
       revision: revisions[0]?.nr ?? "A",
       disclaimer: readiness.status === "AUTO_DRAFT" ? "FORELØBIG — ikke til myndighedsbrug" : null,
     },
-    infoPanel: buildInfoPanel({ plan, completeness }),
+    infoPanel,
     legend: [
       {
         symbol: '<rect width="12" height="8" fill="none" stroke="#000" stroke-width="1.5"/>',
@@ -444,6 +553,7 @@ export function buildDrawingModel(
       ...buildLerLegendEntries(plan.lerLedninger),
     ],
     northArrowRotationDeg: 0,
+    projectionRotationDeg: rotationDeg,
     readinessStatus: readiness.status,
   };
 }

@@ -1,6 +1,7 @@
 import type { DrawingFeature } from "@/domain/drawing/drawing-model";
 import type { DrawingCompleteness } from "@/domain/drawing/completeness-engine";
 import type { ParcelLayer, ProposedBuildingLayer } from "@/domain/drawing/beliggenhedsplan.types";
+import type { Projector } from "@/lib/drawing/projector";
 
 function esc(s: string): string {
   return s
@@ -8,16 +9,6 @@ function esc(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function toSvgPt(
-  x: number,
-  y: number,
-  minX: number,
-  maxY: number,
-  scale: number,
-): [number, number] {
-  return [(x - minX) * scale, (maxY - y) * scale];
 }
 
 function orangeText(text: string, x: number, y: number, fontSize = 5): string {
@@ -28,9 +19,7 @@ export function buildPlaceholderFeatures(
   completeness: DrawingCompleteness,
   parcel: ParcelLayer,
   proposed: ProposedBuildingLayer,
-  minX: number,
-  maxY: number,
-  scale: number,
+  project: Projector,
 ): DrawingFeature[] {
   const features: DrawingFeature[] = [];
   const { fields } = completeness;
@@ -56,8 +45,8 @@ export function buildPlaceholderFeatures(
 
   // Kloakstikledning placeholder (always rendered)
   if (fields.kloakStikledning.status === "placeholder") {
-    const [bx, by] = toSvgPt(bldNearestPt.pt[0], bldNearestPt.pt[1], minX, maxY, scale);
-    const [sx, sy] = toSvgPt(skelMidX, skelMidY, minX, maxY, scale);
+    const [bx, by] = project(bldNearestPt.pt[0], bldNearestPt.pt[1]);
+    const [sx, sy] = project(skelMidX, skelMidY);
 
     features.push({
       id: "placeholder-sewer-connection",
@@ -88,7 +77,7 @@ export function buildPlaceholderFeatures(
     const faskineX = buildingCx + dx * offsetScale;
     const faskineY = buildingCy + dy * offsetScale;
 
-    const [fx, fy] = toSvgPt(faskineX, faskineY, minX, maxY, scale);
+    const [fx, fy] = project(faskineX, faskineY);
     const sizeM = proposed.footprintAreaM2 * 0.08;
 
     features.push({
@@ -107,7 +96,7 @@ export function buildPlaceholderFeatures(
 
   // Overkørsel placeholder
   if (fields.overkørsel.status === "placeholder") {
-    const [ox, oy] = toSvgPt(skelMidX, skelMidY, minX, maxY, scale);
+    const [ox, oy] = project(skelMidX, skelMidY);
     features.push({
       id: "placeholder-overkørsel",
       kind: "placeholder",
@@ -124,7 +113,7 @@ export function buildPlaceholderFeatures(
 
   // Sokkelkote annotation
   if (fields.sokkelKote.status !== "auto" && proposed.sokkelKoteM !== null) {
-    const [cx, cy] = toSvgPt(footprintRing[0]![0], footprintRing[0]![1], minX, maxY, scale);
+    const [cx, cy] = project(footprintRing[0]![0], footprintRing[0]![1]);
     const isEstimated = fields.sokkelKote.status === "estimated";
     features.push({
       id: "annotation-sokkelkote",

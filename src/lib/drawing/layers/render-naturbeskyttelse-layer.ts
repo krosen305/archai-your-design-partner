@@ -3,6 +3,7 @@ import type {
   NaturbeskyttelseLayer,
   NaturbeskyttelseType,
 } from "@/domain/drawing/beliggenhedsplan.types";
+import type { Projector } from "@/lib/drawing/projector";
 
 const NATUR_COLORS: Record<NaturbeskyttelseType, string> = {
   strandbeskyttelse: "#fbbf24",
@@ -20,17 +21,18 @@ const NATUR_LABELS: Record<NaturbeskyttelseType, string> = {
   klitfredning: "Klitfredning",
 };
 
-function toSvg(coords: [number, number][], minX: number, maxY: number, scale: number): string {
+function toSvg(coords: [number, number][], project: Projector): string {
   return coords
-    .map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`)
+    .map(([x, y]) => {
+      const [sx, sy] = project(x, y);
+      return `${sx.toFixed(1)},${sy.toFixed(1)}`;
+    })
     .join(" ");
 }
 
 export function buildNaturbeskyttelseFeatures(
   layers: NaturbeskyttelseLayer[],
-  minX: number,
-  maxY: number,
-  scale: number,
+  project: Projector,
 ): DrawingFeature[] {
   return layers.flatMap((layer, i): DrawingFeature[] => {
     const color = NATUR_COLORS[layer.type];
@@ -40,7 +42,7 @@ export function buildNaturbeskyttelseFeatures(
 
     if (layer.geometry25832.type === "Polygon") {
       const ring = layer.geometry25832.coordinates[0] as [number, number][];
-      const pts = toSvg(ring, minX, maxY, scale);
+      const pts = toSvg(ring, project);
       return [
         {
           id: `natur-${i}`,
@@ -55,7 +57,7 @@ export function buildNaturbeskyttelseFeatures(
     }
 
     if (layer.geometry25832.type === "LineString") {
-      const pts = toSvg(layer.geometry25832.coordinates, minX, maxY, scale);
+      const pts = toSvg(layer.geometry25832.coordinates, project);
       return [
         {
           id: `natur-${i}`,

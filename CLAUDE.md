@@ -1,6 +1,6 @@
 # CLAUDE.md - ArchAI Architecture Contract
 
-ArchAI - The Builder's Cockpit.
+ArchAI - Automated Building Screening.
 
 This file is the architectural operating contract for Claude Code. It is not a
 general project wiki. Keep it short, normative and hard to misunderstand.
@@ -12,36 +12,49 @@ For integration details, see `docs/INTEGRATIONS.md`.
 
 ## Product North Star
 
-ArchAI is a decision platform for private residential construction in Denmark.
+ArchAI is a B2B decision platform for private residential construction in
+Denmark.
 
-It is not primarily an AI design toy. It is a due-diligence and project cockpit
-that helps users answer:
+It is not primarily an AI design toy. It is a due-diligence and feasibility
+platform that helps professional users answer:
 
 - Can I build here?
 - What blocks me?
 - What is expensive or risky?
 - What must be checked before I buy, demolish or design?
-- Which design choices are realistic under regulation, budget and site data?
+- Which sources support the answer?
+- What remains uncertain or requires manual professional review?
 
 Pre-purchase due diligence is a first-class use case. Compliance data must help
 users before they spend large amounts on purchase, architects or engineering.
 
-The product should feel like a calm, competent building advisor: precise,
-transparent, honest and action-oriented.
+The product should feel like a calm, competent building advisor for
+professionals: precise, transparent, honest and action-oriented.
+
+ArchAI must never present itself as a final legal ruling, municipal decision or
+replacement for an architect, lawyer, land surveyor or engineer.
+
+Current product priority:
+
+`address -> documented preliminary building screening report`.
+
+Design generation, floor plans, BIM, permit packages and tender workflows are
+paused unless the user explicitly revives that scope.
 
 ---
 
-## Canonical Journey
+## Canonical Product Surfaces
 
-Use these four phase names in new code, docs and PR descriptions:
+Use these product surfaces in new code, docs and PR descriptions:
 
-1. `Sandkassen` - inspiration, user wishes, images, Hus-DNA.
-2. `Matriklen` - address, plot, BBR/MAT/FBB/Plandata, Hard Stops.
-3. `Maskinrummet` - parametric design, budget, live compliance, BIM direction.
-4. `Myndighed` - applications, neighbour hearing, LCA, statics, documentation.
+1. `Screening` - address, property profile, plot and public-data collection.
+2. `Kildebog` - source ledger, timestamps, status, confidence and links.
+3. `Risikoregister` - blockers, dispensations, manual review, cost risks and unknowns.
+4. `Rapport` - professional preliminary screening report with caveats.
 
-The journey is iterative, not linear. Do not force wizard-only thinking into
-architecture.
+Legacy phase names such as `Sandkassen`, `Maskinrummet` and `Myndighed` may
+exist in older routes or archived documents. Do not use them as the current
+roadmap framing unless the user explicitly asks to revive that product scope.
 
 ---
 
@@ -78,11 +91,12 @@ without being rewritten:
 - Consumer convenience must not introduce hidden assumptions that every project
   belongs to exactly one interactive human user.
 
-For the design domain, AI may interpret a brief, suggest options and explain
-tradeoffs. A målfast sketch, footprint, beliggenhedsplan or compliance-relevant
-geometry must be represented as deterministic structured data and checked by the
-rule/geometry engines. An AI-generated image is never the source of truth for a
-measurable drawing.
+For paused design and drawing domains, AI may interpret a brief, suggest options
+and explain tradeoffs. A målfast sketch, footprint, beliggenhedsplan or
+compliance-relevant geometry must be represented as deterministic structured
+data and checked by the rule/geometry engines. An AI-generated image is never
+the source of truth for a measurable drawing. Do not make design generation the
+default next step from a screening workflow.
 
 ### Domain Core
 
@@ -117,10 +131,10 @@ Examples of use cases:
 
 - analyse address
 - run byggeanalyse
-- generate design proposals
+- generate a preliminary screening report
 - sync project
 - restore project
-- upload and analyse images
+- assemble a source ledger and manual-control checklist
 
 ### Ports
 
@@ -413,19 +427,22 @@ write tables directly.
 
 ## AI Rules
 
-AI may explain, summarize, inspire and generate proposals.
+AI may extract, explain and summarize.
 
 AI must not invent compliance truth.
 
-Before AI output that affects design direction, feasibility or user confidence:
+Before AI output that affects feasibility, risk classification or user
+confidence:
 
 1. trusted site/compliance data must be loaded
 2. `RuleEngineInput` must be assembled
 3. `runRuleEngine()` must run
-4. Hard Stops must be surfaced before optimistic output
+4. blockers, dispensations, manual-review items and unknowns must be surfaced
+   before optimistic output
 
-If Hard Stops exist, return explanation, consequence and next step. Do not
-generate reassuring design output first.
+If blockers, dispensations, manual-review items or unknowns exist, return
+source-grounded explanation, consequence and next step. Do not generate
+reassuring output first.
 
 AI responses crossing into domain state must be schema-validated.
 
@@ -498,7 +515,18 @@ Before implementing any non-trivial change touching compliance, AI, public
 register data, persistence, project state or cockpit architecture, Claude must
 produce a short architecture plan.
 
-The plan must answer:
+The plan must answer the strategy preflight first:
+
+1. Have I read `docs/LLM_OPERATING_BRIEF.md` for the current mission?
+2. Does this support `address -> documented preliminary building screening report`?
+3. Which product surface owns this work: `Screening`, `Kildebog`,
+   `Risikoregister` or `Rapport`?
+4. Is this source/evidence/risk/report related?
+5. Does this revive a paused legacy track such as Hus-DNA, floor plans, BIM,
+   authority drawings, permit packages or tender workflows?
+6. Could the output be mistaken for a legal ruling or municipal decision?
+
+Then it must answer the architecture boundary questions:
 
 1. Which boundary does this change cross?
 2. Which schema or decoder validates the data?

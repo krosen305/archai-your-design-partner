@@ -1,5 +1,27 @@
 # Changelog
 
+Historical log only. Entries below may mention retired or paused strategy
+tracks such as inspiration images, Hus-DNA, floor plans or authority drawings.
+Current product direction is defined in `docs/PRODUCT_STRATEGY.md`.
+
+## 2026-06-10
+
+### Forbedringer
+
+- Beliggenhedsplanen orienteres nu mod geografisk nord, så den vender som det
+  oprindelige matrikelkort. Al geometri projiceres via én fælles `Projector`
+  (`src/lib/drawing/projector.ts`) og roteres om matrikel-centroiden med
+  UTM32-meridiankonvergensen (`northUpRotationDeg`/`gridConvergenceDeg` i
+  `geometry-utils.ts`). Nordpilen er fastfrosset (peger lige op = sand nord) og
+  projektionsgrundlaget oplyses på tegningen. Tidligere blev tegningen tegnet i
+  systemnord (UTM-grid), hvilket fik den til at se drejet ud ift. kortet.
+- DHM-terrænkoter plottes nu på beliggenhedsplanen via en lagdelt kote-motor
+  (`src/domain/drawing/kote-engine.ts` + `src/lib/drawing/kote-grid.ts`):
+  Lag A bygnings-/skelhjørner + sokkel-/gulvkote, Lag B vej + laveste/højeste
+  terrænpunkt, Lag C adaptivt gitter i åbent terræn med collision-unclutter
+  (~35 mm afstand på papir). Tidligere blev DHM-koter hentet, men aldrig tegnet.
+  Nabosokkelkoter opdigtes ikke — manglende data flagges som opmålingsbehov.
+
 ## 2026-05-07
 
 ### Nyt

@@ -224,6 +224,33 @@ export function polygonToPolygonDistanceM(
   return minDistSq === Infinity ? null : Math.sqrt(minDistSq);
 }
 
+/**
+ * Grid (meridian) convergence of UTM32N at a WGS84 point, in degrees.
+ * Positive = grid north lies east of true north (eastern part of the zone).
+ * Derived empirically via proj4 so it matches the exact ellipsoidal projection
+ * the rest of the pipeline uses, rather than a truncated series.
+ */
+export function gridConvergenceDeg(lat: number, lng: number): number {
+  const a = proj4(WGS84, EPSG25832, [lng, lat]) as [number, number]; // [easting, northing]
+  const step = 50; // metres of grid-north
+  const back = proj4(EPSG25832, WGS84, [a[0], a[1]]) as [number, number]; // [lng, lat]
+  const north = proj4(EPSG25832, WGS84, [a[0], a[1] + step]) as [number, number];
+  const R = 6378137;
+  const dEast = (((north[0] - back[0]) * Math.PI) / 180) * R * Math.cos((lat * Math.PI) / 180);
+  const dNorth = (((north[1] - back[1]) * Math.PI) / 180) * R;
+  return (Math.atan2(dEast, dNorth) * 180) / Math.PI;
+}
+
+/**
+ * Rotation (deg, CCW-positive in world space about the centroid) to apply to
+ * EPSG:25832 geometry so that, after the renderer's y-flip (world +Y → screen
+ * up), TRUE north points up instead of grid north. Equals the convergence.
+ */
+export function northUpRotationDeg(easting: number, northing: number): number {
+  const { lat, lng } = utm32ToWgs84(easting, northing);
+  return gridConvergenceDeg(lat, lng);
+}
+
 export function polygonToLineStringDistanceM(
   polygon: GeoJSON.Polygon | GeoJSON.MultiPolygon,
   lineGeometry: GeoJSON.LineString | GeoJSON.MultiLineString,

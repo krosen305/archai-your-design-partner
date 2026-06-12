@@ -1,5 +1,6 @@
 import type { DrawingFeature } from "@/domain/drawing/drawing-model";
 import type { LerLedning, LerLedningType } from "@/domain/drawing/beliggenhedsplan.types";
+import type { Projector } from "@/lib/drawing/projector";
 
 const LER_COLORS: Record<LerLedningType, string> = {
   kloak_spildevand: "#78350f",
@@ -12,21 +13,19 @@ const LER_COLORS: Record<LerLedningType, string> = {
   telekom: "#16a34a",
 };
 
-function toSvg(coords: [number, number][], minX: number, maxY: number, scale: number): string {
+function toSvg(coords: [number, number][], project: Projector): string {
   return coords
-    .map(([x, y]) => `${((x - minX) * scale).toFixed(1)},${((maxY - y) * scale).toFixed(1)}`)
+    .map(([x, y]) => {
+      const [sx, sy] = project(x, y);
+      return `${sx.toFixed(1)},${sy.toFixed(1)}`;
+    })
     .join(" ");
 }
 
-export function buildLerFeatures(
-  ledninger: LerLedning[],
-  minX: number,
-  maxY: number,
-  scale: number,
-): DrawingFeature[] {
+export function buildLerFeatures(ledninger: LerLedning[], project: Projector): DrawingFeature[] {
   return ledninger.map((l, i): DrawingFeature => {
     const color = LER_COLORS[l.type];
-    const pts = toSvg(l.geometry25832.coordinates, minX, maxY, scale);
+    const pts = toSvg(l.geometry25832.coordinates, project);
     const label = l.ejer ? `${l.type} (${l.ejer})` : l.type;
 
     return {

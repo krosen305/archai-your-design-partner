@@ -5,11 +5,16 @@ Scope: køb af grund/ejendom, nedrivning af eksisterende hus og opførelse af ny
 Krav: prioriter gratis tilgængelige kilder. Kilder der ikke er gratis eller ikke har realistisk programmatisk adgang nævnes kun som gap/manuel kontrol.
 Status: aktuel gap-analyse, ikke en implementeringsplan. konkrete opgaver styres i Linear, og integrationsstatus styres i `docs/INTEGRATIONS.md`.
 
+Strategisk ramme: denne gap-analyse prioriterer den nuværende MVP-retning,
+`adresse -> dokumenteret foreløbig byggescreeningsrapport`. Kilder vurderes
+efter om de styrker ejendomsprofil, planstatus, byggeretsscreening,
+risikoregister, kildebog eller manuel-kontrol-listen.
+
 ## Executive summary
 
 ArchAI har allerede en stærk kerne: DAR, BBR, MAT, EBR/VUR, Plandata, FBB, DAI-naturbeskyttelse og fjernvarme er helt eller delvist integreret. De største huller i dag er ikke "flere BBR-felter", men de risikodata der gør pre-purchase due diligence skarp: jordforurening, hydrologi/oversvømmelse, terræn, servitutter, vej/adgang, nabo-/skelgeometri, bredbånd/forsyning og udvidede plan-/beskyttelseslag.
 
-Højeste prioritet:
+Højeste prioritet for screeningrapporten:
 
 1. Gør DK-Jord, GEUS/HIP og DHM live i stedet for mock.
 2. Erstat deaktiveret DAWA-naboopslag med Datafordeler/GeoDanmark/BBR-geometri.

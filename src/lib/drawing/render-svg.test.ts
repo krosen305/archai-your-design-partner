@@ -91,6 +91,7 @@ const model: DrawingModel = {
   infoPanel,
   legend: [],
   northArrowRotationDeg: 0,
+  projectionRotationDeg: 0,
   readinessStatus: "AUTO_DRAFT",
 };
 
@@ -106,6 +107,26 @@ describe("renderSvg", () => {
   });
   it("indeholder nordpil (N)", () => {
     expect(renderSvg(model)).toContain(">N<");
+  });
+  it("nordpil honorerer northArrowRotationDeg", () => {
+    expect(renderSvg({ ...model, northArrowRotationDeg: 30 })).toContain("rotate(30.0)");
+    expect(renderSvg({ ...model, northArrowRotationDeg: 0 })).toContain(">N<");
+  });
+  it("viser projektionsnote (geografisk nord) fra technicalNotes", () => {
+    const withNote: DrawingModel = {
+      ...model,
+      infoPanel: {
+        ...model.infoPanel,
+        technicalNotes: [
+          ...model.infoPanel.technicalNotes,
+          {
+            category: "generel",
+            text: "Tegningen er orienteret mod geografisk nord (EPSG:25832 drejet 2.9° for meridiankonvergens).",
+          },
+        ],
+      },
+    };
+    expect(renderSvg(withNote)).toMatch(/geografisk nord/i);
   });
   it("indeholder FORELØBIG disclaimer for AUTO_DRAFT", () => {
     expect(renderSvg(model)).toContain("FORELØBIG");

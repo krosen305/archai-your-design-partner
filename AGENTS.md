@@ -1,6 +1,6 @@
 # AGENTS.md - ArchAI Implementation Contract
 
-ArchAI - The Builder's Cockpit.
+ArchAI - Automated Building Screening.
 
 This file is the implementation contract for AI coding agents working in this
 repository. It is intentionally practical and strict.
@@ -16,35 +16,47 @@ For integration details, see `docs/INTEGRATIONS.md`.
 
 ## Product Invariant
 
-ArchAI is a due-diligence and decision cockpit for private residential
+ArchAI is a B2B due-diligence and feasibility platform for private residential
 construction in Denmark.
 
 It is not primarily an AI design toy.
 
-The product must help users understand:
+The product must help professional users understand:
 
 - whether they can build
 - what blocks them
 - what is risky or expensive
 - what must be checked before purchase, demolition or design
-- which design choices are realistic under regulation, budget and site data
+- which assumptions are supported by sources
+- which findings require manual professional review
 
 Pre-purchase due diligence is a primary use case.
 
-AI may inspire and explain. AI must not invent compliance truth.
+ArchAI must never present itself as a final legal ruling, municipal decision or
+replacement for an architect, lawyer, land surveyor or engineer.
+
+AI may extract, summarize and explain. AI must not invent compliance truth.
+
+Design generation, floor plans, BIM, permit packages and tender workflows are
+paused unless the user explicitly revives that scope. The current product
+priority is:
+
+`address -> documented preliminary building screening report`.
 
 ---
 
-## Canonical Phases
+## Canonical Product Surfaces
 
-Use these phase names in new code, comments, docs and PR descriptions:
+Use these product surfaces in new code, comments, docs and PR descriptions:
 
-1. `Sandkassen` - inspiration, wishes, images, Hus-DNA.
-2. `Matriklen` - address, plot, BBR/MAT/FBB/Plandata, Hard Stops.
-3. `Maskinrummet` - parametric design, budget, live compliance, BIM direction.
-4. `Myndighed` - applications, neighbour hearing, LCA, statics, documentation.
+1. `Screening` - address, property profile, plot and public-data collection.
+2. `Kildebog` - source ledger, timestamps, status, confidence and links.
+3. `Risikoregister` - blockers, dispensations, manual review, cost risks and unknowns.
+4. `Rapport` - professional preliminary screening report with caveats.
 
-The journey is iterative, not linear.
+Legacy phase names such as `Sandkassen`, `Maskinrummet` and `Myndighed` may
+exist in older routes or archived documents. Do not use them as the current
+roadmap framing unless the user explicitly asks to revive that product scope.
 
 ---
 
@@ -123,9 +135,11 @@ SaaS/API implementation rules:
 - Do not assume every project or request belongs only to one interactive human
   user. Keep ownership and authorization checks explicit at the adapter/service
   boundary.
-- For design/sketch features, AI may interpret a brief and suggest options, but
-  målfast drawings, footprints, placement and compliance-relevant geometry must
-  be deterministic structured data checked by the rule and geometry engines.
+- For paused design/sketch features, AI may interpret a brief and suggest
+  options, but målfast drawings, footprints, placement and compliance-relevant
+  geometry must be deterministic structured data checked by the rule and
+  geometry engines. Do not make design generation the default next step from a
+  screening workflow.
 
 ---
 
@@ -201,8 +215,8 @@ Server functions must never accept client-provided values such as `hasHardStop`,
 `hasAbsoluteHardStop`, SAVE status, MAT blockers or equivalent derived gate
 signals as authoritative.
 
-Before AI generates design, analysis or recommendations, the server must verify
-Hard Stop status from trusted sources:
+Before AI generates analysis, recommendations, design output or reassuring
+explanations, the server must verify compliance status from trusted sources:
 
 - typed columns on `projects`
 - `site_constraints`
@@ -468,7 +482,7 @@ above are followed:
 
 - presentational UI components in `src/components/`
 - focused cockpit panels in `src/components/cockpit/`
-- stub routes such as `projekt.teknik` and `projekt.udbud`
+- focused screening, source-ledger and report UI
 - pure rule-engine rules and tests
 - pure helpers
 - additive database migrations
@@ -506,6 +520,14 @@ If an issue looks simple but has `needs-architecture`, do not implement it.
 
 Before writing code, answer:
 
+- Have I read `docs/LLM_OPERATING_BRIEF.md` for the current mission?
+- Does this support `address -> documented preliminary building screening report`?
+- Which product surface owns this work: `Screening`, `Kildebog`,
+  `Risikoregister` or `Rapport`?
+- Is this source/evidence/risk/report related?
+- Does this revive a paused legacy track such as Hus-DNA, floor plans, BIM,
+  authority drawings, permit packages or tender workflows?
+- Could the output be mistaken for a legal ruling or municipal decision?
 - Does this cross a boundary?
 - Which schema or decoder validates the data?
 - Where does the business logic live?

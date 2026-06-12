@@ -1,6 +1,7 @@
 // src/lib/drawing/drawing-model-builder.test.ts
 import { describe, it, expect } from "bun:test";
 import { buildDrawingModel } from "./drawing-model-builder";
+import { northUpRotationDeg } from "@/lib/geometry-utils";
 import type {
   BeliggenhedsplanInput,
   GeoJsonPolygon25832,
@@ -301,6 +302,26 @@ describe("buildDrawingModel — label-rendering", () => {
     expect(withRoad.titleBlock.scale).toBe(baseline.titleBlock.scale);
   });
 
+  it("orients the drawing toward geographic north (arrow up, geometry pre-rotated by convergence)", () => {
+    const model = buildDrawingModel(minimalPlan, autoReadiness);
+    const [ex, ny] = minimalPlan.parcel.labelPoint25832.coordinates;
+    // The sheet is rotated by the site's grid convergence so true north points up.
+    expect(model.projectionRotationDeg).toBeCloseTo(northUpRotationDeg(ex, ny), 5);
+    // The fixture sits near Copenhagen ⇒ convergence ≈ +2.9°, clearly non-trivial.
+    expect(Math.abs(model.projectionRotationDeg)).toBeGreaterThan(2);
+    // Geometry is rotated to true north ⇒ the arrow itself points straight up.
+    expect(model.northArrowRotationDeg).toBe(0);
+    // The orientation basis is disclosed to the authority.
+    expect(model.infoPanel.technicalNotes.some((n) => /geografisk nord/i.test(n.text))).toBe(true);
+  });
+
+  it("rotating to true north does not change parcel side-lengths (rigid transform)", () => {
+    const model = buildDrawingModel(minimalPlan, autoReadiness);
+    // The 20 m parcel edges must still measure 20.00 m after rotation.
+    const dimFeatures = model.features.filter((f) => f.id.startsWith("parcel-dim"));
+    expect(dimFeatures.some((f) => f.label === "20.00 m")).toBe(true);
+  });
+
   it("naturbeskyttelse emits drawing features, legend and source summary", () => {
     const planWithNature: BeliggenhedsplanInput = {
       ...minimalPlan,
@@ -336,5 +357,58 @@ describe("buildDrawingModel — label-rendering", () => {
     expect(model.infoPanel.sourceRegister.some((e) => e.label.includes("Naturbeskyttelse"))).toBe(
       true,
     );
+  });
+});
+
+describe("buildDrawingModel — koter (DHM/terrain)", () => {
+  const dhmTerrain = {
+    verticalDatum: "DVR90" as const,
+    points: [
+      { x: 720000, y: 6170000, z: 10.0, label: "10.00", source: "registry" as const },
+      { x: 720020, y: 6170000, z: 10.2, label: "10.20", source: "registry" as const },
+      { x: 720020, y: 6170020, z: 10.6, label: "10.60", source: "registry" as const },
+      { x: 720000, y: 6170020, z: 10.1, label: "10.10", source: "registry" as const },
+      { x: 720005, y: 6170005, z: 10.05, label: "10.05", source: "registry" as const },
+      { x: 720015, y: 6170005, z: 10.15, label: "10.15", source: "registry" as const },
+      { x: 720015, y: 6170015, z: 10.4, label: "10.40", source: "registry" as const },
+      { x: 720005, y: 6170015, z: 10.3, label: "10.30", source: "registry" as const },
+    ],
+    slopePercent: 3,
+    lowPointM: 10.0,
+    source: sourceMeta,
+  };
+  const planWithDhmTerrain: BeliggenhedsplanInput = {
+    ...minimalPlan,
+    terrain: dhmTerrain,
+    proposed: { ...minimalPlan.proposed, sokkelKoteM: 10.5, finishedFloorKoteM: 10.65 },
+  };
+
+  it("plots layered DHM koter (A/B/C) when plan.terrain is present", () => {
+    const model = buildDrawingModel(planWithDhmTerrain, autoReadiness);
+    const koteFeatures = model.features.filter((f) => f.kind === "terrain_labels");
+    expect(koteFeatures.length).toBeGreaterThan(0);
+    expect(model.features.some((f) => f.id.startsWith("kote-A-building"))).toBe(true);
+  });
+
+  it("renders center sokkel/gulv text when sokkelKoteM is documented", () => {
+    const model = buildDrawingModel(planWithDhmTerrain, autoReadiness);
+    const center = model.features.find((f) => f.id === "kote-center-text");
+    expect(center).toBeDefined();
+    expect(center!.svgElement).toContain("Sokkel 10.50");
+    expect(center!.svgElement).toContain("Gulv 10.65");
+  });
+
+  it("does NOT fabricate center koter when sokkelKoteM is null", () => {
+    const noSokkel: BeliggenhedsplanInput = {
+      ...planWithDhmTerrain,
+      proposed: { ...planWithDhmTerrain.proposed, sokkelKoteM: null, finishedFloorKoteM: null },
+    };
+    const model = buildDrawingModel(noSokkel, autoReadiness);
+    expect(model.features.some((f) => f.id === "kote-center-text")).toBe(false);
+  });
+
+  it("plots no terrain koter when terrain is null", () => {
+    const model = buildDrawingModel(minimalPlan, autoReadiness);
+    expect(model.features.filter((f) => f.kind === "terrain_labels")).toHaveLength(0);
   });
 });

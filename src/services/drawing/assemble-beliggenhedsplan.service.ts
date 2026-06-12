@@ -192,6 +192,17 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     Math.max(...ys),
   ];
 
+  // DHM koter are sampled on a slightly wider bbox than the parcel so road,
+  // driveway and neighbour-edge koter (Layer B) have terrain coverage. The DHM
+  // client caps/downsamples point count, so the margin stays within limits.
+  const DHM_MARGIN_M = 15;
+  const dhmBbox: [number, number, number, number] = [
+    bbox[0] - DHM_MARGIN_M,
+    bbox[1] - DHM_MARGIN_M,
+    bbox[2] + DHM_MARGIN_M,
+    bbox[3] + DHM_MARGIN_M,
+  ];
+
   const centroidCoords = parcel.labelPoint25832.coordinates;
   const { lat: centroidLat, lng: centroidLng } = utm32ToWgs84(centroidCoords[0], centroidCoords[1]);
 
@@ -211,7 +222,7 @@ export async function assembleBeliggenhedsplan(input: AssembleInput): Promise<As
     geometrySource.fetchNeighborParcels(parcel.idLokalId, bbox),
     geometrySource.fetchRoadName(addressId),
     geometrySource.fetchRoadGeometry(addressId, bbox),
-    geometrySource.fetchDhmKoter(bbox, centroidLat, centroidLng),
+    geometrySource.fetchDhmKoter(dhmBbox, centroidLat, centroidLng),
     fetchNaturbeskyttelseWithCache({ addressId, bbox25832: bbox, geometrySource }),
     geometrySource.fetchKloakopland(kommunekode, bbox),
     geometrySource.fetchFjernvarmeDaekning(centroidLat, centroidLng),
