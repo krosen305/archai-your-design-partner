@@ -79,12 +79,12 @@ function StartPage() {
           ARCHAI
         </div>
         <h1 className="text-[28px] font-medium text-foreground">
-          {loggedIn ? "Dine projekter" : "Fra idé til byggetilladelse"}
+          {loggedIn ? "Dine projekter" : "Foreløbig byggescreening"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {loggedIn
             ? "Fortsæt et eksisterende projekt eller start et nyt."
-            : "Analysér din grund, forstå lokalplanen og visualisér dit drømmehus."}
+            : "Screen en adresse: ejendom, plan, regulering og risici — med kilder og forbehold."}
         </p>
       </motion.div>
 

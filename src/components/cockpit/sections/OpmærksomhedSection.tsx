@@ -113,11 +113,13 @@ export function OpmærksomhedSection({
   return (
     <section ref={(el) => registerSection("opmærksomhed", el)} aria-label="Opmærksomhed">
       <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-6">
-        <h2 className="text-lg font-medium text-foreground mb-4">
-          {aktiveFejl > 0
-            ? `${aktiveFejl} ting kræver din opmærksomhed`
-            : "Ingen opmærksomhedspunkter"}
+        <h2 className="text-lg font-medium text-foreground mb-1">
+          {aktiveFejl > 0 ? `${aktiveFejl} forhold kræver kontrol` : "Ingen forhold til kontrol"}
         </h2>
+        <p className="mb-4 text-xs leading-relaxed text-muted-foreground/80">
+          Forhold fundet i de kontrollerede kilder. Foreløbig screening — hvert forhold skal
+          vurderes manuelt af en fagperson før rådgivning.
+        </p>
 
         <ul>
           {visibleFlags.map((flag) => (

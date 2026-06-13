@@ -47,9 +47,14 @@ export function DatakilderSection({
   return (
     <section ref={(el) => registerSection("datakilder", el)} aria-label="Datakilder">
       <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-foreground">Datakilder</h2>
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between mb-4 gap-3">
+          <div className="min-w-0">
+            <h2 className="text-lg font-medium text-foreground">Datakilder</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">
+              Kildegrundlag for screeningen — status og seneste opdatering pr. kilde.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             {lastFetchedAt && (
               <span className="text-xs text-muted-foreground">
                 Opdateret {formatRelative(lastFetchedAt)}

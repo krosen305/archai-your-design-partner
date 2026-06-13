@@ -6,10 +6,11 @@ import { signIn, signUp, setGuest, getSession } from "@/lib/auth";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ArchAI - Fra ide til byggetilladelse" },
+      { title: "ArchAI - Foreløbig byggescreening" },
       {
         name: "description",
-        content: "AI-drevet byggeradgivning for private bygherrer i Danmark.",
+        content:
+          "B2B byggescreening og due diligence for boligprojekter i Danmark — kilder, risici og forbehold.",
       },
     ],
   }),
@@ -112,7 +113,9 @@ function AuthPage() {
           <Link to="/" className="font-mono text-[28px] tracking-[0.2em] text-accent inline-block">
             ARCHAI
           </Link>
-          <p className="mt-3 text-sm text-muted-foreground">Fra ide til byggetilladelse</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Foreløbig byggescreening for professionelle
+          </p>
         </div>
 
         <div className="rounded-md border border-border bg-[#111111] p-6">

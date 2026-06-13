@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { XCircle } from "lucide-react";
 import { useProject } from "@/lib/project-store";
 import { PageTransition, Card } from "@/components/wizard-ui";
 import { BackLink } from "@/components/wizard-chrome";
@@ -34,24 +33,6 @@ export const Route = createFileRoute("/projekt/$id/cockpit")({
     };
   },
 });
-
-// ---------------------------------------------------------------------------
-// HardStopBanner
-// ---------------------------------------------------------------------------
-
-function HardStopBanner() {
-  const { hard_stop, hard_stop_reason } = useProject();
-  if (!hard_stop) return null;
-  return (
-    <div className="mb-4 flex items-start gap-3 rounded-md border border-danger/40 bg-danger/5 px-4 py-3">
-      <XCircle size={14} className="mt-0.5 shrink-0 text-danger" />
-      <div className="text-xs leading-relaxed text-danger/90">
-        <span className="font-mono tracking-[0.1em] text-danger">HARD STOP</span>
-        <div className="mt-1">{hard_stop_reason ?? "Matriklen har et blokerende forhold."}</div>
-      </div>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Auth wrapper
