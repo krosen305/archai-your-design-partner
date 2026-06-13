@@ -26,7 +26,7 @@ const NAESTE_TRIN: ReadonlyArray<NaesteTrin> = [
   },
   {
     nummer: "02",
-    titel: "Gennemgå risici og manuelle kontroller",
+    titel: "Gennemgå risici og ukendte forhold",
     beskrivelse:
       "Se blokeringer, dispensationer, omkostningsrisici og forhold der kræver manuel professionel kontrol.",
     target: "opmærksomhed",
@@ -85,7 +85,12 @@ export function NaesteStepSection({ registerSection, scrollTo }: NaesteStepSecti
           ))}
         </ol>
 
-        {!hard_stop && (
+        {hard_stop ? (
+          <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-muted-foreground">
+            Screeningen har fundet forhold, der kræver manuel professionel vurdering, før den bruges
+            som beslutningsgrundlag.
+          </div>
+        ) : (
           <div className="mt-6 rounded-lg border border-border/30 bg-[#111] px-4 py-3 text-sm text-muted-foreground">
             Screening-readiness: <span className="text-foreground font-medium">{readiness}%</span> —
             de kontrollerede kilder viser ingen kritisk blokering. Resterende kontroller er

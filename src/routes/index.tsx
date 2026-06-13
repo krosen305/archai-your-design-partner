@@ -216,7 +216,7 @@ function AuthPage() {
                   Fortsaet uden at logge ind {"->"}
                 </button>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Uden konto gemmes dit projekt ikke
+                  Uden konto gemmes din screening ikke
                 </p>
               </div>
             </>

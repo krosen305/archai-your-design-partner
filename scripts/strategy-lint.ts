@@ -138,9 +138,7 @@ for (const file of files) {
 if (findings.length > 0) {
   console.error("Strategy lint failed. Old strategy language appears active:\n");
   for (const finding of findings) {
-    console.error(
-      `${finding.file}:${finding.line} [${finding.term}] ${finding.text}`,
-    );
+    console.error(`${finding.file}:${finding.line} [${finding.term}] ${finding.text}`);
   }
   console.error(
     "\nMark the context as legacy/paused/later/archive, move it to docs/archive, or rewrite it for the screening strategy.",

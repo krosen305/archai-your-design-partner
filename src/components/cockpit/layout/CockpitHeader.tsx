@@ -63,7 +63,7 @@ export function CockpitHeader({ adresse, dataStatus }: CockpitHeaderProps) {
         <button
           type="button"
           disabled
-          title="Screeningsrapport — kommer snart"
+          title="Forbered screeningsrapport — kommer snart"
           aria-label="Screeningsrapport (kommer snart)"
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5",

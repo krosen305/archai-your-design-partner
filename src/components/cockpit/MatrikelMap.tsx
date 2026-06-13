@@ -262,40 +262,40 @@ export function MatrikelMap({
       });
 
       if (!readonly) {
-      const translate = new Translate({
-        features: footprintSource.getFeaturesCollection() ?? undefined,
-      });
-      translateRef.current = translate;
-      map.addInteraction(translate);
-
-      translate.on("translatestart", () => {
-        setDragHint("Slip for at flytte placeringen");
-      });
-
-      translate.on("translateend", (event: any) => {
-        const feature = event.features.item(0);
-        const geometry = feature?.getGeometry();
-        if (!feature || !geometry) return;
-
-        const extent = geometry.getExtent();
-        const center3857: [number, number] = [
-          (extent[0] + extent[2]) / 2,
-          (extent[1] + extent[3]) / 2,
-        ];
-        const [lng, lat] = transform(center3857, "EPSG:3857", "EPSG:4326") as [number, number];
-        footprintCenterRef.current = [lng, lat];
-        setDragHint("Placering opdateret");
-
-        updateCentroid({ lat, lng });
-        onPlacementChange?.({ centroid: { lat, lng } });
-
-        const newFootprint = buildSquareFootprint25832({
-          centroidWgs84: [lng, lat],
-          areaM2: Math.max(28, buildingAreaRef.current ?? 60),
-          rotationDeg: rotationDegRef.current,
+        const translate = new Translate({
+          features: footprintSource.getFeaturesCollection() ?? undefined,
         });
-        onFootprintChange?.(newFootprint);
-      });
+        translateRef.current = translate;
+        map.addInteraction(translate);
+
+        translate.on("translatestart", () => {
+          setDragHint("Slip for at flytte placeringen");
+        });
+
+        translate.on("translateend", (event: any) => {
+          const feature = event.features.item(0);
+          const geometry = feature?.getGeometry();
+          if (!feature || !geometry) return;
+
+          const extent = geometry.getExtent();
+          const center3857: [number, number] = [
+            (extent[0] + extent[2]) / 2,
+            (extent[1] + extent[3]) / 2,
+          ];
+          const [lng, lat] = transform(center3857, "EPSG:3857", "EPSG:4326") as [number, number];
+          footprintCenterRef.current = [lng, lat];
+          setDragHint("Placering opdateret");
+
+          updateCentroid({ lat, lng });
+          onPlacementChange?.({ centroid: { lat, lng } });
+
+          const newFootprint = buildSquareFootprint25832({
+            centroidWgs84: [lng, lat],
+            areaM2: Math.max(28, buildingAreaRef.current ?? 60),
+            rotationDeg: rotationDegRef.current,
+          });
+          onFootprintChange?.(newFootprint);
+        });
       } // end if (!readonly)
 
       const marker = new Feature({
@@ -541,16 +541,16 @@ export function MatrikelMap({
         {hasAddress && (
           <div className="absolute bottom-3 left-3 right-3 z-20 grid gap-2 md:grid-cols-[1fr_auto]">
             {!readonly && (
-            <div className="rounded-md border border-border/60 bg-black/70 p-3 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <Move3D size={14} className="text-accent" />
-                <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
-                  PLACERING
+              <div className="rounded-md border border-border/60 bg-black/70 p-3 backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <Move3D size={14} className="text-accent" />
+                  <div className="font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+                    PLACERING
+                  </div>
                 </div>
+                <p className="mt-1 text-xs text-foreground/80">{dragHint}</p>
               </div>
-              <p className="mt-1 text-xs text-foreground/80">{dragHint}</p>
-            </div>
-          )}
+            )}
 
             <div className="rounded-md border border-border/60 bg-black/70 p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between gap-3">

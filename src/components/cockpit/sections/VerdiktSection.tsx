@@ -92,7 +92,7 @@ export function VerdiktSection({ metrics, registerSection, scrollTo }: VerdiktSe
             onClick={() => scrollTo("opmærksomhed")}
             className="inline-flex items-center gap-2 rounded-md bg-[#c8ff00] px-5 py-2.5 font-medium text-sm text-black hover:brightness-95 transition-all"
           >
-            Se risici og næste kontroller →
+            Gennemgå risici og ukendte forhold →
           </button>
           <button
             type="button"

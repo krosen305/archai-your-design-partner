@@ -34,6 +34,11 @@ describe("persistedProjectSchema", () => {
       design_placement: null,
       neighbor_context_facts: null,
       updated_at: "2026-05-22T10:00:00.000Z",
+      tagform: null,
+      taghaldning_grad: null,
+      har_jordvarme: false,
+      har_kaelder: false,
+      kaelder_gulv_kote_m: null,
     });
 
     expect(parsed.success).toBe(true);
@@ -84,6 +89,11 @@ describe("persistedProjectSchema", () => {
       design_placement: null,
       neighbor_context_facts: null,
       updated_at: null,
+      tagform: null,
+      taghaldning_grad: null,
+      har_jordvarme: false,
+      har_kaelder: false,
+      kaelder_gulv_kote_m: null,
     });
 
     expect(parsed.success).toBe(false);

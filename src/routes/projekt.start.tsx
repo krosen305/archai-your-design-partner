@@ -79,11 +79,11 @@ function StartPage() {
           ARCHAI
         </div>
         <h1 className="text-[28px] font-medium text-foreground">
-          {loggedIn ? "Dine projekter" : "Foreløbig byggescreening"}
+          {loggedIn ? "Dine screeninger" : "Foreløbig byggescreening"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {loggedIn
-            ? "Fortsæt et eksisterende projekt eller start et nyt."
+            ? "Fortsæt en eksisterende screening eller start en ny."
             : "Screen en adresse: ejendom, plan, regulering og risici — med kilder og forbehold."}
         </p>
       </motion.div>
@@ -158,9 +158,9 @@ function LoggedInView({
             <Plus size={18} className="text-accent" />
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <div className="font-mono text-[13px] text-accent">Nyt projekt</div>
+            <div className="font-mono text-[13px] text-accent">Ny screening</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Søg på en adresse og start analysen
+              Søg på en adresse og start screeningen
             </div>
           </div>
           <ChevronRight
@@ -236,9 +236,9 @@ function ProjektKort({
         reset();
       }
       onSlettet(projekt.id);
-      toast.success("Projektet er slettet");
+      toast.success("Screeningen er slettet");
     } catch (e) {
-      toast.error((e as Error).message || "Kunne ikke slette projektet");
+      toast.error((e as Error).message || "Kunne ikke slette screeningen");
     } finally {
       setSletter(false);
       setConfirmOpen(false);
@@ -246,7 +246,7 @@ function ProjektKort({
   };
 
   const fremskridt = projekt.compliance_done
-    ? "Analyse gennemført"
+    ? "Screening gennemført"
     : harAdresse
       ? "Adresse valgt"
       : "Ikke startet";
@@ -284,8 +284,8 @@ function ProjektKort({
           </div>
           <button
             onClick={() => setConfirmOpen(true)}
-            aria-label="Slet projekt"
-            title="Slet projekt"
+            aria-label="Slet screening"
+            title="Slet screening"
             className="shrink-0 inline-flex items-center justify-center rounded-md border border-border/60 p-2 text-muted-foreground hover:text-danger hover:border-danger/40 transition-colors"
           >
             <Trash2 size={14} />
@@ -302,11 +302,11 @@ function ProjektKort({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Slet projekt?</AlertDialogTitle>
+            <AlertDialogTitle>Slet screening?</AlertDialogTitle>
             <AlertDialogDescription>
               {projekt.adresse
-                ? `Projektet på "${projekt.adresse}" og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes.`
-                : "Projektet og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes."}
+                ? `Screeningen på "${projekt.adresse}" og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes.`
+                : "Screeningen og al tilknyttet data slettes permanent. Handlingen kan ikke fortrydes."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -324,7 +324,7 @@ function ProjektKort({
                   <Loader2 size={14} className="mr-1.5 animate-spin" /> Sletter…
                 </>
               ) : (
-                "Slet projekt"
+                "Slet screening"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -349,11 +349,11 @@ function GuestView() {
       >
         <div className="rounded-md border border-accent/20 bg-accent/5 p-5">
           <div className="font-mono text-[11px] tracking-[0.15em] text-accent mb-3">
-            GEM DIT PROJEKT
+            GEM SCREENINGEN
           </div>
           <p className="text-sm text-foreground/90 leading-relaxed">
-            Med en gratis konto gemmes din adresse, dine byggeønsker og din analyse automatisk — så
-            du kan vende tilbage, dele med din arkitekt og sammenligne grunde.
+            Med en gratis konto gemmes din adresse, dit projektinput og din screening automatisk —
+            så du kan vende tilbage, dele kildegrundlag med din rådgiver og sammenligne grunde.
           </p>
           <Link
             to="/"

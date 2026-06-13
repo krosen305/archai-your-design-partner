@@ -12,13 +12,13 @@ export type SidebarSection =
 
 export const SIDEBAR_ITEMS: Array<{ id: SidebarSection; label: string }> = [
   { id: "verdict", label: "Oversigt" },
-  { id: "opmærksomhed", label: "Opmærksomhed" },
+  { id: "opmærksomhed", label: "Risikoregister" },
   { id: "grunden", label: "Grunden" },
-  { id: "byggeønsker", label: "Byggeønsker" },
+  { id: "byggeønsker", label: "Screeninginput" },
   { id: "plan", label: "Plan & regulering" },
-  { id: "økonomi", label: "Økonomi" },
-  { id: "næste", label: "Næste skridt" },
-  { id: "datakilder", label: "Datakilder" },
+  { id: "økonomi", label: "Omkostninger" },
+  { id: "næste", label: "Næste kontroller" },
+  { id: "datakilder", label: "Kildebog" },
 ];
 
 type CockpitSidebarProps = {
@@ -29,11 +29,11 @@ type CockpitSidebarProps = {
 export function CockpitSidebar({ active, onNavigate }: CockpitSidebarProps) {
   return (
     <nav
-      aria-label="Maskinrum navigation"
+      aria-label="Screeningnavigation"
       className="w-[140px] shrink-0 border-r border-border/40 py-6 flex flex-col gap-1"
     >
       <div className="px-4 mb-4 font-mono text-[11px] tracking-[0.15em] text-muted-foreground/60">
-        MASKINRUMMET
+        SCREENING
       </div>
       {SIDEBAR_ITEMS.map((item) => {
         const isActive = active === item.id;
