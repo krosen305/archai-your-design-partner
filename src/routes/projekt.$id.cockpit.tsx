@@ -133,7 +133,7 @@ function CockpitPage() {
 
 function CockpitContent({ adresseId }: { adresseId: string }) {
   const { tab: _tab, projectId: searchProjectId } = Route.useSearch();
-  const { address, bbrData, complianceMetrics, currentProjectId } = useProject();
+  const { address, bbrData, complianceMetrics } = useProject();
   const setSnapshotPatchRef = useRef<((p: Partial<AnalysisSnapshot>) => void) | null>(null);
 
   const { restorePhase } = useCockpitRestore({
@@ -170,18 +170,13 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
   if (!bbrData) return null;
 
   return (
-    <CockpitLayout
-      adresse={address?.adresse ?? adresseId}
-      adresseId={adresseId}
-      projectId={currentProjectId ?? searchProjectId}
-    >
-      {(_scrollTo, registerSection) => (
+    <CockpitLayout adresse={address?.adresse ?? adresseId}>
+      {(scrollTo, registerSection) => (
         <>
           <VerdiktSection
             metrics={complianceMetrics}
             registerSection={registerSection}
-            adresseId={adresseId}
-            projectId={currentProjectId ?? searchProjectId}
+            scrollTo={scrollTo}
           />
           <OpmærksomhedSection onOpenDetails={() => {}} registerSection={registerSection} />
           <GrundenSection
@@ -197,7 +192,7 @@ function CockpitContent({ adresseId }: { adresseId: string }) {
             registerSection={registerSection}
           />
           <OkonomiSection registerSection={registerSection} />
-          <NaesteStepSection registerSection={registerSection} />
+          <NaesteStepSection registerSection={registerSection} scrollTo={scrollTo} />
           <DatakilderSection
             onRefreshAll={triggerRefresh}
             isRefreshing={isRecomputing}

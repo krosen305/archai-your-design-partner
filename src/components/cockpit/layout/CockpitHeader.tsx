@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router";
-import { LayoutTemplate, Share2, MoreHorizontal } from "lucide-react";
+import { FileText, Share2, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DataSourceKind, DataSourceStatus } from "@/types/project-state";
 
@@ -44,12 +43,10 @@ const HEALTH_LABEL: Record<DataHealth, string> = {
 
 type CockpitHeaderProps = {
   adresse: string;
-  adresseId: string;
-  projectId: string | undefined;
   dataStatus?: Record<DataSourceKind, DataSourceStatus>;
 };
 
-export function CockpitHeader({ adresse, adresseId, projectId, dataStatus }: CockpitHeaderProps) {
+export function CockpitHeader({ adresse, dataStatus }: CockpitHeaderProps) {
   const health = dataHealthSummary(dataStatus);
 
   return (
@@ -63,18 +60,19 @@ export function CockpitHeader({ adresse, adresseId, projectId, dataStatus }: Coc
         />
       </div>
       <div className="flex items-center gap-2">
-        <Link
-          to="/projekt/$id/plantegning"
-          params={{ id: adresseId }}
-          search={{ projectId }}
+        <button
+          type="button"
+          disabled
+          title="Screeningsrapport — kommer snart"
+          aria-label="Screeningsrapport (kommer snart)"
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5",
-            "font-mono text-[11px] tracking-[0.1em] text-foreground hover:bg-[#1a1a1a] transition-colors",
+            "font-mono text-[11px] tracking-[0.1em] text-muted-foreground/50 cursor-not-allowed",
           )}
         >
-          <LayoutTemplate size={12} />
-          Plantegning
-        </Link>
+          <FileText size={12} />
+          Rapport
+        </button>
         <button
           type="button"
           className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-[#111] px-3 py-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"

@@ -1,48 +1,47 @@
-import { Link } from "@tanstack/react-router";
 import { useProject } from "@/lib/project-store";
 import { beregnProjektReadiness } from "@/lib/projekt-readiness";
 import type { SidebarSection } from "@/components/cockpit/layout/CockpitSidebar";
 
 type NaesteStepSectionProps = {
   registerSection: (id: SidebarSection, el: HTMLElement | null) => void;
+  scrollTo: (id: SidebarSection) => void;
 };
 
-const NAESTE_TRIN: Array<{
+type NaesteTrin = {
   nummer: string;
   titel: string;
   beskrivelse: string;
-  href?: string;
+  target?: SidebarSection;
   kommerSnart: boolean;
-}> = [
+};
+
+const NAESTE_TRIN: ReadonlyArray<NaesteTrin> = [
   {
     nummer: "01",
-    titel: "Byg på plantegning",
-    beskrivelse: "Åbn plantegningsværktøjet og definer din bygnings præcise placering og form.",
+    titel: "Gennemgå kildegrundlag",
+    beskrivelse:
+      "Se hvilke offentlige kilder der er kontrolleret, deres status og confidence, samt hvad der mangler.",
+    target: "datakilder",
     kommerSnart: false,
   },
   {
     nummer: "02",
-    titel: "Indhent tilbud",
-    beskrivelse: "Brug budgetestimatet som udgangspunkt for at indhente tilbud fra entreprenører.",
+    titel: "Gennemgå risici og manuelle kontroller",
+    beskrivelse:
+      "Se blokeringer, dispensationer, omkostningsrisici og forhold der kræver manuel professionel kontrol.",
+    target: "opmærksomhed",
     kommerSnart: false,
   },
   {
     nummer: "03",
-    titel: "Generer beliggenhedsplan",
-    beskrivelse: "Lav myndighedstegningen til byggetilladelsesansøgningen direkte fra dit design.",
-    href: "/projekt/teknik",
-    kommerSnart: false,
-  },
-  {
-    nummer: "04",
-    titel: "Ansøg om byggetilladelse",
+    titel: "Forbered screeningsrapport",
     beskrivelse:
-      "Forbered ansøgningsmaterialet til kommunen. Vi hjælper dig med at samle dokumentation.",
+      "Saml den foreløbige byggescreening til en dokumenteret rapport med kilder, forbehold og næste kontroller.",
     kommerSnart: true,
   },
 ];
 
-export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
+export function NaesteStepSection({ registerSection, scrollTo }: NaesteStepSectionProps) {
   const { dataStatus, complianceFlags, hard_stop } = useProject();
   const readiness = beregnProjektReadiness(dataStatus, complianceFlags);
 
@@ -51,7 +50,7 @@ export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
   return (
     <section ref={(el) => registerSection("næste", el)} aria-label="Næste skridt">
       <div className="rounded-xl border border-border/40 bg-[#0d0d0d] p-6">
-        <h2 className="text-lg font-medium text-foreground mb-6">Næste skridt</h2>
+        <h2 className="text-lg font-medium text-foreground mb-6">Næste kontroller</h2>
 
         <ol className="space-y-5">
           {NAESTE_TRIN.map((trin) => (
@@ -61,13 +60,14 @@ export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  {trin.href && !trin.kommerSnart ? (
-                    <Link
-                      to={trin.href}
+                  {trin.target && !trin.kommerSnart ? (
+                    <button
+                      type="button"
+                      onClick={() => scrollTo(trin.target!)}
                       className="text-sm font-medium text-foreground hover:text-[#c8ff00] transition-colors"
                     >
                       {trin.titel} →
-                    </Link>
+                    </button>
                   ) : (
                     <p className="text-sm font-medium text-foreground">{trin.titel}</p>
                   )}
@@ -87,8 +87,9 @@ export function NaesteStepSection({ registerSection }: NaesteStepSectionProps) {
 
         {!hard_stop && (
           <div className="mt-6 rounded-lg border border-border/30 bg-[#111] px-4 py-3 text-sm text-muted-foreground">
-            Analyse-readiness: <span className="text-foreground font-medium">{readiness}%</span> —
-            du er godt på vej.
+            Screening-readiness: <span className="text-foreground font-medium">{readiness}%</span> —
+            de kontrollerede kilder viser ingen kritisk blokering. Resterende kontroller er
+            manuelle.
           </div>
         )}
       </div>

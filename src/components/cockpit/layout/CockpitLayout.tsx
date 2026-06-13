@@ -5,15 +5,13 @@ import { useProject } from "@/lib/project-store";
 
 type CockpitLayoutProps = {
   adresse: string;
-  adresseId: string;
-  projectId: string | undefined;
   children: (
     scrollTo: (id: SidebarSection) => void,
     registerSection: (id: SidebarSection, el: HTMLElement | null) => void,
   ) => ReactNode;
 };
 
-export function CockpitLayout({ adresse, adresseId, projectId, children }: CockpitLayoutProps) {
+export function CockpitLayout({ adresse, children }: CockpitLayoutProps) {
   const [active, setActive] = useState<SidebarSection>("verdict");
   const sectionRefs = useRef<Map<SidebarSection, HTMLElement>>(new Map());
   const dataStatus = useProject((s) => s.dataStatus);
@@ -54,12 +52,7 @@ export function CockpitLayout({ adresse, adresseId, projectId, children }: Cockp
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <CockpitHeader
-        adresse={adresse}
-        adresseId={adresseId}
-        projectId={projectId}
-        dataStatus={dataStatus}
-      />
+      <CockpitHeader adresse={adresse} dataStatus={dataStatus} />
       <div className="flex flex-1 overflow-hidden">
         <CockpitSidebar active={active} onNavigate={scrollTo} />
         <main className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
