@@ -10,9 +10,11 @@ active instructions.
 
 | Document | Purpose |
 | --- | --- |
+| `docs/AGENT_STARTUP.md` | Minimal startup prompt protocol and multi-agent coordination rules. |
 | `docs/PRODUCT_STRATEGY.md` | Current product strategy, MVP definition and stop/pause/build direction. |
 | `docs/LLM_OPERATING_BRIEF.md` | One-page operating brief for independent LLM agents. |
 | `docs/NOW_NEXT_LATER.md` | Active roadmap split into NOW, NEXT, LATER and PAUSED. |
+| `docs/SCREENING_MVP_TASKS.md` | Concrete MVP execution tasks, phases, file boundaries and acceptance criteria. |
 | `docs/LLM_TASK_TEMPLATE.md` | Task brief template for Linear/GitHub/LLM handoffs. |
 | `docs/STRATEGY_LABELS.md` | Recommended GitHub/Linear labels for strategy gates. |
 | `README.md` | Product, setup and high-level architecture onboarding. |

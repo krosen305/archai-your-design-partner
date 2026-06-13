@@ -4,6 +4,11 @@ Status: current brief as of 2026-06-12.
 
 Read this before doing independent work in ArchAI.
 
+For concrete startup prompts and multi-agent coordination, read
+`docs/AGENT_STARTUP.md`.
+
+For the active MVP execution tasks, read `docs/SCREENING_MVP_TASKS.md`.
+
 ## Mission
 
 Current mission:

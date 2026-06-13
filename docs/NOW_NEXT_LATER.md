@@ -5,6 +5,9 @@ Status: current active roadmap framing as of 2026-06-12.
 This file exists so independent agents do not infer roadmap direction from old
 plans, archived specs or partially built legacy features.
 
+Concrete implementation tasks, file boundaries and acceptance criteria live in
+`docs/SCREENING_MVP_TASKS.md`.
+
 ## NOW
 
 Build the minimum credible B2B screening product:

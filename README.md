@@ -125,9 +125,11 @@ Core rules:
 
 Start here:
 
+- `docs/AGENT_STARTUP.md` - minimal startup prompt and multi-agent protocol.
 - `docs/LLM_OPERATING_BRIEF.md` - one-page brief for independent LLM agents.
 - `docs/PRODUCT_STRATEGY.md` - current product strategy and MVP direction.
 - `docs/NOW_NEXT_LATER.md` - active roadmap framing.
+- `docs/SCREENING_MVP_TASKS.md` - concrete MVP phases, task boundaries and acceptance criteria.
 - `docs/LLM_TASK_TEMPLATE.md` - task template for LLM handoffs.
 - `docs/STRATEGY_LABELS.md` - recommended Linear/GitHub strategy labels.
 - `docs/DOCUMENTATION.md` - documentation hierarchy and archive policy.
